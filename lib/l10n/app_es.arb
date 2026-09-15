@@ -1,0 +1,236 @@
+{
+  "@@locale": "es",
+  "appName": "Ibasho",
+  "@appName": {
+    "description": "Nombre del producto. No se traduce."
+  },
+  "appTagline": "tu lugar",
+  "@appTagline": {
+    "description": "Subtitulo del splash, bajo el logotipo."
+  },
+  "loginTitle": "inicia sesión",
+  "loginSubtitle": "usa la cuenta que te dieron",
+  "loginUsername": "usuario",
+  "loginPassword": "contraseña",
+  "loginSubmit": "entrar",
+  "loginWorking": "entrando…",
+  "loginErrorEmpty": "escribe tu usuario y tu contraseña",
+  "loginErrorCredentials": "el usuario o la contraseña no son correctos",
+  "loginErrorNotAllowed": "esta cuenta no tiene acceso a Ibasho",
+  "loginErrorDisabled": "esta cuenta está deshabilitada",
+  "loginErrorNetwork": "no hay conexión con el servidor",
+  "loginErrorTooMany": "demasiados intentos, espera un momento",
+  "loginErrorUnknown": "algo ha ido mal, inténtalo otra vez",
+  "sessionExpired": "tu sesión ha caducado, vuelve a entrar",
+  "changePasswordTitle": "elige una contraseña",
+  "changePasswordSubtitle": "la contraseña que te dieron es de un solo uso",
+  "changePasswordNew": "contraseña nueva",
+  "changePasswordRepeat": "repítela",
+  "changePasswordSubmit": "guardar",
+  "changePasswordWorking": "guardando…",
+  "changePasswordErrorShort": "necesita al menos {min} caracteres",
+  "@changePasswordErrorShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "changePasswordErrorMismatch": "las dos no coinciden",
+  "changePasswordErrorWeak": "esa contraseña es demasiado fácil",
+  "changePasswordErrorSame": "elige una distinta de la que te dieron",
+  "greetingMorning": "buenos días",
+  "greetingAfternoon": "buenas tardes",
+  "greetingEvening": "buenas noches",
+  "greetingNight": "trasnochando",
+  "statusOffline": "sin conexión",
+  "statusOnline": "conectado",
+  "channelSettings": "ajustes",
+  "channelProfile": "perfil",
+  "channelAdmin": "administración",
+  "channelEmpty": "ranura libre",
+  "comingSoonTitle": "próximamente",
+  "comingSoonBody": "aquí vivirá una de las apps de Ibasho.\nde momento la ranura está libre.",
+  "actionBack": "volver",
+  "actionOk": "vale",
+  "actionCancel": "cancelar",
+  "actionClose": "cerrar",
+  "actionRetry": "reintentar",
+  "actionSave": "guardar",
+  "actionCopy": "copiar",
+  "actionCopied": "copiado",
+  "loading": "cargando…",
+  "pageIndicator": "página {current} de {total}",
+  "@pageIndicator": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTitle": "ajustes",
+  "settingsSound": "sonido",
+  "settingsMusicVolume": "música",
+  "settingsEffectsVolume": "efectos",
+  "settingsPresentation": "presentación",
+  "settingsLanguage": "idioma",
+  "settingsLanguageEs": "español",
+  "settingsLanguageEn": "english",
+  "settingsReducedMotion": "movimiento reducido",
+  "settingsReducedMotionHint": "sustituye las animaciones por fundidos cortos",
+  "settingsSystem": "sistema",
+  "settingsCredits": "créditos",
+  "settingsSignOut": "cerrar sesión",
+  "settingsVersion": "versión {version}",
+  "@settingsVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "signOutConfirmTitle": "¿cerrar sesión?",
+  "signOutConfirmBody": "tendrás que volver a escribir tu contraseña.",
+  "signOutConfirm": "cerrar sesión",
+  "profileTitle": "perfil",
+  "profileUsername": "usuario",
+  "profileDisplayName": "nombre mostrado",
+  "profileStatusMessage": "mensaje de estado",
+  "profileStatusHint": "qué estás haciendo",
+  "profileBirthday": "cumpleaños",
+  "profileBirthdayNotSet": "sin indicar",
+  "profileTimezone": "zona horaria",
+  "profileLocale": "idioma",
+  "profileAccent": "color de acento",
+  "profileTamaSlot": "tu Tama vivirá aquí",
+  "profileSaved": "perfil guardado",
+  "profileSaveError": "no se ha podido guardar",
+  "profileErrorDisplayName": "entre 1 y 24 caracteres",
+  "profileErrorStatus": "como mucho 100 caracteres",
+  "profileDay": "día",
+  "profileMonth": "mes",
+  "profileYear": "año",
+  "profileClearBirthday": "quitar",
+  "adminTitle": "administración",
+  "adminCreateSection": "crear cuenta",
+  "adminUsername": "nombre de usuario",
+  "adminUsernameHint": "minúsculas, números y guión bajo",
+  "adminGenerate": "generar contraseña",
+  "adminCreate": "crear cuenta",
+  "adminCreating": "creando…",
+  "adminCredentialTitle": "credencial de {username}",
+  "@adminCredentialTitle": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCredentialWarning": "apúntala ahora: no se volverá a mostrar.",
+  "adminCopyBlock": "copiar usuario y contraseña",
+  "adminListSection": "cuentas",
+  "adminListEmpty": "todavía no hay cuentas",
+  "adminStateEnabled": "activa",
+  "adminStateDisabled": "deshabilitada",
+  "adminStatePending": "pendiente de primer acceso",
+  "adminDisable": "deshabilitar",
+  "adminEnable": "rehabilitar",
+  "adminRegenerate": "regenerar credencial",
+  "adminRegenerateConfirmTitle": "¿regenerar credencial?",
+  "adminRegenerateConfirmBody": "la contraseña actual de {username} dejará de servir. su perfil y todos sus datos se conservan.",
+  "@adminRegenerateConfirmBody": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "adminErrorUsernameTaken": "ese nombre ya está cogido",
+  "adminErrorUsernameInvalid": "de 3 a 16 caracteres: a-z, 0-9 y _",
+  "adminErrorCreate": "no se ha podido crear la cuenta",
+  "adminCreatedOn": "creada el {date}",
+  "@adminCreatedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "adminNotAdmin": "esta cuenta no es de administración",
+  "creditsTitle": "créditos",
+  "creditsIntro": "Ibasho se apoya en trabajo libre. Esto es lo que usa y bajo qué licencia.",
+  "creditsFonts": "tipografías",
+  "creditsAudio": "sonido",
+  "creditsSoftware": "software",
+  "creditsLicenseLabel": "licencia",
+  "creditsAppLicense": "Ibasho se publica bajo la GNU General Public License, versión 3 o posterior.",
+  "errorGeneric": "algo ha ido mal",
+  "errorOffline": "sin conexión con el servidor",
+  "errorPermission": "no tienes permiso para hacer eso",
+  "settingsAccount": "cuenta",
+  "settingsPassword": "contraseña",
+  "settingsPasswordHint": "cámbiala cuando quieras",
+  "settingsChangePassword": "cambiar",
+  "changeOwnPasswordTitle": "cambiar contraseña",
+  "changeOwnPasswordCurrent": "contraseña actual",
+  "changeOwnPasswordDone": "contraseña cambiada",
+  "changeOwnPasswordWrongCurrent": "la contraseña actual no es correcta",
+  "loginForgotHint": "¿la has olvidado? pide a quien administra Ibasho una credencial nueva. no perderás nada.",
+  "timezoneSearch": "buscar",
+  "timezoneSearchHint": "una ciudad, o un desplazamiento como +1",
+  "timezoneNone": "ninguna zona coincide",
+  "channelDebug": "depuración",
+  "debugIntro": "herramientas para probar el entorno. solo la ve administración.",
+  "debugMusic": "música de fondo",
+  "trackCalma": "la progresión de siempre, solo el pad",
+  "trackAurora": "más lenta y más abierta",
+  "trackBrisa": "el pad con una melodía suave y siempre igual",
+  "trackNoche": "un bordón que respira muy despacio",
+  "debugPlaying": "sonando",
+  "debugListen": "escuchar",
+  "debugEffects": "efectos",
+  "debugSfxTick": "desplazar",
+  "debugSfxOpen": "abrir",
+  "debugSfxBack": "volver",
+  "debugSfxError": "error",
+  "debugSfxChime": "arranque",
+  "debugMotion": "animación",
+  "debugSlowMotion": "cámara lenta",
+  "debugSlowMotionHint": "todas las animaciones a una quinta parte de su velocidad",
+  "debugPerformance": "gráfica de rendimiento",
+  "debugPerformanceHint": "tiempo de cada frame de interfaz y de pintado; por debajo de la línea son 60 fps",
+  "debugSession": "sesión",
+  "debugUid": "inicio de sesión",
+  "debugAccount": "cuenta",
+  "debugStore": "almacén de la sesión",
+  "debugLink": "conexión",
+  "trackPlaza": "original con swing: marimba, piano eléctrico y bajo andante",
+  "trackBossa": "bossa nova con sonido de 8 bits",
+  "debugRhythmic": "con ritmo",
+  "debugAmbient": "de ambiente",
+  "creditNoteZenKaku": "Interfaz. Kana y kanji completos.",
+  "creditNoteRounded": "Reloj, números grandes y logotipo.",
+  "creditNoteOwnMusic": "Música original, sintetizada.",
+  "creditNoteOwnSfx": "Efectos originales, sintetizados por el mismo generador.",
+  "creditNoteDownloaded": "Convertida a Ogg Vorbis y nivelada en sonoridad.",
+  "creditNoteTimezone": "Base de datos de zonas horarias IANA, embebida.",
+  "settingsMenuMusic": "música del menú",
+  "settingsMenuMusicHint": "las canciones de las apps se añaden aquí la primera vez que las escuchas.",
+  "settingsMenuMusicPending": "{count, plural, =0{ya has descubierto todas las canciones} =1{queda 1 canción por descubrir en las apps} other{quedan {count} canciones por descubrir en las apps}}",
+  "@settingsMenuMusicPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "musicPlaying": "sonando",
+  "debugUnlocked": "desbloqueada",
+  "debugLocked": "bloqueada",
+  "debugMarkHeard": "marcar como escuchada",
+  "debugResetUnlocks": "olvidar canciones desbloqueadas",
+  "debugMusicPreviewHint": "escuchar aquí no desbloquea nada ni cambia la música del menú de la cuenta."
+}

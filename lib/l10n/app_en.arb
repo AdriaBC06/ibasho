@@ -1,0 +1,230 @@
+{
+  "@@locale": "en",
+  "appName": "Ibasho",
+  "appTagline": "your place",
+  "loginTitle": "sign in",
+  "loginSubtitle": "use the account you were given",
+  "loginUsername": "username",
+  "loginPassword": "password",
+  "loginSubmit": "enter",
+  "loginWorking": "signing in…",
+  "loginErrorEmpty": "type your username and password",
+  "loginErrorCredentials": "that username or password is not right",
+  "loginErrorNotAllowed": "this account has no access to Ibasho",
+  "loginErrorDisabled": "this account is disabled",
+  "loginErrorNetwork": "no connection to the server",
+  "loginErrorTooMany": "too many attempts, wait a moment",
+  "loginErrorUnknown": "something went wrong, try again",
+  "sessionExpired": "your session expired, sign in again",
+  "changePasswordTitle": "choose a password",
+  "changePasswordSubtitle": "the password you were given is single use",
+  "changePasswordNew": "new password",
+  "changePasswordRepeat": "repeat it",
+  "changePasswordSubmit": "save",
+  "changePasswordWorking": "saving…",
+  "changePasswordErrorShort": "needs at least {min} characters",
+  "@changePasswordErrorShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "changePasswordErrorMismatch": "the two do not match",
+  "changePasswordErrorWeak": "that password is too easy",
+  "changePasswordErrorSame": "pick one other than the one you were given",
+  "greetingMorning": "good morning",
+  "greetingAfternoon": "good afternoon",
+  "greetingEvening": "good evening",
+  "greetingNight": "up late",
+  "statusOffline": "offline",
+  "statusOnline": "online",
+  "channelSettings": "settings",
+  "channelProfile": "profile",
+  "channelAdmin": "administration",
+  "channelEmpty": "free slot",
+  "comingSoonTitle": "coming soon",
+  "comingSoonBody": "one of Ibasho's apps will live here.\nfor now the slot is free.",
+  "actionBack": "back",
+  "actionOk": "ok",
+  "actionCancel": "cancel",
+  "actionClose": "close",
+  "actionRetry": "retry",
+  "actionSave": "save",
+  "actionCopy": "copy",
+  "actionCopied": "copied",
+  "loading": "loading…",
+  "pageIndicator": "page {current} of {total}",
+  "@pageIndicator": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTitle": "settings",
+  "settingsSound": "sound",
+  "settingsMusicVolume": "music",
+  "settingsEffectsVolume": "effects",
+  "settingsPresentation": "presentation",
+  "settingsLanguage": "language",
+  "settingsLanguageEs": "español",
+  "settingsLanguageEn": "english",
+  "settingsReducedMotion": "reduced motion",
+  "settingsReducedMotionHint": "replaces animations with short fades",
+  "settingsSystem": "system",
+  "settingsCredits": "credits",
+  "settingsSignOut": "sign out",
+  "settingsVersion": "version {version}",
+  "@settingsVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "signOutConfirmTitle": "sign out?",
+  "signOutConfirmBody": "you will have to type your password again.",
+  "signOutConfirm": "sign out",
+  "profileTitle": "profile",
+  "profileUsername": "username",
+  "profileDisplayName": "display name",
+  "profileStatusMessage": "status message",
+  "profileStatusHint": "what you are up to",
+  "profileBirthday": "birthday",
+  "profileBirthdayNotSet": "not set",
+  "profileTimezone": "time zone",
+  "profileLocale": "language",
+  "profileAccent": "accent colour",
+  "profileTamaSlot": "your Tama will live here",
+  "profileSaved": "profile saved",
+  "profileSaveError": "could not save",
+  "profileErrorDisplayName": "between 1 and 24 characters",
+  "profileErrorStatus": "100 characters at most",
+  "profileDay": "day",
+  "profileMonth": "month",
+  "profileYear": "year",
+  "profileClearBirthday": "clear",
+  "adminTitle": "administration",
+  "adminCreateSection": "create account",
+  "adminUsername": "username",
+  "adminUsernameHint": "lowercase, digits and underscore",
+  "adminGenerate": "generate password",
+  "adminCreate": "create account",
+  "adminCreating": "creating…",
+  "adminCredentialTitle": "credential for {username}",
+  "@adminCredentialTitle": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCredentialWarning": "write it down now: it will not be shown again.",
+  "adminCopyBlock": "copy username and password",
+  "adminListSection": "accounts",
+  "adminListEmpty": "no accounts yet",
+  "adminStateEnabled": "active",
+  "adminStateDisabled": "disabled",
+  "adminStatePending": "awaiting first sign in",
+  "adminDisable": "disable",
+  "adminEnable": "re-enable",
+  "adminRegenerate": "regenerate credential",
+  "adminRegenerateConfirmTitle": "regenerate credential?",
+  "adminRegenerateConfirmBody": "the current password of {username} will stop working. their profile and all their data are kept.",
+  "@adminRegenerateConfirmBody": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "adminErrorUsernameTaken": "that name is already taken",
+  "adminErrorUsernameInvalid": "3 to 16 characters: a-z, 0-9 and _",
+  "adminErrorCreate": "could not create the account",
+  "adminCreatedOn": "created on {date}",
+  "@adminCreatedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "adminNotAdmin": "this is not an administration account",
+  "creditsTitle": "credits",
+  "creditsIntro": "Ibasho stands on free work. This is what it uses and under which licence.",
+  "creditsFonts": "typefaces",
+  "creditsAudio": "sound",
+  "creditsSoftware": "software",
+  "creditsLicenseLabel": "licence",
+  "creditsAppLicense": "Ibasho is released under the GNU General Public License, version 3 or later.",
+  "errorGeneric": "something went wrong",
+  "errorOffline": "no connection to the server",
+  "errorPermission": "you are not allowed to do that",
+  "settingsAccount": "account",
+  "settingsPassword": "password",
+  "settingsPasswordHint": "change it whenever you like",
+  "settingsChangePassword": "change",
+  "changeOwnPasswordTitle": "change password",
+  "changeOwnPasswordCurrent": "current password",
+  "changeOwnPasswordDone": "password changed",
+  "changeOwnPasswordWrongCurrent": "the current password is not right",
+  "loginForgotHint": "forgot it? ask whoever runs Ibasho for a new credential. you will not lose anything.",
+  "timezoneSearch": "search",
+  "timezoneSearchHint": "a city, or an offset like +1",
+  "timezoneNone": "no time zone matches",
+  "channelDebug": "debug",
+  "debugIntro": "tools to test the environment. only administration can see this.",
+  "debugMusic": "background music",
+  "trackCalma": "the usual progression, pad only",
+  "trackAurora": "slower and more open",
+  "trackBrisa": "the pad with a soft melody that never changes",
+  "trackNoche": "a drone that breathes very slowly",
+  "debugPlaying": "playing",
+  "debugListen": "listen",
+  "debugEffects": "effects",
+  "debugSfxTick": "move",
+  "debugSfxOpen": "open",
+  "debugSfxBack": "back",
+  "debugSfxError": "error",
+  "debugSfxChime": "startup",
+  "debugMotion": "animation",
+  "debugSlowMotion": "slow motion",
+  "debugSlowMotionHint": "every animation at a fifth of its speed",
+  "debugPerformance": "performance graph",
+  "debugPerformanceHint": "time of each UI and raster frame; below the line means 60 fps",
+  "debugSession": "session",
+  "debugUid": "sign-in identity",
+  "debugAccount": "account",
+  "debugStore": "session store",
+  "debugLink": "connection",
+  "trackPlaza": "original with swing: marimba, electric piano and walking bass",
+  "trackBossa": "bossa nova with an 8-bit sound",
+  "debugRhythmic": "rhythmic",
+  "debugAmbient": "ambient",
+  "creditNoteZenKaku": "Interface. Full kana and kanji.",
+  "creditNoteRounded": "Clock, large numbers and logo.",
+  "creditNoteOwnMusic": "Original music, synthesised.",
+  "creditNoteOwnSfx": "Original effects, synthesised by the same generator.",
+  "creditNoteDownloaded": "Converted to Ogg Vorbis and loudness-levelled.",
+  "creditNoteTimezone": "IANA time zone database, embedded.",
+  "settingsMenuMusic": "menu music",
+  "settingsMenuMusicHint": "songs from the apps are added here the first time you hear them.",
+  "settingsMenuMusicPending": "{count, plural, =0{you have discovered every song} =1{1 song left to discover in the apps} other{{count} songs left to discover in the apps}}",
+  "@settingsMenuMusicPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "musicPlaying": "playing",
+  "debugUnlocked": "unlocked",
+  "debugLocked": "locked",
+  "debugMarkHeard": "mark as heard",
+  "debugResetUnlocks": "forget unlocked songs",
+  "debugMusicPreviewHint": "listening here unlocks nothing and does not change the account's menu music."
+}

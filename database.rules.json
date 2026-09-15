@@ -1,0 +1,148 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "allowlist": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      ".indexOn": [
+        "username",
+        "disabled"
+      ],
+      "$uid": {
+        ".read": "auth != null && ((auth.uid === $uid && data.exists()) || (root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('admins').child(auth.uid).exists()))",
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+        ".validate": "newData.hasChildren(['accountId', 'username', 'createdAt', 'createdBy', 'disabled'])",
+        "accountId": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128 && (!data.exists() || data.val() === newData.val())"
+        },
+        "username": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{3,16}$/)"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "createdBy": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 128"
+        },
+        "disabled": {
+          ".validate": "newData.isBoolean() && !(newData.val() === false && newData.parent().child('retired').val() === true)"
+        },
+        "retired": {
+          ".validate": "newData.isBoolean() && (newData.val() === true || !data.exists() || data.val() === false)"
+        },
+        "generation": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99"
+        },
+        "mustChangePassword": {
+          ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (auth.uid === $uid && newData.isBoolean() && newData.val() === false))",
+          ".validate": "newData.isBoolean()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "admins": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$uid": {
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
+        ".validate": "newData.isBoolean() && newData.val() === true && root.child('allowlist').child($uid).exists()"
+      }
+    },
+    "usernames": {
+      ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+      ".write": false,
+      "$username": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists() && !data.exists()",
+        ".validate": "newData.isString() && $username.matches(/^[a-z0-9_]{3,16}$/) && root.child('allowlist').child(newData.val()).child('username').val() === $username"
+      }
+    },
+    "users": {
+      "$accountId": {
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+        ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+        "profile": {
+          ".validate": "newData.hasChildren(['username', 'displayName', 'createdAt'])",
+          "username": {
+            ".validate": "newData.isString() && newData.val() === root.child('allowlist').child(auth.uid).child('username').val()"
+          },
+          "displayName": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+          },
+          "statusMessage": {
+            ".validate": "newData.isString() && newData.val().length <= 100"
+          },
+          "birthday": {
+            ".validate": "newData.isString() && (newData.val().length === 0 || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))"
+          },
+          "timezone": {
+            ".validate": "newData.isString() && newData.val().length <= 64"
+          },
+          "locale": {
+            ".validate": "newData.isString() && (newData.val() === 'es' || newData.val() === 'en')"
+          },
+          "accentColor": {
+            ".validate": "newData.isString() && newData.val().matches(/^#[0-9A-Fa-f]{6}$/)"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "tama": {
+          ".validate": false
+        },
+        "presence": {
+          ".validate": "newData.hasChildren(['state', 'lastSeen'])",
+          "state": {
+            ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'away' || newData.val() === 'offline')"
+          },
+          "lastSeen": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "music": {
+          "unlocked": {
+            "$trackId": {
+              ".validate": "$trackId.matches(/^[a-z0-9_]{1,32}$/) && newData.isBoolean() && newData.val() === true"
+            }
+          },
+          "menuTrack": {
+            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,32}$/) && (newData.val() === 'calma' || newData.val() === 'aurora' || newData.val() === 'brisa' || newData.val() === 'noche' || newData.parent().child('unlocked').child(newData.val()).val() === true)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "system": {
+      ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "announcement": {
+        ".validate": "newData.hasChildren(['text', 'updatedAt'])",
+        "text": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      "$other": {
+        ".validate": false
+      }
+    }
+  }
+}
