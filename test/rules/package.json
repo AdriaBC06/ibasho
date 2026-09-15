@@ -1,7 +1,7 @@
 {
   "name": "ibasho-rules-tests",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tests de las reglas de seguridad de la Realtime Database de Ibasho.",
   "license": "GPL-3.0-or-later",
   "type": "module",

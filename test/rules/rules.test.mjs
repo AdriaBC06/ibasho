@@ -35,6 +35,7 @@ const MEMBER = 'uid-member';
 const OTHER = 'uid-other';
 const BANNED = 'uid-banned';
 const ORPHAN = 'uid-orphan';
+const THIRD = 'uid-third';
 
 const testEnv = await initializeTestEnvironment({
   projectId: process.env.GCLOUD_PROJECT ?? 'demo-ibasho',
@@ -70,6 +71,16 @@ const profile = (username, extra = {}) => ({
   ...extra,
 });
 
+const card = (username, extra = {}) => ({
+  displayName: username,
+  accentColor: '#5BC8F5',
+  ...extra,
+});
+
+/// Codigos fijos de prueba: las reglas no calculan Damm, solo la forma.
+const code = (uid) =>
+  ({ [MEMBER]: '100000000001', [OTHER]: '100000000002', [THIRD]: '100000000003' })[uid];
+
 /// Estado de partida, escrito saltandose las reglas.
 async function seed() {
   await testEnv.clearDatabase();
@@ -82,18 +93,31 @@ async function seed() {
         [MEMBER]: entry('member'),
         [OTHER]: entry('other'),
         [BANNED]: entry('banned', { disabled: true }),
+        [THIRD]: entry('third'),
       },
       usernames: {
         admin: ADMIN,
         member: MEMBER,
         other: OTHER,
         banned: BANNED,
+        third: THIRD,
+      },
+      friendCodes: {
+        [code(MEMBER)]: MEMBER,
+        [code(OTHER)]: OTHER,
+        [code(THIRD)]: THIRD,
       },
       users: {
-        [MEMBER]: { profile: profile('member') },
-        [OTHER]: { profile: profile('other') },
+        [MEMBER]: {
+          profile: profile('member'),
+          card: card('member'),
+          friendCode: code(MEMBER),
+          presence: { state: 'online', lastSeen: now },
+        },
+        [OTHER]: { profile: profile('other'), card: card('other'), friendCode: code(OTHER) },
+        [THIRD]: { profile: profile('third'), card: card('third'), friendCode: code(THIRD) },
       },
-      system: { announcement: { text: 'hola', updatedAt: now } },
+      system: { announcement: { text: 'hola', updatedAt: now }, friendCodeCounter: 5 },
     });
   });
 }
@@ -182,8 +206,9 @@ test('un usuario no escribe en el nodo de otro', async () => {
   await assertFails(
     set(ref(member, `/users/${OTHER}/profile/displayName`), 'secuestrado'),
   );
-  // Leer el perfil ajeno si esta permitido: hace falta para los amigos.
-  await assertSucceeds(get(ref(member, `/users/${OTHER}/profile`)));
+  // Leer el perfil ajeno ya no: eso es solo para los amigos (ver mas abajo).
+  await assertFails(get(ref(member, `/users/${OTHER}/profile`)));
+  await assertSucceeds(get(ref(member, `/users/${OTHER}/card`)));
 });
 
 // 5. Un usuario normal no toca la allowlist ni la lista de administradores.
@@ -554,7 +579,7 @@ test('la lista de Tamas solo se lee con la consulta de cuidador propio', async (
     get(query(ref(member, '/tamas'), orderByChild('creator'), equalTo(MEMBER))),
   );
 
-  // Un Tama suelto: su creador y su cuidador, nadie mas (hasta el CP3).
+  // Un Tama entero: su creador y su cuidador, nadie mas.
   await assertSucceeds(get(ref(member, `/tamas/${tamaId(1)}`)));
   await assertSucceeds(get(ref(other, `/tamas/${tamaId(1)}`)));
   await assertFails(get(ref(other, `/tamas/${tamaId(2)}`)));
@@ -562,17 +587,29 @@ test('la lista de Tamas solo se lee con la consulta de cuidador propio', async (
   await assertFails(get(ref(db(BANNED), `/tamas/${tamaId(2)}`)));
 });
 
+/// Pone un Tama en el perfil, con la ficha en la misma operacion.
+const setProfileTama = (database, owner, id, { cardTama = id } = {}) =>
+  update(ref(database, `/users/${owner}`), {
+    tama: id,
+    card: card(owner.replace('uid-', ''), { tamaId: cardTama }),
+  });
+
 test('el Tama de perfil es uno que se cuida y no se puede borrar sin soltarlo', async () => {
   await seedTamas();
   const member = db(MEMBER);
   const other = db(OTHER);
 
-  await assertSucceeds(set(ref(member, `/users/${MEMBER}/tama`), tamaId(2)));
+  // La ficha tiene que ir siempre con el Tama de perfil: sin ella, no.
+  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), tamaId(2)));
+  await assertFails(setProfileTama(member, MEMBER, tamaId(2), { cardTama: tamaId(1) }));
+  await assertSucceeds(setProfileTama(member, MEMBER, tamaId(2)));
   // Uno que ya no cuida, uno inexistente o un id raro: no.
-  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), tamaId(1)));
-  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), tamaId(7)));
-  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), 'hola'));
-  await assertSucceeds(set(ref(other, `/users/${OTHER}/tama`), tamaId(1)));
+  await assertFails(setProfileTama(member, MEMBER, tamaId(1)));
+  await assertFails(setProfileTama(member, MEMBER, tamaId(7)));
+  await assertFails(setProfileTama(member, MEMBER, 'hola'));
+  await assertSucceeds(setProfileTama(other, OTHER, tamaId(1)));
+  // Ni se suelta el Tama dejando la ficha apuntandolo.
+  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), null));
 
   // Borrar el Tama de perfil sin soltarlo deja el perfil apuntando a la nada.
   await assertFails(deleteTama(member, MEMBER, tamaId(2), 1));
@@ -582,6 +619,7 @@ test('el Tama de perfil es uno que se cuida y no se puede borrar sin soltarlo', 
       [`users/${MEMBER}/tamaCount`]: 1,
       [`users/${MEMBER}/tamaLastChange`]: tamaId(2),
       [`users/${MEMBER}/tama`]: null,
+      [`users/${MEMBER}/card/tamaId`]: null,
     }),
   );
 
@@ -605,6 +643,11 @@ test('la presencia valida estado y marca de tiempo', async () => {
   await assertSucceeds(set(ref(member, base), { state: 'online', lastSeen: now }));
   await assertFails(set(ref(member, base), { state: 'inventado', lastSeen: now }));
   await assertFails(set(ref(member, base), { state: 'online' }));
+  await assertSucceeds(set(ref(member, base), { state: 'busy', lastSeen: now }));
+  // Invisible no se publica nunca: se publica offline.
+  await assertFails(set(ref(member, base), { state: 'invisible', lastSeen: now }));
+  await assertSucceeds(set(ref(member, `/users/${MEMBER}/presenceMode`), 'invisible'));
+  await assertFails(set(ref(member, `/users/${MEMBER}/presenceMode`), 'fantasma'));
 });
 
 // 14. Un miembro lee el anuncio del sistema pero no lo escribe.
@@ -638,4 +681,385 @@ test('la musica del menu solo acepta canciones desbloqueadas', async () => {
 
   // Nadie desbloquea canciones en la cuenta de otro.
   await assertFails(set(ref(member, `/users/${OTHER}/music/unlocked/plaza`), true));
+});
+
+// ---------------------------------------------------------------------------
+// Checkpoint 3: amigos y perfiles.
+// ---------------------------------------------------------------------------
+
+const sendRequest = (database, from, to, at = now) =>
+  update(ref(database, '/'), {
+    [`users/${from}/requests/out/${to}`]: { at },
+    [`users/${to}/requests/in/${from}`]: { at },
+  });
+
+/// Acepta la solicitud de `other` hacia `me`, con los contadores que se le
+/// digan (el anterior + 1 si se omiten).
+const accept = (database, me, other, countMe = 1, countOther = 1) =>
+  update(ref(database, '/'), {
+    [`users/${me}/friends/${other}`]: { since: now },
+    [`users/${other}/friends/${me}`]: { since: now },
+    [`users/${me}/friendCount`]: countMe,
+    [`users/${me}/friendLastChange`]: other,
+    [`users/${other}/friendCount`]: countOther,
+    [`users/${other}/friendLastChange`]: me,
+    [`users/${me}/requests/in/${other}`]: null,
+    [`users/${other}/requests/out/${me}`]: null,
+    [`users/${me}/requests/out/${other}`]: null,
+    [`users/${other}/requests/in/${me}`]: null,
+  });
+
+const unfriend = (database, me, other, countMe = 0, countOther = 0) =>
+  update(ref(database, '/'), {
+    [`users/${me}/friends/${other}`]: null,
+    [`users/${other}/friends/${me}`]: null,
+    [`users/${me}/friendCount`]: countMe,
+    [`users/${me}/friendLastChange`]: other,
+    [`users/${other}/friendCount`]: countOther,
+    [`users/${other}/friendLastChange`]: me,
+  });
+
+test('el codigo de amigo lo da el admin con el contador, y no se toca nunca', async () => {
+  const admin = db(ADMIN);
+  const member = db(MEMBER);
+  const uid = 'uid-nueva';
+  const fresh = '123456789012';
+
+  const provision = (database, counter, codeValue = fresh) =>
+    update(ref(database, '/'), {
+      [`allowlist/${uid}`]: entry('nueva', { accountId: uid }),
+      [`usernames/nueva`]: uid,
+      [`friendCodes/${codeValue}`]: uid,
+      [`users/${uid}/friendCode`]: codeValue,
+      ['system/friendCodeCounter']: counter,
+    });
+
+  // Sin mover el contador en uno exacto, no.
+  await assertFails(provision(admin, 5));
+  await assertFails(provision(admin, 7));
+  // Un miembro no da codigos.
+  await assertFails(provision(member, 6));
+  await assertSucceeds(provision(admin, 6));
+
+  // Ni se reescribe, ni se reasigna, ni se borra.
+  await assertFails(set(ref(admin, `/friendCodes/${fresh}`), MEMBER));
+  await assertFails(set(ref(admin, `/friendCodes/${fresh}`), null));
+  await assertFails(set(ref(admin, `/users/${uid}/friendCode`), '999999999999'));
+  // Un codigo con otra forma, no.
+  await assertFails(
+    update(ref(admin, '/'), {
+      ['friendCodes/1234']: OTHER,
+      [`system/friendCodeCounter`]: 7,
+    }),
+  );
+  // El contador solo sube de uno en uno.
+  await assertFails(set(ref(admin, '/system/friendCodeCounter'), 3));
+
+  // Buscar un codigo suelto: cualquier miembro. La lista entera: solo el admin.
+  const hit = await assertSucceeds(get(ref(member, `/friendCodes/${code(OTHER)}`)));
+  assert.equal(hit.val(), OTHER);
+  await assertFails(get(ref(member, '/friendCodes')));
+  await assertSucceeds(get(ref(admin, '/friendCodes')));
+  await assertFails(get(ref(db(ORPHAN), `/friendCodes/${code(OTHER)}`)));
+  // El codigo propio lo lee su dueño.
+  await assertSucceeds(get(ref(member, `/users/${MEMBER}/friendCode`)));
+  await assertFails(get(ref(member, `/users/${OTHER}/friendCode`)));
+});
+
+test('la ficha la lee cualquier miembro y la escribe solo su dueño', async () => {
+  const member = db(MEMBER);
+  const other = db(OTHER);
+  await assertSucceeds(get(ref(other, `/users/${MEMBER}/card`)));
+  await assertFails(get(ref(db(ORPHAN), `/users/${MEMBER}/card`)));
+  await assertSucceeds(set(ref(member, `/users/${MEMBER}/card`), card('Mimi', { accentColor: '#E8A33D' })));
+  await assertFails(set(ref(other, `/users/${MEMBER}/card`), card('secuestro')));
+  await assertFails(set(ref(member, `/users/${MEMBER}/card`), card('x'.repeat(25))));
+  await assertFails(set(ref(member, `/users/${MEMBER}/card/estado`), 'hola'));
+  // Nada de colar un Tama que no es el de perfil.
+  await seedTamas();
+  await assertFails(set(ref(member, `/users/${MEMBER}/card/tamaId`), tamaId(2)));
+});
+
+test('del Tama de perfil ajeno se lee el aspecto, nunca los cuidados ni otros Tamas', async () => {
+  await seedTamas();
+  const member = db(MEMBER);
+  const third = db(THIRD);
+  await assertSucceeds(setProfileTama(member, MEMBER, tamaId(2)));
+
+  const home = `/tamas/${tamaId(2)}`;
+  for (const part of ['name', 'personality', 'voice', 'look']) {
+    await assertSucceeds(get(ref(third, `${home}/${part}`)));
+  }
+  // Ni el nodo entero, ni los cuidados (delatarian a alguien invisible), ni
+  // las marcas de tiempo.
+  await assertFails(get(ref(third, home)));
+  await assertFails(get(ref(third, `${home}/care`)));
+  await assertFails(get(ref(third, `${home}/updatedAt`)));
+  // Ni un Tama que no esta en el perfil.
+  await assertFails(get(ref(third, `/tamas/${tamaId(1)}/look`)));
+  // Ni quien no esta en la allowlist.
+  await assertFails(get(ref(db(ORPHAN), `${home}/look`)));
+
+  // Al quitarlo del perfil se cierra.
+  await assertSucceeds(
+    update(ref(member, `/users/${MEMBER}`), { tama: null, card: card('member') }),
+  );
+  await assertFails(get(ref(third, `${home}/look`)));
+});
+
+test('solicitud, aceptacion y perfil completo', async () => {
+  const member = db(MEMBER);
+  const other = db(OTHER);
+
+  // Criterio 4 antes de ser amigos: ni perfil, ni presencia, ni muro, ni
+  // lista de amigos, ni musica, aunque se llame a la API directamente.
+  for (const path of ['profile', 'presence', 'wall', 'friends', 'music', 'friendCount', 'requests', 'tama']) {
+    await assertFails(get(ref(other, `/users/${MEMBER}/${path}`)));
+  }
+  await assertFails(get(ref(other, `/users/${MEMBER}`)));
+
+  // Una solicitud va siempre por parejas.
+  await assertFails(set(ref(other, `/users/${OTHER}/requests/out/${MEMBER}`), { at: now }));
+  await assertFails(set(ref(other, `/users/${MEMBER}/requests/in/${OTHER}`), { at: now }));
+  // Ni a uno mismo, ni en nombre de otro, ni a una cuenta sin codigo.
+  await assertFails(sendRequest(other, OTHER, OTHER));
+  await assertFails(sendRequest(other, THIRD, MEMBER));
+  await assertFails(sendRequest(other, OTHER, 'uid-fantasma'));
+  await assertSucceeds(sendRequest(other, OTHER, MEMBER));
+
+  // Quien la manda no puede aceptarla por el otro.
+  await assertFails(accept(other, OTHER, MEMBER));
+  await assertFails(accept(other, MEMBER, OTHER));
+  // Sus contadores tampoco se mueven con un incremento distinto de uno.
+  await assertFails(accept(member, MEMBER, OTHER, 2, 1));
+  // Quien la recibe si, y lee el contador del otro para hacerlo.
+  await assertSucceeds(get(ref(member, `/users/${OTHER}/friendCount`)));
+  await assertSucceeds(accept(member, MEMBER, OTHER));
+
+  // Ya son amigos: se ve todo.
+  for (const path of ['profile', 'presence', 'wall', 'friends', 'friendCount']) {
+    await assertSucceeds(get(ref(other, `/users/${MEMBER}/${path}`)));
+    await assertSucceeds(get(ref(member, `/users/${OTHER}/${path}`)));
+  }
+  // Menos lo que es solo del dueño.
+  await assertFails(get(ref(other, `/users/${MEMBER}/presenceMode`)));
+  await assertFails(get(ref(other, `/users/${MEMBER}/requests`)));
+  await assertFails(get(ref(other, `/users/${MEMBER}/friendCode`)));
+
+  // Las solicitudes han desaparecido y los contadores estan a uno.
+  const snapshot = await get(ref(member, `/users/${MEMBER}`));
+  assert.equal(snapshot.val().requests, undefined);
+  assert.equal(snapshot.val().friendCount, 1);
+
+  // Un tercero sigue sin ver nada.
+  await assertFails(get(ref(db(THIRD), `/users/${MEMBER}/profile`)));
+  await assertFails(get(ref(db(THIRD), `/users/${MEMBER}/presence`)));
+
+  // Ni se puede mandar otra solicitud a un amigo.
+  await assertFails(sendRequest(other, OTHER, MEMBER));
+});
+
+test('nadie se mete en la lista de amigos de otro sin una solicitud pendiente', async () => {
+  // Criterio de aceptacion 5.
+  const third = db(THIRD);
+
+  // Sin solicitud, de ninguna forma.
+  await assertFails(accept(third, THIRD, MEMBER));
+  await assertFails(accept(third, MEMBER, THIRD));
+  await assertFails(set(ref(third, `/users/${MEMBER}/friends/${THIRD}`), { since: now }));
+  await assertFails(
+    update(ref(third, `/users/${MEMBER}`), {
+      [`friends/${THIRD}`]: { since: now },
+      friendCount: 1,
+      friendLastChange: THIRD,
+    }),
+  );
+
+  // Con una solicitud suya hacia member: sigue sin poder aceptarla el mismo.
+  await assertSucceeds(sendRequest(third, THIRD, MEMBER));
+  await assertFails(accept(third, THIRD, MEMBER));
+  await assertFails(accept(third, MEMBER, THIRD));
+
+  // Una solicitud de member a other no le sirve a third para colarse.
+  await assertSucceeds(sendRequest(db(MEMBER), MEMBER, OTHER));
+  await assertFails(accept(third, THIRD, MEMBER));
+
+  // Aceptar exige crear las dos mitades a la vez.
+  await assertFails(
+    update(ref(db(MEMBER), '/'), {
+      [`users/${MEMBER}/friends/${THIRD}`]: { since: now },
+      [`users/${MEMBER}/friendCount`]: 1,
+      [`users/${MEMBER}/friendLastChange`]: THIRD,
+      [`users/${MEMBER}/requests/in/${THIRD}`]: null,
+      [`users/${THIRD}/requests/out/${MEMBER}`]: null,
+    }),
+  );
+  // Y no deja solicitudes colgando.
+  await assertFails(
+    update(ref(db(MEMBER), '/'), {
+      [`users/${MEMBER}/friends/${THIRD}`]: { since: now },
+      [`users/${THIRD}/friends/${MEMBER}`]: { since: now },
+      [`users/${MEMBER}/friendCount`]: 1,
+      [`users/${MEMBER}/friendLastChange`]: THIRD,
+      [`users/${THIRD}/friendCount`]: 1,
+      [`users/${THIRD}/friendLastChange`]: MEMBER,
+    }),
+  );
+  await assertSucceeds(accept(db(MEMBER), MEMBER, THIRD));
+});
+
+test('rechazar y cancelar no dejan rastro; cruzadas se aceptan', async () => {
+  const member = db(MEMBER);
+  const other = db(OTHER);
+  const third = db(THIRD);
+
+  // Rechazar: quien la recibe borra las dos mitades.
+  await assertSucceeds(sendRequest(other, OTHER, MEMBER));
+  await assertFails(set(ref(member, `/users/${MEMBER}/requests/in/${OTHER}`), null));
+  await assertSucceeds(
+    update(ref(member, '/'), {
+      [`users/${MEMBER}/requests/in/${OTHER}`]: null,
+      [`users/${OTHER}/requests/out/${MEMBER}`]: null,
+    }),
+  );
+  const out = await get(ref(other, `/users/${OTHER}/requests`));
+  assert.equal(out.val(), null);
+
+  // Cancelar: quien la mando.
+  await assertSucceeds(sendRequest(other, OTHER, MEMBER));
+  await assertSucceeds(
+    update(ref(other, '/'), {
+      [`users/${OTHER}/requests/out/${MEMBER}`]: null,
+      [`users/${MEMBER}/requests/in/${OTHER}`]: null,
+    }),
+  );
+  // Un tercero no borra solicitudes ajenas.
+  await assertSucceeds(sendRequest(other, OTHER, MEMBER));
+  await assertFails(
+    update(ref(third, '/'), {
+      [`users/${OTHER}/requests/out/${MEMBER}`]: null,
+      [`users/${MEMBER}/requests/in/${OTHER}`]: null,
+    }),
+  );
+
+  // Si ya hay una suya, no se manda otra de vuelta: se acepta.
+  await assertFails(sendRequest(member, MEMBER, OTHER));
+  // Cruzadas escritas a la vez (antes de verse): la aceptacion limpia las cuatro.
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await sendRequest(context.database(), MEMBER, OTHER);
+  });
+  await assertSucceeds(accept(other, OTHER, MEMBER));
+  const after = await get(ref(member, `/users/${MEMBER}`));
+  assert.equal(after.val().requests, undefined);
+});
+
+test('dejar de ser amigos borra las dos entradas y baja los dos contadores', async () => {
+  const member = db(MEMBER);
+  const other = db(OTHER);
+  await assertSucceeds(sendRequest(other, OTHER, MEMBER));
+  await assertSucceeds(accept(member, MEMBER, OTHER));
+
+  // Solo una mitad, o sin bajar el contador: no.
+  await assertFails(set(ref(other, `/users/${OTHER}/friends/${MEMBER}`), null));
+  await assertFails(unfriend(other, OTHER, MEMBER, 1, 0));
+  // Un tercero no rompe amistades ajenas.
+  await assertFails(unfriend(db(THIRD), OTHER, MEMBER));
+  // Tampoco sube un contador sin amigo nuevo.
+  await assertFails(
+    update(ref(other, `/users/${OTHER}`), { friendCount: 2, friendLastChange: THIRD }),
+  );
+  // Ni lo borra.
+  await assertFails(set(ref(other, `/users/${OTHER}/friendCount`), null));
+
+  await assertSucceeds(unfriend(other, OTHER, MEMBER));
+  await assertFails(get(ref(other, `/users/${MEMBER}/profile`)));
+  await assertFails(get(ref(other, `/users/${MEMBER}/presence`)));
+});
+
+test('las reglas impiden pasar de 100 amigos', async () => {
+  // Criterio de aceptacion 6. Member ya tiene 99; el 100 entra, el 101 no.
+  const friends = {};
+  for (let n = 0; n < 99; n++) friends[`uid-f${n}`] = { since: now };
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await update(ref(context.database(), `/users/${MEMBER}`), {
+      friends,
+      friendCount: 99,
+      friendLastChange: 'uid-f98',
+    });
+  });
+
+  const member = db(MEMBER);
+  await assertSucceeds(sendRequest(db(OTHER), OTHER, MEMBER));
+  await assertSucceeds(accept(member, MEMBER, OTHER, 100, 1));
+
+  // El numero 101: ni aceptandola member, ni aceptandola el otro.
+  await assertSucceeds(sendRequest(db(THIRD), THIRD, MEMBER));
+  await assertFails(accept(member, MEMBER, THIRD, 101, 1));
+  await assertFails(accept(member, MEMBER, THIRD, 100, 1));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await update(ref(context.database(), '/'), {
+      [`users/${THIRD}/requests/in/${MEMBER}`]: null,
+      [`users/${MEMBER}/requests/out/${THIRD}`]: null,
+      [`users/${MEMBER}/requests/in/${THIRD}`]: null,
+      [`users/${THIRD}/requests/out/${MEMBER}`]: null,
+    });
+  });
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await sendRequest(context.database(), MEMBER, THIRD);
+  });
+  await assertFails(accept(db(THIRD), THIRD, MEMBER, 1, 101));
+
+  // Al dejar a uno vuelve a haber sitio.
+  await assertSucceeds(unfriend(member, MEMBER, OTHER, 99, 0));
+  await assertSucceeds(accept(db(THIRD), THIRD, MEMBER, 1, 100));
+});
+
+test('el muro acepta un mensaje por amigo y año', async () => {
+  // Criterio de aceptacion 11.
+  const member = db(MEMBER);
+  const other = db(OTHER);
+  const third = db(THIRD);
+  await assertSucceeds(sendRequest(other, OTHER, MEMBER));
+  await assertSucceeds(accept(member, MEMBER, OTHER));
+
+  const slot = (year, author) => `/users/${MEMBER}/wall/${year}/${author}`;
+  const message = (text = '¡feliz cumple!') => ({ text, at: now });
+
+  // Quien no es amigo, no.
+  await assertFails(set(ref(third, slot(2026, THIRD)), message()));
+  // Ni en nombre de otro.
+  await assertFails(set(ref(third, slot(2026, OTHER)), message()));
+  // Forma y longitud.
+  await assertFails(set(ref(other, slot(2026, OTHER)), message('')));
+  await assertFails(set(ref(other, slot(2026, OTHER)), message('x'.repeat(141))));
+  await assertFails(set(ref(other, slot(2026, OTHER)), { ...message(), emoji: '🎂' }));
+  await assertFails(set(ref(other, slot('26', OTHER)), message()));
+  await assertFails(set(ref(other, slot(2026, OTHER)), { text: 'hola', at: now + 3600e3 }));
+
+  await assertSucceeds(set(ref(other, slot(2026, OTHER)), message('x'.repeat(140))));
+  // El segundo intento del mismo año se rechaza, tambien como edicion.
+  await assertFails(set(ref(other, slot(2026, OTHER)), message('otra vez')));
+  await assertFails(set(ref(other, `${slot(2026, OTHER)}/text`), 'editado'));
+  // El año siguiente vuelve a haber hueco.
+  await assertSucceeds(set(ref(other, slot(2027, OTHER)), message()));
+
+  // Quien escribio no lo borra; el cumpleañero si, cualquiera.
+  await assertFails(set(ref(other, slot(2026, OTHER)), null));
+  await assertSucceeds(set(ref(member, slot(2026, OTHER)), null));
+  // Y no se escribe en su propio muro.
+  await assertFails(set(ref(member, slot(2026, MEMBER)), message()));
+
+  // Los amigos leen el muro; los demas no.
+  await assertSucceeds(get(ref(other, `/users/${MEMBER}/wall`)));
+  await assertFails(get(ref(third, `/users/${MEMBER}/wall`)));
+});
+
+test('la musica de perfil solo acepta canciones desbloqueadas', async () => {
+  const member = db(MEMBER);
+  const base = `/users/${MEMBER}/music`;
+  await assertSucceeds(set(ref(member, `${base}/profileTrack`), 'noche'));
+  await assertFails(set(ref(member, `${base}/profileTrack`), 'bossa'));
+  await assertSucceeds(set(ref(member, `${base}/unlocked/bossa`), true));
+  await assertSucceeds(set(ref(member, `${base}/profileTrack`), 'bossa'));
+  await assertFails(get(ref(db(OTHER), `${base}/profileTrack`)));
 });

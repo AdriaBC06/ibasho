@@ -34,6 +34,7 @@ class IbashoTextField extends StatefulWidget {
     this.width,
     this.formatters = const <TextInputFormatter>[],
     this.multiline = false,
+    this.textStyle,
   });
 
   final TextEditingController controller;
@@ -53,6 +54,10 @@ class IbashoTextField extends StatefulWidget {
   final double? width;
   final List<TextInputFormatter> formatters;
   final bool multiline;
+
+  /// Sustituye al estilo del texto escrito, para campos que se leen de lejos
+  /// como el del codigo de amigo. La pista usa el mismo tamaño.
+  final TextStyle? textStyle;
 
   @override
   State<IbashoTextField> createState() => _IbashoTextFieldState();
@@ -112,11 +117,8 @@ class _IbashoTextFieldState extends State<IbashoTextField>
       obscuringCharacter: '•',
       maxLines: widget.multiline ? 3 : 1,
       minLines: 1,
-      style: Ty.body.copyWith(
-        fontSize: 17,
-        color: widget.enabled ? T.ink : T.inkSoft,
-        height: 1.3,
-      ),
+      style: (widget.textStyle ?? Ty.body.copyWith(fontSize: 17, height: 1.3))
+          .copyWith(color: widget.enabled ? T.ink : T.inkSoft),
       cursorColor: skin.accentDeep,
       backgroundCursorColor: T.inkSoft,
       cursorWidth: 2,
@@ -185,11 +187,9 @@ class _IbashoTextFieldState extends State<IbashoTextField>
                               builder: (context, value, _) => value.text.isEmpty
                                   ? Text(
                                       widget.hint,
-                                      style: Ty.body.copyWith(
-                                        fontSize: 17,
-                                        color: T.inkSoft.withValues(alpha: .7),
-                                        height: 1.3,
-                                      ),
+                                      style: (widget.textStyle ??
+                                              Ty.body.copyWith(fontSize: 17, height: 1.3))
+                                          .copyWith(color: T.inkSoft.withValues(alpha: .7)),
                                     )
                                   : const SizedBox.shrink(),
                             ),

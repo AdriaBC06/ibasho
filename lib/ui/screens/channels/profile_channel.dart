@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../core/birthday.dart';
 import '../../../backend/models.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/accent_sync.dart';
@@ -25,6 +26,7 @@ import '../../widgets/timezone_picker.dart';
 import '../../widgets/pressable.dart';
 import '../channel_route.dart';
 import '../tama/tama_creator_screen.dart';
+import '../friends/wall_panel.dart';
 import '../tama/tama_room_screen.dart';
 import 'tamas_channel.dart';
 
@@ -281,10 +283,21 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 22),
+                const _ProfileMusic(),
                 const SizedBox(height: 26),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    IbashoButton(
+                      key: const ValueKey<String>('profile.wall'),
+                      label: l.profileWall,
+                      glyph: Glyph.cake,
+                      height: 52,
+                      cue: null,
+                      onPressed: () => pushChannelPage<void>(context, (_) => const OwnWallScreen()),
+                    ),
+                    const Spacer(),
                     IbashoButton(
                       label: state.saving ? l.changePasswordWorking : l.actionSave,
                       tone: ButtonTone.accent,
@@ -315,6 +328,79 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
       '#${((color.r * 255).round() << 16 | (color.g * 255).round() << 8 | (color.b * 255).round()).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
   static String _accentName(Color color) => _hex(color);
+}
+
+/// La musica que oyen tus amigos al abrir tu perfil. Se guarda al tocarla,
+/// como la del menu en Ajustes.
+class _ProfileMusic extends ConsumerWidget {
+  const _ProfileMusic();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
+    final library = ref.watch(musicLibraryProvider);
+    return SectionCard(
+      title: l.profileMusic,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.profileMusicHint, style: Ty.caption),
+          const SizedBox(height: 12),
+          IbashoSegmented<String>(
+            key: const ValueKey<String>('profile.music'),
+            options: [
+              ('', l.profileMusicNone),
+              for (final track in library.available) (track.id, track.id),
+            ],
+            value: library.profileTrack ?? '',
+            onChanged: (id) => ref
+                .read(musicLibraryProvider.notifier)
+                .selectProfileTrack(id.isEmpty ? null : MusicTrack.byId(id)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tu propio muro de cumpleaños: lo que te han dejado, año a año, con la
+/// papelera en cada mensaje.
+class OwnWallScreen extends ConsumerWidget {
+  const OwnWallScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
+    final profile = ref.watch(profileProvider.select((p) => p.profile));
+    final account = ref.watch(sessionProvider.select((s) => s.accountId));
+    final now = ref.watch(moodClockProvider);
+    return ChannelScaffold(
+      title: l.wallOwnTitle,
+      glyph: Glyph.cake,
+      child: profile == null
+          ? Center(child: Text(l.loading, style: Ty.lead))
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(40, 14, 40, 16),
+              child: Column(
+                children: [
+                  if (isBirthdayToday(profile, now))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Text(
+                        l.wallOwnBirthday,
+                        style: Ty.title.copyWith(color: T.warn),
+                      ),
+                    ),
+                  Expanded(
+                    child: ScreenPanel(
+                      child: WallPanel(accountId: account, profile: profile, own: true),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
 }
 
 class _NumberField extends StatelessWidget {

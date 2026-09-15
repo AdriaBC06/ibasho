@@ -12,16 +12,23 @@
 @Tags(['e2e'])
 library;
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:ibasho/backend/errors.dart';
 import 'package:ibasho/backend/models.dart';
 import 'package:ibasho/backend/rest_ibasho_backend.dart';
+import 'package:ibasho/backend/rtdb_socket.dart';
+import 'package:ibasho/backend/social.dart';
 import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/core/env.dart';
+import 'package:ibasho/core/friend_code.dart';
 import 'package:ibasho/state/admin.dart';
+import 'package:ibasho/state/friends.dart';
+import 'package:ibasho/state/presence.dart';
 import 'package:ibasho/state/preferences.dart';
 import 'package:ibasho/state/profile.dart';
 import 'package:ibasho/state/session.dart';
@@ -134,6 +141,7 @@ void main() {
       backend: backend,
       session: member,
       defaultLocale: 'es',
+      cardOf: _plainCard,
     );
     addTearDown(profile.dispose);
     await _until(() => profile.state.profile != null, 'perfil inicial');
@@ -224,6 +232,7 @@ void main() {
       backend: backend,
       session: again,
       defaultLocale: 'es',
+      cardOf: _plainCard,
     );
     addTearDown(kept.dispose);
     await _until(() => kept.state.profile != null, 'perfil tras regenerar');
@@ -299,8 +308,10 @@ void main() {
     final bruno = await account('bruno$stamp');
 
     // Dos equipos de la misma cuenta: lo que se hace en uno llega al otro.
-    final desk = TamasController(backend: backend, session: alba);
-    final laptop = TamasController(backend: backend, session: alba);
+    Future<UserCard> tamaCard(String? id, String? color) async =>
+        UserCard(displayName: 'alba', tamaId: id);
+    final desk = TamasController(backend: backend, session: alba, cardOf: tamaCard);
+    final laptop = TamasController(backend: backend, session: alba, cardOf: tamaCard);
     addTearDown(desk.dispose);
     addTearDown(laptop.dispose);
     await _until(() => desk.state.loaded && laptop.state.loaded, 'listas iniciales');
@@ -398,7 +409,151 @@ void main() {
     expect(await backend.read('/users/${alba.state.accountId}/tamaCount', idToken: after), 0);
     expect(await backend.read('/users/${alba.state.accountId}/tama', idToken: after), isNull);
   }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('amigos y presencia de extremo a extremo', skip: skip, () async {
+    // Tres cuentas activas, con su codigo de amigo dado como lo daria el admin.
+    var counter = 100000 + stamp;
+    Future<SessionController> account(String name) async {
+      final created = await backend.provisionAccount(username: name, password: 'amigo-$name-123');
+      final code = FriendCode.forCounter(counter++);
+      await ownerPut('/allowlist/${created.uid}', {
+        'accountId': created.uid,
+        'username': name,
+        'createdAt': DateTime.now().millisecondsSinceEpoch,
+        'createdBy': 'bootstrap',
+        'disabled': false,
+        'mustChangePassword': false,
+        'generation': 1,
+      });
+      await ownerPut('/friendCodes/$code', created.uid);
+      await ownerPut('/users/${created.uid}/friendCode', code);
+      final session = newSession();
+      await session.signIn(username: name, password: 'amigo-$name-123');
+      // La primera entrada crea el perfil y su ficha.
+      final profile = ProfileController(
+        backend: backend,
+        session: session,
+        defaultLocale: 'es',
+        cardOf: _plainCard,
+      );
+      addTearDown(profile.dispose);
+      await _until(() => profile.state.profile != null, 'perfil de $name');
+      return session;
+    }
+
+    final carla = await account('carla$stamp');
+    final dani = await account('dani$stamp');
+    final eva = await account('eva$stamp');
+
+    final carlaFriends = FriendsController(backend: backend, session: carla);
+    final daniFriends = FriendsController(backend: backend, session: dani);
+    addTearDown(carlaFriends.dispose);
+    addTearDown(daniFriends.dispose);
+    await _until(() => carlaFriends.state.loaded && daniFriends.state.loaded, 'amigos');
+    final daniCode = daniFriends.state.code!;
+
+    // Buscar: un digito mal da invalido sin preguntar; bien, la ficha reducida.
+    final typo = daniCode.replaceRange(0, 1, daniCode[0] == '1' ? '2' : '1');
+    expect((await carlaFriends.lookup(typo)).outcome, LookupOutcome.invalid);
+    final found = await carlaFriends.lookup(FriendCode.format(daniCode));
+    expect(found.outcome, LookupOutcome.found);
+    expect(found.card?.displayName, 'dani$stamp');
+
+    // Antes de ser amigos, nada del perfil ni de la presencia.
+    Future<void> denied(SessionController who, String path) async => expectLater(
+          backend.read(path, idToken: await who.freshToken()),
+          throwsA(isA<IbashoException>()),
+          reason: path,
+        );
+    await denied(carla, '/users/${dani.state.accountId}/profile');
+    await denied(carla, '/users/${dani.state.accountId}/presence');
+
+    expect(await carlaFriends.sendRequest(dani.state.accountId), isNull);
+    await _until(() => daniFriends.state.hasIncoming(carla.state.accountId), 'solicitud por SSE');
+    // Quien la manda no puede aceptarla por el otro.
+    expect(await carlaFriends.accept(dani.state.accountId), FriendFailure.rejected);
+    expect(await daniFriends.accept(carla.state.accountId), isNull);
+    await _until(() => carlaFriends.state.isFriend(dani.state.accountId), 'amistad por SSE');
+
+    final profile = await backend.read('/users/${dani.state.accountId}/profile',
+        idToken: await carla.freshToken());
+    expect((profile! as Map)['username'], 'dani$stamp');
+    // Un tercero sigue fuera, y no se cuela en la lista.
+    await denied(eva, '/users/${dani.state.accountId}/profile');
+    await expectLater(
+      backend.write('/users/${dani.state.accountId}/friends/${eva.state.accountId}',
+          {'since': serverTimestamp}, idToken: await eva.freshToken()),
+      throwsA(isA<IbashoException>()),
+    );
+
+    // Muro: un mensaje por año, el segundo lo rechazan las reglas.
+    final year = DateTime.now().year;
+    expect(await carlaFriends.postOnWall(dani.state.accountId, year, '¡feliz cumple!'), isTrue);
+    expect(await carlaFriends.postOnWall(dani.state.accountId, year, 'otra vez'), isFalse);
+
+    // Presencia con la conexion persistente de verdad.
+    final presence = PresenceController(backend: backend, session: dani, active: true);
+    Future<Map<Object?, Object?>?> seenByCarla() async =>
+        await backend.read('/users/${dani.state.accountId}/presence',
+            idToken: await carla.freshToken()) as Map<Object?, Object?>?;
+    for (var i = 0; i < 150 && (await seenByCarla())?['state'] != 'online'; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    expect((await seenByCarla())?['state'], 'online');
+
+    await presence.setMode(PresenceMode.invisible);
+    for (var i = 0; i < 100 && (await seenByCarla())?['state'] != 'offline'; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    final hidden = await seenByCarla();
+    expect(hidden?.keys.toSet(), {'state', 'lastSeen'});
+    expect(hidden?['state'], 'offline');
+    // Cerrar estando invisible no mueve la marca.
+    presence.dispose();
+    await Future<void>.delayed(const Duration(seconds: 2));
+    expect(await seenByCarla(), hidden);
+
+    // Criterio 7: un proceso que se conecta y muere de golpe. Nadie escribe
+    // nada; el servidor deja la presencia en desconectado.
+    final holder = await Process.start('dart', [
+      'run',
+      'test/e2e/presence_holder.dart',
+      RtdbSocket.endpoint().toString(),
+      await dani.freshToken(),
+      '/users/${dani.state.accountId}/presence',
+    ]);
+    final ready = Completer<String>();
+    // `dart run` escribe antes sus propios avisos: se espera a la linea del
+    // proceso.
+    holder.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
+      final text = line.replaceAll(RegExp(r'^.*Running build hooks\.*'), '').trim();
+      if (!ready.isCompleted && (text == 'listo' || text.startsWith('fallo'))) {
+        ready.complete(text);
+      }
+    });
+    holder.stderr.drain<void>();
+    expect(await ready.future.timeout(const Duration(seconds: 60)), 'listo');
+    expect((await seenByCarla())?['state'], 'online');
+    holder.kill(ProcessSignal.sigkill);
+    await holder.exitCode;
+    Map<Object?, Object?>? after;
+    for (var i = 0; i < 150; i++) {
+      after = await seenByCarla();
+      if (after?['state'] == 'offline') break;
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    expect(after?['state'], 'offline');
+    expect((after!['lastSeen']! as num) > (hidden!['lastSeen']! as num), isTrue);
+
+    // Dejar de ser amigos cierra el perfil otra vez.
+    expect(await carlaFriends.unfriend(dani.state.accountId), isNull);
+    await denied(carla, '/users/${dani.state.accountId}/profile');
+  }, timeout: const Timeout(Duration(minutes: 3)));
 }
+
+/// Ficha sin Tama de perfil, para cuentas que aun no tienen ninguno.
+Future<UserCard> _plainCard(UserProfile profile) async =>
+    UserCard(displayName: profile.displayName, accentColor: profile.accentColor);
 
 Future<void> _until(bool Function() condition, String what) async {
   final deadline = DateTime.now().add(const Duration(seconds: 15));

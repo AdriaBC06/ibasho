@@ -43,6 +43,9 @@ class PreferencesController extends StateNotifier<Preferences> {
     await _commit(state.copyWith(musicTrack: id));
   }
 
+  Future<void> setProfileMusicMuted(bool value) =>
+      _commit(state.copyWith(profileMusicMuted: value));
+
   Future<void> rememberUsername(String username) =>
       _commit(state.copyWith(lastUsername: username));
 

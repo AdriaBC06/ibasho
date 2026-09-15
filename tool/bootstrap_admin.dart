@@ -12,7 +12,8 @@
 //
 // Que hace:
 //   1. Crea la cuenta en Identity Toolkit por REST, con la API key publica.
-//   2. Escribe /allowlist/<uid>, /admins/<uid> y /usernames/<usuario> usando
+//   2. Escribe /allowlist/<uid>, /admins/<uid>, /usernames/<usuario> y su
+//      codigo de amigo (/friendCodes, /users/<uid>/friendCode y el contador) usando
 //      la CLI de Firebase, que trabaja con las credenciales del desarrollador
 //      y por eso puede saltarse las reglas. Es la unica manera de romper el
 //      huevo y la gallina: sin un admin ya existente, las reglas no dejan
@@ -24,6 +25,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+
+import 'package:ibasho/core/friend_code.dart';
 
 const String _alphabet =
     'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -94,9 +97,20 @@ Future<int> main(List<String> args) async {
 
   // El orden importa: la regla de /usernames exige que la cuenta a la que
   // apunta ya este en la allowlist.
+  // El codigo de amigo sale del contador, como en cualquier alta. Si el
+  // arranque se relanza para una cuenta que ya tenia codigo, no se le da otro.
+  final existingCode = await _dbGet(projectId, '/users/$uid/friendCode');
+  final counterRaw = await _dbGet(projectId, '/system/friendCodeCounter');
+  final counter = counterRaw is num ? counterRaw.toInt() : 1;
+  final code = FriendCode.forCounter(counter);
+
   final ok = await _dbSet(projectId, '/allowlist/$uid', entry) &&
       await _dbSet(projectId, '/admins/$uid', true) &&
-      await _dbSet(projectId, '/usernames/$username', uid);
+      await _dbSet(projectId, '/usernames/$username', uid) &&
+      (existingCode is String ||
+          (await _dbSet(projectId, '/friendCodes/$code', uid) &&
+              await _dbSet(projectId, '/users/$uid/friendCode', code) &&
+              await _dbSet(projectId, '/system/friendCodeCounter', counter + 1)));
   if (!ok) {
     stderr.writeln('');
     stderr.writeln('La cuenta existe en Identity Toolkit pero no se ha podido');
@@ -210,6 +224,20 @@ Future<String> _signIn({
       apiKey: apiKey,
       body: {'email': email, 'password': password, 'returnSecureToken': false},
     );
+
+/// Lee un nodo con la CLI de Firebase. `null` si no existe o no se puede.
+Future<Object?> _dbGet(String projectId, String path) async {
+  final result = await Process.run(
+    'firebase',
+    ['database:get', path, '--project', projectId],
+  );
+  if (result.exitCode != 0) return null;
+  try {
+    return jsonDecode('${result.stdout}'.trim());
+  } catch (_) {
+    return null;
+  }
+}
 
 /// Escribe un nodo con la CLI de Firebase, que usa las credenciales del
 /// desarrollador y por eso no la frenan las reglas.

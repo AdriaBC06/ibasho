@@ -81,6 +81,7 @@ class TamaView extends StatefulWidget {
     this.interactive = true,
     this.pettable = false,
     this.shadow = true,
+    this.wear = TamaWear.none,
     this.controller,
     this.onTap,
     this.onPetted,
@@ -108,6 +109,10 @@ class TamaView extends StatefulWidget {
   final bool pettable;
 
   final bool shadow;
+
+  /// Lo que lleva puesto, como el gorrito del cumpleaños.
+  final TamaWear wear;
+
   final TamaViewController? controller;
 
   /// Toque. Si no hay, tocarlo le hace graznar y dar un salto.
@@ -247,6 +252,7 @@ class _TamaViewState extends State<TamaView> with SingleTickerProviderStateMixin
             look: widget.look,
             live: _pose,
             shadow: widget.shadow,
+            wear: widget.wear,
           ),
         ),
       ),

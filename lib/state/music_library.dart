@@ -17,6 +17,7 @@ class MusicLibraryState {
   const MusicLibraryState({
     this.unlocked = const <String>{},
     this.menuTrack,
+    this.profileTrack,
     this.loaded = false,
   });
 
@@ -26,6 +27,10 @@ class MusicLibraryState {
 
   /// Pista elegida para el menu, tal como esta guardada en la cuenta.
   final String? menuTrack;
+
+  /// Pista que suena cuando un amigo abre el perfil. `null`: ninguna, sigue
+  /// la de ambiente de quien mira.
+  final String? profileTrack;
 
   final bool loaded;
 
@@ -42,11 +47,14 @@ class MusicLibraryState {
   MusicLibraryState copyWith({
     Set<String>? unlocked,
     String? menuTrack,
+    String? profileTrack,
+    bool clearProfileTrack = false,
     bool? loaded,
   }) =>
       MusicLibraryState(
         unlocked: unlocked ?? this.unlocked,
         menuTrack: menuTrack ?? this.menuTrack,
+        profileTrack: clearProfileTrack ? null : (profileTrack ?? this.profileTrack),
         loaded: loaded ?? this.loaded,
       );
 }
@@ -83,6 +91,7 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
       final raw = await _backend.read(_path, idToken: await _session.freshToken());
       final unlocked = <String>{};
       String? menuTrack;
+      String? profileTrack;
       if (raw is Map) {
         final stored = raw['unlocked'];
         if (stored is Map) {
@@ -91,9 +100,15 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
           });
         }
         if (raw['menuTrack'] is String) menuTrack = raw['menuTrack'] as String;
+        if (raw['profileTrack'] is String) profileTrack = raw['profileTrack'] as String;
       }
       if (!mounted) return;
-      state = MusicLibraryState(unlocked: unlocked, menuTrack: menuTrack, loaded: true);
+      state = MusicLibraryState(
+        unlocked: unlocked,
+        menuTrack: menuTrack,
+        profileTrack: profileTrack,
+        loaded: true,
+      );
 
       // La eleccion de la cuenta manda sobre la cache local, siempre que siga
       // desbloqueada.
@@ -122,6 +137,24 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     }
   }
 
+  /// Elige la musica que suena al abrir el propio perfil. `null` la quita.
+  Future<void> selectProfileTrack(MusicTrack? track) async {
+    if (track != null && !state.isUnlocked(track)) return;
+    state = track == null
+        ? state.copyWith(clearProfileTrack: true)
+        : state.copyWith(profileTrack: track.id);
+    try {
+      final token = await _session.freshToken();
+      if (track == null) {
+        await _backend.remove('$_path/profileTrack', idToken: token);
+      } else {
+        await _backend.write('$_path/profileTrack', track.id, idToken: token);
+      }
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido guardar la musica de perfil ($e)');
+    }
+  }
+
   /// Anade una cancion a la biblioteca la primera vez que se escucha.
   Future<void> markHeard(MusicTrack track) async {
     if (state.isUnlocked(track)) return;
@@ -137,7 +170,11 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
   /// Solo para depuracion: vuelve a dejar unicamente las canciones de serie.
   Future<void> resetUnlocks() async {
     final current = MusicTrack.byId(state.menuTrack ?? MusicTrack.fallback.id);
-    state = MusicLibraryState(loaded: true, menuTrack: state.menuTrack);
+    state = MusicLibraryState(
+      loaded: true,
+      menuTrack: state.menuTrack,
+      profileTrack: state.profileTrack,
+    );
     try {
       await _backend.remove('$_path/unlocked', idToken: await _session.freshToken());
     } catch (e) {

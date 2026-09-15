@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../../state/card.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
@@ -141,6 +142,15 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     final channels = _channels;
     // Carga la musica de la cuenta en cuanto se entra, sin esperar a Ajustes.
     ref.watch(musicLibraryProvider.select((m) => m.loaded));
+    // Presencia, amigos (la insignia de solicitudes) y la ficha publica viven
+    // mientras se esta dentro, no solo con su canal abierto.
+    ref.watch(presenceProvider.select((p) => p.connected));
+    ref.watch(friendsProvider.select((f) => f.loaded));
+    ref.watch(cardKeeperProvider);
+    // El panel de administracion reparte los codigos de amigo que falten.
+    if (ref.watch(sessionProvider.select((s) => s.isAdmin))) {
+      ref.watch(adminProvider.select((a) => a.loading));
+    }
 
     return Bezel(
       child: FocusScope(

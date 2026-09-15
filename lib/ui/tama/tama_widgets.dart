@@ -26,6 +26,7 @@ class TamaOnStand extends StatelessWidget {
     this.pettable = false,
     this.onPetted,
     this.onTap,
+    this.wear = TamaWear.none,
   });
 
   /// Lo que se pinta. Puede ser un borrador que aun no esta guardado.
@@ -36,6 +37,7 @@ class TamaOnStand extends StatelessWidget {
   final bool pettable;
   final VoidCallback? onPetted;
   final VoidCallback? onTap;
+  final TamaWear wear;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +77,7 @@ class TamaOnStand extends StatelessWidget {
               pettable: pettable,
               onPetted: onPetted,
               onTap: onTap,
+              wear: wear,
             ),
           ),
         ],

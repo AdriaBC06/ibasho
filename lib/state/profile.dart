@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../backend/ibasho_backend.dart';
 import '../backend/models.dart';
+import '../backend/social.dart';
 import 'session.dart';
 
 @immutable
@@ -42,9 +43,11 @@ class ProfileController extends StateNotifier<ProfileState> {
     required IbashoBackend backend,
     required SessionController session,
     required String defaultLocale,
+    required Future<UserCard> Function(UserProfile) cardOf,
   })  : _backend = backend,
         _session = session,
         _defaultLocale = defaultLocale,
+        _cardOf = cardOf,
         super(const ProfileState()) {
     unawaited(_start());
   }
@@ -52,6 +55,9 @@ class ProfileController extends StateNotifier<ProfileState> {
   final IbashoBackend _backend;
   final SessionController _session;
   final String _defaultLocale;
+
+  /// La ficha publica que va con cada perfil guardado.
+  final Future<UserCard> Function(UserProfile) _cardOf;
 
   StreamSubscription<DatabaseEvent>? _watch;
 
@@ -82,7 +88,7 @@ class ProfileController extends StateNotifier<ProfileState> {
           timezone: localTimezoneName(),
           createdAt: DateTime.now(),
         );
-        await _backend.write(_path, seed.toJson(), idToken: tokens.idToken);
+        await _writeWithCard(seed, tokens.idToken);
         state = ProfileState(profile: seed, loading: false);
       }
     } catch (e) {
@@ -130,13 +136,23 @@ class ProfileController extends StateNotifier<ProfileState> {
     );
   }
 
+  /// El perfil y su ficha publica, en la misma operacion: quien busca el codigo
+  /// ve el nombre y el color nuevos a la vez que los amigos.
+  Future<void> _writeWithCard(UserProfile profile, String token) async {
+    final card = await _cardOf(profile);
+    await _backend.merge('/users/${_session.state.accountId}', {
+      'profile': profile.toJson(),
+      'card': card.toJson(),
+    }, idToken: token);
+  }
+
   /// Guarda el perfil entero. Devuelve `true` si el servidor lo acepto.
   Future<bool> save(UserProfile next) async {
     final tokens = _session.state.tokens;
     if (tokens == null) return false;
     state = state.copyWith(saving: true);
     try {
-      await _backend.write(_path, next.toJson(), idToken: await _session.freshToken());
+      await _writeWithCard(next, await _session.freshToken());
       state = ProfileState(profile: next, loading: false);
       return true;
     } catch (e) {

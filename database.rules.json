@@ -55,13 +55,34 @@
       ".write": false,
       "$username": {
         ".write": "auth != null && root.child('admins').child(auth.uid).exists() && !data.exists()",
-        ".validate": "newData.isString() && $username.matches(/^[a-z0-9_]{3,16}$/) && root.child('allowlist').child(newData.val()).child('username').val() === $username"
+        ".validate": "newData.isString() && $username.matches(/^[a-z0-9_]{3,16}$/) && newData.parent().parent().child('allowlist').child(newData.val()).child('username').val() === $username"
+      }
+    },
+    // Codigo de amigo -> accountId. Se consulta de uno en uno (buscar por
+    // codigo); la coleccion entera solo la lee el admin, que es quien los da.
+    // Los crea el admin en la misma operacion multi-ruta que sube el contador
+    // `/system/friendCodeCounter` en uno exacto y que apunta el codigo en
+    // `/users/$accountId/friendCode`. Una vez creado no se toca nunca.
+    "friendCodes": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$code": {
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists() && !data.exists()",
+        ".validate": "newData.isString() && $code.matches(/^[0-9]{12}$/) && newData.parent().parent().child('allowlist').child(newData.val()).exists() && newData.parent().parent().child('users').child(newData.val()).child('friendCode').val() === $code && newData.parent().parent().child('system').child('friendCodeCounter').val() === (root.child('system').child('friendCodeCounter').exists() ? root.child('system').child('friendCodeCounter').val() : 1) + 1"
       }
     },
     "users": {
       "$accountId": {
-        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+        // La lectura no se concede en la cuenta entera: una regla `.read` del
+        // padre no se puede quitar en un hijo. Cada hijo dice quien lo lee:
+        // - el dueño, todo;
+        // - cualquier miembro, solo `card` (la ficha de busqueda);
+        // - sus amigos, ademas `profile`, `presence`, `music`, `friends`,
+        //   `friendCount` y `wall`.
+        // "Amigo" es estar en `/users/$accountId/friends/<mi accountId>`.
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
         "profile": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           ".validate": "newData.hasChildren(['username', 'displayName', 'createdAt'])",
           "username": {
@@ -95,9 +116,35 @@
             ".validate": false
           }
         },
-        "tama": {
+        // La ficha reducida: lo unico que ve quien aun no es amigo. La app la
+        // reescribe en la misma operacion que cambia el nombre, el color o el
+        // Tama de perfil. `tamaId` tiene que ser siempre el Tama de perfil
+        // (`tama`), porque es lo que abre la lectura publica de ese Tama.
+        "card": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
-          ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{20}$/) && newData.parent().parent().parent().child('tamas').child(newData.val()).child('keeper').val() === $accountId"
+          ".validate": "newData.hasChildren(['displayName', 'accentColor']) && newData.child('tamaId').val() === newData.parent().child('tama').val()",
+          "displayName": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+          },
+          "accentColor": {
+            ".validate": "newData.isString() && newData.val().matches(/^#[0-9A-Fa-f]{6}$/)"
+          },
+          "tamaId": {
+            ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{20}$/) && newData.parent().parent().parent().parent().child('tamas').child(newData.val()).child('keeper').val() === $accountId"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        // Lo escribe el admin al dar el codigo, junto a /friendCodes/$code.
+        "friendCode": {
+          ".write": "auth != null && root.child('admins').child(auth.uid).exists() && !data.exists()",
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{12}$/) && newData.parent().parent().parent().child('friendCodes').child(newData.val()).val() === $accountId"
+        },
+        "tama": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (newData.exists() || !newData.parent().child('card').child('tamaId').exists())",
+          ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{20}$/) && newData.parent().parent().parent().child('tamas').child(newData.val()).child('keeper').val() === $accountId && newData.parent().child('card').child('tamaId').val() === newData.val()"
         },
         // Tope de 99 Tamas por cuenta, aplicado aqui y no en la app. Crear o borrar un
         // Tama va en la misma operacion multi-ruta que el contador (+1 o -1 exacto) y
@@ -113,11 +160,97 @@
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
           ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{20}$/) && newData.parent().child('tamaCount').val() !== (data.parent().child('tamaCount').exists() ? data.parent().child('tamaCount').val() : 0)"
         },
+        // Amigos. Aceptar una solicitud es una sola operacion multi-ruta que
+        // crea las dos entradas, mueve los dos contadores y borra las
+        // solicitudes entre las dos cuentas.
+        //
+        // Este es el punto delicado: alguien puede escribir en la lista de otra
+        // persona (`/users/$accountId/friends/<yo>`) solo si esa persona le
+        // mando una solicitud (`/users/$accountId/requests/out/<yo>`) y en su
+        // propia lista solo si la recibio (`requests/in/$friendId`). Es decir,
+        // solo acepta quien recibio la solicitud. Ademas la entrada simetrica
+        // tiene que existir en el arbol resultante y ninguna solicitud entre
+        // las dos cuentas puede sobrevivir a la operacion.
+        //
+        // Dejar de ser amigos lo puede hacer cualquiera de los dos: borra las
+        // dos entradas y baja los dos contadores. No hay bloqueo a proposito:
+        // es un grupo cerrado de gente que se conoce.
+        "friends": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
+          "$friendId": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $friendId !== $accountId && ((!data.exists() && newData.exists() && ((root.child('allowlist').child(auth.uid).child('accountId').val() === $friendId && root.child('users').child($accountId).child('requests').child('out').child($friendId).exists()) || (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('users').child($accountId).child('requests').child('in').child($friendId).exists())) && newData.parent().parent().parent().child($friendId).child('friends').child($accountId).exists() && !newData.parent().parent().child('requests').child('in').child($friendId).exists() && !newData.parent().parent().child('requests').child('out').child($friendId).exists() && newData.parent().parent().child('friendLastChange').val() === $friendId && newData.parent().parent().child('friendCount').val() === (root.child('users').child($accountId).child('friendCount').exists() ? root.child('users').child($accountId).child('friendCount').val() : 0) + 1) || (data.exists() && !newData.exists() && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId || root.child('allowlist').child(auth.uid).child('accountId').val() === $friendId) && !newData.parent().parent().parent().child($friendId).child('friends').child($accountId).exists() && newData.parent().parent().child('friendLastChange').val() === $friendId && newData.parent().parent().child('friendCount').val() === root.child('users').child($accountId).child('friendCount').val() - 1))",
+            ".validate": "newData.hasChildren(['since']) && $friendId.matches(/^[-0-9A-Za-z_]{1,128}$/)",
+            "since": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        // Tope de 100 amigos, con el mismo patron que `tamaCount`: el contador
+        // solo sube o baja en uno si en la misma escritura aparece o desaparece
+        // la entrada de `friendLastChange` en la lista. Lo puede mover la propia
+        // cuenta o la cuenta que marca el cambio, que es la otra mitad de la
+        // amistad. La leen tambien quien te mando una solicitud (para aceptarla
+        // hace falta tu contador) y tus amigos (para dejar de serlo).
+        "friendCount": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() || root.child('users').child($accountId).child('requests').child('out').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists())",
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists() && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId || root.child('allowlist').child(auth.uid).child('accountId').val() === newData.parent().child('friendLastChange').val())",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100 && newData.parent().child('friendLastChange').isString() && ((newData.val() === (data.exists() ? data.val() : 0) + 1 && !root.child('users').child($accountId).child('friends').child(newData.parent().child('friendLastChange').val()).exists() && newData.parent().child('friends').child(newData.parent().child('friendLastChange').val()).exists()) || (newData.val() === (data.exists() ? data.val() : 0) - 1 && root.child('users').child($accountId).child('friends').child(newData.parent().child('friendLastChange').val()).exists() && !newData.parent().child('friends').child(newData.parent().child('friendLastChange').val()).exists()))"
+        },
+        "friendLastChange": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists() && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId || root.child('allowlist').child(auth.uid).child('accountId').val() === newData.val())",
+          ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,128}$/) && newData.parent().child('friendCount').val() !== (data.parent().child('friendCount').exists() ? data.parent().child('friendCount').val() : 0)"
+        },
+        // Solicitudes. Siempre van por parejas: `out/$toId` en quien la manda e
+        // `in/$fromId` en quien la recibe, creadas y borradas en la misma
+        // operacion. Solo quien la manda la crea; cualquiera de los dos la
+        // borra (cancelar, rechazar o aceptar). Rechazar no deja rastro.
+        // No se puede mandar a quien ya es amigo, ni a quien ya te ha mandado
+        // una: en ese caso se acepta la suya. Borrar una que no existe no hace
+        // nada y se deja pasar, para que aceptar pueda limpiar a la vez las
+        // dos direcciones sin mirar antes cual existe.
+        "requests": {
+          "out": {
+            "$toId": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $toId !== $accountId && ((!data.exists() && newData.exists() && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && newData.parent().parent().parent().parent().child($toId).child('requests').child('in').child($accountId).exists()) || (data.exists() && !newData.exists() && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId || root.child('allowlist').child(auth.uid).child('accountId').val() === $toId) && !newData.parent().parent().parent().parent().child($toId).child('requests').child('in').child($accountId).exists()) || (!data.exists() && !newData.exists()))",
+              ".validate": "newData.hasChildren(['at']) && $toId.matches(/^[-0-9A-Za-z_]{1,128}$/) && root.child('users').child($toId).child('friendCode').exists() && !newData.parent().parent().parent().child('friends').child($toId).exists() && !newData.parent().parent().child('in').child($toId).exists()",
+              "at": {
+                ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "in": {
+            "$fromId": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $fromId !== $accountId && ((!data.exists() && newData.exists() && root.child('allowlist').child(auth.uid).child('accountId').val() === $fromId && newData.parent().parent().parent().parent().child($fromId).child('requests').child('out').child($accountId).exists()) || (data.exists() && !newData.exists() && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId || root.child('allowlist').child(auth.uid).child('accountId').val() === $fromId) && !newData.parent().parent().parent().parent().child($fromId).child('requests').child('out').child($accountId).exists()) || (!data.exists() && !newData.exists()))",
+              ".validate": "newData.hasChildren(['at']) && $fromId.matches(/^[-0-9A-Za-z_]{1,128}$/)",
+              "at": {
+                ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        // Presencia publicada, la que leen los amigos. `invisible` no existe
+        // aqui a proposito: quien elige ser invisible publica `offline`, con la
+        // misma forma que una desconexion de verdad, para que no haya ninguna
+        // diferencia observable. La eleccion real vive en `presenceMode`, que
+        // solo lee su dueño.
         "presence": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           ".validate": "newData.hasChildren(['state', 'lastSeen'])",
           "state": {
-            ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'away' || newData.val() === 'offline')"
+            ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'away' || newData.val() === 'busy' || newData.val() === 'offline')"
           },
           "lastSeen": {
             ".validate": "newData.isNumber() && newData.val() > 0"
@@ -126,7 +259,12 @@
             ".validate": false
           }
         },
+        "presenceMode": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'away' || newData.val() === 'busy' || newData.val() === 'invisible')"
+        },
         "music": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           "unlocked": {
             "$trackId": {
@@ -136,8 +274,41 @@
           "menuTrack": {
             ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,32}$/) && (newData.val() === 'calma' || newData.val() === 'aurora' || newData.val() === 'brisa' || newData.val() === 'noche' || newData.parent().child('unlocked').child(newData.val()).val() === true)"
           },
+          // La pista que suena al abrir el perfil. Las mismas que el menu.
+          "profileTrack": {
+            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,32}$/) && (newData.val() === 'calma' || newData.val() === 'aurora' || newData.val() === 'brisa' || newData.val() === 'noche' || newData.parent().child('unlocked').child(newData.val()).val() === true)"
+          },
           "$other": {
             ".validate": false
+          }
+        },
+        // Muro de cumpleaños: `wall/$year/$authorId`.
+        //
+        // LIMITACION CONOCIDA Y ACEPTADA, no un descuido: las reglas no pueden
+        // comprobar que hoy sea el cumpleaños de $accountId, porque eso exige
+        // calcular fechas en su zona horaria y las reglas no tienen aritmetica
+        // de calendario. La restriccion de la fecha es cosmetica y vive en el
+        // cliente. Lo que si garantizan las reglas: que quien escribe es amigo,
+        // que escribe una sola vez por año (no se sobrescribe ni se edita), y
+        // que el mensaje tiene la forma y la longitud correctas (1–140). El
+        // cumpleañero puede borrar cualquier mensaje de su muro; si lo borra,
+        // ese hueco del año queda libre otra vez.
+        "wall": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
+          "$year": {
+            "$authorId": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && ((root.child('allowlist').child(auth.uid).child('accountId').val() === $authorId && $authorId !== $accountId && !data.exists() && newData.exists() && root.child('users').child($accountId).child('friends').child($authorId).exists()) || (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && data.exists() && !newData.exists()))",
+              ".validate": "$year.matches(/^[0-9]{4}$/) && newData.hasChildren(['text', 'at'])",
+              "text": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 140"
+              },
+              "at": {
+                ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
           }
         },
         "$other": {
@@ -154,11 +325,13 @@
         "keeper"
       ],
       "$tamaId": {
-        // CHECKPOINT 3 (amigos): para pintar el avatar de otra persona, el Tama de
-        // perfil tiene que ser legible por cualquier miembro de la allowlist. Hay
-        // que abrir ESTE `.read` de /tamas/$tamaId anadiendo, con `||`:
-        //   root.child('users').child(data.child('keeper').val()).child('tama').val() === $tamaId
-        // Nada mas: el resto de Tamas siguen siendo solo de su creador y su cuidador.
+        // Un Tama entero lo leen su creador y su cuidador. Del Tama de perfil de
+        // cada cuenta (el de `/users/<keeper>/card/tamaId`) cualquier miembro lee
+        // ademas `name`, `personality`, `voice` y `look`: lo justo para pintar su
+        // avatar en la ficha de busqueda, en las listas y en el perfil. Se abre
+        // hijo a hijo y no el nodo entero para que `care` y `updatedAt` sigan
+        // siendo privados: un mimo al Tama estando invisible no puede delatar
+        // que se esta conectado.
         ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (data.child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val() || data.child('keeper').val() === root.child('allowlist').child(auth.uid).child('accountId').val())",
         ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $tamaId.matches(/^[-0-9A-Za-z_]{20}$/) && ((!data.exists() && newData.child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && newData.child('keeper').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaLastChange').val() === $tamaId && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').val() === (root.child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').exists() ? root.child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').val() : 0) + 1) || (data.exists() && !newData.exists() && data.child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && data.child('keeper').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaLastChange').val() === $tamaId && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').val() === root.child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').val() - 1 && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tama').val() !== $tamaId))",
         ".validate": "newData.hasChildren(['schema', 'creator', 'keeper', 'name', 'personality', 'voice', 'look', 'createdAt', 'updatedAt'])",
@@ -168,19 +341,22 @@
         "creator": {
           ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
         },
-        // CHECKPOINT 3 (traspasos): aqui se permitira cambiar de cuidador.
+        // Traspasos (checkpoint futuro): aqui se permitira cambiar de cuidador.
         "keeper": {
           ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
         },
         "name": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('keeper').isString() && root.child('users').child(root.child('tamas').child($tamaId).child('keeper').val()).child('card').child('tamaId').val() === $tamaId",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
           ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
         },
         "personality": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('keeper').isString() && root.child('users').child(root.child('tamas').child($tamaId).child('keeper').val()).child('card').child('tamaId').val() === $tamaId",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
           ".validate": "newData.isString() && (newData.val() === 'calm' || newData.val() === 'playful' || newData.val() === 'shy' || newData.val() === 'cheeky' || newData.val() === 'sleepy')"
         },
         "voice": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('keeper').isString() && root.child('users').child(root.child('tamas').child($tamaId).child('keeper').val()).child('card').child('tamaId').val() === $tamaId",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
           ".validate": "newData.hasChildren(['pitch', 'tempo', 'timbre'])",
           "pitch": {
@@ -197,6 +373,7 @@
           }
         },
         "look": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('keeper').isString() && root.child('users').child(root.child('tamas').child($tamaId).child('keeper').val()).child('card').child('tamaId').val() === $tamaId",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
           ".validate": "newData.hasChildren(['body', 'eyes', 'mouth', 'crown', 'cheeks', 'pattern', 'arms', 'feet', 'bodyWidth', 'bodyHeight', 'eyeSize', 'eyeSpacing', 'eyeHeight', 'mouthSize', 'mouthHeight', 'crownSize', 'cheekIntensity', 'patternTone', 'color', 'colorMode'])",
           "body": {
@@ -301,6 +478,11 @@
         "$other": {
           ".validate": false
         }
+      },
+      // Siguiente contador de codigo de amigo. Empieza en 1 (ausente = 1) y
+      // solo sube de uno en uno, con el alta de cada cuenta.
+      "friendCodeCounter": {
+        ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() === (data.exists() ? data.val() : 1) + 1"
       },
       "$other": {
         ".validate": false

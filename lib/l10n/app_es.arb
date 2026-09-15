@@ -487,5 +487,256 @@
   },
   "tamaFoodLockedShort": "en la tienda",
   "tamaFoodsPrevious": "chuches anteriores",
-  "tamaFoodsNext": "más chuches"
+  "tamaFoodsNext": "más chuches",
+  "channelFriends": "amigos",
+  "friendsTitle": "tus amigos",
+  "friendsCount": "{count} de {max}",
+  "@friendsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "friendsYourCode": "tu código de amigo",
+  "friendsCodePending": "aún sin código: te lo dará el administrador",
+  "friendsCopyCode": "copiar el código",
+  "friendsCodeCopied": "código copiado",
+  "friendsAdd": "añadir amigo",
+  "friendsExportCard": "exportar tarjeta",
+  "friendsExporting": "exportando…",
+  "friendsCardSaved": "tarjeta guardada en {path}",
+  "@friendsCardSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsCardError": "no se ha podido guardar la tarjeta",
+  "friendsTabFriends": "{count, plural, =0{amigos} other{amigos · {count}}}",
+  "@friendsTabFriends": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "friendsTabIncoming": "{count, plural, =0{recibidas} other{recibidas · {count}}}",
+  "@friendsTabIncoming": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "friendsTabOutgoing": "{count, plural, =0{enviadas} other{enviadas · {count}}}",
+  "@friendsTabOutgoing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "friendsIncomingEmpty": "no tienes solicitudes pendientes",
+  "friendsOutgoingEmpty": "no has mandado ninguna solicitud",
+  "friendsPending": "pendiente",
+  "friendsAccept": "aceptar",
+  "friendsReject": "rechazar",
+  "friendsCancel": "retirar la solicitud",
+  "friendsAccepted": "¡ya sois amigos!",
+  "friendsErrorYourListFull": "tu lista ya tiene {max} amigos y no caben más",
+  "@friendsErrorYourListFull": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "friendsErrorTheirListFull": "su lista ya tiene {max} amigos y no caben más",
+  "@friendsErrorTheirListFull": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "friendsErrorRejected": "no ha salido: vuelve a intentarlo",
+  "presenceTitle": "tu estado",
+  "presenceOnline": "conectado",
+  "presenceAway": "ausente",
+  "presenceBusy": "no molestar",
+  "presenceInvisible": "invisible",
+  "presenceOffline": "desconectado",
+  "presenceOnlineHint": "pasa a ausente solo si dejas de tocar nada un rato",
+  "presenceAwayHint": "ausente aunque estés delante",
+  "presenceBusyHint": "tus amigos ven que no quieres que te molesten",
+  "presenceInvisibleHint": "para tus amigos, igual que desconectado",
+  "seenJustNow": "hace un momento",
+  "seenMinutesAgo": "{count, plural, =1{hace 1 minuto} other{hace {count} minutos}}",
+  "@seenMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seenHoursAgo": "{count, plural, =1{hace 1 hora} other{hace {count} horas}}",
+  "@seenHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seenDaysAgo": "{count, plural, =1{hace 1 día} other{hace {count} días}}",
+  "@seenDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeSame": "la misma hora que tú",
+  "timeHours": "{count, plural, =1{1 h} other{{count} h}}",
+  "@timeHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "timeHoursMinutes": "{hours} h {minutes} min",
+  "@timeHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "timeAhead": "{amount} por delante de ti",
+  "@timeAhead": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "timeBehind": "{amount} por detrás de ti",
+  "@timeBehind": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "badgeBirthday": "de cumpleaños",
+  "badgePioneer": "pionero",
+  "badgeOldFriend": "amistad de más de un año",
+  "badgeSocial": "sociable",
+  "badgeMusicLover": "melómano",
+  "addFriendTitle": "añadir amigo",
+  "addFriendLead": "escribe o pega el código de tu amigo",
+  "addFriendField": "código de amigo",
+  "addFriendPaste": "pegar",
+  "addFriendDigits": "{count} de {max} dígitos",
+  "@addFriendDigits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "addFriendSearching": "buscando…",
+  "addFriendInvalid": "ese código no es válido: revisa los números",
+  "addFriendNotFound": "el código es correcto, pero nadie lo tiene",
+  "addFriendSelf": "ese es tu propio código",
+  "addFriendEmpty": "aquí aparecerá quien tenga ese código",
+  "addFriendNoCard": "alguien que aún no ha entrado",
+  "addFriendPrivacy": "hasta que acepte solo ves su nombre, su Tama y su color",
+  "addFriendTheyAsked": "te ha mandado una solicitud: acéptala y seréis amigos",
+  "addFriendAlreadyFriends": "ya sois amigos",
+  "addFriendSend": "mandar solicitud",
+  "addFriendAcceptTheirs": "aceptar su solicitud",
+  "addFriendAlreadySent": "solicitud enviada",
+  "addFriendSent": "solicitud enviada",
+  "addFriendOpenProfile": "ver su perfil",
+  "friendLocalTime": "su hora",
+  "friendNoBirthday": "sin cumpleaños",
+  "friendBirthdayToday": "¡hoy es su cumpleaños!",
+  "friendBirthdayTurns": "¡hoy cumple {age}!",
+  "@friendBirthdayTurns": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "friendSince": "amigos desde el {date}",
+  "@friendSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "friendMusic": "suena «{track}»",
+  "@friendMusic": {
+    "placeholders": {
+      "track": {
+        "type": "String"
+      }
+    }
+  },
+  "friendMusicMute": "silenciar la música de los perfiles",
+  "friendMusicUnmute": "volver a oír la música de los perfiles",
+  "friendNotFriends": "ya no sois amigos",
+  "friendUnfriend": "dejar de ser amigos",
+  "friendUnfriendTitle": "¿dejar de ser amigo de {name}?",
+  "@friendUnfriendTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendUnfriendBody": "dejaréis de ver vuestros perfiles, presencia y muros. Podéis volver a mandaros una solicitud cuando queráis.",
+  "profileMusic": "música de perfil",
+  "profileMusicHint": "la oyen tus amigos al abrir tu perfil",
+  "profileMusicNone": "ninguna",
+  "profileWall": "tu muro de cumpleaños",
+  "wallTitle": "muro de cumpleaños",
+  "wallOwnTitle": "tu muro de cumpleaños",
+  "wallOwnBirthday": "¡feliz cumpleaños! mira lo que te han dejado",
+  "wallEmpty": "aún no hay mensajes este año",
+  "wallEmptyOwn": "tus amigos te dejarán mensajes el día de tu cumpleaños",
+  "wallFieldLabel": "tu mensaje",
+  "wallFieldHint": "¡felicidades!",
+  "wallPost": "dejar mensaje",
+  "wallPosted": "mensaje dejado en su muro",
+  "wallPostError": "no se ha podido dejar el mensaje",
+  "wallOnePerYear": "un mensaje por año; no se puede editar",
+  "wallAlreadyWrote": "ya le has dejado tu mensaje de este año",
+  "wallOpensOn": "el muro se abre el {date}",
+  "@wallOpensOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "wallNoBirthday": "no ha puesto su cumpleaños",
+  "wallDelete": "borrar",
+  "wallDeleteTitle": "¿borrar este mensaje?",
+  "wallDeleteBody": "desaparecerá de tu muro para siempre.",
+  "wallDeleteError": "no se ha podido borrar"
 }

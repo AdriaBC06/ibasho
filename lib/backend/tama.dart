@@ -101,6 +101,16 @@ enum TamaPart {
   final int variants;
 }
 
+/// Lo que el Tama lleva puesto por encima de su aspecto.
+///
+/// Es una pieza mas del dibujo, pintada con el cuerpo, la cara y las orejas y
+/// moviendose con ellos, pero no se guarda en `/tamas`: la pone el contexto.
+/// Hoy solo hay una: el gorrito del dia del cumpleaños de su cuidador.
+enum TamaWear {
+  none,
+  partyHat,
+}
+
 /// Los deslizadores del creador. Todos son enteros de 0 a 100.
 enum TamaDial {
   bodyWidth,

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'models.dart';
+import 'rtdb_socket.dart';
 
 /// Todo lo que Ibasho necesita de un servidor.
 ///
@@ -70,6 +71,10 @@ abstract interface class IbashoBackend {
     required Future<String> Function() token,
     DatabaseQuery? query,
   });
+
+  /// Conexion persistente para la presencia: la unica cosa que REST no puede
+  /// hacer es dejar escrituras encargadas para cuando la app se cierre.
+  PresenceLink openPresenceLink({required Future<String> Function() token});
 
   // --- Salud -------------------------------------------------------------
 

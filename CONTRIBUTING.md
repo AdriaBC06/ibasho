@@ -7,9 +7,9 @@ que siga pareciendo una consola y no una app genérica.
 
 ```sh
 flutter analyze        # cero avisos
-flutter test           # entorno, Tamas y recorrido visual (PNG en build/screenshots/)
+flutter test           # entorno, Tamas, amigos y recorrido visual (PNG en build/screenshots/)
 ./tool/test_rules.sh   # reglas de la base contra el emulador de Firebase
-./tool/test_e2e.sh     # cuentas y Tamas contra los emuladores de Auth y Database
+./tool/test_e2e.sh     # cuentas, Tamas, amigos y presencia contra los emuladores de Auth y Database
 ```
 
 ## Normas de código

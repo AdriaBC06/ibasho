@@ -16,6 +16,7 @@ import 'state/session.dart';
 import 'theme/skin.dart';
 import 'theme/tokens.dart';
 import 'theme/type.dart';
+import 'ui/activity.dart';
 import 'ui/canvas.dart';
 import 'ui/screens/change_password_screen.dart';
 import 'ui/screens/login_screen.dart';
@@ -64,8 +65,10 @@ class IbashoApp extends ConsumerWidget {
           reducedMotion: reduced,
           child: DefaultTextStyle(
             style: Ty.body,
-            child: TamaPointerTracker(
-              child: VirtualCanvas(child: navigator!),
+            child: ActivityWatch(
+              child: TamaPointerTracker(
+                child: VirtualCanvas(child: navigator!),
+              ),
             ),
           ),
         );

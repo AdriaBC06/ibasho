@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../backend/errors.dart';
 import '../backend/ibasho_backend.dart';
 import '../backend/models.dart';
+import '../core/friend_code.dart';
 import 'session.dart';
 
 /// Alfabeto de las contrasenas generadas.
@@ -87,6 +88,7 @@ class AdminController extends StateNotifier<AdminState> {
     try {
       final raw = await _backend.read('/allowlist', idToken: await _session.freshToken());
       state = state.copyWith(accounts: _parse(raw), loading: false);
+      unawaited(assignMissingFriendCodes());
     } catch (e) {
       debugPrint('Ibasho: no se ha podido listar la allowlist ($e)');
       state = state.copyWith(loading: false);
@@ -153,15 +155,18 @@ class AdminController extends StateNotifier<AdminState> {
       );
 
       // La primera identidad de una cuenta presta su uid como identificador
-      // estable. A partir de aqui ese valor ya no cambia nunca.
-      await _writeEntry(
-        uid: account.uid,
-        accountId: account.uid,
-        username: username,
-        generation: 1,
-        token: token,
-      );
-      await _backend.write('/usernames/$username', account.uid, idToken: token);
+      // estable. A partir de aqui ese valor ya no cambia nunca. Entrada,
+      // nombre y codigo de amigo van en una sola operacion, con el contador.
+      await _withNextCode(token, (counter, code) => {
+            'allowlist/${account.uid}': _entryJson(
+              uid: account.uid,
+              accountId: account.uid,
+              username: username,
+              generation: 1,
+            ),
+            'usernames/$username': account.uid,
+            ..._codeWrites(account.uid, counter, code),
+          });
       await refresh();
       return account;
     } finally {
@@ -246,16 +251,78 @@ class AdminController extends StateNotifier<AdminState> {
   }) =>
       _backend.write(
         '/allowlist/$uid',
-        AllowlistEntry(
-          uid: uid,
-          accountId: accountId,
-          username: username,
-          createdAt: DateTime.now(),
-          createdBy: _session.state.uid,
-          disabled: false,
-          mustChangePassword: true,
-          generation: generation,
-        ).toJson(),
+        _entryJson(uid: uid, accountId: accountId, username: username, generation: generation),
         idToken: token,
       );
+
+  Map<String, Object?> _entryJson({
+    required String uid,
+    required String accountId,
+    required String username,
+    required int generation,
+  }) =>
+      AllowlistEntry(
+        uid: uid,
+        accountId: accountId,
+        username: username,
+        createdAt: DateTime.now(),
+        createdBy: _session.state.uid,
+        disabled: false,
+        mustChangePassword: true,
+        generation: generation,
+      ).toJson();
+
+  // --- Codigos de amigo -------------------------------------------------
+
+  /// Rutas que da un codigo a una cuenta: el indice, la copia en la cuenta y
+  /// el contador un paso mas alla.
+  static Map<String, Object?> _codeWrites(String accountId, int counter, String code) => {
+        'friendCodes/$code': accountId,
+        'users/$accountId/friendCode': code,
+        'system/friendCodeCounter': counter + 1,
+      };
+
+  /// Lee el contador, construye la escritura con el codigo que le toca y la
+  /// lanza. Si otro admin se ha adelantado, las reglas la rechazan y se
+  /// reintenta una vez con el contador nuevo.
+  Future<void> _withNextCode(
+    String token,
+    Map<String, Object?> Function(int counter, String code) paths,
+  ) async {
+    for (var attempt = 0;; attempt++) {
+      final raw = await _backend.read('/system/friendCodeCounter', idToken: token);
+      final counter = raw is num ? raw.toInt() : 1;
+      try {
+        await _backend.merge('/', paths(counter, FriendCode.forCounter(counter)), idToken: token);
+        return;
+      } on IbashoException catch (e) {
+        if (attempt > 0 || e.failure == IbashoFailure.network) rethrow;
+      }
+    }
+  }
+
+  /// Da codigo a las cuentas que se crearon antes de que existieran. Se lanza
+  /// solo al abrir el panel; no hace nada si ya lo tienen todas.
+  Future<int> assignMissingFriendCodes() async {
+    try {
+      final token = await _session.freshToken();
+      final codes = await _backend.read('/friendCodes', idToken: token);
+      final withCode = <String>{
+        if (codes is Map)
+          for (final value in codes.values)
+            if (value is String) value,
+      };
+      final accounts = <String>{
+        for (final entry in state.accounts) entry.accountId,
+      }.where((a) => !withCode.contains(a)).toList()
+        ..sort();
+      for (final account in accounts) {
+        await _withNextCode(token, (counter, code) => _codeWrites(account, counter, code));
+      }
+      return accounts.length;
+    } catch (e) {
+      debugPrint('Ibasho: no se han podido repartir los codigos de amigo ($e)');
+      return 0;
+    }
+  }
 }

@@ -157,6 +157,36 @@ abstract final class T {
   /// Corazones y destellos de alegria.
   static const Color tamaHeart = Color(0xFFF26D8E);
 
+  // --- Cumpleaños --------------------------------------------------------
+
+  /// Gorrito de fiesta del Tama: cono a rayas y borla.
+  static const Color partyHat = Color(0xFFFF8FB4);
+  static const Color partyStripe = Color(0xFFFFD86B);
+  static const Color partyPompom = Color(0xFFFFF6D6);
+
+  /// Confeti y guirnalda del perfil el dia del cumpleaños.
+  static const List<Color> confetti = <Color>[
+    Color(0xFFFF8FB4),
+    Color(0xFFFFD86B),
+    Color(0xFF7FD6F7),
+    Color(0xFF9EE3B8),
+    Color(0xFFC6A8F0),
+  ];
+
+  /// Lavado calido de los paneles el dia del cumpleaños.
+  static const Color partyWash = Color(0xFFFFF3E2);
+
+  // --- Presencia --------------------------------------------------------
+
+  /// Piloto de cada estado, como el LED de una consola.
+  static const Color presenceOnline = Color(0xFF4CC985);
+  static const Color presenceAway = Color(0xFFF2B640);
+  static const Color presenceBusy = Color(0xFFE8625E);
+  static const Color presenceOffline = Color(0xFFB3BEC8);
+
+  /// Insignia con el numero de solicitudes pendientes.
+  static const Color badge = Color(0xFFE8625E);
+
   // --- Sobre acento -----------------------------------------------------
 
   /// Texto e iconos sobre una superficie tenida de acento o de aviso.

@@ -173,22 +173,10 @@ class SessionController extends StateNotifier<SessionState> {
     _scheduleRenewal(renewed);
   }
 
-  Future<void> signOut({SignOutReason reason = SignOutReason.none}) async {
-    final tokens = state.tokens;
-    final accountId = state.accountId;
-    if (tokens != null && accountId.isNotEmpty) {
-      try {
-        await _backend.write(
-          '/users/$accountId/presence',
-          {'state': 'offline', 'lastSeen': DateTime.now().millisecondsSinceEpoch},
-          idToken: tokens.idToken,
-        );
-      } catch (_) {
-        // Marcharse siempre funciona, aunque el servidor no conteste.
-      }
-    }
-    await _forget(reason);
-  }
+  /// Sale de la sesion. La presencia no se toca aqui: al cambiar de cuenta se
+  /// cierra la conexion de presencia y el servidor marca la desconexion por
+  /// su cuenta (o no, si se estaba invisible).
+  Future<void> signOut({SignOutReason reason = SignOutReason.none}) => _forget(reason);
 
   // --- Tokens ------------------------------------------------------------
 
@@ -306,19 +294,6 @@ class SessionController extends StateNotifier<SessionState> {
       entry: entry,
       isAdmin: isAdmin,
     );
-    unawaited(_announcePresence(tokens, entry.accountId));
-  }
-
-  Future<void> _announcePresence(AuthTokens tokens, String accountId) async {
-    try {
-      await _backend.write(
-        '/users/$accountId/presence',
-        {'state': 'online', 'lastSeen': DateTime.now().millisecondsSinceEpoch},
-        idToken: tokens.idToken,
-      );
-    } catch (e) {
-      debugPrint('Ibasho: no se ha podido anunciar la presencia ($e)');
-    }
   }
 
   Future<void> _persist(AuthTokens tokens) =>

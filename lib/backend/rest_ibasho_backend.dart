@@ -10,6 +10,7 @@ import 'ibasho_backend.dart';
 import 'identity_toolkit.dart';
 import 'models.dart';
 import 'rtdb_client.dart';
+import 'rtdb_socket.dart';
 
 /// Implementacion del contrato sobre las APIs REST de Firebase.
 class RestIbashoBackend implements IbashoBackend {
@@ -124,6 +125,10 @@ class RestIbashoBackend implements IbashoBackend {
     DatabaseQuery? query,
   }) =>
       _db.watch(path, token: token, query: query);
+
+  @override
+  PresenceLink openPresenceLink({required Future<String> Function() token}) =>
+      RtdbSocket(token: token);
 
   @override
   Future<LinkQuality> probe() => _db.probe();

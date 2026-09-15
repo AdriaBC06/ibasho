@@ -185,21 +185,53 @@ class AudioService {
     return _musicQueue;
   }
 
+  /// Pista de un perfil ajeno, que suena por encima de la de ambiente mientras
+  /// ese perfil esta abierto.
+  MusicTrack? _guest;
+
+  /// Fundidos al cambiar de pista cuando algo ya sonaba: salida corta, entrada
+  /// algo mas larga. Solo los usa la musica de perfil; el resto de cambios de
+  /// pista siguen siendo inmediatos.
+  static const Duration _fadeOut = Duration(milliseconds: 260);
+  static const Duration _fadeIn = Duration(milliseconds: 900);
+  bool _fadeNext = false;
+
+  Future<void> _fade(AudioPlayer player, double from, double to, Duration duration) async {
+    const steps = 18;
+    for (var i = 1; i <= steps; i++) {
+      await player.setVolume(from + (to - from) * i / steps);
+      await Future<void>.delayed(duration ~/ steps);
+    }
+  }
+
   Future<void> _reconcileMusic() async {
     if (!_ready || _muteAll) return;
     final player = _music!;
     _reconciling = true;
+    final fade = _fadeNext;
+    _fadeNext = false;
     try {
       final shouldPlay = _musicWanted && _musicVolume > 0;
       if (!shouldPlay) {
         if (player.state == PlayerState.playing) await player.pause();
         return;
       }
-      final wanted = _track.asset;
+      final wanted = (_guest ?? _track).asset;
+      var fadeIn = false;
       if (_loadedAsset != wanted) {
+        if (fade && player.state == PlayerState.playing) {
+          await _fade(player, _musicVolume, 0, _fadeOut);
+        }
         await player.stop();
         await player.setSource(AssetSource(wanted));
         _loadedAsset = wanted;
+        fadeIn = fade;
+      }
+      if (fadeIn) {
+        await player.setVolume(0);
+        await player.resume();
+        await _fade(player, 0, _musicVolume, _fadeIn);
+        return;
       }
       await player.setVolume(_musicVolume);
       if (player.state != PlayerState.playing) await player.resume();
@@ -270,6 +302,26 @@ class AudioService {
     _track = MusicTrack.byId(id);
     return _serial(_reconcileMusic);
   }
+
+  /// Pone la pista de un perfil en lugar de la de ambiente, con un fundido
+  /// corto.
+  Future<void> playProfileTrack(MusicTrack track) {
+    if (_guest == track) return _musicQueue;
+    _guest = track;
+    _fadeNext = true;
+    return _serial(_reconcileMusic);
+  }
+
+  /// Vuelve a la musica de ambiente, con el mismo fundido.
+  Future<void> endProfileTrack() {
+    if (_guest == null) return _musicQueue;
+    _guest = null;
+    _fadeNext = true;
+    return _serial(_reconcileMusic);
+  }
+
+  /// Pista de perfil que suena ahora, si hay.
+  MusicTrack? get profileTrack => _guest;
 
   /// Dispara un efecto. Es inmediato y nunca bloquea la interfaz.
   void play(Sfx sfx) {

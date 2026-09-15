@@ -55,6 +55,7 @@ List<ZoneEntry>? _cache;
 List<ZoneEntry> allZones({DateTime? at}) {
   if (_cache != null && at == null) return _cache!;
   tzdata.initializeTimeZones();
+  _zonesLoaded = true;
   final moment = (at ?? DateTime.now()).millisecondsSinceEpoch;
   final zones = <ZoneEntry>[
     const ZoneEntry(id: 'UTC', offset: Duration.zero),
@@ -95,4 +96,41 @@ bool matchesZone(ZoneEntry zone, String query) {
     return zone.offset.inMinutes == minutes;
   }
   return zone.offsetLabel.toLowerCase().contains(q);
+}
+
+bool _zonesLoaded = false;
+
+/// Desplazamiento respecto a UTC de una zona en un instante, con el horario de
+/// verano de ese dia. Acepta identificadores IANA y el `UTC+hh:mm` al que cae
+/// `localTimezoneName` cuando el sistema no da nombre. `null` si no se
+/// reconoce.
+Duration? offsetOfZone(String id, DateTime at) {
+  final clean = id.trim();
+  if (clean.isEmpty) return null;
+  if (clean == 'UTC') return Duration.zero;
+  final fixed = RegExp(r'^UTC([+\-−])(\d{2}):(\d{2})$').firstMatch(clean);
+  if (fixed != null) {
+    final sign = fixed.group(1) == '+' ? 1 : -1;
+    return Duration(
+      minutes: sign * (int.parse(fixed.group(2)!) * 60 + int.parse(fixed.group(3)!)),
+    );
+  }
+  if (!_zonesLoaded) {
+    tzdata.initializeTimeZones();
+    _zonesLoaded = true;
+  }
+  try {
+    return tz.getLocation(clean).timeZone(at.millisecondsSinceEpoch).offset;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// La hora de pared de una zona en un instante, como un `DateTime` sin zona
+/// (sus campos son los de alli). Sin zona reconocible, la de esta maquina.
+DateTime wallClockIn(String zone, DateTime at) {
+  final offset = offsetOfZone(zone, at);
+  if (offset == null) return at.toLocal();
+  final utc = at.toUtc().add(offset);
+  return DateTime(utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second);
 }

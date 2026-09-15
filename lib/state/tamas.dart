@@ -12,6 +12,7 @@ import '../backend/ibasho_backend.dart';
 import '../backend/live_tree.dart';
 import '../backend/models.dart';
 import '../backend/push_id.dart';
+import '../backend/social.dart';
 import '../backend/tama.dart';
 import 'session.dart';
 
@@ -68,14 +69,20 @@ class TamasController extends StateNotifier<TamasState> {
   TamasController({
     required IbashoBackend backend,
     required SessionController session,
+    required Future<UserCard> Function(String? tamaId, String? tamaColor) cardOf,
   })  : _backend = backend,
         _session = session,
+        _cardOf = cardOf,
         super(const TamasState()) {
     unawaited(_start());
   }
 
   final IbashoBackend _backend;
   final SessionController _session;
+
+  /// La ficha publica apunta al Tama de perfil: cualquier escritura que lo
+  /// cambie la lleva en la misma operacion, o las reglas la rechazan.
+  final Future<UserCard> Function(String? tamaId, String? tamaColor) _cardOf;
 
   StreamSubscription<DatabaseEvent>? _listWatch;
   StreamSubscription<DatabaseEvent>? _profileWatch;
@@ -216,6 +223,8 @@ class TamasController extends StateNotifier<TamasState> {
           'users/$_account/tamaCount': count + 1,
           'users/$_account/tamaLastChange': id,
           if (becomesProfile) 'users/$_account/tama': id,
+          if (becomesProfile)
+            'users/$_account/card': (await _cardOf(id, look.color)).toJson(),
         }, idToken: token);
         if (!mounted) return (id, null);
         _putLocal(draft);
@@ -288,8 +297,11 @@ class TamasController extends StateNotifier<TamasState> {
     final before = state.profileTamaId;
     state = state.copyWith(profileTamaId: id);
     try {
-      await _backend.write('/users/$_account/tama', id,
-          idToken: await _session.freshToken());
+      final card = await _cardOf(id, state.byId(id)?.look.color);
+      await _backend.merge('/users/$_account', {
+        'tama': id,
+        'card': card.toJson(),
+      }, idToken: await _session.freshToken());
       return true;
     } catch (e) {
       debugPrint('Ibasho: no se ha podido cambiar el Tama de perfil ($e)');
@@ -319,6 +331,9 @@ class TamasController extends StateNotifier<TamasState> {
         'users/$_account/tamaCount': count - 1,
         'users/$_account/tamaLastChange': id,
         if (wasProfile) 'users/$_account/tama': successor,
+        if (wasProfile)
+          'users/$_account/card':
+              (await _cardOf(successor, state.byId(successor)?.look.color)).toJson(),
       }, idToken: token);
       if (!mounted) return true;
       _tree = applyDatabaseEvent(

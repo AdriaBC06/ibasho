@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/gen/app_localizations.dart';
+import '../../../state/providers.dart';
 import '../../widgets/glyphs.dart';
 import 'admin_channel.dart';
 import 'coming_soon_channel.dart';
 import 'debug_channel.dart';
+import 'friends_channel.dart';
 import 'profile_channel.dart';
 import 'settings_channel.dart';
 import 'tamas_channel.dart';
@@ -22,6 +25,7 @@ class ChannelSpec {
     required this.label,
     required this.builder,
     this.empty = false,
+    this.badge,
   });
 
   final String id;
@@ -31,10 +35,13 @@ class ChannelSpec {
 
   /// Una ranura libre: se ve hundida y lleva a la pantalla de proximamente.
   final bool empty;
+
+  /// Numero que se pinta sobre el icono (solicitudes pendientes). Nada si es 0.
+  final ProviderListenable<int>? badge;
 }
 
 /// Cuantas ranuras libres ensena el entorno mientras no haya apps.
-const int emptySlotCount = 3;
+const int emptySlotCount = 2;
 
 /// Canales por pagina: rejilla de 4x2.
 const int channelsPerPage = 8;
@@ -57,6 +64,13 @@ List<ChannelSpec> channelsFor({required bool isAdmin}) => <ChannelSpec>[
         glyph: Glyph.tama,
         label: (l) => l.channelTamas,
         builder: (_) => const TamasChannel(),
+      ),
+      ChannelSpec(
+        id: 'friends',
+        glyph: Glyph.friends,
+        label: (l) => l.channelFriends,
+        builder: (_) => const FriendsChannel(),
+        badge: pendingRequestsProvider,
       ),
       if (isAdmin)
         ChannelSpec(

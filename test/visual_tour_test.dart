@@ -21,7 +21,9 @@ import 'package:ibasho/backend/models.dart';
 import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/state/providers.dart';
 import 'package:ibasho/storage/settings_store.dart';
+import 'package:ibasho/core/friend_code.dart';
 import 'package:ibasho/theme/tokens.dart';
+import 'package:ibasho/ui/social/business_card.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'support/fakes.dart';
@@ -315,6 +317,147 @@ Future<void> main() async {
     await tester.tap(find.byKey(const ValueKey<String>('channel.profile')));
     await settle(tester, 60);
     await shoot(tester, '23-perfil-con-tama');
+  });
+
+  /// La escena social con un amigo mas, pau, con su propio Tama.
+  FakeIbashoBackend socialScene({bool birthday = true, String locale = 'es'}) {
+    final backend = FakeIbashoBackend(tamas: family(), profileTamaId: family().first.id, locale: locale);
+    seedSocial(backend, mireiaBirthdayToday: birthday);
+    final bolo = sampleTama(
+      id: '-TamaPau000000000001',
+      name: 'Bolo',
+      creator: kPauUid,
+      keeper: kPauUid,
+      look: const TamaLook(
+        parts: {TamaPart.body: 2, TamaPart.eyes: 4, TamaPart.crown: 3, TamaPart.arms: 2, TamaPart.feet: 2},
+        color: '#F6CF4E',
+      ),
+    );
+    final since = DateTime.now().subtract(const Duration(days: 20)).millisecondsSinceEpoch;
+    backend
+      ..seed('/users/$kAdminUid/card/tamaId', family().first.id)
+      ..seed('/tamas/${bolo.id}', bolo.toJson())
+      ..seed('/users/$kAdminUid/friends/$kPauUid', {'since': since})
+      ..seed('/users/$kAdminUid/friendCount', 2)
+      ..seed('/users/$kPauUid', {
+        'card': {'displayName': 'Pau', 'accentColor': '#8CC96A', 'tamaId': bolo.id},
+        'presence': {'state': 'away', 'lastSeen': since},
+        'friends': {kAdminUid: {'since': since}},
+      })
+      ..seed('/users/$kMireiaUid/wall/${DateTime.now().year}/$kPauUid', {
+        'text': '¡Feliz cumple, Mireia! Que Mochi te traiga muchas chuches',
+        'at': DateTime.now().millisecondsSinceEpoch - 3600000,
+      });
+    return backend;
+  }
+
+  testWidgets('amigos: insignia, canal, añadir y perfil de cumpleaños', (tester) async {
+    await boot(tester, backend: socialScene());
+    await settle(tester, 100);
+    await shoot(tester, '24-entorno-insignia-amigos');
+
+    await tester.tap(find.byKey(const ValueKey<String>('channel.friends')));
+    await settle(tester, 60);
+    await shoot(tester, '25-amigos-recibidas');
+    await tester.tap(find.text('amigos · 2'));
+    await settle(tester, 30);
+    await shoot(tester, '26-amigos');
+
+    await tester.tap(find.byKey(const ValueKey<String>('friends.add')));
+    await settle(tester, 40);
+    final field = find.descendant(
+      of: find.byKey(const ValueKey<String>('addFriend.field')),
+      matching: find.byType(EditableText),
+    );
+    await tester.enterText(field, kLaiaCode.replaceRange(3, 4, kLaiaCode[3] == '1' ? '2' : '1'));
+    await settle(tester, 20);
+    await shoot(tester, '27-anadir-amigo-invalido');
+    await tester.enterText(field, FriendCode.format(kLaiaCode));
+    await settle(tester, 40);
+    await shoot(tester, '28-anadir-amigo-ficha');
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await settle(tester, 30);
+
+    await tester.tap(find.byKey(const ValueKey<String>('friends.friend.$kMireiaUid')));
+    await settle(tester, 60);
+    await shoot(tester, '29-perfil-amigo-cumple');
+    await settle(tester, 80);
+  });
+
+  testWidgets('amigos: perfil sin cumpleaños, en ingles', (tester) async {
+    await boot(
+      tester,
+      backend: socialScene(birthday: false, locale: 'en'),
+      preferences: const Preferences(localeCode: 'en'),
+    );
+    await settle(tester, 100);
+    await tester.tap(find.byKey(const ValueKey<String>('channel.friends')));
+    await settle(tester, 60);
+    await tester.tap(find.text('friends · 2'));
+    await settle(tester, 30);
+    await tester.tap(find.byKey(const ValueKey<String>('friends.friend.$kMireiaUid')));
+    await settle(tester, 60);
+    await shoot(tester, '30-perfil-amigo-en');
+  });
+
+  testWidgets('muro propio el dia del cumpleaños', (tester) async {
+    final backend = socialScene();
+    final now = DateTime.now();
+    final madrid = now.toUtc().add(Duration(minutes: now.timeZoneOffset.inMinutes));
+    backend
+      ..seed('/users/$kAdminUid/profile/birthday',
+          '1998-${madrid.month.toString().padLeft(2, '0')}-${madrid.day.toString().padLeft(2, '0')}')
+      ..seed('/users/$kAdminUid/profile/timezone', 'UTC')
+      ..seed('/users/$kAdminUid/wall/${now.toUtc().year}', {
+        kMireiaUid: {'text': '¡Felicidades desde Tokio! 🎂 Mochi y yo te mandamos un abrazo enorme', 'at': now.millisecondsSinceEpoch - 7200000},
+        kPauUid: {'text': 'que cumplas muchos más', 'at': now.millisecondsSinceEpoch - 3600000},
+      })
+      ..seed('/users/$kAdminUid/profile/birthday', '1998-${now.toUtc().month.toString().padLeft(2, '0')}-${now.toUtc().day.toString().padLeft(2, '0')}');
+    await boot(tester, backend: backend);
+    await settle(tester, 100);
+    await shoot(tester, '31-entorno-cumple-propio');
+    await tester.tap(find.byKey(const ValueKey<String>('channel.profile')));
+    await settle(tester, 60);
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -900));
+    await settle(tester, 10);
+    await shoot(tester, '32-perfil-musica-y-muro');
+    await tester.tap(find.byKey(const ValueKey<String>('profile.wall')));
+    await settle(tester, 50);
+    await shoot(tester, '33-muro-propio');
+  });
+
+  testWidgets('tarjeta de visita exportada', (tester) async {
+    tester.view.physicalSize = const Size(700, 400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final key = GlobalKey();
+    for (final (name, accent, tama, wear) in [
+      ('34-tarjeta', T.cyan, family().first, TamaWear.none),
+      ('34b-tarjeta-cumple', const Color(0xFFEE7C96), family()[1], TamaWear.partyHat),
+    ]) {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: RepaintBoundary(
+              key: key,
+              child: BusinessCard(
+                displayName: 'Adrià',
+                accent: accent,
+                code: kAdminCode,
+                caption: 'código de amigo',
+                tama: tama,
+                wear: wear,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.runAsync(() async {
+        final png = await renderBusinessCard(key);
+        File('${output.path}/$name.png').writeAsBytesSync(png, flush: true);
+      });
+    }
   });
 
   testWidgets('entorno en ingles y sin bateria', (tester) async {

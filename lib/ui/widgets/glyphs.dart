@@ -56,6 +56,13 @@ enum Glyph {
   portrait,
   trash,
   wave,
+  friends,
+  personPlus,
+  speakerOff,
+  download,
+  paste,
+  star,
+  send,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -541,6 +548,114 @@ class _GlyphPainter extends CustomPainter {
             ..quadraticBezierTo(19.8, 10.2, 20.6, 12),
           stroke,
         );
+      case Glyph.friends:
+        // Dos personas: la de delante entera, la de detras asoma por la
+        // derecha. Cabezas y hombros no se tocan.
+        canvas.drawCircle(const Offset(9, 9.4), 3.3, stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(3.2, 20)
+            ..cubicTo(3.2, 16.4, 5.8, 14.8, 9, 14.8)
+            ..cubicTo(12.2, 14.8, 14.8, 16.4, 14.8, 20),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(16.6, 7.2), 2.6, stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(15.2, 12.2)
+            ..cubicTo(15.7, 12, 16.1, 12, 16.6, 12)
+            ..cubicTo(19, 12, 20.8, 13.4, 20.8, 16.6),
+          stroke,
+        );
+      case Glyph.personPlus:
+        canvas.drawCircle(const Offset(9.4, 8.6), 3.5, stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(3.4, 20)
+            ..cubicTo(3.4, 16, 6.2, 14.4, 9.4, 14.4)
+            ..cubicTo(12.6, 14.4, 15.4, 16, 15.4, 20),
+          stroke,
+        );
+        canvas.drawLine(const Offset(18.4, 6.2), const Offset(18.4, 12.2), stroke);
+        canvas.drawLine(const Offset(15.4, 9.2), const Offset(21.2, 9.2), stroke);
+      case Glyph.speakerOff:
+        canvas.drawPath(
+          Path()
+            ..moveTo(3.8, 9.2)
+            ..lineTo(7.6, 9.2)
+            ..lineTo(12.4, 5)
+            ..lineTo(12.4, 19)
+            ..lineTo(7.6, 14.8)
+            ..lineTo(3.8, 14.8)
+            ..close(),
+          stroke,
+        );
+        canvas.drawLine(const Offset(15.6, 9.4), const Offset(20.4, 14.6), stroke);
+        canvas.drawLine(const Offset(20.4, 9.4), const Offset(15.6, 14.6), stroke);
+      case Glyph.download:
+        canvas.drawLine(const Offset(12, 3.8), const Offset(12, 14), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.8, 10)
+            ..lineTo(12, 14.2)
+            ..lineTo(16.2, 10),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(4, 15)
+            ..lineTo(4, 18.2)
+            ..cubicTo(4, 19.4, 4.9, 20.4, 6.1, 20.4)
+            ..lineTo(17.9, 20.4)
+            ..cubicTo(19.1, 20.4, 20, 19.4, 20, 18.2)
+            ..lineTo(20, 15),
+          stroke,
+        );
+      case Glyph.paste:
+        // Portapapeles: la pinza se une al tablero por sus extremos.
+        canvas.drawPath(
+          Path()
+            ..moveTo(8.6, 5.4)
+            ..lineTo(7.6, 5.4)
+            ..cubicTo(6.2, 5.4, 5, 6.6, 5, 8)
+            ..lineTo(5, 18.2)
+            ..cubicTo(5, 19.6, 6.2, 20.8, 7.6, 20.8)
+            ..lineTo(16.4, 20.8)
+            ..cubicTo(17.8, 20.8, 19, 19.6, 19, 18.2)
+            ..lineTo(19, 8)
+            ..cubicTo(19, 6.6, 17.8, 5.4, 16.4, 5.4)
+            ..lineTo(15.4, 5.4),
+          stroke,
+        );
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTWH(8.6, 3.4, 6.8, 4), const Radius.circular(1.4)),
+          stroke,
+        );
+        canvas.drawLine(const Offset(8.8, 12), const Offset(15.2, 12), stroke);
+        canvas.drawLine(const Offset(8.8, 15.6), const Offset(13, 15.6), stroke);
+      case Glyph.star:
+        final star = Path();
+        for (var i = 0; i < 10; i++) {
+          final angle = -math.pi / 2 + i * math.pi / 5;
+          final radius = i.isEven ? 8.6 : 3.9;
+          final point = Offset(12 + radius * math.cos(angle), 12.8 + radius * math.sin(angle));
+          i == 0 ? star.moveTo(point.dx, point.dy) : star.lineTo(point.dx, point.dy);
+        }
+        star.close();
+        canvas.drawPath(star, stroke);
+      case Glyph.send:
+        // Avion de papel.
+        canvas.drawPath(
+          Path()
+            ..moveTo(3.6, 11.4)
+            ..lineTo(20.2, 4)
+            ..lineTo(14.6, 20.2)
+            ..lineTo(11.2, 13)
+            ..close(),
+          stroke,
+        );
+        canvas.drawLine(const Offset(11.2, 13), const Offset(20.2, 4), stroke);
     }
 
     canvas.restore();

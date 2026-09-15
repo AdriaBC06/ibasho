@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
 import '../../../backend/tama.dart';
+import '../../../core/birthday.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/pantry.dart';
 import '../../../state/providers.dart';
@@ -173,6 +174,8 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                   controller: _view,
                   pettable: true,
                   onPetted: () => unawaited(ref.read(tamasProvider.notifier).pet(tama.id)),
+                  // El dia del cumpleaños de su cuidador, el de perfil va de fiesta.
+                  wear: _partyFor(ref, tama) ? TamaWear.partyHat : TamaWear.none,
                 ),
                 const SizedBox(height: 18),
                 Text(l.tamaRoomPetHint, style: Ty.caption),
@@ -280,6 +283,13 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
   }
 }
 
+/// Si el Tama es el de perfil y hoy es el cumpleaños de quien lo cuida.
+bool _partyFor(WidgetRef ref, Tama tama) {
+  final profile = ref.watch(profileProvider.select((p) => p.profile));
+  final isProfileTama = ref.watch(tamasProvider.select((t) => t.profileTamaId)) == tama.id;
+  return isProfileTama && profile != null && isBirthdayToday(profile, ref.watch(moodClockProvider));
+}
+
 /// Un recuadro hundido con el Tama de perfil vivo dentro, o su silueta si aun
 /// no hay. Lo usan el panel superior y el perfil.
 class TamaWindow extends ConsumerWidget {
@@ -295,6 +305,8 @@ class TamaWindow extends ConsumerWidget {
     final l = L.of(context)!;
     final tama = ref.watch(tamasProvider.select((t) => t.profileTama));
     final now = ref.watch(moodClockProvider);
+    final profile = ref.watch(profileProvider.select((p) => p.profile));
+    final party = profile != null && isBirthdayToday(profile, now);
     final r = radius ?? size * .28;
 
     return SizedBox(
@@ -329,6 +341,7 @@ class TamaWindow extends ConsumerWidget {
                     seed: tama.id.hashCode ^ size.round(),
                     joy: TamaMoodReading.of(tama, now).joy,
                     size: size,
+                    wear: party ? TamaWear.partyHat : TamaWear.none,
                     onTap: onTap,
                     semanticLabel: l.tamaOpenRoom(tama.name),
                   ),

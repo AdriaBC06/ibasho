@@ -12,8 +12,11 @@ import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
 import 'accent_sync.dart';
 import 'admin.dart';
+import 'card.dart';
+import 'friends.dart';
 import 'music_library.dart';
 import 'preferences.dart';
+import 'presence.dart';
 import 'profile.dart';
 import 'session.dart';
 import 'system_status.dart';
@@ -68,6 +71,7 @@ final profileProvider = StateNotifierProvider<ProfileController, ProfileState>(
       backend: ref.watch(backendProvider),
       session: ref.watch(sessionProvider.notifier),
       defaultLocale: ref.read(preferencesProvider).localeCode,
+      cardOf: (profile) => cardForProfile(ref, profile),
     );
   },
 );
@@ -92,6 +96,7 @@ final tamasProvider = StateNotifierProvider<TamasController, TamasState>((ref) {
   return TamasController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
+    cardOf: (id, color) => cardForTama(ref, id, color),
   );
 });
 
@@ -190,3 +195,29 @@ final musicLibraryProvider =
     preferences: ref.watch(preferencesProvider.notifier),
   );
 });
+
+/// Presencia propia. Vive mientras dure la sesion activa de una cuenta; al
+/// salir se cierra su conexion y el servidor marca la desconexion.
+final presenceProvider = StateNotifierProvider<PresenceController, PresenceStatus>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  final active = ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return PresenceController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    active: active,
+  );
+});
+
+/// Amigos y solicitudes de la cuenta en curso.
+final friendsProvider = StateNotifierProvider<FriendsController, FriendsState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return FriendsController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+  );
+});
+
+/// Solicitudes pendientes de responder: la insignia del canal de amigos.
+final pendingRequestsProvider =
+    Provider<int>((ref) => ref.watch(friendsProvider.select((f) => f.incoming.length)));

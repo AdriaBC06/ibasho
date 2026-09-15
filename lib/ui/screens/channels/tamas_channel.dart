@@ -27,6 +27,7 @@ import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/slot_tile.dart';
 import '../channel_grid.dart';
 import '../channel_route.dart';
 import '../tama/tama_creator_screen.dart';
@@ -582,11 +583,7 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
       if (index == widget.tamas.length && widget.showCreate) {
         return _CreateTile(width: tileW, height: tileH, onPressed: widget.onCreate);
       }
-      return SizedBox(
-        width: tileW,
-        height: tileH,
-        child: const GlossSurface(radius: T.tileRadius, recessed: true, elevation: 0),
-      );
+      return EmptySlot(width: tileW, height: tileH);
     }
 
     return ClipRect(
@@ -659,94 +656,58 @@ class _TamaTile extends ConsumerWidget {
     final skin = IbashoSkin.of(context);
     final reading = TamaMoodReading.of(tama, ref.watch(moodClockProvider));
 
-    return Pressable(
-      cue: null,
+    return SlotTile(
+      width: width,
+      height: height,
+      selected: selected,
       onPressed: onPressed,
       semanticLabel: selected ? l.tamaOpenRoom(tama.name) : tama.name,
-      builder: (context, state) {
-        final ease = skin.reducedMotion
-            ? state.hover
-            : Curves.easeOutBack.transform(state.hover.clamp(0.0, 1.0));
-        final raised = selected ? 1.0 : ease;
-        final lift = 4 * raised - 2 * state.press;
-        final tilt = (2 * math.pi / 180) * ease * (1 - state.press);
-
-        return Transform.translate(
-          offset: Offset(0, -lift),
-          child: Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, .0011)
-              ..rotateX(tilt),
-            child: FocusRing(
-              visible: state.focus,
-              radius: T.tileRadius,
-              child: SizedBox(
-                width: width,
-                height: height,
-                child: GlossSurface(
-                  radius: T.tileRadius,
-                  tint: selected ? skin.accentWash : null,
-                  elevation: 1 + raised * 1.1,
-                  specular: 1 - state.press * .35,
-                  borderWidth: selected ? 2.5 : 1,
-                  borderColor: selected ? skin.accentDeep : T.hairline,
-                  sink: state.press * 1.5,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(T.tileRadius),
-                      child: Stack(
-                      children: [
-                        Column(
-                          children: [
-                            Expanded(
-                              child: IgnorePointer(
-                                child: OverflowBox(
-                                  alignment: const Alignment(0, .35),
-                                  maxHeight: height,
-                                  maxWidth: height,
-                                  child: TamaView(
-                                    look: tama.look,
-                                    personality: tama.personality,
-                                    name: tama.name,
-                                    voice: tama.voice,
-                                    seed: tama.id.hashCode,
-                                    joy: reading.joy,
-                                    size: height * .98,
-                                    interactive: false,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(8, 0, 8, 9),
-                              child: Text(
-                                tama.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Ty.caption.copyWith(
-                                  color: selected ? skin.accentDeep : T.ink,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.1,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (onProfile)
-                          Positioned(
-                            top: 9,
-                            right: 10,
-                            child: GlyphIcon(Glyph.portrait, size: 17, color: skin.accentDeep),
-                          ),
-                      ],
+      child: Stack(
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: IgnorePointer(
+                  child: OverflowBox(
+                    alignment: const Alignment(0, .35),
+                    maxHeight: height,
+                    maxWidth: height,
+                    child: TamaView(
+                      look: tama.look,
+                      personality: tama.personality,
+                      name: tama.name,
+                      voice: tama.voice,
+                      seed: tama.id.hashCode,
+                      joy: reading.joy,
+                      size: height * .98,
+                      interactive: false,
                     ),
                   ),
                 ),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 9),
+                child: Text(
+                  tama.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Ty.caption.copyWith(
+                    color: selected ? skin.accentDeep : T.ink,
+                    fontWeight: FontWeight.w500,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+          if (onProfile)
+            Positioned(
+              top: 9,
+              right: 10,
+              child: GlyphIcon(Glyph.portrait, size: 17, color: skin.accentDeep),
+            ),
+        ],
+      ),
     );
   }
 }

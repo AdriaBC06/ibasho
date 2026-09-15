@@ -107,6 +107,7 @@ class TamaPainter extends CustomPainter {
     required this.look,
     TamaPose pose = TamaPose.rest,
     this.shadow = true,
+    this.wear = TamaWear.none,
     ValueListenable<TamaPose>? live,
   })  : _pose = pose,
         _live = live,
@@ -124,6 +125,9 @@ class TamaPainter extends CustomPainter {
   /// Sombra de contacto. Se quita cuando el Tama esta sobre la peana, que
   /// pinta la suya.
   final bool shadow;
+
+  /// Lo que lleva puesto: se pinta como una pieza mas del cuerpo.
+  final TamaWear wear;
 
   static const double floor = 90;
   static const double centreX = 50;
@@ -194,6 +198,7 @@ class TamaPainter extends CustomPainter {
 
     _feetFront(canvas, body, color, rim);
     _face(canvas, body, skin, color);
+    _wear(canvas, body);
 
     canvas.restore();
 
@@ -492,6 +497,94 @@ class TamaPainter extends CustomPainter {
           canvas.restore();
       }
     }
+  }
+
+  // --- Lo que lleva puesto --------------------------------------------------
+
+  /// Gorrito de fiesta: un cono a rayas ladeado sobre la coronilla, con su
+  /// borla. Se apoya en el contorno real del cuerpo (la altura de la cima y el
+  /// ancho a esa altura), asi que cae bien en un mochi chato y en una gota
+  /// alta, y baila con el balanceo de las orejas.
+  void _wear(Canvas canvas, TamaBody body) {
+    if (wear != TamaWear.partyHat) return;
+    final r = body.bounds;
+    // Un poco hacia un lado: centrado del todo parece un cucurucho clavado.
+    final baseY = r.top + r.height * .08;
+    final half = math.max(body.halfWidthAt(baseY) * .78, r.width * .17);
+    final baseX = r.center.dx + r.width * .06;
+    // Alto, pero sin salirse del lienzo por arriba en los cuerpos altos.
+    final height = math.max(14.0, math.min(r.height * .5, baseY - 6));
+
+    canvas.save();
+    canvas.translate(baseX, baseY);
+    canvas.rotate(.2 + pose.sway * .6 + pose.tilt * .3);
+
+    // El ala del gorro sigue la curva de la cabeza: base algo combada.
+    final cone = Path()
+      ..moveTo(-half, 0)
+      ..quadraticBezierTo(0, half * .32, half, 0)
+      ..lineTo(half * .08, -height)
+      ..quadraticBezierTo(0, -height - 1.2, -half * .08, -height)
+      ..close();
+    final shade = Rect.fromLTRB(-half, -height, half, half * .3);
+    canvas.drawPath(
+      cone,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Color.lerp(T.partyHat, T.shellTop, .28)!,
+            T.partyHat,
+            Color.lerp(T.partyHat, T.dusk, .16)!,
+          ],
+          stops: const [0, .45, 1],
+        ).createShader(shade),
+    );
+
+    // Rayas diagonales, recortadas al cono.
+    canvas.save();
+    canvas.clipPath(cone);
+    final stripe = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = half * .36
+      ..color = T.partyStripe;
+    for (var i = 0; i < 4; i++) {
+      final y = -height * (.12 + i * .27);
+      canvas.drawLine(Offset(-half * 1.4, y + half * .5), Offset(half * 1.4, y - half * .5), stripe);
+    }
+    // Brillo de la casa en el lado de la luz.
+    canvas.drawPath(
+      Path()
+        ..moveTo(-half * .55, -half * .05)
+        ..lineTo(-half * .02, -height * .82),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 1.3
+        ..color = T.glintStrong,
+    );
+    canvas.restore();
+
+    canvas.drawPath(
+      cone,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..strokeJoin = StrokeJoin.round
+        ..color = Color.lerp(T.partyHat, T.dusk, .38)!.withValues(alpha: .7),
+    );
+
+    // Borla: tres bolitas que se sacuden con los saltos.
+    final tip = Offset(pose.sway * 3, -height - 1.6 - pose.hop * .05);
+    final puff = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-.35, -.45),
+        colors: [T.shellTop, T.partyPompom, Color.lerp(T.partyPompom, T.partyStripe, .55)!],
+        stops: const [0, .5, 1],
+      ).createShader(Rect.fromCircle(center: tip, radius: 4.4));
+    for (final (dx, dy, rad) in const [(-2.0, .6, 2.4), (2.0, .6, 2.4), (0.0, -1.4, 2.7)]) {
+      canvas.drawCircle(tip + Offset(dx, dy), rad, puff);
+    }
+    canvas.restore();
   }
 
   void _arms(Canvas canvas, TamaBody body, Paint skin, Color rim, Color color) {
@@ -1145,7 +1238,8 @@ class TamaPainter extends CustomPainter {
       old.look != look ||
       old._pose != _pose ||
       old._live != _live ||
-      old.shadow != shadow;
+      old.shadow != shadow ||
+      old.wear != wear;
 }
 
 /// Silueta del cuerpo para un aspecto: el contorno y lo que hace falta para

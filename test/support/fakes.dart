@@ -8,7 +8,9 @@ import 'dart:convert';
 import 'package:ibasho/backend/errors.dart';
 import 'package:ibasho/backend/ibasho_backend.dart';
 import 'package:ibasho/backend/models.dart';
+import 'package:ibasho/backend/rtdb_socket.dart';
 import 'package:ibasho/backend/tama.dart';
+import 'package:ibasho/core/friend_code.dart';
 import 'package:ibasho/storage/secure_store.dart';
 import 'package:ibasho/storage/settings_store.dart';
 
@@ -112,7 +114,24 @@ class FakeIbashoBackend implements IbashoBackend {
   // el, asi que dos controladores sobre el mismo doble se ven los cambios como
   // se los verian dos equipos.
 
-  late Map<String, Object?> _root = _seedTree();
+  /// La base es compartida: [sharing] crea otra cuenta sobre el mismo arbol,
+  /// como dos personas en dos equipos.
+  late _FakeDatabase _db = _FakeDatabase(_seedTree());
+
+  Map<String, Object?> get _root => _db.root;
+  set _root(Map<String, Object?> value) => _db.root = value;
+
+  List<(String, DatabaseQuery?, StreamController<DatabaseEvent>)> get _watchers => _db.watchers;
+
+  /// Otra cuenta que ve la misma base que esta.
+  FakeIbashoBackend sharing({required String uid, required String username, bool isAdmin = false}) {
+    final other = FakeIbashoBackend(uid: uid, username: username, isAdmin: isAdmin, link: link);
+    other._db = _db;
+    return other;
+  }
+
+  /// Lecturas recibidas, en orden.
+  List<String> get reads => _db.reads;
 
   Map<String, Object?> _seedTree() => <String, Object?>{
         'allowlist': <String, Object?>{
@@ -153,8 +172,6 @@ class FakeIbashoBackend implements IbashoBackend {
         },
       };
 
-  final List<(String path, DatabaseQuery? query, StreamController<DatabaseEvent>)>
-      _watchers = <(String, DatabaseQuery?, StreamController<DatabaseEvent>)>[];
 
   /// Escribe saltandose todo, como haria otro equipo o la consola de Firebase.
   void seed(String path, Object? value) {
@@ -196,9 +213,19 @@ class FakeIbashoBackend implements IbashoBackend {
     }
     if (value == null) {
       node.remove(segments.last);
+      _prune(_root, segments);
     } else {
       node[segments.last] = value;
     }
+  }
+
+  /// Como la base de verdad: un nodo que se queda sin hijos deja de existir.
+  static void _prune(Map<String, Object?> node, List<String> path) {
+    if (path.length < 2) return;
+    final child = node[path.first];
+    if (child is! Map<String, Object?>) return;
+    _prune(child, path.sublist(1));
+    if (child.isEmpty) node.remove(path.first);
   }
 
   /// Copia profunda con las marcas de tiempo del servidor ya resueltas.
@@ -240,8 +267,10 @@ class FakeIbashoBackend implements IbashoBackend {
     required String idToken,
     bool shallow = false,
     DatabaseQuery? query,
-  }) async =>
-      _snapshot(path, query);
+  }) async {
+    _db.reads.add(path);
+    return _snapshot(path, query);
+  }
 
   @override
   Future<void> write(String path, Object? value, {required String idToken}) async {
@@ -283,6 +312,16 @@ class FakeIbashoBackend implements IbashoBackend {
     return controller.stream;
   }
 
+  /// Conexiones de presencia abiertas, la ultima al final.
+  final List<FakePresenceLink> presenceLinks = <FakePresenceLink>[];
+
+  @override
+  PresenceLink openPresenceLink({required Future<String> Function() token}) {
+    final created = FakePresenceLink(this);
+    presenceLinks.add(created);
+    return created;
+  }
+
   @override
   Future<LinkQuality> probe() async => link;
 
@@ -291,6 +330,72 @@ class FakeIbashoBackend implements IbashoBackend {
     for (final (_, _, controller) in _watchers.toList()) {
       unawaited(controller.close());
     }
+  }
+}
+
+class _FakeDatabase {
+  _FakeDatabase(this.root);
+
+  Map<String, Object?> root;
+  final List<(String, DatabaseQuery?, StreamController<DatabaseEvent>)> watchers =
+      <(String, DatabaseQuery?, StreamController<DatabaseEvent>)>[];
+  final List<String> reads = <String>[];
+}
+
+/// Conexion de presencia en memoria: escribe en la base del doble y guarda lo
+/// encargado para la desconexion, que se aplica con [drop] o al cerrar.
+class FakePresenceLink implements PresenceLink {
+  FakePresenceLink(this._backend) {
+    scheduleMicrotask(() {
+      if (_closed) return;
+      _connected = true;
+      _connection.add(true);
+    });
+  }
+
+  final FakeIbashoBackend _backend;
+  final StreamController<bool> _connection = StreamController<bool>.broadcast();
+  bool _connected = false;
+  bool _closed = false;
+
+  /// Lo encargado para cuando se pierda la conexion, por ruta.
+  final Map<String, Object?> onDisconnect = <String, Object?>{};
+
+  @override
+  Stream<bool> get connection => _connection.stream;
+
+  @override
+  bool get isConnected => _connected;
+
+  @override
+  Future<void> set(String path, Object? value) => _backend.write(path, value, idToken: 'socket');
+
+  @override
+  Future<void> setOnDisconnect(String path, Object? value) async => onDisconnect[path] = value;
+
+  @override
+  Future<void> cancelOnDisconnect(String path) async => onDisconnect.remove(path);
+
+  /// El servidor nota que la conexion se ha caido: ejecuta lo encargado.
+  Future<void> drop({bool reconnect = false}) async {
+    _connected = false;
+    if (!_connection.isClosed) _connection.add(false);
+    for (final entry in Map.of(onDisconnect).entries) {
+      await _backend.write(entry.key, entry.value, idToken: 'servidor');
+    }
+    onDisconnect.clear();
+    if (reconnect && !_closed) {
+      _connected = true;
+      _connection.add(true);
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    if (_closed) return;
+    _closed = true;
+    await drop();
+    await _connection.close();
   }
 }
 
@@ -364,4 +469,88 @@ Tama sampleTama({
     createdAt: now.subtract(const Duration(days: 3)),
     updatedAt: now.subtract(const Duration(days: 1)),
   );
+}
+
+/// Ids de las cuentas de la escena social de prueba.
+const String kMireiaUid = 'uid-mireia';
+const String kLaiaUid = 'uid-laia';
+const String kPauUid = 'uid-pau';
+
+/// Codigos de amigo de la escena: los tres primeros contadores.
+final String kAdminCode = FriendCode.forCounter(1);
+final String kMireiaCode = FriendCode.forCounter(2);
+final String kLaiaCode = FriendCode.forCounter(3);
+
+/// Tama de perfil de mireia.
+Tama mireiaTama() => sampleTama(
+      id: '-TamaMireia000000001',
+      name: 'Mochi',
+      creator: kMireiaUid,
+      keeper: kMireiaUid,
+      look: const TamaLook(
+        parts: {TamaPart.body: 4, TamaPart.eyes: 2, TamaPart.crown: 2, TamaPart.pattern: 2},
+        color: '#9FE0C6',
+      ),
+    );
+
+/// Monta la escena social sobre la base del doble:
+/// - la cuenta principal y mireia son amigas desde hace 400 dias;
+/// - hoy es el cumpleaños de mireia en su zona (Asia/Tokyo), y suena `noche`
+///   en su perfil;
+/// - laia (sin ser amiga) le ha mandado una solicitud a la cuenta principal.
+void seedSocial(FakeIbashoBackend backend, {bool mireiaBirthdayToday = true}) {
+  final me = backend.uid;
+  final now = DateTime.now();
+  final tokyo = now.toUtc().add(const Duration(hours: 9));
+  final since = now.subtract(const Duration(days: 400)).millisecondsSinceEpoch;
+  final tama = mireiaTama();
+  String two(int n) => n.toString().padLeft(2, '0');
+
+  backend
+    ..seed('/allowlist/$kMireiaUid/mustChangePassword', false)
+    ..seed('/friendCodes/$kAdminCode', me)
+    ..seed('/friendCodes/$kMireiaCode', kMireiaUid)
+    ..seed('/friendCodes/$kLaiaCode', kLaiaUid)
+    ..seed('/system/friendCodeCounter', 4)
+    ..seed('/users/$me/friendCode', kAdminCode)
+    ..seed('/users/$me/card', {'displayName': 'Adrià', 'accentColor': '#5BC8F5'})
+    ..seed('/users/$me/friends/$kMireiaUid', {'since': since})
+    ..seed('/users/$me/friendCount', 1)
+    ..seed('/users/$me/requests/in/$kLaiaUid', {'at': now.millisecondsSinceEpoch})
+    ..seed('/allowlist/$kLaiaUid', AllowlistEntry(
+      uid: kLaiaUid,
+      accountId: kLaiaUid,
+      username: 'laia',
+      createdAt: DateTime(2026, 9, 13),
+      createdBy: me,
+      disabled: false,
+      mustChangePassword: false,
+      generation: 1,
+    ).toJson())
+    ..seed('/tamas/${tama.id}', tama.toJson())
+    ..seed('/users/$kMireiaUid', {
+      'profile': UserProfile(
+        username: 'mireia',
+        displayName: 'Mireia',
+        statusMessage: 'desde Tokio',
+        birthday: mireiaBirthdayToday ? '1999-${two(tokyo.month)}-${two(tokyo.day)}' : '1999-01-01',
+        timezone: 'Asia/Tokyo',
+        accentColor: '#EE7C96',
+        createdAt: DateTime(2026, 9, 10),
+      ).toJson(),
+      'card': {'displayName': 'Mireia', 'accentColor': '#EE7C96', 'tamaId': tama.id},
+      'tama': tama.id,
+      'friendCode': kMireiaCode,
+      'friends': {me: {'since': since}},
+      'friendCount': 1,
+      'presence': {'state': 'online', 'lastSeen': now.millisecondsSinceEpoch},
+      'music': {'profileTrack': 'noche'},
+    })
+    ..seed('/users/$kLaiaUid', {
+      'card': {'displayName': 'Laia', 'accentColor': '#B08BE0'},
+      'friendCode': kLaiaCode,
+      'requests': {
+        'out': {me: {'at': now.millisecondsSinceEpoch}},
+      },
+    });
 }

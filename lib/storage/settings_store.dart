@@ -20,6 +20,7 @@ class Preferences {
     this.credentialGenerations = const <String, int>{},
     this.accentHex = '',
     this.musicTrack = '',
+    this.profileMusicMuted = false,
   });
 
   final double musicVolume;
@@ -45,6 +46,10 @@ class Preferences {
   /// Pista de musica elegida en el canal de depuracion. Vacia: la de la casa.
   final String musicTrack;
 
+  /// Silencia la musica de los perfiles ajenos: al abrirlos sigue sonando la
+  /// de ambiente.
+  final bool profileMusicMuted;
+
   Preferences copyWith({
     double? musicVolume,
     double? effectsVolume,
@@ -54,6 +59,7 @@ class Preferences {
     Map<String, int>? credentialGenerations,
     String? accentHex,
     String? musicTrack,
+    bool? profileMusicMuted,
   }) =>
       Preferences(
         musicVolume: musicVolume ?? this.musicVolume,
@@ -65,6 +71,7 @@ class Preferences {
             credentialGenerations ?? this.credentialGenerations,
         accentHex: accentHex ?? this.accentHex,
         musicTrack: musicTrack ?? this.musicTrack,
+        profileMusicMuted: profileMusicMuted ?? this.profileMusicMuted,
       );
 
   Map<String, Object?> toJson() => {
@@ -76,6 +83,7 @@ class Preferences {
         'credentialGenerations': credentialGenerations,
         'accentHex': accentHex,
         'musicTrack': musicTrack,
+        'profileMusicMuted': profileMusicMuted,
       };
 
   static Preferences fromJson(Map<String, Object?> json) {
@@ -91,6 +99,7 @@ class Preferences {
           : const <String, int>{},
       accentHex: (json['accentHex'] as String?) ?? '',
       musicTrack: (json['musicTrack'] as String?) ?? '',
+      profileMusicMuted: (json['profileMusicMuted'] as bool?) ?? false,
     );
   }
 }
