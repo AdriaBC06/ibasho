@@ -8,6 +8,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:flutter/foundation.dart';
 
+import '../backend/tama.dart';
+import 'tama_voice.dart';
+
 /// Los cinco efectos del entorno.
 enum Sfx {
   /// Al desplazarse entre canales y al pulsar un control.
@@ -295,6 +298,64 @@ class AudioService {
     }
   }
 
+  // --- Voces de Tama -------------------------------------------------------
+  //
+  // Los graznidos se sintetizan en `tama_voice.dart` y se cargan en SoLoud
+  // desde memoria. Van por el mismo motor que los efectos, asi que obedecen al
+  // volumen de efectos sin hacer nada mas: es el volumen global de SoLoud.
+
+  /// Graznidos ya cargados, por clave. Se guardan unos pocos: cada Tama tiene
+  /// cuatro frases y se repiten mucho.
+  final Map<String, AudioSource> _chirps = <String, AudioSource>{};
+  SoundHandle? _chirpVoice;
+  DateTime _lastChirp = DateTime.fromMillisecondsSinceEpoch(0);
+  static const int _maxChirps = 16;
+
+  /// Hace sonar un graznido. Devuelve los segundos que dura, o 0 si no suena
+  /// (sin audio o con los efectos a cero).
+  Future<double> chirp({
+    required String name,
+    required TamaVoice voice,
+    ChirpKind kind = ChirpKind.hello,
+  }) async {
+    final pattern = chirpPattern(name, voice, kind);
+    final seconds = chirpSeconds(pattern);
+    if (!_sfxReady || _effectsVolume <= 0) return 0;
+    final now = DateTime.now();
+    if (now.difference(_lastChirp) < const Duration(milliseconds: 120)) return 0;
+    _lastChirp = now;
+
+    final key = '${voiceSeed(name)}-${voice.pitch}-${voice.tempo}-'
+        '${voice.timbre.index}-${kind.index}';
+    try {
+      final soloud = SoLoud.instance;
+      var source = _chirps.remove(key);
+      if (source == null) {
+        if (_chirps.length >= _maxChirps) {
+          final oldest = _chirps.keys.first;
+          await soloud.disposeSource(_chirps.remove(oldest)!);
+        }
+        source = await soloud.loadMem(
+          'tama-$key.wav',
+          synthesizeChirp(name: name, voice: voice, kind: kind),
+        );
+      }
+      _chirps[key] = source;
+
+      // Un Tama no habla encima de si mismo: la frase anterior se apaga.
+      final previous = _chirpVoice;
+      if (previous != null && soloud.getIsValidVoiceHandle(previous)) {
+        soloud.fadeVolume(previous, 0, _voiceFade);
+        soloud.scheduleStop(previous, _voiceFade);
+      }
+      _chirpVoice = soloud.play(source);
+      return seconds;
+    } catch (e) {
+      debugPrint('Ibasho: graznido fallido ($e)');
+      return 0;
+    }
+  }
+
   double get musicVolume => _musicVolume;
 
   double get effectsVolume => _effectsVolume;
@@ -320,6 +381,7 @@ class AudioService {
     if (_sfxReady) {
       SoLoud.instance.deinit();
       _sfxSources.clear();
+      _chirps.clear();
       _liveVoices.clear();
       _sfxReady = false;
     }

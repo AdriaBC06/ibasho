@@ -256,18 +256,34 @@ class IbashoToggle extends StatelessWidget {
   }
 }
 
-/// Deslizador de volumen.
+/// Deslizador del entorno: raíl de cristal hundido y pomo de plastico con su
+/// brillo.
+///
+/// Suena un tick corto al tocarlo, al soltarlo y, si tiene `ticks`, cada vez
+/// que el valor cruza uno de esos pasos mientras se arrastra.
 class IbashoSlider extends StatefulWidget {
   const IbashoSlider({
     super.key,
     required this.value,
     required this.onChanged,
     this.width = 280,
+    this.ticks = 0,
+    this.onChangeStart,
+    this.semanticLabel,
   });
 
   final double value;
   final ValueChanged<double> onChanged;
   final double width;
+
+  /// Pasos audibles a lo largo del recorrido. 0: solo al tocar y al soltar.
+  final int ticks;
+
+  /// Empieza un gesto: sirve para apuntar un paso de deshacer por arrastre y
+  /// no uno por pixel.
+  final VoidCallback? onChangeStart;
+
+  final String? semanticLabel;
 
   @override
   State<IbashoSlider> createState() => _IbashoSliderState();
@@ -280,9 +296,12 @@ class _IbashoSliderState extends State<IbashoSlider> {
   double _fractionFor(double dx) =>
       ((dx - _knob / 2) / (widget.width - _knob)).clamp(0.0, 1.0);
 
+  int _bucket(double v) => widget.ticks <= 0 ? 0 : (v * widget.ticks).round();
+
   void _emit(double fraction, {bool tick = true}) {
     if ((fraction - widget.value).abs() < .001) return;
-    if (tick) AudioService.instance.play(Sfx.tick);
+    final crossed = widget.ticks > 0 && _bucket(fraction) != _bucket(widget.value);
+    if (tick || crossed) AudioService.instance.play(Sfx.tick);
     widget.onChanged(fraction);
   }
 
@@ -291,89 +310,118 @@ class _IbashoSliderState extends State<IbashoSlider> {
     final skin = IbashoSkin.of(context);
     final value = widget.value.clamp(0.0, 1.0);
 
-    return Focus(
-      canRequestFocus: true,
-      onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+    return Semantics(
+      slider: true,
+      label: widget.semanticLabel,
+      value: '${(value * 100).round()}',
+      child: Focus(
+        canRequestFocus: true,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+            return KeyEventResult.ignored;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            widget.onChangeStart?.call();
+            _emit((value - .05).clamp(0.0, 1.0));
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            widget.onChangeStart?.call();
+            _emit((value + .05).clamp(0.0, 1.0));
+            return KeyEventResult.handled;
+          }
           return KeyEventResult.ignored;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-          _emit((value - .05).clamp(0.0, 1.0));
-          return KeyEventResult.handled;
-        }
-        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-          _emit((value + .05).clamp(0.0, 1.0));
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Builder(
-        builder: (context) {
-          final focused = Focus.of(context).hasFocus;
-          return MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapDown: (d) {
-                Focus.of(context).requestFocus();
-                _emit(_fractionFor(d.localPosition.dx));
-              },
-              onHorizontalDragUpdate: (d) =>
-                  _emit(_fractionFor(d.localPosition.dx), tick: false),
-              onHorizontalDragEnd: (_) => AudioService.instance.play(Sfx.tick),
-              child: FocusRing(
-                visible: focused,
-                radius: _knob / 2,
-                inset: -2,
-                child: SizedBox(
-                  width: widget.width,
-                  height: _knob,
-                  child: Stack(
-                    alignment: Alignment.centerLeft,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: SizedBox(
-                          height: _track,
-                          child: GlossSurface(radius: _track / 2, recessed: true),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3.5),
-                        child: SizedBox(
-                          height: _track - 5,
-                          width: math.max(
-                            _track - 5,
-                            (widget.width - 7) * value,
-                          ),
-                          child: GlossSurface(
-                            radius: (_track - 5) / 2,
-                            tint: skin.accent,
-                            elevation: 0,
-                            borderColor: skin.accentDeep,
-                            specular: .7,
+        },
+        child: Builder(
+          builder: (context) {
+            final focused = Focus.of(context).hasFocus;
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (d) {
+                  Focus.of(context).requestFocus();
+                  widget.onChangeStart?.call();
+                  _emit(_fractionFor(d.localPosition.dx));
+                },
+                onHorizontalDragStart: (_) => widget.onChangeStart?.call(),
+                onHorizontalDragUpdate: (d) =>
+                    _emit(_fractionFor(d.localPosition.dx), tick: false),
+                onHorizontalDragEnd: (_) => AudioService.instance.play(Sfx.tick),
+                child: FocusRing(
+                  visible: focused,
+                  radius: _knob / 2,
+                  inset: -2,
+                  child: SizedBox(
+                    width: widget.width,
+                    height: _knob,
+                    child: Stack(
+                      alignment: Alignment.centerLeft,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: SizedBox(
+                            height: _track,
+                            child: GlossSurface(
+                              radius: _track / 2,
+                              recessed: true,
+                              // El cristal: un reflejo fino en la mitad de abajo
+                              // del raíl hundido.
+                              child: Align(
+                                alignment: const Alignment(0, .55),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 9),
+                                  child: SizedBox(
+                                    height: 2,
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: T.glintStrong,
+                                        borderRadius: BorderRadius.circular(1),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        left: (widget.width - _knob) * value,
-                        child: SizedBox(
-                          width: _knob,
-                          height: _knob,
-                          child: GlossSurface(
-                            radius: _knob / 2,
-                            elevation: 1.2,
-                            borderColor: skin.accentDeep,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3.5),
+                          child: SizedBox(
+                            height: _track - 5,
+                            width: math.max(
+                              _track - 5,
+                              (widget.width - 7) * value,
+                            ),
+                            child: GlossSurface(
+                              radius: (_track - 5) / 2,
+                              tint: skin.accent,
+                              elevation: 0,
+                              borderColor: skin.accentDeep,
+                              specular: .7,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        Positioned(
+                          left: (widget.width - _knob) * value,
+                          child: SizedBox(
+                            width: _knob,
+                            height: _knob,
+                            child: GlossSurface(
+                              radius: _knob / 2,
+                              elevation: 1.2,
+                              borderColor: skin.accentDeep,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

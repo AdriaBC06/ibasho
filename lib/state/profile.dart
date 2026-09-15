@@ -109,6 +109,13 @@ class ProfileController extends StateNotifier<ProfileState> {
     }
     if (current == null || event.data == null) return;
     final field = event.path.replaceAll('/', '');
+    if (field == 'accentFollowsTama') {
+      if (event.data is bool) {
+        state = state.copyWith(
+            profile: current.copyWith(accentFollowsTama: event.data! as bool));
+      }
+      return;
+    }
     final value = '${event.data}';
     state = state.copyWith(
       profile: switch (field) {

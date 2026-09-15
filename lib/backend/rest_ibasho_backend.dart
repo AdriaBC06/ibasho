@@ -97,8 +97,13 @@ class RestIbashoBackend implements IbashoBackend {
   }
 
   @override
-  Future<Object?> read(String path, {required String idToken, bool shallow = false}) =>
-      _db.read(path, idToken: idToken, shallow: shallow);
+  Future<Object?> read(
+    String path, {
+    required String idToken,
+    bool shallow = false,
+    DatabaseQuery? query,
+  }) =>
+      _db.read(path, idToken: idToken, shallow: shallow, query: query);
 
   @override
   Future<void> write(String path, Object? value, {required String idToken}) =>
@@ -113,8 +118,12 @@ class RestIbashoBackend implements IbashoBackend {
       _db.remove(path, idToken: idToken);
 
   @override
-  Stream<DatabaseEvent> watch(String path, {required Future<String> Function() token}) =>
-      _db.watch(path, token: token);
+  Stream<DatabaseEvent> watch(
+    String path, {
+    required Future<String> Function() token,
+    DatabaseQuery? query,
+  }) =>
+      _db.watch(path, token: token, query: query);
 
   @override
   Future<LinkQuality> probe() => _db.probe();

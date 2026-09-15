@@ -11,6 +11,7 @@ import 'coming_soon_channel.dart';
 import 'debug_channel.dart';
 import 'profile_channel.dart';
 import 'settings_channel.dart';
+import 'tamas_channel.dart';
 
 /// Un hueco de la rejilla.
 @immutable
@@ -33,7 +34,7 @@ class ChannelSpec {
 }
 
 /// Cuantas ranuras libres ensena el entorno mientras no haya apps.
-const int emptySlotCount = 4;
+const int emptySlotCount = 3;
 
 /// Canales por pagina: rejilla de 4x2.
 const int channelsPerPage = 8;
@@ -50,6 +51,12 @@ List<ChannelSpec> channelsFor({required bool isAdmin}) => <ChannelSpec>[
         glyph: Glyph.person,
         label: (l) => l.channelProfile,
         builder: (_) => const ProfileChannel(),
+      ),
+      ChannelSpec(
+        id: 'tamas',
+        glyph: Glyph.tama,
+        label: (l) => l.channelTamas,
+        builder: (_) => const TamasChannel(),
       ),
       if (isAdmin)
         ChannelSpec(

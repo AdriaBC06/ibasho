@@ -16,7 +16,15 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { get, ref, set, update } from 'firebase/database';
+import {
+  equalTo,
+  get,
+  orderByChild,
+  query,
+  ref,
+  set,
+  update,
+} from 'firebase/database';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const rules = readFileSync(join(here, '..', '..', 'database.rules.json'), 'utf8');
@@ -312,16 +320,285 @@ test('el perfil valida tipos y longitudes', async () => {
   await assertFails(set(ref(member, `${base}/monedas`), 9999));
 });
 
-// 10. El nodo del Tama esta reservado para el checkpoint 2.
-test('nadie escribe todavia en el nodo del Tama', async () => {
-  const member = db(MEMBER);
-  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), { especie: 'x' }));
-  await assertFails(
-    set(ref(db(ADMIN), `/users/${MEMBER}/tama`), { especie: 'x' }),
-  );
+// 10. Tamas: el contador. Crear o borrar un Tama va en la misma operacion
+//     multi-ruta que el contador y que el marcador del cambio.
+const tamaId = (n) => `-Tama${String(n).padStart(15, '0')}`;
+
+const tamaLook = (extra = {}) => ({
+  body: 0, eyes: 1, mouth: 0, crown: 1, cheeks: 1, pattern: 1, arms: 0, feet: 0,
+  bodyWidth: 50, bodyHeight: 50, eyeSize: 50, eyeSpacing: 50, eyeHeight: 50,
+  mouthSize: 50, mouthHeight: 50, crownSize: 50, cheekIntensity: 60, patternTone: 25,
+  color: '#5BC8F5', colorMode: 'palette',
+  ...extra,
 });
 
-// 11. La presencia valida su forma.
+const tamaRecord = (owner, extra = {}) => ({
+  schema: 1,
+  creator: owner,
+  keeper: owner,
+  name: 'Tommy',
+  personality: 'playful',
+  voice: { pitch: 50, tempo: 50, timbre: 0 },
+  look: tamaLook(),
+  createdAt: now,
+  updatedAt: now,
+  ...extra,
+});
+
+const createTama = (database, owner, id, count, extra = {}) =>
+  update(ref(database, '/'), {
+    [`tamas/${id}`]: tamaRecord(owner, extra),
+    [`users/${owner}/tamaCount`]: count,
+    [`users/${owner}/tamaLastChange`]: id,
+  });
+
+const deleteTama = (database, owner, id, count) =>
+  update(ref(database, '/'), {
+    [`tamas/${id}`]: null,
+    [`users/${owner}/tamaCount`]: count,
+    [`users/${owner}/tamaLastChange`]: id,
+  });
+
+test('crear un Tama exige mover el contador en la misma operacion', async () => {
+  const member = db(MEMBER);
+
+  await assertSucceeds(createTama(member, MEMBER, tamaId(1), 1));
+
+  // Sin contador, con un salto de dos o con el marcador equivocado: no.
+  await assertFails(set(ref(member, `/tamas/${tamaId(2)}`), tamaRecord(MEMBER)));
+  await assertFails(createTama(member, MEMBER, tamaId(2), 3));
+  await assertFails(
+    update(ref(member, '/'), {
+      [`tamas/${tamaId(2)}`]: tamaRecord(MEMBER),
+      [`users/${MEMBER}/tamaCount`]: 2,
+      [`users/${MEMBER}/tamaLastChange`]: tamaId(1),
+    }),
+  );
+
+  // Dos Tamas con un solo incremento: no.
+  await assertFails(
+    update(ref(member, '/'), {
+      [`tamas/${tamaId(2)}`]: tamaRecord(MEMBER),
+      [`tamas/${tamaId(3)}`]: tamaRecord(MEMBER),
+      [`users/${MEMBER}/tamaCount`]: 2,
+      [`users/${MEMBER}/tamaLastChange`]: tamaId(2),
+    }),
+  );
+
+  // Subir o bajar el contador sin crear ni borrar nada: no. Es lo que dejaria
+  // resetearlo y crear Tamas sin fin.
+  await assertFails(
+    update(ref(member, `/users/${MEMBER}`), { tamaCount: 2, tamaLastChange: tamaId(9) }),
+  );
+  await assertFails(
+    update(ref(member, `/users/${MEMBER}`), { tamaCount: 0, tamaLastChange: tamaId(1) }),
+  );
+  await assertFails(set(ref(member, `/users/${MEMBER}/tamaCount`), 0));
+
+  // Ni borrarlo entero, ni borrar la cuenta para empezar de cero.
+  await assertFails(set(ref(member, `/users/${MEMBER}/tamaCount`), null));
+  await assertFails(set(ref(member, `/users/${MEMBER}/tamaLastChange`), null));
+  await assertFails(set(ref(member, `/users/${MEMBER}`), null));
+
+  // Un Tama nace siendo de quien lo crea, y del contador de quien lo crea.
+  await assertFails(createTama(member, MEMBER, tamaId(2), 2, { keeper: OTHER }));
+  await assertFails(createTama(member, MEMBER, tamaId(2), 2, { creator: OTHER }));
+  await assertFails(createTama(member, OTHER, tamaId(2), 1));
+
+  const count = await get(ref(member, `/users/${MEMBER}/tamaCount`));
+  assert.equal(count.val(), 1);
+});
+
+// 11. Criterio de aceptacion 4: el Tama numero 100 no se puede crear, aunque
+//     se llame a la API directamente.
+test('las reglas impiden crear el Tama numero 100', async () => {
+  const member = db(MEMBER);
+  for (let n = 1; n <= 99; n++) {
+    await assertSucceeds(createTama(member, MEMBER, tamaId(n), n));
+  }
+  await assertFails(createTama(member, MEMBER, tamaId(100), 100));
+  // Tampoco saltandose el contador o reutilizando el ultimo marcador.
+  await assertFails(set(ref(member, `/tamas/${tamaId(100)}`), tamaRecord(MEMBER)));
+  await assertFails(createTama(member, MEMBER, tamaId(100), 99));
+
+  // Al borrar uno baja exactamente en uno, y vuelve a haber sitio.
+  await assertFails(deleteTama(member, MEMBER, tamaId(99), 97));
+  await assertSucceeds(deleteTama(member, MEMBER, tamaId(99), 98));
+  await assertSucceeds(createTama(member, MEMBER, tamaId(100), 99));
+  await assertFails(createTama(member, MEMBER, tamaId(101), 100));
+});
+
+// 12. Criterio de aceptacion 5: solo el creador edita el aspecto. El cuidador
+//     (que en el futuro podra ser un amigo) solo escribe los cuidados.
+async function seedTamas() {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const root = context.database();
+    await update(ref(root, '/'), {
+      // Creado por member y ya traspasado a other: el caso del checkpoint 3.
+      [`tamas/${tamaId(1)}`]: tamaRecord(MEMBER, { keeper: OTHER, name: 'Viajero' }),
+      [`tamas/${tamaId(2)}`]: tamaRecord(MEMBER, { name: 'Casero' }),
+      [`users/${MEMBER}/tamaCount`]: 2,
+      [`users/${MEMBER}/tamaLastChange`]: tamaId(2),
+    });
+  });
+}
+
+test('solo el creador edita el aspecto de un Tama', async () => {
+  await seedTamas();
+  const member = db(MEMBER);
+  const other = db(OTHER);
+  const traveller = `/tamas/${tamaId(1)}`;
+  const home = `/tamas/${tamaId(2)}`;
+
+  // Alguien que no lo ha creado no toca ni aspecto, ni nombre, ni voz.
+  await assertFails(set(ref(other, `${home}/look/color`), '#000000'));
+  await assertFails(set(ref(other, `${home}/look`), tamaLook({ body: 3 })));
+  await assertFails(set(ref(other, `${traveller}/look/color`), '#000000'));
+  await assertFails(set(ref(other, `${traveller}/name`), 'Mio'));
+  await assertFails(set(ref(other, `${traveller}/personality`), 'shy'));
+  await assertFails(set(ref(other, `${traveller}/voice/pitch`), 90));
+  await assertFails(set(ref(other, traveller), tamaRecord(OTHER)));
+  await assertFails(set(ref(other, `${traveller}/creator`), OTHER));
+
+  // Pero si lo cuida, si le da de comer y lo mima.
+  await assertSucceeds(set(ref(other, `${traveller}/care/lastFed`), now));
+  await assertSucceeds(set(ref(other, `${traveller}/care/lastPetted`), now));
+
+  // El creador edita el aspecto aunque ya no lo cuide, y no los cuidados.
+  await assertSucceeds(set(ref(member, `${traveller}/look/color`), '#E8A33D'));
+  await assertSucceeds(
+    update(ref(member, traveller), {
+      name: 'Viajera',
+      personality: 'shy',
+      voice: { pitch: 80, tempo: 20, timbre: 2 },
+      look: tamaLook({ body: 5, colorMode: 'hex', color: '#123456' }),
+      updatedAt: now,
+    }),
+  );
+  await assertFails(set(ref(member, `${traveller}/care/lastFed`), now));
+
+  // Nadie cambia quien lo creo, quien lo cuida ni cuando nacio.
+  await assertFails(set(ref(member, `${home}/creator`), OTHER));
+  await assertFails(set(ref(member, `${home}/keeper`), OTHER));
+  await assertFails(set(ref(member, `${home}/createdAt`), now - 1000));
+  await assertFails(set(ref(member, `${home}/schema`), 2));
+});
+
+test('cada campo del Tama valida tipo, rango y lista cerrada', async () => {
+  await seedTamas();
+  const member = db(MEMBER);
+  const home = `/tamas/${tamaId(2)}`;
+  const ok = (path, value) => assertSucceeds(set(ref(member, `${home}/${path}`), value));
+  const bad = (path, value) => assertFails(set(ref(member, `${home}/${path}`), value));
+
+  await ok('look/body', 5);
+  await bad('look/body', 6);
+  await bad('look/body', -1);
+  await bad('look/mouth', 5);
+  await ok('look/cheeks', 3);
+  await bad('look/cheeks', 4);
+  await ok('look/arms', 3);
+  await bad('look/arms', 4);
+  await ok('look/feet', 3);
+  await bad('look/feet', 4);
+  await ok('look/bodyWidth', 100);
+  await bad('look/bodyWidth', 101);
+  await bad('look/eyeSize', 50.5);
+  await bad('look/eyeSize', '50');
+  await ok('look/color', '#abcdef');
+  await bad('look/color', 'rojo');
+  await bad('look/color', '#12345');
+  await ok('look/colorMode', 'hex');
+  await bad('look/colorMode', 'rgb');
+  await bad('look/sombrero', 1);
+  await bad('look', { body: 1 });
+
+  await ok('name', 'x'.repeat(16));
+  await bad('name', 'x'.repeat(17));
+  await bad('name', '');
+  await ok('personality', 'sleepy');
+  await bad('personality', 'grumpy');
+  await ok('voice/timbre', 5);
+  await bad('voice/timbre', 6);
+  await bad('voice/pitch', 101);
+  await bad('voice/volumen', 3);
+  await bad('updatedAt', now + 3600 * 1000);
+  await bad('monedas', 9999);
+
+  // Cuidados: marcas de tiempo del pasado, nada mas.
+  await ok('care/lastPetted', now);
+  await bad('care/lastPetted', now + 3600 * 1000);
+  await bad('care/lastPetted', 'ayer');
+  await bad('care/humor', 80);
+});
+
+test('la lista de Tamas solo se lee con la consulta de cuidador propio', async () => {
+  await seedTamas();
+  const member = db(MEMBER);
+  const other = db(OTHER);
+
+  await assertSucceeds(
+    get(query(ref(member, '/tamas'), orderByChild('keeper'), equalTo(MEMBER))),
+  );
+  const mine = await get(
+    query(ref(other, '/tamas'), orderByChild('keeper'), equalTo(OTHER)),
+  );
+  assert.deepEqual(Object.keys(mine.val()), [tamaId(1)]);
+
+  // Ni la coleccion entera ni la lista de otro.
+  await assertFails(get(ref(member, '/tamas')));
+  await assertFails(
+    get(query(ref(member, '/tamas'), orderByChild('keeper'), equalTo(OTHER))),
+  );
+  await assertFails(
+    get(query(ref(member, '/tamas'), orderByChild('creator'), equalTo(MEMBER))),
+  );
+
+  // Un Tama suelto: su creador y su cuidador, nadie mas (hasta el CP3).
+  await assertSucceeds(get(ref(member, `/tamas/${tamaId(1)}`)));
+  await assertSucceeds(get(ref(other, `/tamas/${tamaId(1)}`)));
+  await assertFails(get(ref(other, `/tamas/${tamaId(2)}`)));
+  await assertFails(get(ref(db(ORPHAN), `/tamas/${tamaId(2)}`)));
+  await assertFails(get(ref(db(BANNED), `/tamas/${tamaId(2)}`)));
+});
+
+test('el Tama de perfil es uno que se cuida y no se puede borrar sin soltarlo', async () => {
+  await seedTamas();
+  const member = db(MEMBER);
+  const other = db(OTHER);
+
+  await assertSucceeds(set(ref(member, `/users/${MEMBER}/tama`), tamaId(2)));
+  // Uno que ya no cuida, uno inexistente o un id raro: no.
+  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), tamaId(1)));
+  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), tamaId(7)));
+  await assertFails(set(ref(member, `/users/${MEMBER}/tama`), 'hola'));
+  await assertSucceeds(set(ref(other, `/users/${OTHER}/tama`), tamaId(1)));
+
+  // Borrar el Tama de perfil sin soltarlo deja el perfil apuntando a la nada.
+  await assertFails(deleteTama(member, MEMBER, tamaId(2), 1));
+  await assertSucceeds(
+    update(ref(member, '/'), {
+      [`tamas/${tamaId(2)}`]: null,
+      [`users/${MEMBER}/tamaCount`]: 1,
+      [`users/${MEMBER}/tamaLastChange`]: tamaId(2),
+      [`users/${MEMBER}/tama`]: null,
+    }),
+  );
+
+  // Borra quien lo creo y lo cuida a la vez: ni el creador de uno traspasado
+  // ni su cuidador.
+  await assertFails(deleteTama(member, MEMBER, tamaId(1), 0));
+  await assertFails(deleteTama(other, OTHER, tamaId(1), 0));
+  await assertFails(deleteTama(other, MEMBER, tamaId(1), 0));
+});
+
+test('el acento sigue al Tama solo si es un booleano', async () => {
+  const member = db(MEMBER);
+  await assertSucceeds(set(ref(member, `/users/${MEMBER}/profile/accentFollowsTama`), true));
+  await assertFails(set(ref(member, `/users/${MEMBER}/profile/accentFollowsTama`), 'si'));
+});
+
+// 13. La presencia valida su forma.
 test('la presencia valida estado y marca de tiempo', async () => {
   const member = db(MEMBER);
   const base = `/users/${MEMBER}/presence`;
@@ -330,7 +607,7 @@ test('la presencia valida estado y marca de tiempo', async () => {
   await assertFails(set(ref(member, base), { state: 'online' }));
 });
 
-// 12. Un miembro lee el anuncio del sistema pero no lo escribe.
+// 14. Un miembro lee el anuncio del sistema pero no lo escribe.
 test('el anuncio del sistema lo escribe solo el administrador', async () => {
   const member = db(MEMBER);
   await assertSucceeds(get(ref(member, '/system/announcement')));
@@ -341,7 +618,7 @@ test('el anuncio del sistema lo escribe solo el administrador', async () => {
   assert.equal(snapshot.val().text, 'hola');
 });
 
-// 13. Musica del menu: las canciones se desbloquean y solo se elige lo que se
+// 15. Musica del menu: las canciones se desbloquean y solo se elige lo que se
 //     tiene.
 test('la musica del menu solo acepta canciones desbloqueadas', async () => {
   const member = db(MEMBER);

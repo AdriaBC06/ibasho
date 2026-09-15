@@ -45,10 +45,18 @@ abstract interface class IbashoBackend {
 
   // --- Datos -------------------------------------------------------------
 
-  Future<Object?> read(String path, {required String idToken, bool shallow = false});
+  /// Lee un nodo. Con `query`, solo los hijos que cumplen la consulta.
+  Future<Object?> read(
+    String path, {
+    required String idToken,
+    bool shallow = false,
+    DatabaseQuery? query,
+  });
 
   Future<void> write(String path, Object? value, {required String idToken});
 
+  /// Fusion. Las claves pueden ser rutas (`tamas/x`, `users/y/tamaCount`):
+  /// entonces es una escritura multi-ruta, que se aplica entera o no se aplica.
   Future<void> merge(String path, Map<String, Object?> value, {required String idToken});
 
   Future<void> remove(String path, {required String idToken});
@@ -57,7 +65,11 @@ abstract interface class IbashoBackend {
   ///
   /// El flujo se reconecta solo con retroceso exponencial y tope de 30 s.
   /// `token` se invoca en cada intento para conseguir un token fresco.
-  Stream<DatabaseEvent> watch(String path, {required Future<String> Function() token});
+  Stream<DatabaseEvent> watch(
+    String path, {
+    required Future<String> Function() token,
+    DatabaseQuery? query,
+  });
 
   // --- Salud -------------------------------------------------------------
 

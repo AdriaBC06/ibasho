@@ -12,6 +12,7 @@ import '../../theme/type.dart';
 import '../canvas.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
+import 'channel_grid.dart';
 
 /// El gesto de la casa: el icono crece desde su sitio hasta llenar la pantalla
 /// entera, las esquinas se van a cero y el resto del entorno se desvanece.
@@ -221,6 +222,78 @@ Future<void> openChannel(
   );
 }
 
+/// Pagina dentro de un canal: la habitacion de un Tama, el creador.
+///
+/// Entra deslizandose desde la derecha con el mismo sobrepaso corto que el
+/// cambio de pagina de la rejilla. Lo audaz se queda para abrir canales; esto
+/// es discreto a proposito. Con movimiento reducido, un fundido corto.
+class ChannelPageRoute<R> extends PageRoute<R> {
+  ChannelPageRoute({required this.builder, required this.reducedMotion});
+
+  final WidgetBuilder builder;
+  final bool reducedMotion;
+
+  @override
+  bool get opaque => true;
+
+  @override
+  bool get maintainState => true;
+
+  @override
+  Color? get barrierColor => null;
+
+  @override
+  String? get barrierLabel => null;
+
+  @override
+  Duration get transitionDuration => reducedMotion ? T.reduced : T.page;
+
+  @override
+  Duration get reverseTransitionDuration =>
+      reducedMotion ? T.reduced : const Duration(milliseconds: 300);
+
+  @override
+  Widget buildPage(BuildContext context, Animation<double> animation,
+          Animation<double> secondaryAnimation) =>
+      DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [T.shellTop, T.shellBottom],
+          ),
+        ),
+        child: builder(context),
+      );
+
+  @override
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    if (reducedMotion) return FadeTransition(opacity: animation, child: child);
+    return SlideTransition(
+      position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(
+        CurvedAnimation(
+          parent: animation,
+          curve: pageSlideCurve,
+          reverseCurve: Curves.easeInCubic,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Abre una pagina dentro del canal en curso.
+Future<R?> pushChannelPage<R>(BuildContext context, WidgetBuilder builder) {
+  AudioService.instance.play(Sfx.open);
+  return Navigator.of(context).push(
+    ChannelPageRoute<R>(
+      builder: builder,
+      reducedMotion: IbashoSkin.of(context).reducedMotion,
+    ),
+  );
+}
+
 /// Marco comun de todos los canales: cabecera con titulo y vuelta atras.
 class ChannelScaffold extends StatelessWidget {
   const ChannelScaffold({
@@ -229,6 +302,7 @@ class ChannelScaffold extends StatelessWidget {
     required this.glyph,
     required this.child,
     this.trailing,
+    this.onClose,
   });
 
   final String title;
@@ -236,11 +310,19 @@ class ChannelScaffold extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
 
+  /// Sustituye al cierre normal, por ejemplo para preguntar antes de perder
+  /// cambios. Quien lo pasa decide si cierra.
+  final VoidCallback? onClose;
+
   @override
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
 
     void close() {
+      if (onClose != null) {
+        onClose!();
+        return;
+      }
       AudioService.instance.play(Sfx.back);
       Navigator.of(context).maybePop();
     }

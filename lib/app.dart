@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'audio/audio_service.dart';
+import 'backend/tama.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'state/debug.dart';
 import 'state/providers.dart';
@@ -20,6 +21,7 @@ import 'ui/screens/change_password_screen.dart';
 import 'ui/screens/login_screen.dart';
 import 'ui/screens/shell_screen.dart';
 import 'ui/screens/splash_screen.dart';
+import 'ui/tama/tama_view.dart';
 
 /// La raiz es `WidgetsApp`, no `MaterialApp`.
 ///
@@ -62,7 +64,9 @@ class IbashoApp extends ConsumerWidget {
           reducedMotion: reduced,
           child: DefaultTextStyle(
             style: Ty.body,
-            child: VirtualCanvas(child: navigator!),
+            child: TamaPointerTracker(
+              child: VirtualCanvas(child: navigator!),
+            ),
           ),
         );
       },
@@ -116,11 +120,11 @@ class _AppRootState extends ConsumerState<AppRoot> {
       }
     });
 
-    // El acento del perfil se recuerda en local para el proximo arranque.
-    ref.listen(profileProvider.select((p) => p.profile?.accentColor),
-        (before, after) {
-      if (after == null || before == after) return;
-      unawaited(ref.read(preferencesProvider.notifier).rememberAccent(after));
+    // El acento en uso se recuerda en local para el proximo arranque, venga
+    // del perfil o del Tama.
+    ref.listen(accentProvider, (before, after) {
+      if (before == after || ref.read(profileProvider).profile == null) return;
+      unawaited(ref.read(preferencesProvider.notifier).rememberAccent(hexFromColor(after)));
     });
 
     // El idioma guardado en el perfil manda sobre el local en cuanto llega.

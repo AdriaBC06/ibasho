@@ -11,6 +11,16 @@ import 'package:flutter/widgets.dart';
 /// Se dibujan con `Path` sobre una caja de 24x24 en lugar de tirar de una
 /// fuente de iconos: asi el trazo es el mismo redondeado que la tipografia y
 /// no entra ni un asset de Material por la puerta de atras.
+///
+/// Normas de dibujo, para los que hay y los que vengan:
+/// - Todo el trazo cabe dentro de la caja, con al menos 1,2 de margen contando
+///   el grosor.
+/// - Un icono se lee como una sola linea: las piezas se unen en sus extremos o
+///   se separan con aire, nunca se cruzan ni se montan unas encima de otras.
+///   Si una forma lleva orejas, dientes o patas, van en el mismo contorno.
+/// - Se pinta en una sola capa (ver [_GlyphPainter.paint]): con un color
+///   translucido, donde dos trazos se tocan no se oscurece.
+/// `test/glyphs_test.dart` comprueba las dos primeras con pixeles de verdad.
 enum Glyph {
   gear,
   person,
@@ -39,6 +49,13 @@ enum Glyph {
   clock,
   chevronDown,
   tama,
+  undo,
+  heart,
+  treat,
+  pencil,
+  portrait,
+  trash,
+  wave,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -75,16 +92,30 @@ class _GlyphPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final scale = size.shortestSide / 24;
+    // Todo el icono va a una capa con la opacidad aplicada una sola vez: dos
+    // trazos que se tocan no suman transparencia y el icono sigue siendo una
+    // unica linea aunque el color sea translucido.
+    // El ojo tachado recorta su hueco con `BlendMode.clear`: siempre necesita
+    // capa propia, o recortaria tambien lo que haya debajo del icono.
+    final layered = color.a < 1 || glyph == Glyph.eyeOff;
+    if (layered) {
+      canvas.saveLayer(
+        Offset.zero & size,
+        Paint()..color = Color.fromRGBO(0, 0, 0, color.a),
+      );
+    }
     canvas.save();
     canvas.scale(scale);
+    // Dentro de la capa se pinta opaco; la opacidad la pone la capa.
+    final ink = color.withValues(alpha: 1);
 
     final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..color = color;
-    final fill = Paint()..color = color;
+      ..color = ink;
+    final fill = Paint()..color = ink;
 
     switch (glyph) {
       case Glyph.gear:
@@ -112,7 +143,7 @@ class _GlyphPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.round
-          ..color = color;
+          ..color = ink;
         _dashedRRect(
           canvas,
           RRect.fromRectAndRadius(
@@ -208,23 +239,41 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawLine(const Offset(12, 10.8), const Offset(12, 16.6), stroke);
         canvas.drawCircle(const Offset(12, 7.6), 1.25, fill);
       case Glyph.bug:
+        // Cuerpo de capsula; la cabeza y las patas nacen en su borde y las
+        // antenas en la cabeza: todo se toca por los extremos, nada se cruza.
+        const cx = 12.0;
+        const radius = 4.4;
+        const top = 9.6;
+        const bottom = 20.4;
+        double edge(double y) {
+          final c = y < top + radius
+              ? top + radius
+              : (y > bottom - radius ? bottom - radius : y);
+          final dy = (y - c).abs();
+          return math.sqrt(math.max(0, radius * radius - dy * dy));
+        }
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-              const Rect.fromLTWH(7.4, 8.2, 9.2, 12), const Radius.circular(4.6)),
+            const Rect.fromLTRB(cx - radius, top, cx + radius, bottom),
+            const Radius.circular(radius),
+          ),
           stroke,
         );
-        canvas.drawLine(const Offset(12, 11), const Offset(12, 20), stroke);
+        final neck = top + radius - math.sqrt(radius * radius - 2.6 * 2.6);
         canvas.drawPath(
           Path()
-            ..moveTo(9, 8.6)
-            ..quadraticBezierTo(9, 4.6, 12, 4.6)
-            ..quadraticBezierTo(15, 4.6, 15, 8.6),
+            ..moveTo(cx - 2.6, neck)
+            ..cubicTo(cx - 2.6, 5.6, cx + 2.6, 5.6, cx + 2.6, neck),
           stroke,
         );
-        for (final y in const [11.4, 15.2, 18.6]) {
-          canvas.drawLine(Offset(7.4, y), Offset(4.2, y - 1.4), stroke);
-          canvas.drawLine(Offset(16.6, y), Offset(19.8, y - 1.4), stroke);
+        canvas.drawLine(const Offset(cx - 1.5, 6.6), const Offset(cx - 3.2, 3.6), stroke);
+        canvas.drawLine(const Offset(cx + 1.5, 6.6), const Offset(cx + 3.2, 3.6), stroke);
+        for (final y in const [13.2, 16.8]) {
+          final e = edge(y);
+          canvas.drawLine(Offset(cx - e, y), Offset(cx - e - 3.2, y - 1.3), stroke);
+          canvas.drawLine(Offset(cx + e, y), Offset(cx + e + 3.2, y - 1.3), stroke);
         }
+        canvas.drawLine(const Offset(cx, 14), const Offset(cx, 17.4), stroke);
       case Glyph.power:
         canvas.drawArc(
           const Rect.fromLTWH(4.6, 4.6, 14.8, 14.8),
@@ -316,17 +365,41 @@ class _GlyphPainter extends CustomPainter {
           stroke,
         );
         canvas.drawCircle(const Offset(12, 12), 2.9, stroke);
-        canvas.drawLine(const Offset(4.4, 20.4), const Offset(19.6, 3.6), stroke);
+        // La barra corta el ojo con un hueco a cada lado, no se monta encima.
+        canvas.drawLine(
+          const Offset(4.6, 20.2),
+          const Offset(19.4, 3.8),
+          Paint()
+            ..blendMode = BlendMode.clear
+            ..strokeWidth = strokeWidth * 2.6
+            ..strokeCap = StrokeCap.round,
+        );
+        canvas.drawLine(const Offset(4.6, 20.2), const Offset(19.4, 3.8), stroke);
       case Glyph.cake:
+        // Tarta con glaseado y una vela; la llama va separada con aire.
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-              const Rect.fromLTWH(3.6, 11.4, 16.8, 8.6), const Radius.circular(2.8)),
+              const Rect.fromLTWH(4, 11.4, 16, 9), const Radius.circular(2.8)),
           stroke,
         );
-        canvas.drawLine(const Offset(12, 5.4), const Offset(12, 11.4), stroke);
-        canvas.drawCircle(const Offset(12, 4.2), 1.3, fill);
-        canvas.drawLine(const Offset(7.4, 8.4), const Offset(7.4, 11.4), stroke);
-        canvas.drawLine(const Offset(16.6, 8.4), const Offset(16.6, 11.4), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(4, 14.8)
+            ..quadraticBezierTo(6, 17.2, 8, 14.8)
+            ..quadraticBezierTo(10, 17.2, 12, 14.8)
+            ..quadraticBezierTo(14, 17.2, 16, 14.8)
+            ..quadraticBezierTo(18, 17.2, 20, 14.8),
+          stroke,
+        );
+        canvas.drawLine(const Offset(12, 11.4), const Offset(12, 8.2), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 2.6)
+            ..quadraticBezierTo(13.5, 4.6, 12, 5.5)
+            ..quadraticBezierTo(10.5, 4.6, 12, 2.6)
+            ..close(),
+          fill,
+        );
       case Glyph.clock:
         canvas.drawCircle(const Offset(12, 12), 8.4, stroke);
         canvas.drawPath(
@@ -337,15 +410,141 @@ class _GlyphPainter extends CustomPainter {
           stroke,
         );
       case Glyph.tama:
-        // Silueta reservada para el CP2: una cabeza redonda con dos antenas.
-        canvas.drawCircle(const Offset(12, 13.4), 6.4, stroke);
-        canvas.drawLine(const Offset(8.4, 7.8), const Offset(6.6, 4.2), stroke);
-        canvas.drawLine(const Offset(15.6, 7.8), const Offset(17.4, 4.2), stroke);
-        canvas.drawCircle(const Offset(6.4, 3.4), 1.2, fill);
-        canvas.drawCircle(const Offset(17.6, 3.4), 1.2, fill);
+        // Silueta de un Tama en un solo contorno: orejas y cuerpo son la misma
+        // linea, sin trazos sueltos que entren en la cabeza.
+        canvas.drawPath(
+          Path()
+            ..moveTo(5.4, 10.2)
+            ..lineTo(5.4, 4.6)
+            ..quadraticBezierTo(5.5, 3.9, 6.2, 4.3)
+            ..lineTo(9.6, 6.9)
+            ..quadraticBezierTo(12, 6.2, 14.4, 6.9)
+            ..lineTo(17.8, 4.3)
+            ..quadraticBezierTo(18.5, 3.9, 18.6, 4.6)
+            ..lineTo(18.6, 10.2)
+            ..cubicTo(20.2, 13, 20.2, 20.2, 12, 20.2)
+            ..cubicTo(3.8, 20.2, 3.8, 13, 5.4, 10.2)
+            ..close(),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(9.3, 13.6), 1.25, fill);
+        canvas.drawCircle(const Offset(14.7, 13.6), 1.25, fill);
+      case Glyph.undo:
+        canvas.drawPath(
+          Path()
+            ..moveTo(8.2, 13.6)
+            ..lineTo(15, 13.6)
+            ..cubicTo(18, 13.6, 20, 15.6, 20, 18.2)
+            ..cubicTo(20, 20, 19.4, 20.4, 19.4, 20.4),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(11.6, 9.6)
+            ..lineTo(7.4, 13.6)
+            ..lineTo(11.6, 17.6),
+          stroke,
+        );
+      case Glyph.heart:
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 19.6)
+            ..cubicTo(5, 15, 3.4, 11.4, 3.4, 9)
+            ..cubicTo(3.4, 6.2, 5.6, 4.4, 7.9, 4.4)
+            ..cubicTo(9.8, 4.4, 11.2, 5.6, 12, 7.2)
+            ..cubicTo(12.8, 5.6, 14.2, 4.4, 16.1, 4.4)
+            ..cubicTo(18.4, 4.4, 20.6, 6.2, 20.6, 9)
+            ..cubicTo(20.6, 11.4, 19, 15, 12, 19.6)
+            ..close(),
+          stroke,
+        );
+      case Glyph.treat:
+        // Un caramelo envuelto: el centro y los dos lazos se tocan, no se cruzan.
+        canvas.drawOval(const Rect.fromLTWH(7.4, 8, 9.2, 8), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.4, 12)
+            ..lineTo(3.2, 8.4)
+            ..quadraticBezierTo(4.4, 12, 3.2, 15.6)
+            ..close(),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(16.6, 12)
+            ..lineTo(20.8, 8.4)
+            ..quadraticBezierTo(19.6, 12, 20.8, 15.6)
+            ..close(),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(10.6, 10.6), .95, fill);
+      case Glyph.pencil:
+        canvas.drawPath(
+          Path()
+            ..moveTo(5, 19)
+            ..lineTo(5.8, 15.2)
+            ..lineTo(15.8, 5.2)
+            ..cubicTo(16.8, 4.2, 18.4, 4.2, 19.4, 5.2)
+            ..cubicTo(20.4, 6.2, 20.4, 7.8, 19.4, 8.8)
+            ..lineTo(9.4, 18.8)
+            ..close(),
+          stroke,
+        );
+        canvas.drawLine(const Offset(14, 7), const Offset(17.6, 10.6), stroke);
+      case Glyph.portrait:
+        // Mini perfil: un marco redondeado con una persona dentro. Los hombros
+        // se apoyan en el borde de abajo del marco en vez de atravesarlo.
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTWH(4, 3.6, 16, 16.8), const Radius.circular(4.4)),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(12, 10), 2.9, stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.2, 20.4)
+            ..cubicTo(7.4, 16.8, 9.4, 15.4, 12, 15.4)
+            ..cubicTo(14.6, 15.4, 16.6, 16.8, 16.8, 20.4),
+          stroke,
+        );
+      case Glyph.trash:
+        canvas.drawLine(const Offset(4.6, 6.8), const Offset(19.4, 6.8), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(9.4, 6.8)
+            ..lineTo(9.8, 4.2)
+            ..lineTo(14.2, 4.2)
+            ..lineTo(14.6, 6.8),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(6.4, 6.8)
+            ..lineTo(7.4, 19.2)
+            ..cubicTo(7.5, 19.9, 8, 20.4, 8.7, 20.4)
+            ..lineTo(15.3, 20.4)
+            ..cubicTo(16, 20.4, 16.5, 19.9, 16.6, 19.2)
+            ..lineTo(17.6, 6.8),
+          stroke,
+        );
+        canvas.drawLine(const Offset(10.4, 10.4), const Offset(10.6, 16.8), stroke);
+        canvas.drawLine(const Offset(13.6, 10.4), const Offset(13.4, 16.8), stroke);
+      case Glyph.wave:
+        // Onda de sonido: escuchar la voz.
+        canvas.drawPath(
+          Path()
+            ..moveTo(3.4, 12)
+            ..quadraticBezierTo(5.4, 5.2, 7.4, 12)
+            ..quadraticBezierTo(9.4, 18.8, 11.4, 12)
+            ..quadraticBezierTo(13.2, 3.4, 15.2, 12)
+            ..quadraticBezierTo(17.2, 16.6, 19, 12)
+            ..quadraticBezierTo(19.8, 10.2, 20.6, 12),
+          stroke,
+        );
     }
 
     canvas.restore();
+    if (layered) canvas.restore();
   }
 
   /// Flecha circular. La punta sale de la tangente real del final del arco,
@@ -378,19 +577,45 @@ class _GlyphPainter extends CustomPainter {
     );
   }
 
+  /// Engranaje en un solo contorno: los dientes son parte del borde, no
+  /// lineas que atraviesan un aro.
   void _gear(Canvas canvas, Paint stroke, Paint fill) {
     const teeth = 8;
+    const outer = 9.6;
+    const inner = 7.3;
+    const centre = Offset(12, 12);
+    Offset at(double angle, double radius) =>
+        centre + Offset(math.cos(angle), math.sin(angle)) * radius;
+
+    final step = 2 * math.pi / teeth;
     final path = Path();
     for (var i = 0; i < teeth; i++) {
-      final angle = i * 2 * math.pi / teeth;
-      final outer = Offset(12 + 9.4 * math.cos(angle), 12 + 9.4 * math.sin(angle));
-      final inner = Offset(12 + 6.9 * math.cos(angle), 12 + 6.9 * math.sin(angle));
-      path.moveTo(inner.dx, inner.dy);
-      path.lineTo(outer.dx, outer.dy);
+      final mid = -math.pi / 2 + i * step;
+      // Diente: base ancha en el aro, punta algo mas estrecha.
+      final baseA = mid - step * .26;
+      final baseB = mid + step * .26;
+      final tipA = mid - step * .17;
+      final tipB = mid + step * .17;
+      final start = at(baseA, inner);
+      if (i == 0) {
+        path.moveTo(start.dx, start.dy);
+      } else {
+        path.arcToPoint(start, radius: const Radius.circular(inner));
+      }
+      final p1 = at(tipA, outer);
+      final p2 = at(tipB, outer);
+      final p3 = at(baseB, inner);
+      path
+        ..lineTo(p1.dx, p1.dy)
+        ..arcToPoint(p2, radius: const Radius.circular(outer))
+        ..lineTo(p3.dx, p3.dy);
     }
-    canvas.drawPath(path, stroke..strokeWidth = strokeWidth * 1.45);
-    canvas.drawCircle(const Offset(12, 12), 7, stroke..strokeWidth = strokeWidth);
-    canvas.drawCircle(const Offset(12, 12), 2.8, stroke);
+    final first = at(-math.pi / 2 - step * .26, inner);
+    path
+      ..arcToPoint(first, radius: const Radius.circular(inner))
+      ..close();
+    canvas.drawPath(path, stroke);
+    canvas.drawCircle(centre, 3, stroke);
   }
 
   void _dashedRRect(Canvas canvas, RRect rrect, Paint paint) {

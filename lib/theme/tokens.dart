@@ -34,9 +34,9 @@ abstract final class T {
   // --- Acento ------------------------------------------------------------
   /// Acento unico: foco, seleccion, brillos.
   ///
-  /// En el CP2 cada usuario tendra un color de Tama que sustituira este valor
-  /// en tiempo de ejecucion; por eso la interfaz nunca lo lee directamente,
-  /// sino a traves de `IbashoSkin.of(context).accent`.
+  /// Cada usuario puede cambiarlo o hacer que siga el color de su Tama; por
+  /// eso la interfaz nunca lo lee directamente, sino a traves de
+  /// `IbashoSkin.of(context).accent`.
   static const Color cyan = Color(0xFF5BC8F5);
 
   /// Bordes y estados presionados del acento.
@@ -69,9 +69,8 @@ abstract final class T {
 
   /// Paleta de acentos que puede elegir el usuario.
   ///
-  /// El cian es el de la casa y va primero; el resto existe porque en el CP2
-  /// cada Tama tendra su color y conviene que el entorno ya sepa vivir con
-  /// cualquiera de ellos.
+  /// El cian es el de la casa y va primero. Ademas de estos, el acento puede
+  /// seguir el color del Tama de perfil (ver `lib/theme/accent.dart`).
   static const List<Color> accentPalette = <Color>[
     cyan,
     Color(0xFF6FD1B0),
@@ -82,6 +81,83 @@ abstract final class T {
     Color(0xFFB08BE0),
     Color(0xFF7C9BE8),
   ];
+
+  // --- Tamas -------------------------------------------------------------
+
+  /// Paleta cerrada del Tama: 16 tonos aero elegidos a mano.
+  ///
+  /// Todos tienen el brillo y la saturacion justos para verse como plastico
+  /// lacado bajo la luz del entorno. Es el modo por defecto del creador; quien
+  /// quiera otro color exacto tiene el modo HEX libre.
+  static const List<Color> tamaPalette = <Color>[
+    Color(0xFF5BC8F5), // cielo: el cian de la casa
+    Color(0xFF52D3CF), // laguna
+    Color(0xFF74DDA2), // menta
+    Color(0xFFA6DA62), // lima
+    Color(0xFFF3D95A), // limon
+    Color(0xFFF7BC55), // miel
+    Color(0xFFF79A68), // mandarina
+    Color(0xFFF58282), // coral
+    Color(0xFFF47AA6), // fresa
+    Color(0xFFF6A8D0), // chicle
+    Color(0xFFC9A4EE), // lila
+    Color(0xFF9F86E6), // uva
+    Color(0xFF7E9BF2), // pervinca
+    Color(0xFF5E8DE8), // zafiro
+    Color(0xFFEEF2F6), // perla
+    Color(0xFF8E9AA6), // grafito
+  ];
+
+  /// Tinta de ojos y boca. Azul noche muy oscuro: un negro puro se ve duro
+  /// sobre el plastico.
+  static const Color tamaInk = Color(0xFF26313A);
+
+  /// Interior de la boca abierta.
+  static const Color tamaMouth = Color(0xFF7A3346);
+
+  /// Lengua.
+  static const Color tamaTongue = Color(0xFFF28A9C);
+
+  /// Rubor de las mejillas y el interior de las orejas.
+  static const Color tamaBlush = Color(0xFFF7849B);
+
+  /// Comida de los Tamas. Colores de pasteleria: se tienen que reconocer de
+  /// un vistazo a 30 px.
+  static const Color foodDough = Color(0xFFE9B97C);
+  static const Color foodDoughDark = Color(0xFFB97C45);
+  static const Color foodChip = Color(0xFF5E3B28);
+  static const Color foodCandy = Color(0xFFF2638A);
+  static const Color foodFrosting = Color(0xFFFFD3E4);
+  static const Color foodCherry = Color(0xFFE23A55);
+  static const Color foodCup = Color(0xFF7FC6EE);
+  static const Color foodApple = Color(0xFFEE4F4F);
+  static const Color foodStem = Color(0xFF7A5236);
+  static const Color foodDangoPink = Color(0xFFF7B3C7);
+  static const Color foodDangoWhite = Color(0xFFFFF5EA);
+  static const Color foodDangoGreen = Color(0xFFA7D88A);
+  static const Color foodStick = Color(0xFFD8B37E);
+  static const Color foodSprinkleBlue = Color(0xFF6CC3F2);
+  static const Color foodSprinkleYellow = Color(0xFFF6CF4E);
+  static const Color foodMochi = Color(0xFFFAD9E3);
+  static const Color foodLolly = Color(0xFFFF78A6);
+  static const Color foodCone = Color(0xFFE9B368);
+  static const Color foodConeDark = Color(0xFFC08443);
+  static const Color foodScoop = Color(0xFF9FE0C6);
+  static const Color foodGlaze = Color(0xFFF590B7);
+  static const Color foodFlan = Color(0xFFF6D46E);
+  static const Color foodCaramel = Color(0xFFB5622A);
+
+  /// Sombra de contacto del Tama sobre el suelo o la peana.
+  static const Color tamaGroundShadow = Color(0x383A4750);
+
+  /// Negro de pigmento. Solo para el selector de color libre, que tiene que
+  /// poder llegar a cualquier color; la interfaz nunca pinta con el.
+  static const Color pigmentBlack = Color(0xFF000000);
+
+  /// Corazones y destellos de alegria.
+  static const Color tamaHeart = Color(0xFFF26D8E);
+
+  // --- Sobre acento -----------------------------------------------------
 
   /// Texto e iconos sobre una superficie tenida de acento o de aviso.
   static const Color onAccent = Color(0xFFFFFFFF);

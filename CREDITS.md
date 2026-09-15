@@ -9,6 +9,12 @@ Regla de la casa: solo **CC0** o **CC BY** para audio, **SIL OFL** para
 tipografías. Nada con cláusula NC o ND (incompatible con GPL-3.0) y ningún audio
 original de Nintendo.
 
+## Tamas
+
+Los Tamas no usan ningún asset: su dibujo (`lib/ui/tama/tama_painter.dart`) y
+su voz (`lib/audio/tama_voice.dart`) son código propio de Adrià Bonnin Catalán,
+bajo la misma licencia GPL-3.0-or-later que el resto de Ibasho.
+
 ## Tipografías
 
 | Título | Autor | Licencia | URL | Uso |

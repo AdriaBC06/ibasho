@@ -8,8 +8,8 @@ import 'tokens.dart';
 
 /// Lo unico del tema que cambia en tiempo de ejecucion.
 ///
-/// El acento es cian en este checkpoint, pero todo el entorno lo lee de aqui:
-/// cuando el CP2 traiga el color de Tama bastara con alimentar otro valor.
+/// Todo el entorno lee el acento de aqui: el cian de la casa, uno elegido a
+/// mano o el del Tama de perfil, segun lo que quiera cada cuenta.
 @immutable
 class IbashoSkin extends InheritedWidget {
   const IbashoSkin({

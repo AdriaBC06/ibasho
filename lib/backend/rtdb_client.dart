@@ -34,6 +34,15 @@ class RtdbClient {
         .replace(queryParameters: params.isEmpty ? null : params);
   }
 
+  /// Parametros REST de una consulta. Van codificados en JSON, comillas
+  /// incluidas, como pide la API.
+  static Map<String, String> _queryParams(DatabaseQuery? query) => query == null
+      ? const {}
+      : {
+          'orderBy': jsonEncode(query.orderByChild),
+          'equalTo': jsonEncode(query.equalTo),
+        };
+
   Never _fail(int status, String body) {
     if (status == 401 || status == 403) {
       throw IbashoException(IbashoFailure.permissionDenied, body);
@@ -55,12 +64,18 @@ class RtdbClient {
     }
   }
 
-  Future<Object?> read(String path, {required String idToken, bool shallow = false}) =>
+  Future<Object?> read(
+    String path, {
+    required String idToken,
+    bool shallow = false,
+    DatabaseQuery? query,
+  }) =>
       _guard(() async {
         final res = await _client
-            .get(_uri(path,
-                idToken: idToken,
-                query: shallow ? const {'shallow': 'true'} : const {}))
+            .get(_uri(path, idToken: idToken, query: {
+              if (shallow) 'shallow': 'true',
+              ..._queryParams(query),
+            }))
             .timeout(_timeout);
         if (res.statusCode != 200) _fail(res.statusCode, res.body);
         if (res.body.isEmpty || res.body == 'null') return null;
@@ -122,6 +137,7 @@ class RtdbClient {
   Stream<DatabaseEvent> watch(
     String path, {
     required Future<String> Function() token,
+    DatabaseQuery? query,
   }) {
     late StreamController<DatabaseEvent> controller;
     var cancelled = false;
@@ -131,7 +147,8 @@ class RtdbClient {
     Future<void> connect() async {
       while (!cancelled) {
         try {
-          final request = http.Request('GET', _uri(path, idToken: await token()))
+          final request = http.Request(
+              'GET', _uri(path, idToken: await token(), query: _queryParams(query)))
             ..headers['Accept'] = 'text/event-stream'
             ..followRedirects = true;
           final response = await _client.send(request).timeout(_timeout);

@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ibasho/app.dart';
 import 'package:ibasho/backend/models.dart';
+import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/state/providers.dart';
 import 'package:ibasho/storage/settings_store.dart';
 import 'package:ibasho/theme/tokens.dart';
@@ -206,6 +207,114 @@ Future<void> main() async {
     tester.view.physicalSize = const Size(1920, 1080);
     await settle(tester, 100);
     await shoot(tester, '15-entorno-1920x1080');
+  });
+
+  List<Tama> family() => [
+        sampleTama(),
+        sampleTama(
+          id: '-TamaMuestra00000002',
+          name: 'Mochi',
+          personality: TamaPersonality.sleepy,
+          look: const TamaLook(
+            parts: {
+              TamaPart.body: 4,
+              TamaPart.eyes: 3,
+              TamaPart.mouth: 0,
+              TamaPart.crown: 3,
+              TamaPart.cheeks: 2,
+              TamaPart.pattern: 3,
+              TamaPart.arms: 1,
+            },
+            color: '#74DDA2',
+          ),
+        ),
+        sampleTama(
+          id: '-TamaMuestra00000003',
+          name: 'Bruma',
+          personality: TamaPersonality.shy,
+          lastPetted: DateTime.now().subtract(const Duration(days: 3)),
+          lastFed: DateTime.now().subtract(const Duration(days: 3)),
+          look: const TamaLook(
+            parts: {
+              TamaPart.body: 2,
+              TamaPart.eyes: 5,
+              TamaPart.mouth: 2,
+              TamaPart.crown: 2,
+              TamaPart.cheeks: 3,
+              TamaPart.pattern: 4,
+              TamaPart.feet: 1,
+            },
+            color: '#9F86E6',
+          ),
+        ),
+      ];
+
+  testWidgets('tamas: panel, canal, habitacion y creador', (tester) async {
+    final backend = FakeIbashoBackend(tamas: family(), profileTamaId: family().first.id);
+    await boot(tester, backend: backend);
+    await settle(tester, 100);
+    await shoot(tester, '16-entorno-con-tama');
+
+    await tester.tap(find.byKey(const ValueKey<String>('channel.tamas')));
+    await settle(tester, 60);
+    await shoot(tester, '17-tamas');
+
+    await tester.tap(find.byKey(const ValueKey<String>('tamas.card.-TamaMuestra00000001')));
+    await settle(tester, 40);
+    await shoot(tester, '18-habitacion');
+    await tester.tap(find.byKey(const ValueKey<String>('tama.feed.cookie')));
+    await settle(tester, 14);
+    await shoot(tester, '18b-habitacion-comiendo');
+    await settle(tester, 40);
+
+    await tester.tap(find.byKey(const ValueKey<String>('tama.edit')));
+    await settle(tester, 40);
+    await shoot(tester, '19-creador-cuerpo');
+    for (final tab in ['color', 'eyes', 'mouth', 'crown', 'cheeks', 'limbs', 'character']) {
+      await tester.tap(find.byKey(ValueKey<String>('creator.tab.$tab')));
+      await settle(tester, 12);
+      await shoot(tester, '19-creador-$tab');
+    }
+    await tester.tap(find.byKey(const ValueKey<String>('creator.tab.color')));
+    await settle(tester, 8);
+    await tester.tap(find.text('HEX libre'));
+    await settle(tester, 12);
+    await shoot(tester, '19-creador-color-hex');
+  });
+
+  testWidgets('tamas: la habitacion de uno melancolico', (tester) async {
+    final backend = FakeIbashoBackend(tamas: family(), profileTamaId: family().first.id);
+    await boot(tester, backend: backend);
+    await settle(tester, 100);
+    await tester.tap(find.byKey(const ValueKey<String>('channel.tamas')));
+    await settle(tester, 60);
+    // Tocar una ranura la elige; el escaparate de arriba cambia.
+    await tester.tap(find.byKey(const ValueKey<String>('tamas.card.-TamaMuestra00000003')));
+    await settle(tester, 20);
+    await shoot(tester, '17b-tamas-elegido');
+    await tester.tap(find.byKey(const ValueKey<String>('tamas.visit')));
+    await settle(tester, 40);
+    await shoot(tester, '20-habitacion-melancolico');
+  });
+
+  testWidgets('tamas: sin ninguno todavia', (tester) async {
+    await boot(tester, backend: FakeIbashoBackend());
+    await settle(tester, 100);
+    await tester.tap(find.byKey(const ValueKey<String>('channel.tamas')));
+    await settle(tester, 60);
+    await shoot(tester, '21-tamas-vacio');
+    await tester.tap(find.byKey(const ValueKey<String>('tamas.createEmpty')));
+    await settle(tester, 40);
+    await shoot(tester, '22-creador-nuevo');
+  });
+
+  testWidgets('perfil con Tama', (tester) async {
+    final backend = FakeIbashoBackend(tamas: family(), profileTamaId: family()[1].id);
+    await boot(tester, backend: backend);
+    await settle(tester, 100);
+    await tester.tap(find.byKey(const ValueKey<String>('channel.profile')));
+    await settle(tester, 60);
+    await shoot(tester, '23-perfil-con-tama');
   });
 
   testWidgets('entorno en ingles y sin bateria', (tester) async {

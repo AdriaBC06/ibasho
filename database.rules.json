@@ -61,8 +61,8 @@
     "users": {
       "$accountId": {
         ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
-        ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
         "profile": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           ".validate": "newData.hasChildren(['username', 'displayName', 'createdAt'])",
           "username": {
             ".validate": "newData.isString() && newData.val() === root.child('allowlist').child(auth.uid).child('username').val()"
@@ -88,14 +88,33 @@
           "createdAt": {
             ".validate": "newData.isNumber() && newData.val() > 0"
           },
+          "accentFollowsTama": {
+            ".validate": "newData.isBoolean()"
+          },
           "$other": {
             ".validate": false
           }
         },
         "tama": {
-          ".validate": false
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{20}$/) && newData.parent().parent().parent().child('tamas').child(newData.val()).child('keeper').val() === $accountId"
+        },
+        // Tope de 99 Tamas por cuenta, aplicado aqui y no en la app. Crear o borrar un
+        // Tama va en la misma operacion multi-ruta que el contador (+1 o -1 exacto) y
+        // que `tamaLastChange`, el id del Tama creado o borrado en esa operacion. Asi
+        // el contador no se puede bajar sin borrar un Tama de verdad, ni se crean dos
+        // Tamas con un solo incremento. La escritura baja a cada hijo de la cuenta
+        // para que el contador no se pueda borrar entero.
+        "tamaCount": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99 && newData.parent().child('tamaLastChange').isString() && ((newData.val() === (data.exists() ? data.val() : 0) + 1 && !root.child('tamas').child(newData.parent().child('tamaLastChange').val()).exists() && newData.parent().parent().parent().child('tamas').child(newData.parent().child('tamaLastChange').val()).child('creator').val() === $accountId) || (newData.val() === (data.exists() ? data.val() : 0) - 1 && root.child('tamas').child(newData.parent().child('tamaLastChange').val()).child('creator').val() === $accountId && !newData.parent().parent().parent().child('tamas').child(newData.parent().child('tamaLastChange').val()).exists()))"
+        },
+        "tamaLastChange": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+          ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{20}$/) && newData.parent().child('tamaCount').val() !== (data.parent().child('tamaCount').exists() ? data.parent().child('tamaCount').val() : 0)"
         },
         "presence": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           ".validate": "newData.hasChildren(['state', 'lastSeen'])",
           "state": {
             ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'away' || newData.val() === 'offline')"
@@ -108,6 +127,7 @@
           }
         },
         "music": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           "unlocked": {
             "$trackId": {
               ".validate": "$trackId.matches(/^[a-z0-9_]{1,32}$/) && newData.isBoolean() && newData.val() === true"
@@ -119,6 +139,148 @@
           "$other": {
             ".validate": false
           }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    // Un Tama es un registro propio: lo crea `creator` y lo cuida `keeper`.
+    // Traspasarlo a un amigo sera cambiar `keeper` (hoy es inmutable).
+    // La lista propia solo se lee con la consulta orderBy=keeper, equalTo=yo.
+    "tamas": {
+      ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && query.orderByChild === 'keeper' && query.equalTo === root.child('allowlist').child(auth.uid).child('accountId').val()",
+      ".indexOn": [
+        "keeper"
+      ],
+      "$tamaId": {
+        // CHECKPOINT 3 (amigos): para pintar el avatar de otra persona, el Tama de
+        // perfil tiene que ser legible por cualquier miembro de la allowlist. Hay
+        // que abrir ESTE `.read` de /tamas/$tamaId anadiendo, con `||`:
+        //   root.child('users').child(data.child('keeper').val()).child('tama').val() === $tamaId
+        // Nada mas: el resto de Tamas siguen siendo solo de su creador y su cuidador.
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (data.child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val() || data.child('keeper').val() === root.child('allowlist').child(auth.uid).child('accountId').val())",
+        ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $tamaId.matches(/^[-0-9A-Za-z_]{20}$/) && ((!data.exists() && newData.child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && newData.child('keeper').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaLastChange').val() === $tamaId && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').val() === (root.child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').exists() ? root.child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').val() : 0) + 1) || (data.exists() && !newData.exists() && data.child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && data.child('keeper').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaLastChange').val() === $tamaId && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').val() === root.child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tamaCount').val() - 1 && newData.parent().parent().child('users').child(root.child('allowlist').child(auth.uid).child('accountId').val()).child('tama').val() !== $tamaId))",
+        ".validate": "newData.hasChildren(['schema', 'creator', 'keeper', 'name', 'personality', 'voice', 'look', 'createdAt', 'updatedAt'])",
+        "schema": {
+          ".validate": "newData.isNumber() && newData.val() === 1"
+        },
+        "creator": {
+          ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
+        },
+        // CHECKPOINT 3 (traspasos): aqui se permitira cambiar de cuidador.
+        "keeper": {
+          ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
+        },
+        "name": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+        },
+        "personality": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
+          ".validate": "newData.isString() && (newData.val() === 'calm' || newData.val() === 'playful' || newData.val() === 'shy' || newData.val() === 'cheeky' || newData.val() === 'sleepy')"
+        },
+        "voice": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
+          ".validate": "newData.hasChildren(['pitch', 'tempo', 'timbre'])",
+          "pitch": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "tempo": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "timbre": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "look": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
+          ".validate": "newData.hasChildren(['body', 'eyes', 'mouth', 'crown', 'cheeks', 'pattern', 'arms', 'feet', 'bodyWidth', 'bodyHeight', 'eyeSize', 'eyeSpacing', 'eyeHeight', 'mouthSize', 'mouthHeight', 'crownSize', 'cheekIntensity', 'patternTone', 'color', 'colorMode'])",
+          "body": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+          },
+          "eyes": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+          },
+          "mouth": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 4"
+          },
+          "crown": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+          },
+          "cheeks": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 3"
+          },
+          "pattern": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 4"
+          },
+          "arms": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 3"
+          },
+          "feet": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 3"
+          },
+          "bodyWidth": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "bodyHeight": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "eyeSize": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "eyeSpacing": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "eyeHeight": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "mouthSize": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "mouthHeight": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "crownSize": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "cheekIntensity": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "patternTone": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "color": {
+            ".validate": "newData.isString() && newData.val().matches(/^#[0-9A-Fa-f]{6}$/)"
+          },
+          "colorMode": {
+            ".validate": "newData.isString() && (newData.val() === 'palette' || newData.val() === 'hex')"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "care": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('keeper').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
+          "lastPetted": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+          },
+          "lastFed": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now && (!data.exists() || data.val() === newData.val())"
+        },
+        "updatedAt": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
+          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
         },
         "$other": {
           ".validate": false

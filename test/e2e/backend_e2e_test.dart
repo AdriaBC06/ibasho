@@ -19,11 +19,13 @@ import 'package:http/http.dart' as http;
 import 'package:ibasho/backend/errors.dart';
 import 'package:ibasho/backend/models.dart';
 import 'package:ibasho/backend/rest_ibasho_backend.dart';
+import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/core/env.dart';
 import 'package:ibasho/state/admin.dart';
 import 'package:ibasho/state/preferences.dart';
 import 'package:ibasho/state/profile.dart';
 import 'package:ibasho/state/session.dart';
+import 'package:ibasho/state/tamas.dart';
 import 'package:ibasho/storage/settings_store.dart';
 
 import '../support/fakes.dart';
@@ -272,6 +274,129 @@ void main() {
     // --- 8. Renovar el token funciona ---------------------------------------
     final renewed = await backend.refresh(adminSession.state.tokens!.refreshToken);
     expect(renewed.uid, adminUidBefore);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('Tamas de extremo a extremo', skip: skip, () async {
+    // Dos cuentas ya activas, dadas de alta como lo haria el bootstrap.
+    Future<SessionController> account(String name) async {
+      final created = await backend.provisionAccount(username: name, password: 'tama-$name-123');
+      await ownerPut('/allowlist/${created.uid}', {
+        'accountId': created.uid,
+        'username': name,
+        'createdAt': DateTime.now().millisecondsSinceEpoch,
+        'createdBy': 'bootstrap',
+        'disabled': false,
+        'mustChangePassword': false,
+        'generation': 1,
+      });
+      final session = newSession();
+      await session.signIn(username: name, password: 'tama-$name-123');
+      expect(session.state.phase, SessionPhase.active);
+      return session;
+    }
+
+    final alba = await account('alba$stamp');
+    final bruno = await account('bruno$stamp');
+
+    // Dos equipos de la misma cuenta: lo que se hace en uno llega al otro.
+    final desk = TamasController(backend: backend, session: alba);
+    final laptop = TamasController(backend: backend, session: alba);
+    addTearDown(desk.dispose);
+    addTearDown(laptop.dispose);
+    await _until(() => desk.state.loaded && laptop.state.loaded, 'listas iniciales');
+
+    const look = TamaLook(parts: {TamaPart.body: 2, TamaPart.crown: 3}, color: '#F47AA6');
+    final (id, failure) = await desk.create(
+      name: 'Tommy',
+      personality: TamaPersonality.playful,
+      voice: const TamaVoice(pitch: 70),
+      look: look,
+    );
+    expect(failure, isNull);
+    expect(id, isNotNull);
+    await _until(() => laptop.state.byId(id) != null, 'el Tama nuevo en el otro equipo');
+    await _until(() => laptop.state.profileTamaId == id, 'el Tama de perfil en el otro equipo');
+    final token = await alba.freshToken();
+    expect(await backend.read('/users/${alba.state.accountId}/tamaCount', idToken: token), 1);
+
+    // Editar el aspecto se ve en vivo en el otro equipo.
+    await desk.saveIdentity(desk.state.byId(id)!.copyWith(
+      look: look.withColor('#6B4F3A', TamaColorMode.hex).withPart(TamaPart.eyes, 5),
+      name: 'Tomasa',
+    ));
+    await _until(
+      () => laptop.state.byId(id)?.look.color == '#6B4F3A' &&
+          laptop.state.byId(id)?.look.colorMode == TamaColorMode.hex &&
+          laptop.state.byId(id)?.name == 'Tomasa',
+      'la edicion llegando por SSE',
+    );
+
+    // Cuidar escribe una marca de tiempo del servidor, y nada mas.
+    final before = DateTime.now().millisecondsSinceEpoch;
+    await laptop.pet(id!);
+    await _until(() => desk.state.byId(id)?.care.lastPetted != null, 'el mimo en el otro equipo');
+    final petted = await backend.read('/tamas/$id/care/lastPetted', idToken: await alba.freshToken());
+    expect(petted, isA<num>());
+    expect((petted! as num).toInt(), greaterThanOrEqualTo(before - 60000));
+
+    // Otra cuenta no lo ve ni lo toca.
+    final other = await bruno.freshToken();
+    await expectLater(backend.read('/tamas/$id', idToken: other), throwsA(isA<IbashoException>()));
+    await expectLater(
+      backend.write('/tamas/$id/look/color', '#000000', idToken: other),
+      throwsA(isA<IbashoException>()),
+    );
+    await expectLater(
+      backend.read('/tamas',
+          idToken: other,
+          query: DatabaseQuery(orderByChild: 'keeper', equalTo: alba.state.accountId)),
+      throwsA(isA<IbashoException>()),
+    );
+    expect(
+      await backend.read('/tamas',
+          idToken: other,
+          query: DatabaseQuery(orderByChild: 'keeper', equalTo: bruno.state.accountId)),
+      anyOf(isNull, isEmpty),
+    );
+
+    // El tope: con 99 en el contador ni la app ni una llamada directa crean otro.
+    await ownerPut('/users/${alba.state.accountId}/tamaCount', 99);
+    final (full, reason) = await desk.create(
+      name: 'Sobra',
+      personality: TamaPersonality.calm,
+      voice: const TamaVoice(),
+      look: look,
+    );
+    expect(full, isNull);
+    expect(reason, TamaCreateFailure.full);
+    const sneaky = '-SinPermiso000000001';
+    await expectLater(
+      backend.merge('/', {
+        'tamas/$sneaky': {
+          'schema': 1,
+          'creator': alba.state.accountId,
+          'keeper': alba.state.accountId,
+          'name': 'Sobra',
+          'personality': 'calm',
+          'voice': const TamaVoice().toJson(),
+          'look': look.toJson(),
+          'createdAt': serverTimestamp,
+          'updatedAt': serverTimestamp,
+        },
+        'users/${alba.state.accountId}/tamaCount': 100,
+        'users/${alba.state.accountId}/tamaLastChange': sneaky,
+      }, idToken: await alba.freshToken()),
+      throwsA(isA<IbashoException>()
+          .having((e) => e.failure, 'failure', IbashoFailure.permissionDenied)),
+    );
+    await ownerPut('/users/${alba.state.accountId}/tamaCount', 1);
+
+    // Borrar baja el contador y suelta el perfil en la misma operacion.
+    expect(await desk.delete(id), isTrue);
+    await _until(() => laptop.state.byId(id) == null, 'el borrado en el otro equipo');
+    final after = await alba.freshToken();
+    expect(await backend.read('/users/${alba.state.accountId}/tamaCount', idToken: after), 0);
+    expect(await backend.read('/users/${alba.state.accountId}/tama', idToken: after), isNull);
   }, timeout: const Timeout(Duration(minutes: 2)));
 }
 

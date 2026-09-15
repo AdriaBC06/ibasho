@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../audio/audio_service.dart';
 import '../../../backend/models.dart';
 import '../../../l10n/gen/app_localizations.dart';
+import '../../../state/accent_sync.dart';
 import '../../../state/profile.dart';
 import '../../../state/providers.dart';
 import '../../../theme/skin.dart';
@@ -21,7 +22,11 @@ import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/text_field.dart';
 import '../../widgets/timezone_picker.dart';
+import '../../widgets/pressable.dart';
 import '../channel_route.dart';
+import '../tama/tama_creator_screen.dart';
+import '../tama/tama_room_screen.dart';
+import 'tamas_channel.dart';
 
 class ProfileChannel extends ConsumerStatefulWidget {
   const ProfileChannel({super.key});
@@ -39,6 +44,7 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
 
   String _timezone = '';
   String _accent = '';
+  bool _followsTama = false;
   String _locale = 'es';
   bool _seeded = false;
   String? _nameError;
@@ -63,6 +69,7 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
     _month.text = parts == null ? '' : parts.$2.toString().padLeft(2, '0');
     _year.text = parts == null ? '' : parts.$1.toString();
     _accent = profile.accentColor;
+    _followsTama = profile.accentFollowsTama == true;
     _locale = profile.locale;
     _seeded = true;
   }
@@ -94,6 +101,7 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
       timezone: _timezone,
       locale: _locale,
       accentColor: _accent,
+      accentFollowsTama: _followsTama,
     );
 
     final saved = await ref.read(profileProvider.notifier).save(next);
@@ -116,6 +124,7 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
     final skin = IbashoSkin.of(context);
     final state = ref.watch(profileProvider);
     final profile = state.profile;
+    final profileTama = ref.watch(tamasProvider.select((t) => t.profileTama));
 
     if (profile == null) {
       return ChannelScaffold(
@@ -140,7 +149,7 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _TamaReservation(label: l.profileTamaSlot),
+                    const _ProfileTama(),
                     const SizedBox(width: 26),
                     Expanded(
                       child: SectionCard(
@@ -205,16 +214,37 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                       Wrap(
                         spacing: 14,
                         runSpacing: 14,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
+                          if (profileTama != null)
+                            _FollowTamaChip(
+                              color: accentForTama(profileTama.look.color),
+                              selected: _followsTama,
+                              label: l.profileAccentFollowTama,
+                              onPressed: () => setState(() {
+                                _followsTama = true;
+                                _accent = _hex(accentForTama(profileTama.look.color));
+                              }),
+                            ),
                           for (final color in T.accentPalette)
                             ColorChip(
                               color: color,
-                              selected: _hex(color) == _accent.toUpperCase(),
-                              onPressed: () =>
-                                  setState(() => _accent = _hex(color)),
+                              selected: !_followsTama &&
+                                  _hex(color) == _accent.toUpperCase(),
+                              // Tocar un color a mano rompe la sincronizacion
+                              // con el Tama.
+                              onPressed: () => setState(() {
+                                _followsTama = false;
+                                _accent = _hex(color);
+                              }),
                             ),
                         ],
                       ),
+                      if (_followsTama && profileTama != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12, left: 4),
+                          child: Text(l.profileAccentFollowHint, style: Ty.caption),
+                        ),
                       const SizedBox(height: 22),
                       const Hairline(),
                       const SizedBox(height: 18),
@@ -310,40 +340,110 @@ class _NumberField extends StatelessWidget {
       );
 }
 
-/// El hueco del Tama dentro del perfil. No hace nada todavia: es el sitio
-/// reservado para el creador del CP2.
-class _TamaReservation extends StatelessWidget {
-  const _TamaReservation({required this.label});
-
-  final String label;
+/// El Tama de perfil, vivo, con su nombre. Tocarlo abre su habitacion; si aun
+/// no hay, lleva al creador.
+class _ProfileTama extends ConsumerWidget {
+  const _ProfileTama();
 
   @override
-  Widget build(BuildContext context) {
-    final skin = IbashoSkin.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
+    final tama = ref.watch(tamasProvider.select((t) => t.profileTama));
+
+    void open() => pushChannelPage<void>(
+          context,
+          (_) => tama == null
+              ? const TamaCreatorScreen()
+              : TamaRoomScreen(tamaId: tama.id),
+        );
+
     return SizedBox(
       width: 220,
       child: Column(
         children: [
-          SizedBox(
-            width: 220,
-            height: 220,
-            child: GlossSurface(
-              radius: 44,
-              recessed: true,
-              child: Center(
-                child: GlyphIcon(
-                  Glyph.tama,
-                  size: 104,
-                  color: skin.accent.withValues(alpha: .5),
-                  strokeWidth: 2.2,
-                ),
-              ),
-            ),
+          TamaWindow(
+            key: const ValueKey<String>('profile.tama'),
+            size: 220,
+            radius: 44,
+            onTap: open,
           ),
           const SizedBox(height: 12),
-          Text(label, textAlign: TextAlign.center, style: Ty.micro),
+          Text(
+            tama?.name ?? l.profileTamaEmpty,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: tama == null ? Ty.micro : Ty.lead,
+          ),
+          const SizedBox(height: 8),
+          IbashoButton(
+            label: tama == null ? l.tamasCreate : l.tamasTitle,
+            glyph: tama == null ? Glyph.plus : Glyph.tama,
+            tone: ButtonTone.quiet,
+            height: 38,
+            cue: null,
+            onPressed: () => pushChannelPage<void>(
+              context,
+              (_) => tama == null ? const TamaCreatorScreen() : const TamasChannel(),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+/// Muestra de acento que sigue al Tama: su color con la silueta encima.
+class _FollowTamaChip extends StatelessWidget {
+  const _FollowTamaChip({
+    required this.color,
+    required this.selected,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final Color color;
+  final bool selected;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+        key: const ValueKey<String>('profile.followTama'),
+        onPressed: onPressed,
+        semanticLabel: label,
+        builder: (context, state) => FocusRing(
+          visible: state.focus,
+          radius: 19,
+          child: Transform.translate(
+            offset: Offset(0, -2 * state.hover + 1.5 * state.press),
+            child: SizedBox(
+              height: 38,
+              child: GlossSurface(
+                radius: 19,
+                tint: color,
+                elevation: selected ? 1.6 : .8,
+                borderWidth: selected ? 2.5 : 1,
+                borderColor: selected ? Color.lerp(color, T.dusk, .45)! : T.hairline,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GlyphIcon(
+                      selected ? Glyph.check : Glyph.tama,
+                      size: 20,
+                      color: T.onAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      label,
+                      style: Ty.body.copyWith(color: T.onAccent, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
 }

@@ -13,7 +13,10 @@ import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../widgets/glyphs.dart';
 import '../widgets/gloss.dart';
+import 'channel_route.dart';
+import 'channels/tamas_channel.dart';
 import 'status_bar.dart';
+import 'tama/tama_room_screen.dart';
 
 /// Panel superior. Se adapta a las tres alturas del boton de ampliar.
 class TopPanel extends ConsumerWidget {
@@ -163,33 +166,47 @@ class TopPanel extends ConsumerWidget {
   }
 }
 
-/// El hueco del Tama. En el CP2 vivira aqui el avatar; de momento es una
-/// ranura hundida con su silueta, para que se vea que el sitio esta reservado.
-class _TamaSlot extends StatelessWidget {
+/// El hueco del Tama: el Tama de perfil, vivo, en su ventanita hundida.
+///
+/// Tocarlo abre su habitacion con el mismo gesto que un canal, creciendo desde
+/// la ventanita. Si aun no hay Tama, se ve su silueta y abre el canal de Tamas.
+class _TamaSlot extends ConsumerStatefulWidget {
   const _TamaSlot({required this.size});
 
   final double size;
 
   @override
-  Widget build(BuildContext context) {
+  ConsumerState<_TamaSlot> createState() => _TamaSlotState();
+}
+
+class _TamaSlotState extends ConsumerState<_TamaSlot> {
+  final GlobalKey _anchor = GlobalKey(debugLabel: 'top.tama');
+
+  void _open() {
+    final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
-    return SizedBox(
-      width: size,
-      height: size,
-      child: GlossSurface(
-        radius: size * .28,
-        recessed: true,
-        child: Center(
-          child: GlyphIcon(
-            Glyph.tama,
-            size: size * .52,
-            color: skin.accent.withValues(alpha: .55),
-            strokeWidth: 2.2,
-          ),
-        ),
-      ),
+    final tama = ref.read(tamasProvider).profileTama;
+    openChannel(
+      context,
+      anchor: _anchor,
+      tint: skin.accent,
+      glyph: Glyph.tama,
+      label: tama?.name ?? l.channelTamas,
+      builder: (_) => tama == null
+          ? const TamasChannel()
+          : TamaRoomScreen(tamaId: tama.id),
     );
   }
+
+  @override
+  Widget build(BuildContext context) => KeyedSubtree(
+        key: _anchor,
+        child: TamaWindow(
+          key: const ValueKey<String>('top.tama'),
+          size: widget.size,
+          onTap: _open,
+        ),
+      );
 }
 
 class _Announcement extends ConsumerWidget {

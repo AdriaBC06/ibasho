@@ -111,10 +111,12 @@ Future<bool> askConfirmation(
   required String confirmLabel,
   required String cancelLabel,
   ButtonTone tone = ButtonTone.accent,
+  double width = 520,
 }) async {
   final answer = await showIbashoModal<bool>(
     context,
     (context) => IbashoDialog(
+      width: width,
       title: title,
       body: Text(body, style: Ty.body.copyWith(color: T.inkSoft)),
       actions: [

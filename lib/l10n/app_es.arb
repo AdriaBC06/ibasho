@@ -105,7 +105,6 @@
   "profileTimezone": "zona horaria",
   "profileLocale": "idioma",
   "profileAccent": "color de acento",
-  "profileTamaSlot": "tu Tama vivirá aquí",
   "profileSaved": "perfil guardado",
   "profileSaveError": "no se ha podido guardar",
   "profileErrorDisplayName": "entre 1 y 24 caracteres",
@@ -232,5 +231,261 @@
   "debugLocked": "bloqueada",
   "debugMarkHeard": "marcar como escuchada",
   "debugResetUnlocks": "olvidar canciones desbloqueadas",
-  "debugMusicPreviewHint": "escuchar aquí no desbloquea nada ni cambia la música del menú de la cuenta."
+  "debugMusicPreviewHint": "escuchar aquí no desbloquea nada ni cambia la música del menú de la cuenta.",
+  "channelTamas": "Tamas",
+  "tamasTitle": "tus Tamas",
+  "tamasCreate": "crear un Tama",
+  "tamasCount": "{count} de {max}",
+  "@tamasCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "tamasEmptyTitle": "aún no tienes ningún Tama",
+  "tamasEmptyBody": "crea el primero: será tu Tama de perfil y vivirá en el panel de arriba.",
+  "tamasFull": "ya tienes {max} Tamas y no caben más",
+  "@tamasFull": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "tamaProfileBadge": "en tu perfil",
+  "tamaOpenRoom": "abrir la habitación de {name}",
+  "@tamaOpenRoom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaRoomPet": "mimar",
+  "tamaRoomFeed": "dar de comer",
+  "tamaRoomEdit": "editar",
+  "tamaRoomSetProfile": "poner en el perfil",
+  "tamaRoomOnProfile": "es tu Tama de perfil",
+  "tamaRoomDelete": "borrar",
+  "tamaRoomPetHint": "también puedes frotarlo para mimarlo",
+  "tamaRoomMood": "humor",
+  "tamaRoomCare": "cuidados",
+  "tamaDeleteTitle": "¿borrar a {name}?",
+  "@tamaDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaDeleteBody": "no se puede deshacer: {name} desaparecerá de todos tus equipos.",
+  "@tamaDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaDeleted": "Tama borrado",
+  "tamaDeleteError": "no se ha podido borrar",
+  "tamaMoodJoyful": "radiante",
+  "tamaMoodContent": "a gusto",
+  "tamaMoodWistful": "echándote de menos",
+  "tamaMoodLonely": "un poco melancólico",
+  "tamaMoodHintJoyful": "le encanta que estés aquí",
+  "tamaMoodHintContent": "tranquilo y bien cuidado",
+  "tamaMoodHintWistful": "hace rato que nadie le hace caso",
+  "tamaMoodHintLonely": "un mimo y una chuche le cambian la cara",
+  "tamaLastPetted": "último mimo: {when}",
+  "@tamaLastPetted": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaNever": "todavía nada",
+  "tamaAgoMinutes": "{count, plural, =0{ahora mismo} =1{hace 1 minuto} other{hace {count} minutos}}",
+  "@tamaAgoMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tamaAgoHours": "{count, plural, =1{hace 1 hora} other{hace {count} horas}}",
+  "@tamaAgoHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tamaAgoDays": "{count, plural, =1{hace 1 día} other{hace {count} días}}",
+  "@tamaAgoDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tamaSaved": "{name} guardado",
+  "@tamaSaved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaSaveError": "no se ha podido guardar el Tama",
+  "tamaCreated": "{name} ya está aquí",
+  "@tamaCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaCreateError": "no se ha podido crear el Tama",
+  "tamaCreateNetwork": "no hay conexión con el servidor",
+  "tamaPersonalityCalm": "tranquilo",
+  "tamaPersonalityPlayful": "juguetón",
+  "tamaPersonalityShy": "tímido",
+  "tamaPersonalityCheeky": "descarado",
+  "tamaPersonalitySleepy": "dormilón",
+  "tamaPersonalityCalmHint": "parpadea despacio y se toma la vida con calma",
+  "tamaPersonalityPlayfulHint": "salta, saluda y no se está quieto",
+  "tamaPersonalityShyHint": "se sonroja y aparta la mirada",
+  "tamaPersonalityCheekyHint": "saca la lengua cuando menos te lo esperas",
+  "tamaPersonalitySleepyHint": "bosteza y se queda frito a la mínima",
+  "tamaCreatorNewTitle": "nuevo Tama",
+  "tamaCreatorEditTitle": "editar a {name}",
+  "@tamaCreatorEditTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaCreatorShuffle": "barajar",
+  "tamaCreatorUndo": "deshacer",
+  "tamaCreatorCreate": "crear",
+  "tamaCreatorDiscardTitle": "¿salir sin guardar?",
+  "tamaCreatorDiscardBody": "los cambios que no has guardado se perderán.",
+  "tamaCreatorDiscard": "salir",
+  "tamaCreatorKeepEditing": "seguir editando",
+  "tamaCreatorNotCreator": "solo quien creó a este Tama puede cambiar su aspecto.",
+  "tamaTabBody": "cuerpo",
+  "tamaTabColor": "color",
+  "tamaTabEyes": "ojos",
+  "tamaTabMouth": "boca",
+  "tamaTabCrown": "coronilla",
+  "tamaTabCheeks": "mejillas",
+  "tamaTabLimbs": "brazos y pies",
+  "tamaTabCharacter": "carácter",
+  "tamaShape": "forma",
+  "tamaStyle": "estilo",
+  "tamaWidth": "anchura",
+  "tamaHeight": "altura",
+  "tamaSize": "tamaño",
+  "tamaSpacing": "separación",
+  "tamaIntensity": "intensidad",
+  "tamaPattern": "dibujo",
+  "tamaPatternTone": "tono del dibujo",
+  "tamaArms": "brazos",
+  "tamaFeet": "pies",
+  "tamaBodyRound": "redondo",
+  "tamaBodyBean": "alubia",
+  "tamaBodyEgg": "huevo",
+  "tamaBodyPear": "pera",
+  "tamaBodyMochi": "mochi",
+  "tamaBodyDrop": "gota",
+  "tamaEyesDot": "puntitos",
+  "tamaEyesShiny": "brillantes",
+  "tamaEyesSmile": "sonrientes",
+  "tamaEyesSleepy": "soñolientos",
+  "tamaEyesStar": "estrellados",
+  "tamaEyesGoggle": "saltones",
+  "tamaMouthSmile": "sonrisa",
+  "tamaMouthCat": "gatuna",
+  "tamaMouthO": "boquita",
+  "tamaMouthFang": "colmillo",
+  "tamaMouthTongue": "lengüita",
+  "tamaCrownNone": "nada",
+  "tamaCrownEars": "orejitas",
+  "tamaCrownBunny": "de conejo",
+  "tamaCrownAntennae": "antenas",
+  "tamaCrownHorns": "cuernecillos",
+  "tamaCrownCurl": "rizo",
+  "tamaCheeksNone": "nada",
+  "tamaCheeksBlush": "rubor",
+  "tamaCheeksFreckles": "pecas",
+  "tamaCheeksLines": "rayitas",
+  "tamaPatternNone": "liso",
+  "tamaPatternBelly": "barriga",
+  "tamaPatternSpots": "motas",
+  "tamaPatternStripes": "rayas",
+  "tamaPatternTip": "punta",
+  "tamaArmsNubs": "bracitos",
+  "tamaArmsWings": "alitas",
+  "tamaFeetBeans": "patitas",
+  "tamaFeetPaws": "zarpitas",
+  "tamaColorPalette": "paleta",
+  "tamaColorHex": "HEX libre",
+  "tamaColorHexField": "código",
+  "tamaColorHexError": "usa el formato #RRGGBB",
+  "tamaName": "nombre",
+  "tamaNameHint": "¿cómo se llama?",
+  "tamaNameError": "entre 1 y 16 caracteres",
+  "tamaPersonality": "personalidad",
+  "tamaVoice": "voz",
+  "tamaVoicePitch": "tono",
+  "tamaVoiceTempo": "ritmo",
+  "tamaVoiceTimbre": "timbre",
+  "tamaTimbreSoft": "suave",
+  "tamaTimbreBright": "clara",
+  "tamaTimbreRound": "redonda",
+  "tamaListen": "escuchar",
+  "tamaVoiceHint": "el nombre decide cómo canta: dos Tamas con nombres distintos nunca suenan igual.",
+  "profileTamaEmpty": "aún no tienes Tama",
+  "profileAccentFollowTama": "seguir a mi Tama",
+  "profileAccentFollowHint": "el acento toma el color de tu Tama de perfil, ajustado para que se lea bien",
+  "accentResyncTitle": "tu Tama ha cambiado de color",
+  "accentResyncBody": "elegiste el color de acento a mano. ¿quieres que vuelva a seguir el color de tu Tama?",
+  "accentResyncYes": "seguir a mi Tama",
+  "accentResyncNo": "mantener el mío",
+  "tamaVisit": "visitar",
+  "tamasSelectHint": "toca otra vez para entrar en su habitación",
+  "tamaArmsMittens": "manitas",
+  "tamaArmsNone": "sin brazos",
+  "tamaFeetLegs": "piernecitas",
+  "tamaFeetNone": "sin pies",
+  "tamaFoodCookie": "galleta",
+  "tamaFoodCandy": "caramelo",
+  "tamaFoodCupcake": "magdalena",
+  "tamaFoodApple": "manzana",
+  "tamaFoodDango": "dango",
+  "tamaTimbreWhistle": "silbido",
+  "tamaTimbrePurr": "ronroneo",
+  "tamaTimbreBubble": "burbuja",
+  "tamaFoodMochi": "mochi",
+  "tamaFoodLollipop": "piruleta",
+  "tamaFoodIceCream": "helado",
+  "tamaFoodDonut": "dónut",
+  "tamaFoodFlan": "flan",
+  "tamaFoodLocked": "{food} se desbloquea en la tienda",
+  "@tamaFoodLocked": {
+    "placeholders": {
+      "food": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaFoodLockedShort": "en la tienda",
+  "tamaFoodsPrevious": "chuches anteriores",
+  "tamaFoodsNext": "más chuches"
 }

@@ -1,8 +1,10 @@
-// Ibasho — modelo de datos del checkpoint 1.
+// Ibasho — modelo de datos del entorno y las cuentas.
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:ui' show Color;
+
+import 'package:flutter/foundation.dart';
 
 import '../theme/tokens.dart';
 
@@ -124,6 +126,7 @@ class UserProfile {
     this.timezone = '',
     this.locale = 'es',
     this.accentColor = '#5BC8F5',
+    this.accentFollowsTama,
     required this.createdAt,
   });
 
@@ -142,6 +145,13 @@ class UserProfile {
 
   /// `#RRGGBB`.
   final String accentColor;
+
+  /// Si el acento sigue el color del Tama de perfil.
+  ///
+  /// `null` quiere decir que nunca se ha elegido: si el acento es aun el cian
+  /// de serie, se puede sincronizar sin preguntar. `false` es una eleccion a
+  /// mano y no se pisa nunca sin permiso.
+  final bool? accentFollowsTama;
 
   final DateTime createdAt;
 
@@ -167,6 +177,7 @@ class UserProfile {
         timezone: (json['timezone'] as String?) ?? '',
         locale: (json['locale'] as String?) ?? 'es',
         accentColor: (json['accentColor'] as String?) ?? '#5BC8F5',
+        accentFollowsTama: json['accentFollowsTama'] as bool?,
         createdAt: DateTime.fromMillisecondsSinceEpoch(
           (json['createdAt'] as num?)?.toInt() ?? 0,
         ),
@@ -180,6 +191,7 @@ class UserProfile {
         'timezone': timezone,
         'locale': locale,
         'accentColor': accentColor,
+        'accentFollowsTama': ?accentFollowsTama,
         'createdAt': createdAt.millisecondsSinceEpoch,
       };
 
@@ -190,6 +202,7 @@ class UserProfile {
     String? timezone,
     String? locale,
     String? accentColor,
+    bool? accentFollowsTama,
   }) =>
       UserProfile(
         username: username,
@@ -199,6 +212,7 @@ class UserProfile {
         timezone: timezone ?? this.timezone,
         locale: locale ?? this.locale,
         accentColor: accentColor ?? this.accentColor,
+        accentFollowsTama: accentFollowsTama ?? this.accentFollowsTama,
         createdAt: createdAt,
       );
 }
@@ -233,6 +247,21 @@ class DatabaseEvent {
   /// `true` para `patch` (fusion), `false` para `put` (sustitucion).
   final bool isPatch;
 }
+
+/// Consulta sobre los hijos de un nodo: los que tienen `child` igual a
+/// `equalTo`. Es la unica forma de consulta que Ibasho necesita y la unica que
+/// las reglas dejan hacer sobre `/tamas`.
+@immutable
+class DatabaseQuery {
+  const DatabaseQuery({required this.orderByChild, required this.equalTo});
+
+  final String orderByChild;
+  final String equalTo;
+}
+
+/// Marca de tiempo que pone el servidor al escribir. Las reglas comparan con
+/// `now`, asi que un reloj local adelantado no rompe nada.
+const Map<String, String> serverTimestamp = <String, String>{'.sv': 'timestamp'};
 
 /// Calidad de la conexion, medida contra el propio endpoint de la base.
 enum LinkQuality { offline, weak, fair, strong }

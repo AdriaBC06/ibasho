@@ -10,12 +10,14 @@ import '../backend/rest_ibasho_backend.dart';
 import '../storage/secure_store.dart';
 import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
+import 'accent_sync.dart';
 import 'admin.dart';
 import 'music_library.dart';
 import 'preferences.dart';
 import 'profile.dart';
 import 'session.dart';
 import 'system_status.dart';
+import 'tamas.dart';
 
 /// Se sobrescriben en `main()`, cuando ya se han abierto los archivos.
 final secureStoreProvider = Provider<SecureStore>(
@@ -84,14 +86,40 @@ final localeProvider = Provider<Locale>(
   (ref) => Locale(ref.watch(preferencesProvider.select((p) => p.localeCode))),
 );
 
-/// Color de acento. En el CP2 lo traera el Tama.
+/// Los Tamas de la cuenta en curso.
+final tamasProvider = StateNotifierProvider<TamasController, TamasState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  return TamasController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+  );
+});
+
+/// Hora con resolucion de minuto, para el humor de los Tamas. El humor se
+/// calcula con esto en cada vista; no se escribe nunca.
+final moodClockProvider = Provider<DateTime>((ref) {
+  final minute = ref.watch(
+    clockProvider.select((t) => t.millisecondsSinceEpoch ~/ Duration.millisecondsPerMinute),
+  );
+  return DateTime.fromMillisecondsSinceEpoch(minute * Duration.millisecondsPerMinute);
+});
+
+/// Color de acento.
 ///
-/// Manda el del perfil; mientras llega por red se usa el ultimo conocido en
-/// esta maquina, para que el arranque no pinte cian y luego salte al color de
-/// verdad.
+/// Si el perfil sigue al Tama, sale del color del Tama de perfil, ajustado para
+/// que se lea sobre los paneles: asi una edicion del Tama tiñe el entorno en
+/// cuanto llega, sin esperar a ninguna escritura. Si no, manda el del perfil.
+/// Mientras nada de eso ha llegado por red se usa el ultimo conocido en esta
+/// maquina, para que el arranque no pinte cian y luego salte al color de verdad.
 final accentProvider = Provider<Color>((ref) {
   final profile = ref.watch(profileProvider.select((p) => p.profile));
-  if (profile != null) return profile.accent;
+  if (profile != null) {
+    if (profile.accentFollowsTama == true) {
+      final tamaColor = ref.watch(tamasProvider.select((t) => t.profileTama?.look.color));
+      if (tamaColor != null) return accentForTama(tamaColor);
+    }
+    return profile.accent;
+  }
   final cached = ref.watch(preferencesProvider.select((p) => p.accentHex));
   return parseAccent(cached) ?? T.cyan;
 });

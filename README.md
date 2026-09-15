@@ -6,11 +6,12 @@ Ibasho es un espacio de juegos multiplataforma inspirado en los menús de sistem
 de Wii y Nintendo 3DS: un launcher de micro-apps con avatares propios (los
 **Tamas**), cuentas, amigos y mensajería.
 
-Este repositorio está en el **checkpoint 1**: el entorno y el sistema de
-cuentas. Todavía no hay apps dentro, pero el entorno ya se puede usar: splash,
-login, cambio obligatorio de contraseña, entorno de dos paneles con reloj y barra
-de estado, rejilla de canales con paginación y animación de apertura, perfil,
-ajustes, créditos y panel de administración.
+Este repositorio está en el **checkpoint 2** (0.2.0): el entorno, las cuentas y
+los **Tamas**. Todavía no hay apps dentro, pero el entorno ya se puede usar:
+splash, login, cambio obligatorio de contraseña, entorno de dos paneles con reloj
+y barra de estado, rejilla de canales con paginación y animación de apertura,
+perfil, ajustes, créditos, panel de administración y el canal de Tamas, con su
+creador y la habitación de cada uno.
 
 Plataforma de este checkpoint: **Linux desktop**.
 
@@ -88,9 +89,9 @@ flutter run -d linux --dart-define-from-file=.env
 
 ```sh
 flutter analyze          # sin avisos
-flutter test             # comportamiento del entorno y recorrido visual (PNG en build/screenshots/)
+flutter test             # entorno, Tamas y recorrido visual (PNG en build/screenshots/)
 ./tool/test_rules.sh     # reglas de seguridad contra el emulador de la Realtime Database
-./tool/test_e2e.sh       # flujo de cuentas completo contra los emuladores de Auth y Database
+./tool/test_e2e.sh       # cuentas y Tamas de extremo a extremo contra los emuladores de Auth y Database
 ```
 
 Los dos últimos levantan los emuladores de Firebase (procesos Java locales, no
@@ -113,18 +114,24 @@ local), cargan `database.rules.json` y comprueban, entre otras cosas, que:
 - una cuenta deshabilitada pierde el acceso;
 - un usuario no escribe en el nodo de otro ni en la allowlist;
 - el admin da de alta, deshabilita, rehabilita y mueve el índice de nombres;
-- cada campo del perfil valida tipo y longitud.
+- cada campo del perfil valida tipo y longitud;
+- crear el Tama número 100 es imposible aunque se llame a la API directamente,
+  y el contador no se puede bajar, borrar ni saltar;
+- solo quien creó un Tama edita su aspecto, y solo quien lo cuida escribe los
+  cuidados;
+- la lista de Tamas solo se lee con la consulta de «los que cuido yo».
 
 ## Arquitectura
 
 ```
 lib/
   backend/     IbashoBackend (contrato) y RestIbashoBackend (REST + SSE contra Firebase)
-  state/       Riverpod: sesión, perfil, admin, preferencias, reloj y estado del sistema
+  state/       Riverpod: sesión, perfil, admin, Tamas, preferencias, reloj y estado del sistema
   storage/     sesión cifrada (libsecret o AES-256-GCM) y preferencias locales
-  audio/       música y efectos
-  theme/       tokens de color, escala tipográfica y piel en tiempo de ejecución
+  audio/       música, efectos y la voz sintetizada de los Tamas
+  theme/       tokens de color, escala tipográfica, acentos legibles y piel en tiempo de ejecución
   ui/          lienzo virtual, controles propios, pantallas y canales
+  ui/tama/     la criatura: pintor, animador, vista viva y piezas de interfaz
   l10n/        catálogos ARB es / en
 tool/
   bootstrap_admin.dart   primer administrador
@@ -157,6 +164,56 @@ Decisiones de fondo:
 - **Efectos por SoLoud, música por audioplayers.** Los efectos necesitan
   disparo inmediato y repetible; la música, streaming y bucle. Cada motor hace
   lo suyo.
+
+## Tamas
+
+Un Tama es la criatura de Ibasho: mascota y avatar a la vez. Cada cuenta puede
+tener hasta 99 y uno de ellos es el Tama de perfil, que vive en el panel superior
+y en el perfil.
+
+- **Dibujado en código.** `lib/ui/tama/tama_painter.dart` pinta cuerpo, ojos,
+  boca, coronilla, mejillas, dibujo, brazos y pies sobre un lienzo lógico de
+  100×100, con el brillo especular de la casa. No hay ni una imagen.
+- **Vivo.** `TamaAnimator` respira, parpadea, salta y reacciona según su
+  personalidad (tranquilo, juguetón, tímido, descarado, dormilón). La mirada
+  sigue al ratón; en pantallas táctiles mira al último toque unos segundos, y si
+  no hay nada, curiosea a su aire. Con movimiento reducido se queda quieto.
+- **Voz sintetizada.** `lib/audio/tama_voice.dart` genera cada graznido al
+  vuelo con uno de seis timbres (suave, clara, redonda, silbido, ronroneo y
+  burbuja); el patrón de sílabas sale del nombre, así que dos Tamas con nombres
+  distintos no suenan igual. Va por el mismo motor que los efectos y obedece a
+  su volumen.
+- **Comida de verdad.** Diez chuches dibujadas en `lib/ui/tama/tama_food.dart`
+  (galleta, caramelo, magdalena, manzana, dango, mochi, piruleta, helado, dónut
+  y flan) que se eligen en una tira deslizable de la habitación. De serie solo
+  se tienen la galleta y el caramelo; el resto sale bloqueado hasta que llegue
+  la tienda (`unlockedFoodsProvider`).
+- **Un registro por Tama.** `/tamas/{tamaId}` guarda `creator` y `keeper`. Solo
+  el creador edita nombre, personalidad, voz y aspecto; el cuidador escribe los
+  cuidados. Traspasar un Tama a un amigo será cambiar `keeper`.
+- **Tope en las reglas.** Crear o borrar un Tama va en la misma escritura
+  multi-ruta que `/users/{accountId}/tamaCount` (+1 o −1 exacto, máximo 99) y
+  que `tamaLastChange`, el id del Tama afectado.
+- **El humor no se guarda.** Se calcula en el cliente a partir de `lastPetted` y
+  `lastFed`, que son lo único que escriben los cuidados. Un Tama desatendido se
+  pone melancólico; nunca enferma ni muere.
+- **Color y acento.** El color se elige de una paleta cerrada de 16 tonos o en
+  HEX libre, y se guarda qué modo se usó. El acento del entorno puede seguir al
+  Tama de perfil (ajustado para leerse sobre blanco); si se eligió a mano, se
+  pregunta antes de cambiarlo.
+
+## Hoja de ruta
+
+- **0.1.0 · checkpoint 1** — entorno y cuentas. Hecho.
+- **0.2.0 · checkpoint 2** — los Tamas: las mascotas de Ibasho. Creador con
+  piezas y ajustes finos, nombre, personalidad y voz; muchos Tamas por cuenta y
+  uno en el perfil; mimos y comida con un humor que cambia con calma. Hecho.
+- **Más adelante** — amigos y códigos de amigo (el Tama de perfil pasará a ser
+  legible por toda la allowlist; `database.rules.json` marca el sitio);
+  **traspasar un Tama** a un amigo para que lo cuide y juegue con él (quien lo
+  creó sigue siendo quien edita su aspecto, y el cuidador ve los cambios al
+  momento); una tienda donde desbloquear chuches; jugar con los Tamas, accesorios, mensajería, notificaciones,
+  monedas, insignias, micro-apps, Android y Windows.
 
 ## Licencia
 
