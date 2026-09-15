@@ -479,6 +479,23 @@
           ".validate": false
         }
       },
+      // Version minima de la app. Es publica: la app la lee antes de iniciar
+      // sesion para bloquear el login a una build antigua. No es un secreto ni
+      // una defensa (un cliente modificado podria ignorarla); sirve para que
+      // el grupo actualice. La escribe el admin (regla de /system).
+      "update": {
+        ".read": true,
+        ".validate": "newData.hasChildren(['minVersion'])",
+        "minVersion": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{1,4}[.][0-9]{1,4}[.][0-9]{1,4}$/)"
+        },
+        "url": {
+          ".validate": "newData.isString() && newData.val().length <= 300 && newData.val().matches(/^https:[/][/][^ ]+$/)"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       // Siguiente contador de codigo de amigo. Empieza en 1 (ausente = 1) y
       // solo sube de uno en uno, con el alta de cada cuenta.
       "friendCodeCounter": {

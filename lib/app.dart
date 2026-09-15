@@ -13,6 +13,7 @@ import 'l10n/gen/app_localizations.dart';
 import 'state/debug.dart';
 import 'state/providers.dart';
 import 'state/session.dart';
+import 'state/update_gate.dart';
 import 'theme/skin.dart';
 import 'theme/tokens.dart';
 import 'theme/type.dart';
@@ -22,6 +23,7 @@ import 'ui/screens/change_password_screen.dart';
 import 'ui/screens/login_screen.dart';
 import 'ui/screens/shell_screen.dart';
 import 'ui/screens/splash_screen.dart';
+import 'ui/screens/update_required_screen.dart';
 import 'ui/tama/tama_view.dart';
 
 /// La raiz es `WidgetsApp`, no `MaterialApp`.
@@ -113,6 +115,15 @@ class _AppRootState extends ConsumerState<AppRoot> {
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
     final phase = ref.watch(sessionProvider.select((s) => s.phase));
+    final locked = ref.watch(updateLockedProvider);
+
+    // Si llega una version minima mayor con la app abierta, se cierra todo lo
+    // que haya encima y se ensena el aviso.
+    ref.listen(updateLockedProvider, (before, after) {
+      if (after && before != true) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    });
 
     // Salir del entorno (cerrar sesion, sesion caducada o revocada) cierra
     // cualquier canal o dialogo abierto: si no, el login quedaria debajo de
@@ -141,6 +152,8 @@ class _AppRootState extends ConsumerState<AppRoot> {
 
     final Widget screen = !_booted || phase == SessionPhase.booting
         ? const SplashScreen()
+        : locked
+        ? const UpdateRequiredScreen()
         : switch (phase) {
             SessionPhase.signedOut => const LoginScreen(),
             SessionPhase.mustChangePassword => const ChangePasswordScreen(),

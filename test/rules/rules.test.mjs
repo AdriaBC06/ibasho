@@ -1063,3 +1063,22 @@ test('la musica de perfil solo acepta canciones desbloqueadas', async () => {
   await assertSucceeds(set(ref(member, `${base}/profileTrack`), 'bossa'));
   await assertFails(get(ref(db(OTHER), `${base}/profileTrack`)));
 });
+
+test('la version minima la lee cualquiera y la escribe el admin', async () => {
+  const admin = db(ADMIN);
+  await assertSucceeds(set(ref(admin, '/system/update'), { minVersion: '0.4.0', url: 'https://ibasho.top' }));
+  // Sin sesion ni allowlist se lee: bloquea el login de una build antigua.
+  const seen = await assertSucceeds(get(ref(db(null), '/system/update')));
+  assert.equal(seen.val().minVersion, '0.4.0');
+  await assertSucceeds(get(ref(db(ORPHAN), '/system/update/minVersion')));
+  // El resto de /system sigue cerrado para ellos.
+  await assertFails(get(ref(db(null), '/system/announcement')));
+  // Nadie mas lo toca.
+  await assertFails(set(ref(db(MEMBER), '/system/update'), { minVersion: '0.0.1' }));
+  await assertFails(set(ref(db(null), '/system/update'), { minVersion: '0.0.1' }));
+  // Forma.
+  await assertFails(set(ref(admin, '/system/update'), { minVersion: '1.0' }));
+  await assertFails(set(ref(admin, '/system/update'), { minVersion: '1.0.0', url: 'http://inseguro' }));
+  await assertFails(set(ref(admin, '/system/update'), { minVersion: '1.0.0', aviso: 'x' }));
+  await assertSucceeds(set(ref(admin, '/system/update'), null));
+});

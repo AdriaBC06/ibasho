@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../core/version.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
 import '../../../theme/skin.dart';
@@ -20,8 +21,6 @@ import '../../track_text.dart';
 import '../../widgets/track_tile.dart';
 import 'change_own_password_dialog.dart';
 import 'credits_channel.dart';
-
-const String appVersion = '0.3.0';
 
 class SettingsChannel extends ConsumerWidget {
   const SettingsChannel({super.key});

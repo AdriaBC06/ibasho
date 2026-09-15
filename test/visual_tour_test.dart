@@ -169,11 +169,24 @@ Future<void> main() async {
   });
 
   testWidgets('administracion', (tester) async {
-    await boot(tester, backend: FakeIbashoBackend());
+    final backend = FakeIbashoBackend()
+      ..seed('/system/update', {'minVersion': '0.3.0', 'url': 'https://ibasho.top/descargar'});
+    await boot(tester, backend: backend);
     await settle(tester, 100);
     await tester.tap(find.byKey(const ValueKey<String>('channel.admin')));
     await settle(tester, 60);
     await shoot(tester, '10-administracion');
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -330));
+    await settle(tester, 10);
+    await shoot(tester, '10b-administracion-version');
+  });
+
+  testWidgets('version antigua bloqueada', (tester) async {
+    final backend = FakeIbashoBackend()
+      ..seed('/system/update', {'minVersion': '0.4.0', 'url': 'https://ibasho.top/descargar'});
+    await boot(tester, backend: backend, signedIn: false);
+    await settle(tester, 100);
+    await shoot(tester, '35-actualizar');
   });
 
   testWidgets('depuracion', (tester) async {

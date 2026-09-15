@@ -738,5 +738,57 @@
   "wallDelete": "borrar",
   "wallDeleteTitle": "¿borrar este mensaje?",
   "wallDeleteBody": "desaparecerá de tu muro para siempre.",
-  "wallDeleteError": "no se ha podido borrar"
+  "wallDeleteError": "no se ha podido borrar",
+  "updateTitle": "hay una versión nueva de Ibasho",
+  "updateBody": "para seguir entrando necesitas la {version} o posterior. Actualiza y vuelve a abrirla.",
+  "@updateBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updateYours": "la tuya",
+  "updateNeeded": "la necesaria",
+  "updateDownload": "descargar la nueva",
+  "updateHint": "en cuanto la versión mínima cambie, esta pantalla se quita sola",
+  "adminVersionSection": "versión mínima",
+  "adminVersionNone": "cualquier versión puede entrar",
+  "adminVersionCurrent": "se exige la {version} o posterior",
+  "@adminVersionCurrent": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "adminVersionHint": "quien tenga una versión anterior verá el aviso de actualizar y no podrá entrar. Esta es la {version}.",
+  "@adminVersionHint": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "adminVersionUrl": "página de descarga (opcional)",
+  "adminVersionUrlInvalid": "tiene que empezar por https://",
+  "adminVersionRequire": "exigir la {version}",
+  "@adminVersionRequire": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "adminVersionClear": "quitar el bloqueo",
+  "adminVersionRequired": "desde ahora se exige la {version}",
+  "@adminVersionRequired": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "adminVersionCleared": "bloqueo quitado",
+  "adminVersionError": "no se ha podido cambiar la versión mínima"
 }

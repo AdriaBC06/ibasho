@@ -256,6 +256,29 @@ y en el perfil.
   mensaje por año, de hasta 140 caracteres. Las reglas no pueden saber qué día
   es: eso lo decide el cliente, y está documentado en las propias reglas.
 
+## Versiones y bloqueo
+
+La versión de la app vive en `lib/core/version.dart` (`appVersion`, igual que
+`version:` de `pubspec.yaml`; un test lo comprueba). Para obligar a actualizar:
+
+1. Sube las dos a la versión nueva, compila y comparte la build.
+2. Ábrela con una cuenta de administración, canal **administración** →
+   **versión mínima**, pon (si quieres) la página de descarga y pulsa
+   **exigir la X.Y.Z**.
+
+Desde ese momento cualquier build anterior, abierta o no, muestra el aviso de
+actualizar en lugar del login o del entorno, con el botón de descarga. Se lee de
+`/system/update` sin sesión y en tiempo real; **quitar el bloqueo** lo deshace.
+Solo se puede exigir la versión de la build desde la que se pulsa, para no
+dejarse fuera. También vale la CLI:
+
+```sh
+firebase database:set /system/update --data '{"minVersion":"0.4.0","url":"https://…"}'
+```
+
+Es un cerrojo de la app para que el grupo actualice, no una defensa: un cliente
+modificado podría ignorarlo.
+
 ## Hoja de ruta
 
 - **0.1.0 · checkpoint 1** — entorno y cuentas. Hecho.

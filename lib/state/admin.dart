@@ -272,6 +272,22 @@ class AdminController extends StateNotifier<AdminState> {
         generation: generation,
       ).toJson();
 
+  // --- Version minima ---------------------------------------------------
+
+  /// Exige al menos `minVersion` para usar la app. `url` es la pagina de
+  /// descarga que se ensena a quien se quede atras.
+  Future<void> requireVersion(String minVersion, {String? url}) => _session.freshToken().then(
+        (token) => _backend.write(
+          '/system/update',
+          {'minVersion': minVersion, if (url != null && url.isNotEmpty) 'url': url},
+          idToken: token,
+        ),
+      );
+
+  /// Quita el bloqueo: cualquier version vuelve a entrar.
+  Future<void> clearRequiredVersion() async =>
+      _backend.remove('/system/update', idToken: await _session.freshToken());
+
   // --- Codigos de amigo -------------------------------------------------
 
   /// Rutas que da un codigo a una cuenta: el indice, la copia en la cuenta y

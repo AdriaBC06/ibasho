@@ -10,9 +10,11 @@ import 'package:intl/intl.dart';
 import '../../../audio/audio_service.dart';
 import '../../../backend/errors.dart';
 import '../../../backend/models.dart';
+import '../../../core/version.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/admin.dart';
 import '../../../state/providers.dart';
+import '../../../state/update_gate.dart';
 import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
@@ -198,6 +200,8 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
                   ),
                 ],
                 const SizedBox(height: 22),
+                const _VersionLock(),
+                const SizedBox(height: 22),
                 SectionCard(
                   title: l.adminListSection,
                   padding: const EdgeInsets.fromLTRB(26, 6, 26, 10),
@@ -234,6 +238,132 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// La version minima: quien tenga una anterior ve el aviso de actualizar y no
+/// puede entrar. Solo se puede exigir la version de esta build, para que nadie
+/// se quede fuera de su propio panel.
+class _VersionLock extends ConsumerStatefulWidget {
+  const _VersionLock();
+
+  @override
+  ConsumerState<_VersionLock> createState() => _VersionLockState();
+}
+
+class _VersionLockState extends ConsumerState<_VersionLock> {
+  final TextEditingController _url = TextEditingController();
+  bool _seeded = false;
+  bool _working = false;
+  String? _urlError;
+
+  @override
+  void dispose() {
+    _url.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run(Future<void> Function() action, String done) async {
+    final l = L.of(context)!;
+    setState(() => _working = true);
+    try {
+      await action();
+      if (!mounted) return;
+      AudioService.instance.play(Sfx.open);
+      showIbashoToast(context, done);
+    } catch (e) {
+      if (!mounted) return;
+      AudioService.instance.play(Sfx.error);
+      showIbashoToast(context, l.adminVersionError, isError: true);
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  void _require() {
+    final l = L.of(context)!;
+    final url = _url.text.trim();
+    if (url.isNotEmpty && !RegExp(r'^https://\S{1,290}$').hasMatch(url)) {
+      AudioService.instance.play(Sfx.error);
+      setState(() => _urlError = l.adminVersionUrlInvalid);
+      return;
+    }
+    setState(() => _urlError = null);
+    _run(
+      () => ref.read(adminProvider.notifier).requireVersion(appVersion, url: url),
+      l.adminVersionRequired(appVersion),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final requirement = ref.watch(updateRequirementProvider).valueOrNull;
+    if (!_seeded && requirement?.url != null) {
+      _url.text = requirement!.url!;
+      _seeded = true;
+    }
+    final current = requirement?.minVersion.toString();
+
+    return SectionCard(
+      title: l.adminVersionSection,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const GlyphIcon(Glyph.lock, size: 20, color: T.inkSoft),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  current == null ? l.adminVersionNone : l.adminVersionCurrent(current),
+                  key: const ValueKey<String>('admin.version.current'),
+                  style: Ty.body,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 30),
+            child: Text(l.adminVersionHint(appVersion), style: Ty.caption),
+          ),
+          const SizedBox(height: 16),
+          IbashoTextField(
+            controller: _url,
+            label: l.adminVersionUrl,
+            hint: 'https://',
+            maxLength: 300,
+            error: _urlError,
+          ),
+          Row(
+            children: [
+              IbashoButton(
+                key: const ValueKey<String>('admin.version.require'),
+                label: l.adminVersionRequire(appVersion),
+                glyph: Glyph.lock,
+                height: 46,
+                onPressed: _working ? null : _require,
+              ),
+              const SizedBox(width: 12),
+              if (current != null)
+                IbashoButton(
+                  key: const ValueKey<String>('admin.version.clear'),
+                  label: l.adminVersionClear,
+                  tone: ButtonTone.quiet,
+                  height: 46,
+                  onPressed: _working
+                      ? null
+                      : () => _run(
+                            () => ref.read(adminProvider.notifier).clearRequiredVersion(),
+                            l.adminVersionCleared,
+                          ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

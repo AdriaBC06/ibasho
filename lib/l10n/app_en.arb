@@ -489,5 +489,22 @@
   "wallDelete": "delete",
   "wallDeleteTitle": "delete this message?",
   "wallDeleteBody": "it will disappear from your wall for good.",
-  "wallDeleteError": "could not delete"
+  "wallDeleteError": "could not delete",
+  "updateTitle": "there's a new version of Ibasho",
+  "updateBody": "you need version {version} or later to keep using it. Update and open it again.",
+  "updateYours": "yours",
+  "updateNeeded": "required",
+  "updateDownload": "download the new one",
+  "updateHint": "this screen goes away by itself as soon as the minimum version changes",
+  "adminVersionSection": "minimum version",
+  "adminVersionNone": "any version can sign in",
+  "adminVersionCurrent": "{version} or later is required",
+  "adminVersionHint": "anyone on an older version sees the update notice and can't get in. This is {version}.",
+  "adminVersionUrl": "download page (optional)",
+  "adminVersionUrlInvalid": "it has to start with https://",
+  "adminVersionRequire": "require {version}",
+  "adminVersionClear": "remove the lock",
+  "adminVersionRequired": "{version} is now required",
+  "adminVersionCleared": "lock removed",
+  "adminVersionError": "could not change the minimum version"
 }

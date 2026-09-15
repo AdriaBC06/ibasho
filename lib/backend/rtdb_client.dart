@@ -26,7 +26,8 @@ class RtdbClient {
   Uri _uri(String path, {String? idToken, Map<String, String> query = const {}}) {
     final normalized = path.startsWith('/') ? path : '/$path';
     final params = <String, String>{
-      'auth': ?idToken,
+      // Sin token (cadena vacia) se lee como visitante: solo lo publico.
+      if (idToken != null && idToken.isNotEmpty) 'auth': idToken,
       ...query,
     };
     if (Env.useEmulator) params['ns'] = '${Env.projectId}-default-rtdb';

@@ -32,6 +32,7 @@ lib/
     env.dart           configuración inyectada en compilación (Env)
     credits.dart       lista de créditos que muestra la app
     timezones.dart     zonas horarias IANA embebidas; offsetOfZone y wallClockIn
+    version.dart       appVersion y AppVersion (comparación mayor.menor.parche)
     friend_code.dart   FriendCode: permutacion afin, digito de control de Damm y formato
     birthday.dart      isBirthdayToday, wallYearFor, ageToday y zoneDifference
   l10n/
@@ -48,6 +49,7 @@ lib/
     card.dart          cardFor, cardForProfile, cardForTama y cardKeeperProvider (ficha pública)
     friends.dart       FriendsController: código, amigos, solicitudes, búsqueda y muro
     presence.dart      PresenceController: estado elegido, ausente automático y publicación
+    update_gate.dart   UpdateRequirement, updateRequirementProvider y updateLockedProvider
     people.dart        datos en vivo de otras cuentas (ficha, Tama público, perfil, presencia, música, muro)
     pantry.dart        unlockedFoodsProvider
     music_library.dart MusicLibraryController
@@ -70,7 +72,7 @@ lib/
     widgets/           controles propios (ver §3)
     tama/              la criatura: pintor, animador, vista, comida y piezas de interfaz
     social/            presencia, CardTama, insignias, entrada del código y tarjeta de visita
-    screens/           splash, login, cambio de contraseña, entorno, rejilla, rutas
+    screens/           splash, login, cambio de contraseña, versión antigua, entorno, rejilla, rutas
       channels/        ajustes, perfil, Tamas, amigos, administración, depuración, créditos, próximamente
       tama/            habitación y creador de un Tama
       friends/         añadir amigo, perfil de un amigo y muro de cumpleaños
@@ -82,6 +84,7 @@ test/
   visual_tour_test.dart    renderiza pantallas a PNG
   tama_gallery_test.dart   renderiza combinaciones de Tamas, bocas, comida e iconos a PNG
   friend_code_test.dart    permutación, Damm, formato
+  update_gate_test.dart    versión de pubspec, comparación, bloqueo en vivo y desde el admin
   friends_test.dart        amigos: búsqueda, solicitudes, perfil ajeno, música, muro, presencia, idioma, tarjeta, gorrito
   support/fakes.dart       FakeIbashoBackend (base en memoria compartible), FakePresenceLink, FakeSecureStore, FakeSettingsStore, sampleTama, seedSocial
   e2e/backend_e2e_test.dart  flujo de cuentas, Tamas, amigos y presencia contra los emuladores
@@ -127,7 +130,9 @@ La raíz de la app es `WidgetsApp`. `pubspec.yaml` tiene
 `IbashoApp.builder` envuelve el navegador en `IbashoSkin` →
 `DefaultTextStyle(Ty.body)` → `ActivityWatch` → `TamaPointerTracker` → `VirtualCanvas`.
 `AppRoot` muestra el splash un mínimo de 2,4 s mientras `SessionController.restore()`
-resuelve la sesión.
+resuelve la sesión. Después, si `updateLockedProvider` es `true`, muestra
+`UpdateRequiredScreen` en lugar del login o del entorno (y cierra lo que hubiera
+abierto al pasar a bloqueado); si no, la pantalla de la fase de sesión.
 
 ### Providers (`lib/state/providers.dart`, `pantry.dart`, `debug.dart`)
 
@@ -151,6 +156,8 @@ resuelve la sesión.
 | `musicLibraryProvider` | `StateNotifierProvider` | pistas desbloqueadas y pista del menú |
 | `unlockedFoodsProvider` | `Provider<Set<TamaFood>>` | chuches con `unlockedByDefault` (galleta y caramelo) |
 | `debugProvider` | `StateNotifierProvider` | cámara lenta y gráfica de rendimiento (no se persiste) |
+| `updateRequirementProvider` | `StreamProvider<UpdateRequirement?>` | `/system/update` leído sin sesión y seguido por SSE; `null` sin red o sin nodo |
+| `updateLockedProvider` | `Provider<bool>` | `appVersion` < `minVersion` |
 | `presenceProvider` | `StateNotifierProvider<PresenceController, PresenceStatus>` | estado elegido, inactividad y conexión; se reconstruye al cambiar de cuenta o de fase |
 | `friendsProvider` | `StateNotifierProvider<FriendsController, FriendsState>` | código propio, amigos, solicitudes recibidas y mandadas |
 | `pendingRequestsProvider` | `Provider<int>` | solicitudes recibidas (insignia del canal) |
@@ -584,6 +591,9 @@ coincide con su uid).
 /system/announcement
     text                 string ≤ 200
     updatedAt            number > 0
+/system/update             lectura pública
+    minVersion           string ^\d{1,4}\.\d{1,4}\.\d{1,4}$
+    url?                 string https://…, ≤ 300
 /system/friendCodeCounter  number entero: el siguiente contador (ausente = 1), sube de 1 en 1
 ```
 
@@ -619,6 +629,7 @@ coincide con su uid).
 | `…/name`, `personality`, `voice`, `look`, `updatedAt` | — | el `creator` |
 | `…/care` | — | el `keeper` |
 | `/system` | miembro habilitado | admin |
+| `/system/update` | cualquiera, sin sesión | (vía `/system`) |
 
 ### Contador de Tamas
 
@@ -669,6 +680,7 @@ reparte los que falten al abrir el panel.
 | `MusicLibraryController` | `/users/$acc/music/menuTrack`, `/users/$acc/music/profileTrack` (o la borra), `/users/$acc/music/unlocked/$track`, borra `unlocked` |
 | `AdminController` | alta multi-ruta con código de amigo (ver arriba), `/admins/$uid`, `/allowlist/$uid/disabled`; regenerar crea `/allowlist/$nuevoUid` con el mismo `accountId`, copia `/admins` si lo era y marca la vieja `disabled` y `retired` |
 | `TamasController` | multi-ruta de creación y borrado (con `card` si cambia el Tama de perfil); `PATCH /tamas/$id` (name, personality, voice, look, updatedAt); `/tamas/$id/care/lastPetted` y `/lastFed` (`serverTimestamp`, como mucho una vez cada 30 s y 5 s por Tama); `PATCH /users/$acc` con `tama` y `card` |
+| `AdminController` (versión) | `/system/update` (`requireVersion(appVersion, url:)`) y su borrado |
 | `tool/bootstrap_admin.dart` | `/allowlist/$uid`, `/admins/$uid`, `/usernames/$username`, `/friendCodes/$code`, `/users/$uid/friendCode`, `/system/friendCodeCounter` con la CLI de Firebase |
 
 El humor de un Tama no se guarda: `TamaMoodReading.of(tama, now)` lo calcula a
@@ -718,6 +730,8 @@ suave hasta 52 horas.
 | `./tool/test_rules.sh` | instala `test/rules/node_modules` si falta y ejecuta `firebase emulators:exec --project demo-ibasho --only database "npm --prefix test/rules test"` (`node --test rules.test.mjs`, con `@firebase/rules-unit-testing`) |
 | `./tool/test_e2e.sh` | `firebase emulators:exec --project demo-ibasho --only auth,database` con `flutter test test/e2e` y los defines del emulador |
 
+- `RtdbClient` omite `auth` cuando el token es la cadena vacía: así se leen nodos
+  públicos como `/system/update` antes de iniciar sesión.
 - Emuladores (`firebase.json`): Realtime Database en `127.0.0.1:9000`, Auth en
   `127.0.0.1:9099`, interfaz desactivada. Son procesos Java locales; nunca tocan
   el proyecto real.
