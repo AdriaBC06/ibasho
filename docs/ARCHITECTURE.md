@@ -902,6 +902,30 @@ suave hasta 52 horas.
   `online`, lo mata con `SIGKILL` y comprueba que el servidor deja `offline`.
 - Reglas en producción: `firebase deploy --only database`.
 
+### Comprobar que el escritorio no ha cambiado
+
+La regla del puerto a móvil es que **Linux no puede empeorar**, y eso se
+comprueba con números, no a ojo: el recorrido visual se corre en una copia de
+la última versión conocida buena y en el árbol de trabajo, y las imágenes se
+comparan píxel a píxel.
+
+```bash
+git worktree add -f --detach /tmp/ibasho-base <commit>
+cp .env /tmp/ibasho-base/.env
+(cd /tmp/ibasho-base && flutter pub get && flutter test test/visual_tour_test.dart)
+flutter test test/visual_tour_test.dart
+# y comparar /tmp/ibasho-base/build/screenshots con build/screenshots
+```
+
+Las dos pasadas se hacen seguidas, porque el reloj del entorno sale en la
+captura. Lo único que puede salir distinto es el reloj, el número de versión,
+el Tama al azar del creador nuevo y algún píxel de antialias en una cara
+animada; cualquier otra diferencia es una regresión de escritorio, casi
+siempre por envolver un control en algo que le da un ancho máximo (`Flexible`,
+`Wrap`, `ConstrainedBox`): con el ancho acotado, un botón propio se estira
+hasta llenarlo, y en horizontal no debe. Esos envoltorios van solo en la rama
+vertical.
+
 ---
 
 ## 7. Configuración
