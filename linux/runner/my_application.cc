@@ -53,6 +53,9 @@ static void my_application_activate(GApplication* application) {
   }
 
   gtk_window_set_default_size(window, 1280, 800);
+  // El icono lo instala tool/install_linux.sh en el tema hicolor con el mismo
+  // nombre que el identificador de la app.
+  gtk_window_set_icon_name(window, APPLICATION_ID);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(

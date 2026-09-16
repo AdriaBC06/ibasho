@@ -31,6 +31,7 @@ class ChannelTile extends ConsumerStatefulWidget {
     required this.width,
     required this.height,
     this.compact = false,
+    this.glyphOnly = false,
   });
 
   final ChannelSpec spec;
@@ -39,6 +40,9 @@ class ChannelTile extends ConsumerStatefulWidget {
 
   /// Version reducida para cuando el panel inferior esta encogido.
   final bool compact;
+
+  /// Sin etiqueta: en vertical, cuando la baldosa se queda pequeña.
+  final bool glyphOnly;
 
   @override
   ConsumerState<ChannelTile> createState() => _ChannelTileState();
@@ -110,7 +114,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile> {
                           ? T.hairline
                           : Color.lerp(skin.accent, T.dusk, .36)!,
                       sink: state.press * 1.5,
-                      child: compact
+                      child: compact || widget.glyphOnly
                           ? Center(
                               child: GlyphIcon(
                                 spec.glyph,

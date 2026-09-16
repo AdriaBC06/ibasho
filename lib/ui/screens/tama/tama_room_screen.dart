@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -27,6 +28,7 @@ import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
+import '../../layout.dart';
 import '../../widgets/pressable.dart';
 import '../channel_route.dart';
 import 'tama_creator_screen.dart';
@@ -118,41 +120,53 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
     final isProfile = tamas.profileTamaId == tama.id;
     final isCreator = tama.createdBy(account);
 
-    return ChannelScaffold(
-      title: tama.name,
-      glyph: Glyph.tama,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isCreator) ...[
-            IbashoButton(
-              key: const ValueKey<String>('tama.edit'),
-              label: l.tamaRoomEdit,
-              glyph: Glyph.pencil,
-              height: 44,
-              cue: null,
-              onPressed: () => pushChannelPage<void>(
-                context,
-                (_) => TamaCreatorScreen(tamaId: tama.id),
-              ),
+    final layout = Layout.of(context);
+    final tall = layout.tall;
+
+    // En vertical los botones de la cabecera se quedan en iconos redondos: el
+    // titulo es el nombre del Tama y no hay sitio para mas texto.
+    final edit = tall
+        ? IconPill(
+            key: const ValueKey<String>('tama.edit'),
+            glyph: Glyph.pencil,
+            diameter: 44,
+            semanticLabel: l.tamaRoomEdit,
+            cue: null,
+            onPressed: () => pushChannelPage<void>(
+              context,
+              (_) => TamaCreatorScreen(tamaId: tama.id),
             ),
-            const SizedBox(width: 12),
-          ],
-          if (!isProfile)
-            IbashoButton(
-              key: const ValueKey<String>('tama.setProfile'),
-              label: l.tamaRoomSetProfile,
-              glyph: Glyph.portrait,
-              height: 44,
-              onPressed: () => _setProfile(tama),
+          )
+        : IbashoButton(
+            key: const ValueKey<String>('tama.edit'),
+            label: l.tamaRoomEdit,
+            glyph: Glyph.pencil,
+            height: 44,
+            cue: null,
+            onPressed: () => pushChannelPage<void>(
+              context,
+              (_) => TamaCreatorScreen(tamaId: tama.id),
             ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+          );
+    final setProfile = tall
+        ? IconPill(
+            key: const ValueKey<String>('tama.setProfile'),
+            glyph: Glyph.portrait,
+            diameter: 44,
+            semanticLabel: l.tamaRoomSetProfile,
+            onPressed: () => _setProfile(tama),
+          )
+        : IbashoButton(
+            key: const ValueKey<String>('tama.setProfile'),
+            label: l.tamaRoomSetProfile,
+            glyph: Glyph.portrait,
+            height: 44,
+            onPressed: () => _setProfile(tama),
+          );
+
+    final stage = Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 if (isProfile)
                   Padding(
@@ -169,7 +183,7 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                 TamaOnStand(
                   key: const ValueKey<String>('tama.stage'),
                   tama: tama,
-                  size: 400,
+                  size: tall ? math.min(layout.width - 80, 260) : 400,
                   joy: reading.joy,
                   controller: _view,
                   pettable: true,
@@ -177,17 +191,14 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                   // El dia del cumpleaños de su cuidador, el de perfil va de fiesta.
                   wear: _partyFor(ref, tama) ? TamaWear.partyHat : TamaWear.none,
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: tall ? 10 : 18),
                 Text(l.tamaRoomPetHint, style: Ty.caption),
               ],
-            ),
-          ),
-          SizedBox(
-            width: 430,
-            child: IbashoScroll(
-              padding: const EdgeInsets.fromLTRB(0, 30, 40, 30),
-              child: Column(
+    );
+
+    final cards = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   SectionCard(
                     title: l.tamaRoomMood,
@@ -198,7 +209,7 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                         const SizedBox(height: 6),
                         Text(moodHint(l, reading.mood), style: Ty.caption),
                         const SizedBox(height: 16),
-                        TamaMoodMeter(value: reading.value, width: 330),
+                        TamaMoodMeter(value: reading.value, width: tall ? layout.width : 330),
                         const SizedBox(height: 18),
                         const Hairline(),
                         const SizedBox(height: 14),
@@ -248,9 +259,28 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                           padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
                           child: Row(
                             children: [
-                              Text(l.tamaRoomFeed, style: Ty.body.copyWith(fontWeight: FontWeight.w500)),
+                              // En vertical los dos textos se reparten la
+                              // linea; en horizontal sobra sitio y cada uno se
+                              // queda en su extremo.
+                              _Fit(
+                                tall: tall,
+                                child: Text(
+                                  l.tamaRoomFeed,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Ty.body.copyWith(fontWeight: FontWeight.w500),
+                                ),
+                              ),
                               const Spacer(),
-                              Text(agoLabel(l, tama.care.lastFed, DateTime.now()), style: Ty.micro),
+                              _Fit(
+                                tall: tall,
+                                child: Text(
+                                  agoLabel(l, tama.care.lastFed, DateTime.now()),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Ty.micro,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -274,11 +304,51 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                     ),
                   ],
                 ],
-              ),
-            ),
-          ),
+    );
+
+    return ChannelScaffold(
+      title: tama.name,
+      glyph: Glyph.tama,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isCreator) ...[
+            edit,
+            SizedBox(width: tall ? 8 : 12),
+          ],
+          if (!isProfile) setProfile,
         ],
       ),
+      // En vertical el Tama manda arriba y los cuidados se desplazan debajo;
+      // la peana nunca entra en la zona que se arrastra, para que mimarlo no
+      // mueva la pantalla.
+      child: tall
+          ? Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: stage,
+                ),
+                Expanded(
+                  child: IbashoScroll(
+                    padding: EdgeInsets.fromLTRB(layout.gutter, 14, layout.gutter, 20),
+                    child: cards,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(child: Center(child: stage)),
+                SizedBox(
+                  width: 430,
+                  child: IbashoScroll(
+                    padding: const EdgeInsets.fromLTRB(0, 30, 40, 30),
+                    child: cards,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -493,6 +563,8 @@ class _DragScrollBehavior extends ScrollBehavior {
         PointerDeviceKind.mouse,
         PointerDeviceKind.trackpad,
         PointerDeviceKind.stylus,
+        // Los eventos inyectados llegan sin tipo (ver fingerKinds).
+        PointerDeviceKind.unknown,
       };
 }
 
@@ -580,4 +652,15 @@ class _FoodButton extends StatelessWidget {
       },
     );
   }
+}
+
+/// En vertical cede el ancho que haga falta; en horizontal ocupa lo suyo.
+class _Fit extends StatelessWidget {
+  const _Fit({required this.tall, required this.child});
+
+  final bool tall;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => tall ? Flexible(child: child) : child;
 }

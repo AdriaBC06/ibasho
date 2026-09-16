@@ -40,6 +40,7 @@ Future<void> main() async {
           ),
           settingsStoreProvider.overrideWithValue(FakeSettingsStore()),
           initialPreferencesProvider.overrideWithValue(const Preferences()),
+          batteryWatchProvider.overrideWithValue(FakeBatteryWatch()),
         ],
         child: const IbashoApp(),
       ),

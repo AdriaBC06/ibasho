@@ -66,6 +66,7 @@ Future<void> main() async {
           secureStoreProvider.overrideWithValue(FakeSecureStore(session: fake.tokens)),
           settingsStoreProvider.overrideWithValue(settings),
           initialPreferencesProvider.overrideWithValue(preferences),
+          batteryWatchProvider.overrideWithValue(FakeBatteryWatch()),
         ],
         child: const IbashoApp(),
       ),
@@ -107,6 +108,7 @@ Future<void> main() async {
       secureStoreProvider.overrideWithValue(FakeSecureStore(session: backend.tokens)),
       settingsStoreProvider.overrideWithValue(FakeSettingsStore()),
       initialPreferencesProvider.overrideWithValue(const Preferences()),
+      batteryWatchProvider.overrideWithValue(FakeBatteryWatch()),
     ]);
     addTearDown(container.dispose);
     await container.read(sessionProvider.notifier).restore();
@@ -461,29 +463,60 @@ Future<void> main() async {
     expect(db.writes.where((w) => w.$1.endsWith('/presence')), isEmpty);
   });
 
-  test('ausente llega solo sin actividad y se va al primer movimiento', () async {
+  test('el estado por defecto es conectado y solo cambia si se elige', () async {
     final db = FakeIbashoBackend();
     final me = await account(db);
     final controller = PresenceController(
       backend: db,
       session: me.read(sessionProvider.notifier),
       active: true,
-      idleAfter: Duration.zero,
     );
     addTearDown(controller.dispose);
     await until(() => controller.state.connected, 'conexion');
-    expect(controller.state.published, PresenceState.online);
-    // Sin tocar nada durante el umbral (aqui, cero) el reloj de inactividad salta.
-    await Future<void>.delayed(const Duration(seconds: 16));
-    expect(controller.state.published, PresenceState.away);
-    expect((db.peek('/users/$kAdminUid/presence')! as Map)['state'], 'away');
-    controller.activity();
-    await until(() => (db.peek('/users/$kAdminUid/presence')! as Map)['state'] == 'online', 'vuelta');
-    // Fijado a mano no se mueve con la actividad.
-    await controller.setMode(PresenceMode.busy);
-    controller.activity();
-    await until(() => (db.peek('/users/$kAdminUid/presence')! as Map)['state'] == 'busy', 'ocupado');
-  }, timeout: const Timeout(Duration(seconds: 40)));
+    expect(controller.state.mode, PresenceMode.online);
+    await until(
+      () => (db.peek('/users/$kAdminUid/presence')! as Map)['state'] == 'online',
+      'conectado',
+    );
+    // Quieto un buen rato: sigue conectado, no hay ausente automatico.
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect((db.peek('/users/$kAdminUid/presence')! as Map)['state'], 'online');
+    // Ausente solo si se pide.
+    await controller.setMode(PresenceMode.away);
+    await until(
+      () => (db.peek('/users/$kAdminUid/presence')! as Map)['state'] == 'away',
+      'ausente',
+    );
+  });
+
+  test('salir de la app deja la presencia en desconectado y volver la restaura', () async {
+    final db = FakeIbashoBackend();
+    final me = await account(db);
+    final controller = PresenceController(
+      backend: db,
+      session: me.read(sessionProvider.notifier),
+      active: true,
+    );
+    addTearDown(controller.dispose);
+    await until(() => controller.state.connected, 'conexion');
+    await until(
+      () => (db.peek('/users/$kAdminUid/presence')! as Map)['state'] == 'online',
+      'conectado',
+    );
+
+    await controller.suspend();
+    expect((db.peek('/users/$kAdminUid/presence')! as Map)['state'], 'offline');
+    expect(controller.state.connected, isFalse);
+    // Y la eleccion no se pierde mientras la app duerme.
+    expect(controller.state.mode, PresenceMode.online);
+
+    await controller.resume();
+    await until(() => controller.state.connected, 'reconexion');
+    await until(
+      () => (db.peek('/users/$kAdminUid/presence')! as Map)['state'] == 'online',
+      'vuelta',
+    );
+  });
 
   // --- Criterio 12 ----------------------------------------------------------------
 

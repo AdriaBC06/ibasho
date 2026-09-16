@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ibasho habla con Firebase por HTTPS y con la base por WSS. Nada de trafico
+     en claro, ni siquiera si una libreria lo intentara. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

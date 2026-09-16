@@ -11,6 +11,7 @@ import '../../audio/audio_service.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
+import '../layout.dart';
 import 'glyphs.dart';
 import 'gloss.dart';
 import 'pressable.dart';
@@ -63,6 +64,8 @@ class IbashoButton extends StatelessWidget {
       _ => null,
     };
     final quiet = tone == ButtonTone.quiet;
+    // En vertical se toca con el dedo: ningun boton baja de 48.
+    final height = Layout.of(context).tall ? math.max(this.height, 48.0) : this.height;
 
     return Pressable(
       onPressed: onPressed,
@@ -160,6 +163,7 @@ class IconPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
     final tint = tone == ButtonTone.accent ? skin.accent : null;
+    final diameter = Layout.of(context).tall ? math.max(this.diameter, 44.0) : this.diameter;
 
     return Pressable(
       onPressed: onPressed,
@@ -293,8 +297,11 @@ class _IbashoSliderState extends State<IbashoSlider> {
   static const double _track = 16;
   static const double _knob = 28;
 
+  /// Ancho de verdad: `double.infinity` lo resuelve la caja que lo contiene.
+  double _width = 0;
+
   double _fractionFor(double dx) =>
-      ((dx - _knob / 2) / (widget.width - _knob)).clamp(0.0, 1.0);
+      ((dx - _knob / 2) / (_width - _knob)).clamp(0.0, 1.0);
 
   int _bucket(double v) => widget.ticks <= 0 ? 0 : (v * widget.ticks).round();
 
@@ -306,9 +313,15 @@ class _IbashoSliderState extends State<IbashoSlider> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => widget.width.isFinite
+      ? _build(context, widget.width)
+      : LayoutBuilder(builder: (context, box) => _build(context, box.maxWidth));
+
+  Widget _build(BuildContext context, double width) {
     final skin = IbashoSkin.of(context);
     final value = widget.value.clamp(0.0, 1.0);
+    final grip = Layout.of(context).tall ? 10.0 : 0.0;
+    _width = width;
 
     return Semantics(
       slider: true,
@@ -337,7 +350,11 @@ class _IbashoSliderState extends State<IbashoSlider> {
             final focused = Focus.of(context).hasFocus;
             return MouseRegion(
               cursor: SystemMouseCursors.click,
-              child: GestureDetector(
+              // Con el dedo la zona de agarre es mas alta que el raíl, sin que
+              // el deslizador se vea distinto.
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: grip),
+                child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (d) {
                   Focus.of(context).requestFocus();
@@ -353,7 +370,7 @@ class _IbashoSliderState extends State<IbashoSlider> {
                   radius: _knob / 2,
                   inset: -2,
                   child: SizedBox(
-                    width: widget.width,
+                    width: width,
                     height: _knob,
                     child: Stack(
                       alignment: Alignment.centerLeft,
@@ -391,7 +408,7 @@ class _IbashoSliderState extends State<IbashoSlider> {
                             height: _track - 5,
                             width: math.max(
                               _track - 5,
-                              (widget.width - 7) * value,
+                              (width - 7) * value,
                             ),
                             child: GlossSurface(
                               radius: (_track - 5) / 2,
@@ -403,7 +420,7 @@ class _IbashoSliderState extends State<IbashoSlider> {
                           ),
                         ),
                         Positioned(
-                          left: (widget.width - _knob) * value,
+                          left: (width - _knob) * value,
                           child: SizedBox(
                             width: _knob,
                             height: _knob,
@@ -418,6 +435,7 @@ class _IbashoSliderState extends State<IbashoSlider> {
                     ),
                   ),
                 ),
+              ),
               ),
             );
           },
@@ -443,26 +461,52 @@ class IbashoSegmented<V> extends StatelessWidget {
   final double height;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, box) => _build(context, box.maxWidth),
+      );
+
+  Widget _build(BuildContext context, double maxWidth) {
     final skin = IbashoSkin.of(context);
+    // En vertical las opciones se reparten el ancho disponible; si quien lo
+    // contiene no acota el ancho (una fila, por ejemplo), se queda a su
+    // tamaño natural.
+    final tall = Layout.of(context).tall && maxWidth.isFinite;
+    final height = tall ? math.max(this.height, 56.0) : this.height;
+
     return SizedBox(
       height: height,
+      width: tall ? maxWidth : null,
       child: GlossSurface(
         radius: height / 2,
         recessed: true,
         padding: const EdgeInsets.all(4),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: tall ? MainAxisSize.max : MainAxisSize.min,
           children: [
             for (final (optionValue, label) in options)
-              Pressable(
+              _segment(
+                tall,
+                Pressable(
                 onPressed: optionValue == value ? null : () => onChanged(optionValue),
                 builder: (context, state) {
                   final selected = optionValue == value;
+                  final text = FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: Ty.body.copyWith(
+                        color: selected
+                            ? T.onAccent
+                            : Color.lerp(T.inkSoft, skin.accentDeep, state.hover)!,
+                        fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+                      ),
+                    ),
+                  );
                   return AnimatedContainer(
                     duration: skin.motion(T.hover),
                     curve: skin.curve(Curves.easeOut),
-                    constraints: BoxConstraints(minWidth: height * 2.1),
+                    constraints: BoxConstraints(minWidth: tall ? 0 : height * 2.1),
                     height: height - 8,
                     child: selected
                         ? GlossSurface(
@@ -470,37 +514,26 @@ class IbashoSegmented<V> extends StatelessWidget {
                             tint: skin.accent,
                             elevation: .9,
                             borderColor: skin.accentDeep,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: Center(
-                              child: Text(
-                                label,
-                                style: Ty.body.copyWith(
-                                  color: T.onAccent,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: tall ? 8 : 14),
+                            child: Center(child: text),
                           )
                         : Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: Center(
-                              child: Text(
-                                label,
-                                style: Ty.body.copyWith(
-                                  color: Color.lerp(
-                                      T.inkSoft, skin.accentDeep, state.hover)!,
-                                ),
-                              ),
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: tall ? 8 : 14),
+                            child: Center(child: text),
                           ),
                   );
                 },
+              ),
               ),
           ],
         ),
       ),
     );
   }
+
+  /// En vertical las opciones se reparten el ancho por igual; en horizontal
+  /// cada una ocupa lo suyo.
+  Widget _segment(bool tall, Widget child) => tall ? Expanded(child: child) : child;
 }
 
 /// Muestra de color, para elegir el acento.
@@ -519,7 +552,9 @@ class ColorChip extends StatelessWidget {
   final double diameter;
 
   @override
-  Widget build(BuildContext context) => Pressable(
+  Widget build(BuildContext context) {
+    final diameter = Layout.of(context).tall ? math.max(this.diameter, 44.0) : this.diameter;
+    return Pressable(
         onPressed: onPressed,
         builder: (context, state) => FocusRing(
           visible: state.focus,
@@ -551,4 +586,5 @@ class ColorChip extends StatelessWidget {
           ),
         ),
       );
+  }
 }

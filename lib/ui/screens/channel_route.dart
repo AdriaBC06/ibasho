@@ -10,6 +10,7 @@ import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../canvas.dart';
+import '../layout.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import 'channel_grid.dart';
@@ -317,6 +318,8 @@ class ChannelScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
+    final layout = Layout.of(context);
+    final tall = layout.tall;
 
     void close() {
       if (onClose != null) {
@@ -343,14 +346,14 @@ class ChannelScaffold extends StatelessWidget {
           child: Column(
             children: [
               SizedBox(
-                height: 92,
+                height: layout.header,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(40, 0, 40, 0),
+                  padding: EdgeInsets.symmetric(horizontal: layout.gutter),
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 50,
-                        height: 50,
+                        width: tall ? 40 : 50,
+                        height: tall ? 40 : 50,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
@@ -365,19 +368,26 @@ class ChannelScaffold extends StatelessWidget {
                           ),
                           child: Center(
                             child: GlyphIcon(glyph,
-                                size: 26, color: T.onAccent),
+                                size: tall ? 22 : 26, color: T.onAccent),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(child: Text(title, style: Ty.title)),
+                      SizedBox(width: tall ? 12 : 16),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tall ? Ty.lead.copyWith(fontWeight: FontWeight.w500) : Ty.title,
+                        ),
+                      ),
                       if (trailing != null) ...[
                         trailing!,
-                        const SizedBox(width: 12),
+                        SizedBox(width: tall ? 8 : 12),
                       ],
                       IconPill(
                         glyph: Glyph.cross,
-                        diameter: 46,
+                        diameter: tall ? 44 : 46,
                         cue: null,
                         onPressed: close,
                       ),

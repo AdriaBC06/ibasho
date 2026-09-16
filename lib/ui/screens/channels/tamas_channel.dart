@@ -27,15 +27,18 @@ import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/pressable.dart';
+import '../../layout.dart';
 import '../../widgets/slot_tile.dart';
 import '../channel_grid.dart';
 import '../channel_route.dart';
 import '../tama/tama_creator_screen.dart';
 import '../tama/tama_room_screen.dart';
 
-/// Ranuras por pagina: rejilla de 6x2.
+/// Ranuras por pagina: rejilla de 6x2 en horizontal. En vertical son 3
+/// columnas y las filas que quepan.
 const int _columns = 6;
 const int _perPage = _columns * 2;
+const int _tallColumns = 3;
 
 /// El canal de Tamas, montado como el propio entorno: dos pantallas.
 ///
@@ -56,6 +59,10 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
   DateTime _lastWheel = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// El elegido, o el de perfil, o el primero.
+  /// Ranuras por pagina de la composicion en curso. En vertical depende de
+  /// cuantas filas caben, asi que la mide la rejilla y la deja aqui.
+  int _slots = _perPage;
+
   Tama? _selected(TamasState state) =>
       state.byId(_selectedId) ??
       state.profileTama ??
@@ -63,7 +70,7 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
 
   int _pageCount(TamasState state) {
     final slots = state.tamas.length + (state.full ? 0 : 1);
-    return math.max(1, (slots / _perPage).ceil());
+    return math.max(1, (slots / _slots).ceil());
   }
 
   void _select(Tama tama) {
@@ -100,7 +107,7 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
     AudioService.instance.play(Sfx.tick);
     setState(() {
       _selectedId = state.tamas[next].id;
-      _page = next ~/ _perPage;
+      _page = next ~/ _slots;
     });
   }
 
@@ -121,9 +128,9 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
     } else if (key == LogicalKeyboardKey.arrowLeft) {
       _step(-1);
     } else if (key == LogicalKeyboardKey.arrowDown) {
-      _step(_columns);
+      _step(_slots ~/ 2);
     } else if (key == LogicalKeyboardKey.arrowUp) {
-      _step(-_columns);
+      _step(-(_slots ~/ 2));
     } else if (key == LogicalKeyboardKey.pageDown) {
       _goToPage(_page + 1);
     } else if (key == LogicalKeyboardKey.pageUp) {
@@ -142,6 +149,8 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
     final pages = _pageCount(state);
     if (_page >= pages) _page = pages - 1;
 
+    final layout = Layout.of(context);
+
     return ChannelScaffold(
       title: l.tamasTitle,
       glyph: Glyph.tama,
@@ -149,18 +158,22 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
           ? null
           : Text(
               l.tamasCount(state.tamas.length, maxTamasPerAccount),
-              style: Ty.numeral(19, color: T.inkSoft),
+              style: Ty.numeral(layout.pick(19, 16), color: T.inkSoft),
             ),
       child: Focus(
         autofocus: true,
         onKeyEvent: _onKey,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
+          padding: EdgeInsets.symmetric(horizontal: layout.gutter),
+          child: LayoutBuilder(builder: (context, box) {
+          final showcase = layout.tall
+              ? math.max(210.0, math.min(330.0, box.maxHeight * .40))
+              : 290.0;
+          return Column(
             children: [
               const SizedBox(height: 14),
               SizedBox(
-                height: 290,
+                height: showcase,
                 child: ScreenPanel(
                   child: !state.loaded
                       ? Center(child: Text(l.loading, style: Ty.lead))
@@ -173,12 +186,12 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
                 ),
               ),
               SizedBox(
-                height: 42,
+                height: layout.pick(42, 56),
                 child: Row(
                   children: [
                     IconPill(
                       glyph: Glyph.arrowLeft,
-                      diameter: 36,
+                      diameter: layout.pill,
                       onPressed: _page > 0 ? () => _goToPage(_page - 1) : null,
                     ),
                     const Spacer(),
@@ -189,7 +202,7 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
                     const Spacer(),
                     IconPill(
                       glyph: Glyph.arrowRight,
-                      diameter: 36,
+                      diameter: layout.pill,
                       onPressed: _page < pages - 1 ? () => _goToPage(_page + 1) : null,
                     ),
                   ],
@@ -198,18 +211,33 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
               Expanded(
                 child: Listener(
                   onPointerSignal: _onWheel,
-                  child: ScreenPanel(
-                    child: LayoutBuilder(
-                      builder: (context, box) => _PagedSlots(
-                        size: box.biggest,
-                        page: _page,
-                        pages: pages,
-                        tamas: state.tamas,
-                        showCreate: state.loaded && !state.full,
-                        selectedId: selected?.id,
-                        profileId: state.profileTamaId,
-                        onSelect: _select,
-                        onCreate: _create,
+                  child: PageSwipe(
+                    onPrevious: () => _goToPage(_page - 1),
+                    onNext: () => _goToPage(_page + 1),
+                    child: ScreenPanel(
+                      child: LayoutBuilder(
+                        builder: (context, box) => _PagedSlots(
+                          size: box.biggest,
+                          page: _page,
+                          pages: pages,
+                          tall: layout.tall,
+                          tamas: state.tamas,
+                          showCreate: state.loaded && !state.full,
+                          selectedId: selected?.id,
+                          profileId: state.profileTamaId,
+                          onSelect: _select,
+                          onCreate: _create,
+                          onSlots: (slots) {
+                            if (slots == _slots) return;
+                            // Al girar el movil cambian las ranuras por
+                            // pagina: se conserva la que se estaba mirando.
+                            final first = _page * _slots;
+                            _slots = slots;
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) setState(() => _page = first ~/ slots);
+                            });
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -217,7 +245,8 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
               ),
               const SizedBox(height: 16),
             ],
-          ),
+          );
+          }),
         ),
       ),
     );
@@ -276,106 +305,170 @@ class _TamaShowcase extends ConsumerWidget {
     final reading = TamaMoodReading.of(tama, ref.watch(moodClockProvider));
     final isCreator = tama.createdBy(ref.watch(sessionProvider.select((s) => s.accountId)));
 
-    return Row(
-      children: [
-        SizedBox(
-          width: 400,
-          child: Center(
-            child: TamaOnStand(
-              key: const ValueKey<String>('tamas.showcase'),
-              tama: tama,
-              size: 236,
-              joy: reading.joy,
+    final layout = Layout.of(context);
+    final tall = layout.tall;
+
+    return LayoutBuilder(builder: (context, box) {
+      // El escaparate aprovecha el alto que le toque: en un movil grande el
+      // Tama se ve casi como en su habitacion.
+      final stage = tall
+          ? math.min(box.maxHeight * .54, math.min(box.maxWidth * .36, 180.0))
+          : 236.0;
+
+      final actions = Row(
+        children: [
+          _Fill(
+            tall: tall,
+            child: IbashoButton(
+              key: const ValueKey<String>('tamas.visit'),
+              label: l.tamaVisit,
+              glyph: Glyph.arrowRight,
+              tone: ButtonTone.accent,
+              height: 48,
+              expand: tall,
+              minWidth: tall ? 0 : 170,
+              cue: null,
+              onPressed: onVisit,
             ),
           ),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 30, 36, 30),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        tama.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Ty.display,
-                      ),
-                    ),
-                    if (isProfile) ...[
-                      const SizedBox(width: 16),
-                      _ProfileBadge(label: l.tamaProfileBadge),
-                    ],
-                  ],
+          if (!isProfile) ...[
+            const SizedBox(width: 12),
+            if (tall)
+              IconPill(
+                key: const ValueKey<String>('tamas.setProfile'),
+                glyph: Glyph.portrait,
+                diameter: 48,
+                semanticLabel: l.tamaRoomSetProfile,
+                onPressed: () => unawaited(putTamaOnProfile(context, ref, tama)),
+              )
+            else
+              IbashoButton(
+                key: const ValueKey<String>('tamas.setProfile'),
+                label: l.tamaRoomSetProfile,
+                glyph: Glyph.portrait,
+                height: 48,
+                onPressed: () => unawaited(putTamaOnProfile(context, ref, tama)),
+              ),
+          ],
+          if (isCreator) ...[
+            const SizedBox(width: 12),
+            if (tall)
+              IconPill(
+                key: const ValueKey<String>('tamas.edit'),
+                glyph: Glyph.pencil,
+                diameter: 48,
+                semanticLabel: l.tamaRoomEdit,
+                cue: null,
+                onPressed: () => pushChannelPage<void>(
+                  context,
+                  (_) => TamaCreatorScreen(tamaId: tama.id),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${personalityLabel(l, tama.personality)} · ${personalityHint(l, tama.personality)}',
+              )
+            else
+              IbashoButton(
+                key: const ValueKey<String>('tamas.edit'),
+                label: l.tamaRoomEdit,
+                glyph: Glyph.pencil,
+                height: 48,
+                cue: null,
+                onPressed: () => pushChannelPage<void>(
+                  context,
+                  (_) => TamaCreatorScreen(tamaId: tama.id),
+                ),
+              ),
+          ],
+        ],
+      );
+
+      final identity = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  tama.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Ty.caption.copyWith(fontSize: 15),
+                  style: tall ? Ty.title : Ty.display,
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    TamaMoodMeter(value: reading.value, width: 200),
-                    const SizedBox(width: 14),
-                    Text(
-                      moodLabel(l, reading.mood),
-                      style: Ty.body.copyWith(color: skin.accentDeep),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 26),
-                Row(
-                  children: [
-                    IbashoButton(
-                      key: const ValueKey<String>('tamas.visit'),
-                      label: l.tamaVisit,
-                      glyph: Glyph.arrowRight,
-                      tone: ButtonTone.accent,
-                      height: 48,
-                      minWidth: 170,
-                      cue: null,
-                      onPressed: onVisit,
-                    ),
-                    const SizedBox(width: 12),
-                    if (!isProfile) ...[
-                      IbashoButton(
-                        key: const ValueKey<String>('tamas.setProfile'),
-                        label: l.tamaRoomSetProfile,
-                        glyph: Glyph.portrait,
-                        height: 48,
-                        onPressed: () => unawaited(putTamaOnProfile(context, ref, tama)),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-                    if (isCreator)
-                      IbashoButton(
-                        key: const ValueKey<String>('tamas.edit'),
-                        label: l.tamaRoomEdit,
-                        glyph: Glyph.pencil,
-                        height: 48,
-                        cue: null,
-                        onPressed: () => pushChannelPage<void>(
-                          context,
-                          (_) => TamaCreatorScreen(tamaId: tama.id),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(l.tamasSelectHint, style: Ty.micro),
+              ),
+              if (isProfile) ...[
+                SizedBox(width: tall ? 8 : 16),
+                Flexible(child: _ProfileBadge(label: l.tamaProfileBadge)),
               ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            tall
+                ? personalityLabel(l, tama.personality)
+                : '${personalityLabel(l, tama.personality)} · ${personalityHint(l, tama.personality)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Ty.caption.copyWith(fontSize: 15),
+          ),
+          SizedBox(height: tall ? 12 : 18),
+          Row(
+            children: [
+              Flexible(child: TamaMoodMeter(value: reading.value, width: tall ? 120 : 200)),
+              SizedBox(width: tall ? 10 : 14),
+              Flexible(
+                child: Text(
+                  moodLabel(l, reading.mood),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Ty.body.copyWith(color: skin.accentDeep),
+                ),
+              ),
+            ],
+          ),
+          if (!tall) ...[
+            SizedBox(height: tall ? 14 : 26),
+            actions,
+            const SizedBox(height: 10),
+            Text(l.tamasSelectHint, style: Ty.micro),
+          ],
+        ],
+      );
+
+      final showcase = Row(
+        children: [
+          SizedBox(
+            width: tall ? stage + 14 : 400,
+            child: Center(
+              child: TamaOnStand(
+                key: const ValueKey<String>('tamas.showcase'),
+                tama: tama,
+                size: stage,
+                joy: reading.joy,
+              ),
             ),
           ),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(0, tall ? 6 : 30, tall ? 16 : 36, tall ? 6 : 30),
+              child: identity,
+            ),
+          ),
+        ],
+      );
+
+      // En vertical los botones se bajan a su propia fila, a todo lo ancho:
+      // en la columna del nombre no les quedaria ni un dedo de sitio.
+      if (!tall) return showcase;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+        child: Column(
+          children: [
+            Expanded(child: showcase),
+            actions,
+          ],
         ),
-      ],
-    );
+      );
+    });
   }
 }
 
@@ -453,6 +546,26 @@ class _ProfileBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
+    final tall = Layout.of(context).tall;
+    // En vertical el nombre manda: la insignia se queda en su icono, con el
+    // texto en la etiqueta de accesibilidad.
+    if (tall) {
+      return Semantics(
+        label: label,
+        child: SizedBox(
+          width: 30,
+          height: 30,
+          child: GlossSurface(
+            radius: 15,
+            recessed: true,
+            tint: skin.accent,
+            child: Center(
+              child: GlyphIcon(Glyph.portrait, size: 16, color: skin.accentDeep),
+            ),
+          ),
+        ),
+      );
+    }
     return SizedBox(
       height: 30,
       child: GlossSurface(
@@ -465,7 +578,14 @@ class _ProfileBadge extends StatelessWidget {
           children: [
             GlyphIcon(Glyph.portrait, size: 15, color: skin.accentDeep),
             const SizedBox(width: 6),
-            Text(label, style: Ty.caption.copyWith(color: skin.accentDeep, height: 1.1)),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Ty.caption.copyWith(color: skin.accentDeep, height: 1.1),
+              ),
+            ),
           ],
         ),
       ),
@@ -504,17 +624,21 @@ class _PagedSlots extends StatefulWidget {
     required this.size,
     required this.page,
     required this.pages,
+    required this.tall,
     required this.tamas,
     required this.showCreate,
     required this.selectedId,
     required this.profileId,
     required this.onSelect,
     required this.onCreate,
+    required this.onSlots,
   });
 
   final Size size;
   final int page;
   final int pages;
+  final bool tall;
+  final ValueChanged<int> onSlots;
   final List<Tama> tamas;
   final bool showCreate;
   final String? selectedId;
@@ -564,8 +688,21 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
   Widget build(BuildContext context) {
     final width = widget.size.width;
     final height = widget.size.height;
-    final tileH = (height - _padV * 2 - _gapV) / 2;
-    final tileW = math.min((width - _padH * 2 - _gapH * (_columns - 1)) / _columns, tileH * 1.18);
+    final columns = widget.tall ? _tallColumns : _columns;
+    final padH = widget.tall ? 16.0 : _padH;
+    final gapH = widget.tall ? 12.0 : _gapH;
+    final tileW = (width - padH * 2 - gapH * (columns - 1)) / columns;
+    // En vertical caben las filas que quepan, nunca menos de dos.
+    final rows = widget.tall
+        ? math.max(2, ((height - _padV * 2 + _gapV) / (tileW / 1.18 + _gapV)).floor())
+        : 2;
+    final tileH = widget.tall
+        ? math.min(tileW / 1.18, (height - _padV * 2 - _gapV * (rows - 1)) / rows)
+        : (height - _padV * 2 - _gapV) / 2;
+    final perPage = columns * rows;
+    widget.onSlots(perPage);
+
+    final tileWidth = math.min(tileW, tileH * 1.18);
 
     Widget slot(int index) {
       if (index < widget.tamas.length) {
@@ -573,7 +710,7 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
         return _TamaTile(
           key: ValueKey<String>('tamas.card.${tama.id}'),
           tama: tama,
-          width: tileW,
+          width: tileWidth,
           height: tileH,
           selected: tama.id == widget.selectedId,
           onProfile: tama.id == widget.profileId,
@@ -581,9 +718,9 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
         );
       }
       if (index == widget.tamas.length && widget.showCreate) {
-        return _CreateTile(width: tileW, height: tileH, onPressed: widget.onCreate);
+        return _CreateTile(width: tileWidth, height: tileH, onPressed: widget.onCreate);
       }
-      return EmptySlot(width: tileW, height: tileH);
+      return EmptySlot(width: tileWidth, height: tileH);
     }
 
     return ClipRect(
@@ -604,14 +741,14 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          for (var row = 0; row < 2; row++) ...[
+                          for (var row = 0; row < rows; row++) ...[
                             if (row > 0) const SizedBox(height: _gapV),
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                for (var col = 0; col < _columns; col++) ...[
-                                  if (col > 0) const SizedBox(width: _gapH),
-                                  slot(page * _perPage + row * _columns + col),
+                                for (var col = 0; col < columns; col++) ...[
+                                  if (col > 0) SizedBox(width: gapH),
+                                  slot(page * perPage + row * columns + col),
                                 ],
                               ],
                             ),
@@ -724,6 +861,7 @@ class _CreateTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
+    final tall = Layout.of(context).tall;
     return Pressable(
       key: const ValueKey<String>('tamas.create'),
       cue: null,
@@ -743,19 +881,25 @@ class _CreateTile extends StatelessWidget {
               borderColor: Color.lerp(T.hairline, skin.accent, state.hover)!,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: tall ? MainAxisSize.min : MainAxisSize.max,
                 children: [
                   GlyphIcon(
                     Glyph.plus,
-                    size: height * .3,
+                    size: height * (tall ? .28 : .3),
                     color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover)!,
                     strokeWidth: 2.2,
                   ),
-                  SizedBox(height: height * .06),
-                  Text(
-                    l.tamasCreate,
-                    style: Ty.caption.copyWith(
-                      color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
-                      fontWeight: FontWeight.w500,
+                  SizedBox(height: height * (tall ? .05 : .06)),
+                  _Fit(
+                    tall: tall,
+                    child: Text(
+                      l.tamasCreate,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Ty.caption.copyWith(
+                        color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -766,4 +910,26 @@ class _CreateTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// En vertical cede el alto que haga falta; en horizontal ocupa lo suyo.
+class _Fit extends StatelessWidget {
+  const _Fit({required this.tall, required this.child});
+
+  final bool tall;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => tall ? Flexible(child: child) : child;
+}
+
+/// En vertical ocupa el ancho que sobra; en horizontal, lo suyo.
+class _Fill extends StatelessWidget {
+  const _Fill({required this.tall, required this.child});
+
+  final bool tall;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => tall ? Expanded(child: child) : child;
 }

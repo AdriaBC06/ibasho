@@ -58,9 +58,15 @@ final sessionProvider = StateNotifierProvider<SessionController, SessionState>(
 
 final clockProvider = StateNotifierProvider<Clock, DateTime>((_) => Clock());
 
+/// De donde sale la bateria. Los tests la sustituyen: alli no hay plugins.
+final batteryWatchProvider = Provider<BatteryWatch>((_) => PluginBatteryWatch());
+
 final systemStatusProvider =
     StateNotifierProvider<SystemStatusController, SystemStatus>(
-  (ref) => SystemStatusController(ref.watch(backendProvider)),
+  (ref) => SystemStatusController(
+    ref.watch(backendProvider),
+    battery: ref.watch(batteryWatchProvider),
+  ),
 );
 
 /// Vive mientras dure la sesion de un uid concreto.

@@ -23,6 +23,35 @@ class RtdbClient {
   static const Duration _timeout = Duration(seconds: 20);
   static const Duration _maxBackoff = Duration(seconds: 30);
 
+  // --- Segundo plano -----------------------------------------------------
+
+  bool _background = false;
+  final List<Completer<void>> _waitingForeground = <Completer<void>>[];
+  final StreamController<bool> _backgroundChanges = StreamController<bool>.broadcast();
+
+  /// En segundo plano se cierran las suscripciones abiertas y ninguna vuelve
+  /// a intentarlo hasta que la app regresa. Android mata las conexiones en
+  /// reposo de todas formas; asi ademas no se despierta la radio para nada.
+  void setBackground(bool background) {
+    if (background == _background) return;
+    _background = background;
+    _backgroundChanges.add(background);
+    if (!background) {
+      final waiting = List.of(_waitingForeground);
+      _waitingForeground.clear();
+      for (final completer in waiting) {
+        completer.complete();
+      }
+    }
+  }
+
+  Future<void> _untilForeground() {
+    if (!_background) return Future<void>.value();
+    final completer = Completer<void>();
+    _waitingForeground.add(completer);
+    return completer.future;
+  }
+
   Uri _uri(String path, {String? idToken, Map<String, String> query = const {}}) {
     final normalized = path.startsWith('/') ? path : '/$path';
     final params = <String, String>{
@@ -147,6 +176,12 @@ class RtdbClient {
 
     Future<void> connect() async {
       while (!cancelled) {
+        if (_background) {
+          await _untilForeground();
+          backoff = const Duration(seconds: 1);
+          if (cancelled) return;
+        }
+        StreamSubscription<bool>? sleeper;
         try {
           final request = http.Request(
               'GET', _uri(path, idToken: await token(), query: _queryParams(query)))
@@ -196,13 +231,22 @@ class RtdbClient {
             onError: (Object e) => finish(e),
             cancelOnError: true,
           );
+          sleeper = _backgroundChanges.stream.where((b) => b).listen((_) {
+            finish();
+            unawaited(sub?.cancel());
+          });
           await done.future;
         } catch (e) {
           if (cancelled) return;
-          debugPrint('Ibasho: stream $path caido ($e), reintento en '
-              '${backoff.inSeconds} s');
+          if (!_background) {
+            debugPrint('Ibasho: stream $path caido ($e), reintento en '
+                '${backoff.inSeconds} s');
+          }
+        } finally {
+          await sleeper?.cancel();
         }
         if (cancelled) return;
+        if (_background) continue;
         await Future<void>.delayed(backoff);
         final next = backoff * 2;
         backoff = next > _maxBackoff ? _maxBackoff : next;

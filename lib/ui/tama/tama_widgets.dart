@@ -265,7 +265,13 @@ class TamaMoodMeter extends StatelessWidget {
   static const int _pips = 5;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(
+        // Nunca mas ancho de lo que le den: en vertical comparte fila con el
+        // nombre del humor.
+        builder: (context, box) => _build(context, math.min(width, box.maxWidth)),
+      );
+
+  Widget _build(BuildContext context, double width) {
     final skin = IbashoSkin.of(context);
     const height = 26.0;
     final pipWidth = (width - 12 - (_pips - 1) * 6) / _pips;

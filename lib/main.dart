@@ -14,11 +14,13 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
 import 'audio/audio_service.dart';
 import 'state/providers.dart';
+import 'ui/mobile.dart';
 import 'storage/secure_store.dart';
 import 'storage/settings_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await applyImmersiveMode();
 
   // Nombres de mes y de dia en los dos idiomas, sin pedir nada por red.
   await initializeDateFormatting('es');

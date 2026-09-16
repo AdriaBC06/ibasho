@@ -134,6 +134,9 @@ class RestIbashoBackend implements IbashoBackend {
   Future<LinkQuality> probe() => _db.probe();
 
   @override
+  void setBackground(bool background) => _db.setBackground(background);
+
+  @override
   void dispose() {
     if (_ownsClient) _client.close();
   }

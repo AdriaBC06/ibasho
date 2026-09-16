@@ -1,9 +1,13 @@
 # Arquitectura de Ibasho
 
-Estado del proyecto en la versión **0.3.0** (checkpoint 3: amigos y perfiles). Este documento
+Estado del proyecto en la versión **0.3.1** (checkpoint 3.1: Android). Este documento
 describe lo que existe en el repositorio.
 
-Plataforma: Linux desktop. Flutter stable 3.41, Dart 3 (`sdk: ^3.11.0`).
+Plataformas: Linux desktop y Android. Flutter stable 3.41, Dart 3 (`sdk: ^3.11.0`).
+Un solo árbol de widgets para las dos: lo que cambia está en `lib/ui/canvas.dart`
+(la forma del lienzo), `lib/ui/layout.dart` (las medidas de cada composición),
+`lib/ui/touch.dart` (zonas táctiles), `lib/ui/mobile.dart` (ciclo de vida, atrás
+e inmersivo) y `lib/core/device.dart` (la única bandera de plataforma).
 
 ---
 
@@ -29,6 +33,7 @@ lib/
     social.dart              UserCard, PresenceMode, PresenceState, Presence, Friendship, FriendRequest, WallMessage
     errors.dart              IbashoFailure e IbashoException
   core/
+    device.dart        Device.isAndroid: la unica rama por plataforma
     env.dart           configuración inyectada en compilación (Env)
     credits.dart       lista de créditos que muestra la app
     timezones.dart     zonas horarias IANA embebidas; offsetOfZone y wallClockIn
@@ -48,7 +53,7 @@ lib/
     accent_sync.dart   decisión de sincronizar el acento con el Tama de perfil
     card.dart          cardFor, cardForProfile, cardForTama y cardKeeperProvider (ficha pública)
     friends.dart       FriendsController: código, amigos, solicitudes, búsqueda y muro
-    presence.dart      PresenceController: estado elegido, ausente automático y publicación
+    presence.dart      PresenceController: estado elegido y publicación (con onDisconnect)
     update_gate.dart   UpdateRequirement, updateRequirementProvider y updateLockedProvider
     people.dart        datos en vivo de otras cuentas (ficha, Tama público, perfil, presencia, música, muro)
     pantry.dart        unlockedFoodsProvider
@@ -65,8 +70,10 @@ lib/
     skin.dart          IbashoSkin: acento y movimiento reducido en tiempo de ejecución
     accent.dart        contraste y acentos legibles
   ui/
-    canvas.dart        lienzo virtual (VirtualCanvas, CanvasSize, rectInNavigator)
-    activity.dart      ActivityWatch: raton y teclado en la raiz, para ausente
+    canvas.dart        lienzo: horizontal escalado o vertical a tamaño real (VirtualCanvas, CanvasSize)
+    layout.dart        Layout: las medidas de la composicion en curso, y PageSwipe
+    touch.dart         zonas tactiles de 48 dp: TouchAssist, MinTouchSize, fingerKinds
+    mobile.dart        solo Android: ciclo de vida, boton de atras, modo inmersivo
     failure_text.dart  IbashoFailure → texto traducido
     track_text.dart    descripción traducida de cada pista
     widgets/           controles propios (ver §3)
@@ -76,7 +83,10 @@ lib/
       channels/        ajustes, perfil, Tamas, amigos, administración, depuración, créditos, próximamente
       tama/            habitación y creador de un Tama
       friends/         añadir amigo, perfil de un amigo y muro de cumpleaños
+android/                   proyecto de Android (manifiesto, Gradle, iconos, MainActivity)
 test/
+  tall_tour_test.dart      recorrido visual en vertical, en dos tamaños de movil
+  touch_targets_test.dart  ninguna zona tactil por debajo de 48 dp; asistente en horizontal
   shell_test.dart          comportamiento del entorno
   tama_test.dart           Tamas: creación, edición en vivo, color, humor, movimiento reducido, idioma, voz, acento
   glyphs_test.dart         normas de dibujo de los iconos, con píxeles
@@ -128,7 +138,8 @@ La raíz de la app es `WidgetsApp`. `pubspec.yaml` tiene
    initialPreferencesProvider], child: IbashoApp()))`.
 
 `IbashoApp.builder` envuelve el navegador en `IbashoSkin` →
-`DefaultTextStyle(Ty.body)` → `ActivityWatch` → `TamaPointerTracker` → `VirtualCanvas`.
+`DefaultTextStyle(Ty.body)` → `MobileLifecycle` → `TamaPointerTracker` →
+`TouchAssist` → `VirtualCanvas`.
 `AppRoot` muestra el splash un mínimo de 2,4 s mientras `SessionController.restore()`
 resuelve la sesión. Después, si `updateLockedProvider` es `true`, muestra
 `UpdateRequiredScreen` en lugar del login o del entorno (y cierra lo que hubiera
@@ -146,7 +157,8 @@ abierto al pasar a bloqueado); si no, la pantalla de la fase de sesión.
 | `sessionProvider` | `StateNotifierProvider` | fase, tokens, entrada de allowlist, admin |
 | `clockProvider` | `StateNotifierProvider<Clock, DateTime>` | late cada segundo |
 | `moodClockProvider` | `Provider<DateTime>` | hora con resolución de minuto |
-| `systemStatusProvider` | `StateNotifierProvider` | batería (cada 20 s, `/sys/class/power_supply/*/capacity`) y calidad de enlace (cada 30 s) |
+| `batteryWatchProvider` | `Provider<BatteryWatch>` | de dónde sale la batería (`battery_plus`); los tests la sustituyen |
+| `systemStatusProvider` | `StateNotifierProvider` | batería (cada 20 s, `battery_plus`) y calidad de enlace (cada 30 s); se para en segundo plano |
 | `profileProvider` | `StateNotifierProvider` | perfil propio, se reconstruye al cambiar de cuenta |
 | `adminProvider` | `StateNotifierProvider` | cuentas de la allowlist |
 | `tamasProvider` | `StateNotifierProvider` | Tamas que cuida la cuenta y Tama de perfil |
@@ -158,7 +170,7 @@ abierto al pasar a bloqueado); si no, la pantalla de la fase de sesión.
 | `debugProvider` | `StateNotifierProvider` | cámara lenta y gráfica de rendimiento (no se persiste) |
 | `updateRequirementProvider` | `StreamProvider<UpdateRequirement?>` | `/system/update` leído sin sesión y seguido por SSE; `null` sin red o sin nodo |
 | `updateLockedProvider` | `Provider<bool>` | `appVersion` < `minVersion` |
-| `presenceProvider` | `StateNotifierProvider<PresenceController, PresenceStatus>` | estado elegido, inactividad y conexión; se reconstruye al cambiar de cuenta o de fase |
+| `presenceProvider` | `StateNotifierProvider<PresenceController, PresenceStatus>` | estado elegido y conexión; se reconstruye al cambiar de cuenta o de fase |
 | `friendsProvider` | `StateNotifierProvider<FriendsController, FriendsState>` | código propio, amigos, solicitudes recibidas y mandadas |
 | `pendingRequestsProvider` | `Provider<int>` | solicitudes recibidas (insignia del canal) |
 | `cardKeeperProvider` | `Provider<void>` | reescribe la ficha propia si no coincide con perfil, acento y Tama de perfil (con 1,5 s de respiro) |
@@ -301,18 +313,37 @@ la caja ni supera el 50 % de alfa.
 
 ### Lienzo y canales (`lib/ui/canvas.dart`, `lib/ui/screens/`)
 
-- `VirtualCanvas`: lienzo de 800 de alto; ancho entre 1280 y 1920 según la
-  ventana; escalado con `FittedBox(BoxFit.contain)` y bandas `T.letterbox`.
-  `CanvasSize.of(context)` devuelve el tamaño en curso. `rectInNavigator(context, key)`
-  devuelve el rectángulo de un widget en coordenadas del overlay.
+- `VirtualCanvas` tiene **dos formas y las decide la proporción de la ventana**,
+  no la plataforma:
+  - **horizontal** (más ancha que alta): lienzo de 800 de alto, ancho entre 1280
+    y 1920 según la ventana, escalado con `FittedBox(BoxFit.contain)` y bandas
+    `T.letterbox`. Es el de escritorio y el del móvil girado;
+  - **vertical**: no hay escala. El lienzo es la ventana en píxeles lógicos
+    (mínimo 360×640; por debajo se escala hacia abajo) y cada pantalla se
+    recoloca. Una ventana estrecha en Linux usa esta.
+  El árbol de widgets es el mismo en las dos, así que girar el móvil no desmonta
+  el navegador ni pierde estado.
+- `CanvasSize.of/tallOf/scaleOf(context)` dan tamaño, forma y escala en curso.
+  `Layout.of(context)` (en `lib/ui/layout.dart`) los envuelve con las medidas
+  que cambian: `gutter`, `pill`, `button`, `header`, `column`, `touch` y
+  `pick(horizontal, vertical)`. Las pantallas piden números ahí en lugar de
+  ramificar por plataforma.
+- El lienzo también resuelve, fuera de él: las zonas seguras (muesca y barra de
+  gestos, pintadas con el metal del bisel), el desplazamiento del contenido
+  cuando el teclado taparía el campo con foco, y la escala de texto del sistema,
+  que se ignora a propósito (ver README, *Accesibilidad*).
 - `ShellScreen`: bisel, panel superior (`TopPanel`), carril de control, rejilla
-  (`ChannelGrid`, 4×2 por página) y barra inferior. `PanelBalance`: equilibrado
-  (340/340), superior grande (560/120) e inferior grande (120/560).
+  (`ChannelGrid`) y barra inferior. En horizontal la rejilla es de 4×2 por
+  página y `PanelBalance` reparte 340/340, 560/120 y 120/560; en vertical es de
+  3×3 y las alturas salen del alto disponible (`PanelBalance.topFor`), con un
+  mínimo de 120 para la tira de arriba y de 212 para la rejilla.
 - `ChannelTile`: al pasar el ratón se inclina 2° y sube 4 px con
-  `easeOutBack`; al pulsar se hunde 2 px.
+  `easeOutBack`; al pulsar se hunde 2 px. Con el dedo no hay paso por encima:
+  el hundimiento es inmediato y lo vistoso se guarda para la apertura.
 - `ChannelSpec(id, glyph, label, builder, empty, badge)`; `channelsFor(isAdmin:)`
   devuelve ajustes, perfil, Tamas, amigos, administración y depuración (estas dos
-  solo para admin) y `emptySlotCount` (2) ranuras libres. `channelsPerPage` = 8.
+  solo para admin) y `emptySlotCount` (2) ranuras libres.
+  `channelsPerPage(tall:)` = 8 en horizontal, 9 en vertical.
   `badge` es un `ProviderListenable<int>`: `ChannelTile` pinta `CountBadge` en la
   esquina, fuera de la inclinación, cuando no es 0.
 - `openChannel(context, anchor:, tint:, glyph:, label:, builder:)`: `ChannelRoute`,
@@ -395,6 +426,115 @@ Pantallas:
   campo. `OwnWallScreen` (en `profile_channel.dart`) lo abre para el muro propio.
 - `ProfileChannel` añade la música de perfil (`IbashoSegmented` con las pistas
   desbloqueadas) y el botón del muro propio.
+
+## 3-bis. Android
+
+Todo lo que sigue solo se enciende con `Device.isAndroid`; la rama de Linux es
+la que ya existía.
+
+### Composición vertical
+
+No hay una versión móvil de las pantallas: cada una se maqueta una vez y pide
+sus medidas a `Layout.of(context)`. El patrón es siempre el mismo: lo que en
+horizontal va en fila, en vertical va en columna; lo que tiene ancho fijo pasa a
+repartirse el que haya; y las rejillas cambian de columnas (canales 4×2 → 3×3,
+Tamas 6×2 → 3×N, amigos 6×2 → 2×N, y las solicitudes pasan a tiras anchas para
+que quepan sus dos botones).
+
+### Zonas táctiles (`lib/ui/touch.dart`)
+
+- En vertical, `Pressable` envuelve su contenido en `MinTouchSize`: la caja que
+  responde al dedo nunca baja de 48 dp, sin tocar cómo se maqueta ni se pinta el
+  hijo. `IbashoButton`, `IconPill`, `IbashoSegmented` y `ColorChip` además
+  suben su tamaño visible. `test/touch_targets_test.dart` lo mide en un móvil de
+  360×640.
+- En horizontal el lienzo se escala a la mitad en un teléfono y no se puede
+  agrandar sin rehacer la composición de escritorio, así que `TouchAssist`
+  (un `Listener` en la raíz) entrega un toque que no ha caído sobre nada tocable
+  al control más cercano cuya zona ampliada a 48 dp lo contenga. Nunca roba un
+  toque que ya tenía dueño: para saberlo mira el camino del hit test buscando
+  `RenderSemanticsGestureHandler` con `onTap` o la marca `TouchClaim`.
+- `PageSwipe` añade el arrastre horizontal para pasar de página, solo para
+  punteros de dedo, así que el ratón de escritorio no cambia de comportamiento.
+- `fingerKinds` incluye `PointerDeviceKind.unknown` porque los eventos
+  inyectados por `adb shell input` llegan sin tipo; las zonas desplazables
+  también lo aceptan.
+
+### Ciclo de vida (`lib/ui/mobile.dart`)
+
+`MobileLifecycle` escucha el ciclo de vida y, al pasar a segundo plano
+(`hidden`/`paused`):
+
+1. para el reloj y los sondeos de batería y conexión;
+2. avisa al backend (`setBackground(true)`), que cierra las suscripciones SSE y
+   no reintenta nada hasta volver;
+3. `AudioService.suspend()`: pausa la música, apaga el motor de efectos
+   (`SoLoud.deinit`) y suelta el foco de audio;
+4. `PresenceController.suspend()`: publica *desconectado* (y lo mismo deja
+   encargado para la desconexión) y cierra el websocket limpiamente: fuera de
+   la app no se está.
+
+Al volver se rehace todo en orden inverso y, antes de nada,
+`SessionController.resume()` renueva el token si caducó mientras el proceso
+dormía: los temporizadores no corren con el proceso parado.
+
+### Atrás
+
+`BackGate` se registra como observador **antes** que `WidgetsApp`, así que es el
+primero en ver el botón o el gesto de atras: si hay algo que cerrar, suena el
+retroceso y se cierra; si la ruta de arriba lo tiene prohibido (el creador con
+cambios sin guardar, con su `PopScope`), deja que ella pregunte; y en la raíz
+pide confirmación antes de salir. La raíz lleva `PopScope(canPop: false)` para
+que Android entregue siempre el gesto a la app.
+
+### Audio (`lib/audio/android_audio.dart`, `MainActivity.kt`)
+
+El foco de audio lo lleva el servicio, no `audioplayers` (que se configura con
+`AndroidAudioFocus.none`). Un canal de métodos propio pide y suelta el foco y
+avisa de lo que hace el sistema: `gain`, `loss`, `lossTransient` y `duck`. La
+música calla con las dos pérdidas y baja al 20 % con el `duck`.
+
+El modo del timbre no se mira. Todo lo que suena en Ibasho —música, efectos y
+voces— es audio de medios, y el silencio del sistema calla el tono y las
+notificaciones, no los medios (`ringer mode muted streams` no incluye
+`STREAM_MUSIC`). Mirarlo dejaba la app a medias, con la música sonando y los
+toques mudos, en un teléfono que suele llevar el timbre apagado.
+
+En Android el mezclador de SoLoud arranca a 48 kHz con un periodo de 512
+muestras, en vez de las 2048 de escritorio; si un aparato no admite esa
+combinación se reintenta con la de serie antes que quedarse sin efectos.
+
+### Sistema
+
+- Modo inmersivo (`SystemUiMode.immersiveSticky`), reaplicado al volver de
+  segundo plano y cuando el sistema saca las barras por su cuenta.
+- Zonas seguras: el lienzo se queda dentro de `MediaQuery.padding` y lo que
+  queda fuera se pinta con el metal del bisel.
+- La escala de texto del sistema se ignora dentro del lienzo (ver README).
+- La tarjeta de visita se comparte con el menú del sistema (`share_plus`); en
+  escritorio se sigue guardando en Descargas.
+- La batería se lee con `battery_plus` en las dos plataformas
+  (`BatteryWatch`/`PluginBatteryWatch`, sustituible en los tests). En Android se
+  sondea cada 20 s: el flujo de cambios del plugin necesita un permiso privado
+  de androidx que el manifiesto quita.
+
+### Proyecto de Android
+
+- `applicationId` `top.ibasho.app`, `minSdkVersion` 24, `targetSdkVersion` 36,
+  orientación `fullUser` (vertical y horizontal).
+- Permisos: `INTERNET` y `ACCESS_NETWORK_STATE`. Los demás que traen las
+  dependencias se eliminan con `tools:node="remove"`.
+- `network_security_config.xml` prohíbe el tráfico en claro; solo la variante de
+  depuración lo permite contra `127.0.0.1` (emuladores de Firebase por
+  `adb reverse`).
+- R8 y `shrinkResources` en release, con las reglas de
+  `android/app/proguard-rules.pro`.
+- Icono adaptativo y pantalla de arranque propios (`ic_launcher_foreground.xml`
+  dibuja la misma marca que `IbashoMark`).
+- La firma sale de `android/key.properties`, que no está en el repositorio; sin
+  él, release se firma con la clave de depuración.
+
+---
 
 ## 4. Motor de sonido (`lib/audio/`)
 
@@ -674,7 +814,7 @@ reparte los que falten al abrir el panel.
 |---|---|
 | `SessionController` | `/allowlist/$uid/mustChangePassword` (false) |
 | `ProfileController` | `PATCH /users/$acc` con `profile` entero y `card` (lo crea en la primera entrada) |
-| `PresenceController` | por `PresenceLink`: `setOnDisconnect(/users/$acc/presence, offline)` y `set(presence)` al conectar y al cambiar; invisible: `cancelOnDisconnect` y `offline` solo si no lo estaba. Por REST: `/users/$acc/presenceMode` |
+| `PresenceController` | por `PresenceLink`: `setOnDisconnect(/users/$acc/presence, offline)` y `set(presence)` al conectar y al cambiar; al pasar a segundo plano, `offline`; invisible: `cancelOnDisconnect` y `offline` solo si no lo estaba. Por REST: `/users/$acc/presenceMode` |
 | `FriendsController` | multi-ruta de solicitud, aceptación, rechazo, retirada y amistad; `/users/$amigo/wall/$year/$acc`; borrar `/users/$acc/wall/$year/$autor` |
 | `cardKeeperProvider` | `/users/$acc/card` cuando no cuadra con perfil, acento y Tama de perfil |
 | `MusicLibraryController` | `/users/$acc/music/menuTrack`, `/users/$acc/music/profileTrack` (o la borra), `/users/$acc/music/unlocked/$track`, borra `unlocked` |
@@ -725,6 +865,8 @@ suave hasta 52 horas.
 |---|---|
 | `flutter analyze` | análisis estático |
 | `flutter test` | todos los tests de `test/` excepto el e2e, que se salta sin `IBASHO_USE_EMULATOR`. Deja PNG en `build/screenshots/` |
+| `flutter test test/tall_tour_test.dart` | recorrido vertical en 360×640 y 411×914; cualquier desborde hace fallar el test. PNG en `build/screenshots/vertical-*/` |
+| `flutter test test/touch_targets_test.dart` | mide cada control en un móvil pequeño: ninguno por debajo de 48 dp |
 | `flutter test test/visual_tour_test.dart` | capturas de pantallas `01-…` a `34b-…` (amigos desde `24-…`; `34-tarjeta.png` es la tarjeta exportada) |
 | `flutter test test/tama_gallery_test.dart` | hojas `g1-piezas` a `g7b-comida-sola` |
 | `./tool/test_rules.sh` | instala `test/rules/node_modules` si falta y ejecuta `firebase emulators:exec --project demo-ibasho --only database "npm --prefix test/rules test"` (`node --test rules.test.mjs`, con `@firebase/rules-unit-testing`) |

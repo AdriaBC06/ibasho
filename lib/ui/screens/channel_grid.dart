@@ -8,6 +8,8 @@ import 'package:flutter/widgets.dart';
 
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
+import '../layout.dart';
+import '../widgets/slot_tile.dart';
 import 'channel_tile.dart';
 import 'channels/channel.dart';
 
@@ -15,7 +17,7 @@ import 'channels/channel.dart';
 /// una consola que se pasa un poco y vuelve.
 const Curve pageSlideCurve = Cubic(.22, .94, .26, 1.05);
 
-/// Rejilla de 4x2 por pagina.
+/// Rejilla de canales: 4x2 por pagina en horizontal, 3x3 en vertical.
 class ChannelGrid extends StatefulWidget {
   const ChannelGrid({
     super.key,
@@ -30,18 +32,35 @@ class ChannelGrid extends StatefulWidget {
   final double height;
   final double width;
 
-  @override
-  State<ChannelGrid> createState() => _ChannelGridState();
-}
-
-class _ChannelGridState extends State<ChannelGrid>
-    with SingleTickerProviderStateMixin {
   static const double _padH = 28;
   static const double _padV = 26;
   static const double _gapH = 44;
   static const double _gapV = 24;
   static const double _aspect = 1.6;
 
+  /// Medidas de la rejilla vertical. La usa el entorno para repartir el alto
+  /// entre las dos pantallas antes de maquetar.
+  static const double tallPadH = 20;
+  static const double tallPadV = 16;
+  static const double tallGapH = 14;
+  static const double tallGapV = 14;
+  static const double tallAspect = 1.25;
+
+  /// Ancho de baldosa en vertical para un panel de este ancho.
+  static double tallTileWidth(double width) =>
+      (width - tallPadH * 2 - tallGapH * 2) / 3;
+
+  /// Alto que le gustaria tener a la rejilla vertical, con sus tres filas
+  /// enteras.
+  static double tallNaturalHeight(double width) =>
+      tallTileWidth(width) / tallAspect * 3 + tallGapV * 2 + tallPadV * 2;
+
+  @override
+  State<ChannelGrid> createState() => _ChannelGridState();
+}
+
+class _ChannelGridState extends State<ChannelGrid>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _slide = AnimationController(
     vsync: this,
     duration: T.page,
@@ -76,27 +95,40 @@ class _ChannelGridState extends State<ChannelGrid>
     super.dispose();
   }
 
-  int get _pageCount =>
-      math.max(1, (widget.channels.length / channelsPerPage).ceil());
-
   @override
   Widget build(BuildContext context) {
-    final compact = widget.height < 200;
-    final inner = Size(
-      widget.width - _padH * 2,
-      widget.height - _padV * 2,
-    );
+    final tall = Layout.of(context).tall;
+    final perPage = channelsPerPage(tall: tall);
+    final pageCount = math.max(1, (widget.channels.length / perPage).ceil());
+    final compact = widget.height < (tall ? 250 : 200);
 
     final double tileW;
     final double tileH;
-    if (compact) {
+    final int columns;
+    if (tall) {
+      columns = 3;
+      final inner = Size(
+        widget.width - ChannelGrid.tallPadH * 2,
+        widget.height - ChannelGrid.tallPadV * 2,
+      );
+      final byWidth = (inner.width - ChannelGrid.tallGapH * 2) / 3;
+      final byHeight = (inner.height - ChannelGrid.tallGapV * 2) / 3 * ChannelGrid.tallAspect;
+      tileW = math.max(56, math.min(byWidth, byHeight));
+      tileH = tileW / ChannelGrid.tallAspect;
+    } else if (compact) {
+      columns = perPage;
       tileH = math.max(34, math.min(72, widget.height - 34));
       tileW = tileH * 1.15;
     } else {
-      final byWidth = (inner.width - _gapH * 3) / 4;
-      final byHeight = (inner.height - _gapV) / 2 * _aspect;
+      columns = 4;
+      final inner = Size(
+        widget.width - ChannelGrid._padH * 2,
+        widget.height - ChannelGrid._padV * 2,
+      );
+      final byWidth = (inner.width - ChannelGrid._gapH * 3) / 4;
+      final byHeight = (inner.height - ChannelGrid._gapV) / 2 * ChannelGrid._aspect;
       tileW = math.max(90, math.min(byWidth, byHeight));
-      tileH = tileW / _aspect;
+      tileH = tileW / ChannelGrid._aspect;
     }
 
     return ClipRect(
@@ -107,20 +139,31 @@ class _ChannelGridState extends State<ChannelGrid>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              for (var page = 0; page < _pageCount; page++)
+              for (var page = 0; page < pageCount; page++)
                 SizedBox(
                   width: widget.width,
                   height: widget.height,
                   child: _Page(
                     channels: widget.channels
-                        .skip(page * channelsPerPage)
-                        .take(channelsPerPage)
+                        .skip(page * perPage)
+                        .take(perPage)
                         .toList(growable: false),
+                    perPage: perPage,
+                    columns: columns,
                     tileWidth: tileW,
                     tileHeight: tileH,
-                    gapH: compact ? 16 : _gapH,
-                    gapV: _gapV,
-                    compact: compact,
+                    gapH: tall
+                        ? ChannelGrid.tallGapH
+                        : compact
+                            ? 16
+                            : ChannelGrid._gapH,
+                    gapV: tall ? ChannelGrid.tallGapV : ChannelGrid._gapV,
+                    compact: !tall && compact,
+                    // En vertical la pagina se completa con ranuras hundidas:
+                    // la rejilla es siempre de 3x3, como el HOME de la
+                    // consola.
+                    fill: tall,
+                    glyphOnly: tall && tileH < 58,
                   ),
                 ),
             ],
@@ -134,19 +177,27 @@ class _ChannelGridState extends State<ChannelGrid>
 class _Page extends StatelessWidget {
   const _Page({
     required this.channels,
+    required this.perPage,
+    required this.columns,
     required this.tileWidth,
     required this.tileHeight,
     required this.gapH,
     required this.gapV,
     required this.compact,
+    required this.fill,
+    required this.glyphOnly,
   });
 
   final List<ChannelSpec> channels;
+  final int perPage;
+  final int columns;
   final double tileWidth;
   final double tileHeight;
   final double gapH;
   final double gapV;
   final bool compact;
+  final bool fill;
+  final bool glyphOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -171,9 +222,10 @@ class _Page extends StatelessWidget {
     }
 
     final rows = <Widget>[];
-    for (var row = 0; row < 2; row++) {
-      final slice = channels.skip(row * 4).take(4).toList(growable: false);
-      if (slice.isEmpty) continue;
+    final rowCount = (perPage / columns).ceil();
+    for (var row = 0; row < rowCount; row++) {
+      final slice = channels.skip(row * columns).take(columns).toList(growable: false);
+      if (slice.isEmpty && !fill) continue;
       rows.add(
         Row(
           mainAxisSize: MainAxisSize.min,
@@ -185,13 +237,16 @@ class _Page extends StatelessWidget {
                 spec: slice[i],
                 width: tileWidth,
                 height: tileHeight,
+                glyphOnly: glyphOnly,
               ),
             ],
             // Relleno para que la fila incompleta no se recentre respecto a la
             // de arriba: los canales tienen que quedar en columna.
-            for (var i = slice.length; i < 4; i++) ...[
-              SizedBox(width: gapH),
-              SizedBox(width: tileWidth, height: tileHeight),
+            for (var i = slice.length; i < columns; i++) ...[
+              if (i > 0) SizedBox(width: gapH),
+              fill
+                  ? EmptySlot(width: tileWidth, height: tileHeight)
+                  : SizedBox(width: tileWidth, height: tileHeight),
             ],
           ],
         ),

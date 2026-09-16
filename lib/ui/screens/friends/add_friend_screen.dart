@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -24,6 +25,7 @@ import '../../widgets/gloss.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/text_field.dart';
+import '../../layout.dart';
 import '../channel_route.dart';
 import '../channels/friends_channel.dart';
 import 'friend_profile_screen.dart';
@@ -161,27 +163,34 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
     final skin = IbashoSkin.of(context);
     final digits = _digits.length;
     final error = _fieldError;
+    final layout = Layout.of(context);
 
     return ChannelScaffold(
       title: l.addFriendTitle,
       glyph: Glyph.personPlus,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: EdgeInsets.symmetric(horizontal: layout.gutter),
         child: Column(
           children: [
             const SizedBox(height: 14),
             SizedBox(
-              height: 250,
+              height: layout.pick(250, 214),
               child: ScreenPanel(
                 child: Center(
+                  child: SingleChildScrollView(
                   child: SizedBox(
-                    width: 620,
+                    width: layout.pick(620, layout.width - layout.gutter * 2 - 32),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(l.addFriendLead, style: Ty.title),
-                        const SizedBox(height: 18),
+                        Text(
+                          l.addFriendLead,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: layout.pick(Ty.title, Ty.lead),
+                        ),
+                        SizedBox(height: layout.pick(18, 12)),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -193,18 +202,18 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
                                 hint: '0000-0000-0000',
                                 autofocus: true,
                                 error: error,
-                                textStyle: Ty.numeral(32, weight: FontWeight.w700)
-                                    .copyWith(letterSpacing: 2, height: 1.2),
+                                textStyle: Ty.numeral(layout.pick(32, 24), weight: FontWeight.w700)
+                                    .copyWith(letterSpacing: layout.pick(2, 1), height: 1.2),
                                 formatters: const [FriendCodeFormatter()],
                               ),
                             ),
                             const SizedBox(width: 14),
                             Padding(
-                              padding: const EdgeInsets.only(top: 30),
+                              padding: EdgeInsets.only(top: layout.pick(30, 26)),
                               child: IconPill(
                                 key: const ValueKey<String>('addFriend.paste'),
                                 glyph: Glyph.paste,
-                                diameter: 52,
+                                diameter: layout.pick(52, 48),
                                 semanticLabel: l.addFriendPaste,
                                 onPressed: _paste,
                               ),
@@ -225,6 +234,7 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
                           ),
                       ],
                     ),
+                  ),
                   ),
                 ),
               ),
@@ -333,30 +343,37 @@ class _Result extends StatelessWidget {
         ),
     };
 
+    final layout = Layout.of(context);
+    final tall = layout.tall;
+    final window = tall ? math.min(layout.width * .46, 170.0) : 250.0;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 26),
-      child: Row(
+      padding: tall
+          ? const EdgeInsets.fromLTRB(20, 18, 20, 18)
+          : const EdgeInsets.symmetric(horizontal: 60, vertical: 26),
+      child: _Beside(
+        tall: tall,
         children: [
           // La ficha reducida: una ventana tenida del color de la persona con
           // su Tama dentro.
           SizedBox(
-            width: 250,
-            height: 250,
+            width: window,
+            height: window,
             child: GlossSurface(
               key: const ValueKey<String>('addFriend.card'),
-              radius: 56,
+              radius: tall ? window * .22 : 56,
               recessed: true,
               tint: accent,
               borderColor: Color.lerp(accent, T.dusk, .3)!,
               borderWidth: 2,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(56),
+                borderRadius: BorderRadius.circular(tall ? window * .22 : 56),
                 child: Transform.translate(
-                  offset: const Offset(0, 12),
+                  offset: Offset(0, tall ? window * .05 : 12),
                   child: CardTama(
                     accountId: found.accountId!,
                     card: card,
-                    size: 240,
+                    size: tall ? window * .96 : 240,
                     interactive: true,
                     joy: .8,
                   ),
@@ -364,30 +381,36 @@ class _Result extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 44),
+          SizedBox(width: tall ? 0 : 44, height: tall ? 14 : 0),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: tall ? CrossAxisAlignment.center : CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Ty.display),
-                const SizedBox(height: 12),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tall ? Ty.title : Ty.display,
+                ),
+                SizedBox(height: tall ? 8 : 12),
                 SizedBox(
-                  width: 180,
+                  width: tall ? 120 : 180,
                   height: 10,
                   child: GlossSurface(radius: 5, tint: accent, elevation: .6),
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: tall ? 12 : 18),
                 Text(
                   found.relation == FriendRelation.friend
                       ? l.addFriendAlreadyFriends
                       : found.relation == FriendRelation.requestedYou
                           ? l.addFriendTheyAsked
                           : l.addFriendPrivacy,
+                  textAlign: tall ? TextAlign.center : TextAlign.start,
                   style: Ty.body.copyWith(color: T.inkSoft),
                 ),
-                const SizedBox(height: 26),
-                Row(children: [action]),
+                SizedBox(height: tall ? 16 : 26),
+                Row(children: [if (tall) Expanded(child: action) else action]),
               ],
             ),
           ),
@@ -395,4 +418,31 @@ class _Result extends StatelessWidget {
       ),
     );
   }
+}
+
+/// La ficha y sus datos: uno al lado del otro con ancho de sobra, uno encima
+/// del otro cuando no lo hay.
+class _Beside extends StatelessWidget {
+  const _Beside({required this.tall, required this.children});
+
+  final bool tall;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => tall
+      // En vertical la ficha se lee de arriba abajo y se desplaza si el
+      // movil es pequeño: nada se recorta.
+      ? SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              children.first,
+              for (final child in children.skip(1))
+                if (child is Expanded) child.child else child,
+            ],
+          ),
+        )
+      : Row(children: children);
 }

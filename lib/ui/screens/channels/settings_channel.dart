@@ -16,6 +16,7 @@ import '../../widgets/controls.dart';
 import '../../widgets/glyphs.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
+import '../../layout.dart';
 import '../channel_route.dart';
 import '../../track_text.dart';
 import '../../widgets/track_tile.dart';
@@ -33,6 +34,34 @@ class SettingsChannel extends ConsumerWidget {
     final controller = ref.read(preferencesProvider.notifier);
     final library = ref.watch(musicLibraryProvider);
     final currentTrack = MusicTrack.byId(preferences.musicTrack);
+    final layout = Layout.of(context);
+
+    /// Fila de volumen: en vertical el raíl ocupa el ancho entero.
+    Widget volume(Glyph glyph, double value, ValueChanged<double> onChanged) => Row(
+          mainAxisSize: layout.pick(MainAxisSize.min, MainAxisSize.max),
+          children: [
+            GlyphIcon(glyph, size: 20, color: T.inkSoft),
+            const SizedBox(width: 14),
+            layout.pick<Widget>(
+              IbashoSlider(value: value, onChanged: onChanged),
+              Expanded(
+                child: IbashoSlider(
+                  value: value,
+                  width: double.infinity,
+                  onChanged: onChanged,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 56,
+              child: Text(
+                '${(value * 100).round()}',
+                textAlign: TextAlign.right,
+                style: Ty.numeral(17, color: T.inkSoft),
+              ),
+            ),
+          ],
+        );
 
     Future<void> setLocale(String code) => changeLanguage(ref, code);
 
@@ -40,10 +69,10 @@ class SettingsChannel extends ConsumerWidget {
       title: l.settingsTitle,
       glyph: Glyph.gear,
       child: IbashoScroll(
-        padding: const EdgeInsets.fromLTRB(40, 28, 40, 44),
+        padding: EdgeInsets.fromLTRB(layout.gutter, layout.pick(28, 18), layout.gutter, 44),
         child: Center(
           child: SizedBox(
-            width: 820,
+            width: layout.pick(820, layout.column),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -54,49 +83,19 @@ class SettingsChannel extends ConsumerWidget {
                     children: [
                       SettingRow(
                         label: l.settingsMusicVolume,
-                        control: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const GlyphIcon(Glyph.note, size: 20, color: T.inkSoft),
-                            const SizedBox(width: 14),
-                            IbashoSlider(
-                              value: preferences.musicVolume,
-                              onChanged: controller.setMusicVolume,
-                            ),
-                            SizedBox(
-                              width: 56,
-                              child: Text(
-                                '${(preferences.musicVolume * 100).round()}',
-                                textAlign: TextAlign.right,
-                                style: Ty.numeral(17, color: T.inkSoft),
-                              ),
-                            ),
-                          ],
+                        control: volume(
+                          Glyph.note,
+                          preferences.musicVolume,
+                          controller.setMusicVolume,
                         ),
                       ),
                       SettingRow(
                         label: l.settingsEffectsVolume,
                         divider: false,
-                        control: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const GlyphIcon(Glyph.speaker, size: 20, color: T.inkSoft),
-                            const SizedBox(width: 14),
-                            IbashoSlider(
-                              value: preferences.effectsVolume,
-                              onChanged: (v) async {
-                                await controller.setEffectsVolume(v);
-                              },
-                            ),
-                            SizedBox(
-                              width: 56,
-                              child: Text(
-                                '${(preferences.effectsVolume * 100).round()}',
-                                textAlign: TextAlign.right,
-                                style: Ty.numeral(17, color: T.inkSoft),
-                              ),
-                            ),
-                          ],
+                        control: volume(
+                          Glyph.speaker,
+                          preferences.effectsVolume,
+                          (v) async => controller.setEffectsVolume(v),
                         ),
                       ),
                     ],

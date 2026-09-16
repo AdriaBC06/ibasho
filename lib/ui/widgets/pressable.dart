@@ -8,6 +8,8 @@ import 'package:flutter/widgets.dart';
 import '../../audio/audio_service.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
+import '../canvas.dart';
+import '../touch.dart';
 
 /// Estado continuo de un control pulsable.
 ///
@@ -57,7 +59,9 @@ class Pressable extends StatefulWidget {
   State<Pressable> createState() => _PressableState();
 }
 
-class _PressableState extends State<Pressable> with TickerProviderStateMixin {
+class _PressableState extends State<Pressable>
+    with TickerProviderStateMixin
+    implements TouchTarget {
   late final AnimationController _hover = AnimationController(
     vsync: this,
     duration: T.hover,
@@ -73,7 +77,23 @@ class _PressableState extends State<Pressable> with TickerProviderStateMixin {
   bool get _live => widget.enabled && widget.onPressed != null;
 
   @override
+  void initState() {
+    super.initState();
+    TouchAssist.register(this);
+  }
+
+  @override
+  bool get touchLive => _live;
+
+  @override
+  void touchFire() {
+    _press.forward(from: 1).then((_) => _press.reverse());
+    _fire();
+  }
+
+  @override
   void dispose() {
+    TouchAssist.unregister(this);
     _hover.dispose();
     _press.dispose();
     super.dispose();
@@ -90,6 +110,10 @@ class _PressableState extends State<Pressable> with TickerProviderStateMixin {
     final skin = IbashoSkin.of(context);
     _hover.duration = skin.motion(T.hover);
     _press.duration = skin.motion(T.press);
+    // En vertical se compone a tamaño real y toda zona tactil mide al menos
+    // 48 dp. En horizontal no se toca la maqueta: ver TouchAssist.
+    final tall = CanvasSize.tallOf(context);
+    final minSide = tall ? minTouchTarget / CanvasSize.scaleOf(context) : 0.0;
 
     return Semantics(
       button: true,
@@ -114,7 +138,13 @@ class _PressableState extends State<Pressable> with TickerProviderStateMixin {
           onPointerDown: (e) {
             if (!_live) return;
             if (e.buttons == kSecondaryMouseButton) return;
-            _press.forward();
+            // Con el dedo no hay paso por encima que avise: se hunde al
+            // instante, y lo que abra se anima al soltar.
+            if (isFingerLike(e.kind)) {
+              _press.value = 1;
+            } else {
+              _press.forward();
+            }
           },
           onPointerUp: (_) => _press.reverse(),
           onPointerCancel: (_) => _press.reverse(),
@@ -122,15 +152,18 @@ class _PressableState extends State<Pressable> with TickerProviderStateMixin {
             behavior: HitTestBehavior.opaque,
             onTap: _fire,
             onSecondaryTap: widget.onSecondaryPressed,
-            child: AnimatedBuilder(
-              animation: Listenable.merge([_hover, _press]),
-              builder: (context, _) => widget.builder(
-                context,
-                PressState(
-                  skin.reducedMotion ? (_hover.value > 0 ? 1 : 0) : _hover.value,
-                  _press.value,
-                  _focused,
-                  _live,
+            child: MinTouchSize(
+              side: minSide,
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_hover, _press]),
+                builder: (context, _) => widget.builder(
+                  context,
+                  PressState(
+                    skin.reducedMotion ? (_hover.value > 0 ? 1 : 0) : _hover.value,
+                    _press.value,
+                    _focused,
+                    _live,
+                  ),
                 ),
               ),
             ),

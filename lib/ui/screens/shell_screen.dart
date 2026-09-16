@@ -16,6 +16,7 @@ import '../../state/providers.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../canvas.dart';
+import '../layout.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import '../widgets/gloss.dart';
@@ -46,6 +47,28 @@ enum PanelBalance {
   double get bottomHeight =>
       T.panelBalanced * 2 - topHeight;
 
+  /// Alto del panel superior con este estado.
+  ///
+  /// En horizontal son las tres alturas de siempre. En vertical se reparte lo
+  /// que haya: equilibrado le da a la rejilla justo lo que necesitan sus tres
+  /// filas y el resto al panel de arriba, y los otros dos estados encogen uno
+  /// de los dos al minimo.
+  double topFor({required double available, required double gridNatural}) =>
+      switch (this) {
+        PanelBalance.balanced =>
+          math.max(_tallMinTop, available - math.min(gridNatural, available - _tallMinTop)),
+        PanelBalance.topLarge => available - _tallMinGrid,
+        PanelBalance.bottomLarge => _tallMinTop,
+      };
+
+  /// Alto minimo del panel de arriba en vertical: el reloj, el saludo y el
+  /// Tama en una tira.
+  static const double _tallMinTop = 120;
+
+  /// Alto minimo de la rejilla en vertical: tres filas de iconos sin etiqueta,
+  /// nunca por debajo de lo que se puede tocar.
+  static const double _tallMinGrid = 212;
+
   PanelBalance get next => switch (this) {
         PanelBalance.balanced => PanelBalance.topLarge,
         PanelBalance.topLarge => PanelBalance.bottomLarge,
@@ -62,12 +85,16 @@ class ShellScreen extends ConsumerStatefulWidget {
 
 class _ShellScreenState extends ConsumerState<ShellScreen>
     with SingleTickerProviderStateMixin {
-  static const double _margin = 40;
-  // Presupuesto vertical del lienzo (800):
+  // Presupuesto vertical del lienzo horizontal (800):
   // 12 + panel 340 + carril 42 + panel 340 + aire 14 + barra 40 + 12.
   static const double _railHeight = 42;
   static const double _barGap = 14;
   static const double _barHeight = 40;
+
+  // En vertical el carril y la barra crecen hasta lo que se toca con el dedo,
+  // y el reparto de los dos paneles sale del alto que haya.
+  static const double _tallRailHeight = 56;
+  static const double _tallBarHeight = 48;
 
   // Se crea en initState y no de forma perezosa: si nadie pulsa ampliar, un
   // `late final` se crearia por primera vez en dispose(), con el arbol ya
@@ -84,6 +111,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
 
   PanelBalance _balance = PanelBalance.balanced;
   int _page = 0;
+
+  /// Alto del panel de arriba cuando empezo la animacion de ampliar. Se guarda
+  /// en vez de calcularlo porque al girar el movil las alturas cambian.
+  double _fromTop = PanelBalance.balanced.topHeight;
   DateTime _lastWheel = DateTime.fromMillisecondsSinceEpoch(0);
 
   final GlobalKey _settingsAnchor = GlobalKey(debugLabel: 'shortcut.settings');
@@ -98,20 +129,14 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
   List<ChannelSpec> get _channels =>
       channelsFor(isAdmin: ref.read(sessionProvider).isAdmin);
 
-  int get _pageCount =>
-      math.max(1, (_channels.length / channelsPerPage).ceil());
+  int _pageCount(bool tall) =>
+      math.max(1, (_channels.length / channelsPerPage(tall: tall)).ceil());
 
   void _cycleBalance() {
     final skin = IbashoSkin.of(context);
     final next = _balance.next;
     setState(() {
-      _topHeight = Tween<double>(
-        begin: _topHeight.value,
-        end: next.topHeight,
-      ).animate(CurvedAnimation(
-        parent: _magnify,
-        curve: skin.curve(Curves.easeInOutCubic),
-      ));
+      _fromTop = _topHeight.value;
       _balance = next;
     });
     _magnify
@@ -119,8 +144,21 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
       ..forward(from: 0);
   }
 
+  /// La animacion de ampliar, resuelta con las alturas de la composicion en
+  /// curso: asi girar el movil a mitad de animacion no la deja a medias en
+  /// unidades de la otra.
+  void _retune(Layout layout, double available, double gridNatural) {
+    final skin = IbashoSkin.of(context);
+    final target = layout.tall
+        ? _balance.topFor(available: available, gridNatural: gridNatural)
+        : _balance.topHeight;
+    _topHeight = Tween<double>(begin: _fromTop, end: target).animate(
+      CurvedAnimation(parent: _magnify, curve: skin.curve(Curves.easeInOutCubic)),
+    );
+  }
+
   void _goToPage(int page) {
-    final target = page.clamp(0, _pageCount - 1);
+    final target = page.clamp(0, _pageCount(CanvasSize.tallOf(context)) - 1);
     if (target == _page) return;
     AudioService.instance.play(Sfx.tick);
     setState(() => _page = target);
@@ -139,7 +177,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
   @override
   Widget build(BuildContext context) {
     final l = L.of(context)!;
+    final layout = Layout.of(context);
     final channels = _channels;
+    final pageCount = _pageCount(layout.tall);
+    if (_page >= pageCount) _page = pageCount - 1;
     // Carga la musica de la cuenta en cuanto se entra, sin esperar a Ajustes.
     ref.watch(musicLibraryProvider.select((m) => m.loaded));
     // Presencia, amigos (la insignia de solicitudes) y la ficha publica viven
@@ -171,59 +212,80 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
               ),
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _margin),
-              child: AnimatedBuilder(
-                animation: _topHeight,
-                builder: (context, _) {
-                  final topHeight = _topHeight.value;
-                  final bottomHeight = T.panelBalanced * 2 - topHeight;
-                  final panelWidth = CanvasSize.of(context).width - _margin * 2;
+              padding: EdgeInsets.symmetric(horizontal: layout.gutter),
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  final panelWidth = box.maxWidth;
+                  final railHeight = layout.pick(_railHeight, _tallRailHeight);
+                  final barHeight = layout.pick(_barHeight, _tallBarHeight);
+                  final barGap = layout.pick(_barGap, 10.0);
+                  final available =
+                      box.maxHeight - 24 - railHeight - barGap - barHeight;
+                  final gridNatural = ChannelGrid.tallNaturalHeight(panelWidth);
+                  _retune(layout, available, gridNatural);
 
-                  return Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: topHeight,
-                        child: ScreenPanel(child: TopPanel(height: topHeight)),
-                      ),
-                      SizedBox(
-                        height: _railHeight,
-                        child: _ControlRail(
-                          page: _page,
-                          pageCount: _pageCount,
-                          onPrevious: () => _goToPage(_page - 1),
-                          onNext: () => _goToPage(_page + 1),
-                          onMagnify: _cycleBalance,
-                        ),
-                      ),
-                      SizedBox(
-                        height: bottomHeight,
-                        child: Listener(
-                          onPointerSignal: _onWheel,
-                          child: ScreenPanel(
-                            child: ChannelGrid(
-                              channels: channels,
+                  return AnimatedBuilder(
+                    animation: _topHeight,
+                    builder: (context, _) {
+                      final topHeight = _topHeight.value;
+                      final bottomHeight = layout.tall
+                          ? available - topHeight
+                          : T.panelBalanced * 2 - topHeight;
+
+                      return Column(
+                        children: [
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: topHeight,
+                            child: ScreenPanel(child: TopPanel(height: topHeight)),
+                          ),
+                          SizedBox(
+                            height: railHeight,
+                            child: _ControlRail(
                               page: _page,
-                              height: bottomHeight,
+                              pageCount: pageCount,
+                              diameter: layout.pill,
+                              onPrevious: () => _goToPage(_page - 1),
+                              onNext: () => _goToPage(_page + 1),
+                              onMagnify: _cycleBalance,
+                            ),
+                          ),
+                          SizedBox(
+                            height: bottomHeight,
+                            child: Listener(
+                              onPointerSignal: _onWheel,
+                              child: PageSwipe(
+                                onPrevious: () => _goToPage(_page - 1),
+                                onNext: () => _goToPage(_page + 1),
+                                child: ScreenPanel(
+                                  child: ChannelGrid(
+                                    channels: channels,
+                                    page: _page,
+                                    height: bottomHeight,
+                                    width: panelWidth,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: barGap),
+                          SizedBox(
+                            height: barHeight,
+                            child: _BottomBar(
+                              page: _page,
+                              pageCount: pageCount,
+                              settingsAnchor: _settingsAnchor,
+                              profileAnchor: _profileAnchor,
+                              channels: channels,
+                              label: l,
+                              height: barHeight,
                               width: panelWidth,
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: _barGap),
-                      SizedBox(
-                        height: _barHeight,
-                        child: _BottomBar(
-                          page: _page,
-                          pageCount: _pageCount,
-                          settingsAnchor: _settingsAnchor,
-                          profileAnchor: _profileAnchor,
-                          channels: channels,
-                          label: l,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
+                          const SizedBox(height: 12),
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -246,6 +308,7 @@ class _ControlRail extends StatelessWidget {
   const _ControlRail({
     required this.page,
     required this.pageCount,
+    required this.diameter,
     required this.onPrevious,
     required this.onNext,
     required this.onMagnify,
@@ -253,6 +316,7 @@ class _ControlRail extends StatelessWidget {
 
   final int page;
   final int pageCount;
+  final double diameter;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onMagnify;
@@ -264,21 +328,21 @@ class _ControlRail extends StatelessWidget {
           // derecha, hacia dentro.
           IconPill(
             glyph: Glyph.arrowLeft,
-            diameter: 36,
+            diameter: diameter,
             onPressed: page > 0 ? onPrevious : null,
           ),
           const Spacer(),
           IconPill(
             key: const ValueKey<String>('magnify'),
             glyph: Glyph.magnify,
-            diameter: 36,
+            diameter: diameter,
             tone: ButtonTone.accent,
             onPressed: onMagnify,
           ),
           const SizedBox(width: 14),
           IconPill(
             glyph: Glyph.arrowRight,
-            diameter: 36,
+            diameter: diameter,
             onPressed: page < pageCount - 1 ? onNext : null,
           ),
         ],
@@ -294,10 +358,14 @@ class _BottomBar extends StatelessWidget {
     required this.profileAnchor,
     required this.channels,
     required this.label,
+    required this.height,
+    required this.width,
   });
 
   final int page;
   final int pageCount;
+  final double height;
+  final double width;
   final GlobalKey settingsAnchor;
   final GlobalKey profileAnchor;
   final List<ChannelSpec> channels;
@@ -321,17 +389,28 @@ class _BottomBar extends StatelessWidget {
     final settings = _spec('settings');
     final profile = _spec('profile');
 
+    // En vertical los dos atajos se reparten el ancho que dejan los puntos de
+    // pagina, para no desbordar en una pantalla estrecha. En horizontal el
+    // lienzo siempre mide 1280: cada boton ocupa lo suyo, como siempre.
+    final shortcut = Layout.of(context).tall
+        ? BoxConstraints.loose(Size(math.max(120, (width - 90) / 2), height))
+        : null;
+    Widget fit(Widget child) =>
+        shortcut == null ? child : ConstrainedBox(constraints: shortcut, child: child);
+
     return Row(
       children: [
-        KeyedSubtree(
+        fit(
+          KeyedSubtree(
           key: settingsAnchor,
           child: IbashoButton(
             label: settings.label(label),
             glyph: settings.glyph,
-            height: 40,
+            height: height,
             cue: null,
             onPressed: () => open(settingsAnchor, settings),
           ),
+        ),
         ),
         const Spacer(),
         Row(
@@ -344,15 +423,17 @@ class _BottomBar extends StatelessWidget {
           ],
         ),
         const Spacer(),
-        KeyedSubtree(
+        fit(
+          KeyedSubtree(
           key: profileAnchor,
           child: IbashoButton(
             label: profile.label(label),
             glyph: profile.glyph,
-            height: 40,
+            height: height,
             cue: null,
             onPressed: () => open(profileAnchor, profile),
           ),
+        ),
         ),
       ],
     );

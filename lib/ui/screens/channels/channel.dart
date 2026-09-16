@@ -43,8 +43,8 @@ class ChannelSpec {
 /// Cuantas ranuras libres ensena el entorno mientras no haya apps.
 const int emptySlotCount = 2;
 
-/// Canales por pagina: rejilla de 4x2.
-const int channelsPerPage = 8;
+/// Canales por pagina: rejilla de 4x2 en horizontal, de 3x3 en vertical.
+int channelsPerPage({required bool tall}) => tall ? 9 : 8;
 
 List<ChannelSpec> channelsFor({required bool isAdmin}) => <ChannelSpec>[
       ChannelSpec(

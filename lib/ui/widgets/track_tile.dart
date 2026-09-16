@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
+import '../layout.dart';
 import 'glyphs.dart';
 import 'gloss.dart';
 import 'pressable.dart';
@@ -38,6 +39,7 @@ class TrackTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
     final onTint = selected ? T.onAccent : null;
+    final tall = Layout.of(context).tall;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Pressable(
@@ -53,8 +55,48 @@ class TrackTile extends StatelessWidget {
                 ? skin.accentDeep
                 : Color.lerp(T.hairline, skin.accentDeep,
                     onPressed == null ? 0 : state.hover)!,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-            child: Row(
+            padding: EdgeInsets.symmetric(horizontal: tall ? 14 : 18, vertical: 11),
+            child: tall
+                // En vertical: el nombre con su icono arriba, lo demas debajo.
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          GlyphIcon(
+                            selected ? Glyph.speaker : (dimmed ? Glyph.lock : Glyph.play),
+                            size: 22,
+                            color: onTint ?? skin.accentDeep,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Ty.lead.copyWith(color: onTint ?? T.ink),
+                            ),
+                          ),
+                          if (trailing != null)
+                            Flexible(
+                              child: DefaultTextStyle.merge(
+                                style: TextStyle(color: onTint),
+                                child: trailing!,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Ty.caption.copyWith(color: onTint ?? T.inkSoft, height: 1.3),
+                      ),
+                    ],
+                  )
+                : Row(
               children: [
                 GlyphIcon(
                   selected ? Glyph.speaker : (dimmed ? Glyph.lock : Glyph.play),

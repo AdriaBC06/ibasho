@@ -29,6 +29,7 @@ import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
+import '../../layout.dart';
 import '../channel_route.dart';
 import '../channels/friends_channel.dart';
 import 'wall_panel.dart';
@@ -119,13 +120,17 @@ class _FriendProfileScreenState extends ConsumerState<FriendProfileScreen> {
       onPressed: () => unawaited(ref.read(preferencesProvider.notifier).setProfileMusicMuted(!muted)),
     );
 
+    final layout = Layout.of(context);
+
     return ChannelScaffold(
       title: name,
       glyph: Glyph.person,
+      // En vertical la cabecera solo lleva el altavoz; dejar de ser amigos
+      // baja al pie de la ficha, donde no se pulsa sin querer.
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (friendship != null)
+          if (friendship != null && !layout.tall)
             IbashoButton(
               key: const ValueKey<String>('friend.unfriend'),
               label: l.friendUnfriend,
@@ -138,7 +143,7 @@ class _FriendProfileScreenState extends ConsumerState<FriendProfileScreen> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: EdgeInsets.symmetric(horizontal: layout.gutter),
         child: friendsLoaded && friendship == null
             ? Center(child: Text(l.friendNotFriends, style: Ty.lead.copyWith(color: T.inkSoft)))
             : profile.when(
@@ -153,6 +158,7 @@ class _FriendProfileScreenState extends ConsumerState<FriendProfileScreen> {
                         card: card,
                         friendship: friendship,
                         music: music,
+                        onUnfriend: friendship == null ? null : () => _unfriend(name),
                       ),
               ),
       ),
@@ -167,6 +173,7 @@ class _Body extends ConsumerWidget {
     required this.card,
     required this.friendship,
     required this.music,
+    required this.onUnfriend,
   });
 
   final String accountId;
@@ -174,33 +181,70 @@ class _Body extends ConsumerWidget {
   final UserCard? card;
   final Friendship? friendship;
   final MusicOf? music;
+  final VoidCallback? onUnfriend;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
     final now = ref.watch(moodClockProvider);
     final party = isBirthdayToday(profile, now);
+    final layout = Layout.of(context);
+
+    final identity = ScreenPanel(
+      child: Stack(
+        children: [
+          if (party) const Positioned.fill(child: PartyBackdrop()),
+          _Identity(
+            accountId: accountId,
+            profile: profile,
+            card: card,
+            friendship: friendship,
+            music: music,
+            party: party,
+          ),
+        ],
+      ),
+    );
+
+    // En vertical la ficha y el muro se leen desplazandose, que es lo natural
+    // en un movil; en escritorio son dos pantallas fijas.
+    if (layout.tall) {
+      return IbashoScroll(
+        padding: const EdgeInsets.only(top: 14, bottom: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // La ficha se queda del alto que pida su contenido: dentro de una
+            // zona que se desplaza no hay contra que estirarse.
+            identity,
+            const SizedBox(height: 14),
+            SizedBox(
+              height: math.max(360, layout.height * .52),
+              child: ScreenPanel(
+                child: WallPanel(accountId: accountId, profile: profile, own: false),
+              ),
+            ),
+            if (onUnfriend != null) ...[
+              const SizedBox(height: 14),
+              Center(
+                child: IbashoButton(
+                  key: const ValueKey<String>('friend.unfriend'),
+                  label: l.friendUnfriend,
+                  tone: ButtonTone.quiet,
+                  height: 44,
+                  onPressed: onUnfriend,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
 
     return Column(
       children: [
         const SizedBox(height: 14),
-        SizedBox(
-          height: 330,
-          child: ScreenPanel(
-            child: Stack(
-              children: [
-                if (party) const Positioned.fill(child: PartyBackdrop()),
-                _Identity(
-                  accountId: accountId,
-                  profile: profile,
-                  card: card,
-                  friendship: friendship,
-                  music: music,
-                  party: party,
-                ),
-              ],
-            ),
-          ),
-        ),
+        SizedBox(height: 330, child: identity),
         const SizedBox(height: 18),
         Expanded(
           child: ScreenPanel(
@@ -250,40 +294,50 @@ class _Identity extends ConsumerWidget {
     );
     final track = music?.profileTrack == null ? null : MusicTrack.byId(music!.profileTrack!);
 
+    final layout = Layout.of(context);
+    final tall = layout.tall;
+    final portrait = tall ? 120.0 : 226.0;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 22, 26, 22),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 290,
+      padding: tall
+          ? const EdgeInsets.fromLTRB(16, 16, 16, 16)
+          : const EdgeInsets.fromLTRB(20, 22, 26, 22),
+      child: _Columns(
+        tall: tall,
+        portrait: SizedBox(
+            width: tall ? portrait + 10 : 290,
             child: Center(
               child: tama == null
                   ? SizedBox(
-                      width: 190,
-                      height: 190,
+                      width: tall ? portrait * .84 : 190,
+                      height: tall ? portrait * .84 : 190,
                       child: GlossSurface(
-                        radius: 52,
+                        radius: tall ? portrait * .23 : 52,
                         recessed: true,
                         tint: accent,
                         child: Center(
-                          child: GlyphIcon(Glyph.tama, size: 90, color: accent, strokeWidth: 2.2),
+                          child: GlyphIcon(
+                            Glyph.tama,
+                            size: tall ? portrait * .4 : 90,
+                            color: accent,
+                            strokeWidth: 2.2,
+                          ),
                         ),
                       ),
                     )
                   : TamaOnStand(
                       key: const ValueKey<String>('friend.tama'),
                       tama: tama,
-                      size: 226,
+                      size: portrait,
                       joy: party ? 1 : .6,
                       wear: party ? TamaWear.partyHat : TamaWear.none,
                     ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+        info: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: tall ? MainAxisSize.min : MainAxisSize.max,
               children: [
                 if (party)
                   Padding(
@@ -303,12 +357,12 @@ class _Identity extends ConsumerWidget {
                         profile.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Ty.display,
+                        style: tall ? Ty.title : Ty.display,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    SizedBox(width: tall ? 10 : 14),
                     SizedBox(
-                      width: 46,
+                      width: tall ? 34 : 46,
                       height: 12,
                       child: GlossSurface(radius: 6, tint: accent, elevation: .6),
                     ),
@@ -323,7 +377,7 @@ class _Identity extends ConsumerWidget {
                     Text(presenceLine(l, presence, now), style: Ty.body.copyWith(color: T.inkSoft)),
                   ],
                 ),
-                if (profile.statusMessage.isNotEmpty) ...[
+                if (profile.statusMessage.isNotEmpty && !tall) ...[
                   const SizedBox(height: 12),
                   Text(
                     profile.statusMessage,
@@ -332,52 +386,107 @@ class _Identity extends ConsumerWidget {
                     style: Ty.lead.copyWith(color: T.ink, fontWeight: FontWeight.w400),
                   ),
                 ],
-                const SizedBox(height: 14),
+                SizedBox(height: tall ? 10 : 14),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: [for (final badge in badges) BadgeChip(badge: badge)],
-                ),
-                const SizedBox(height: 14),
-                Row(
+                  // En vertical no hay sitio para tres filas de insignias.
                   children: [
-                    GlyphIcon(Glyph.heart, size: 18, color: skin.accentDeep),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        friendship == null
-                            ? ''
-                            : l.friendSince(DateFormat.yMMMMd(locale).format(friendship!.since)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Ty.caption.copyWith(color: T.inkSoft),
-                      ),
-                    ),
-                    if (track != null) ...[
-                      const SizedBox(width: 18),
-                      GlyphIcon(Glyph.note, size: 18, color: skin.accentDeep),
-                      const SizedBox(width: 6),
+                    for (final badge in tall ? badges.take(3) : badges) BadgeChip(badge: badge),
+                  ],
+                ),
+                if (!tall) ...[
+                const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      GlyphIcon(Glyph.heart, size: 18, color: skin.accentDeep),
+                      const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          l.friendMusic(track.id),
+                          friendship == null
+                              ? ''
+                              : l.friendSince(DateFormat.yMMMMd(locale).format(friendship!.since)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Ty.caption.copyWith(color: T.inkSoft),
                         ),
                       ),
+                      if (track != null) ...[
+                        const SizedBox(width: 18),
+                        GlyphIcon(Glyph.note, size: 18, color: skin.accentDeep),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            l.friendMusic(track.id),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Ty.caption.copyWith(color: T.inkSoft),
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
+        aside: SizedBox(
+            width: tall ? double.infinity : 290,
+            child: _LocalTime(
+              profile: profile,
+              party: party,
+              // En vertical, "desde cuando" y su musica caben mejor aqui que
+              // al lado del nombre.
+              since: tall && friendship != null
+                  ? l.friendSince(DateFormat.yMMMMd(locale).format(friendship!.since))
+                  : null,
+              music: tall && track != null ? l.friendMusic(track.id) : null,
+            ),
           ),
-          const SizedBox(width: 18),
-          SizedBox(
-            width: 290,
-            child: _LocalTime(profile: profile, party: party),
-          ),
-        ],
       ),
+    );
+  }
+}
+
+/// Los tres bloques de la ficha de un amigo: el Tama, sus datos y la tarjeta
+/// de la hora. En fila cuando hay ancho; en vertical, el Tama con sus datos al
+/// lado y la hora debajo.
+class _Columns extends StatelessWidget {
+  const _Columns({
+    required this.tall,
+    required this.portrait,
+    required this.info,
+    required this.aside,
+  });
+
+  final bool tall;
+  final Widget portrait;
+  final Widget info;
+  final Widget aside;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!tall) {
+      return Row(
+        children: [
+          portrait,
+          const SizedBox(width: 12),
+          Expanded(child: info),
+          const SizedBox(width: 18),
+          aside,
+        ],
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [portrait, const SizedBox(width: 12), Expanded(child: info)],
+        ),
+        const SizedBox(height: 14),
+        aside,
+      ],
     );
   }
 }
@@ -385,10 +494,19 @@ class _Identity extends ConsumerWidget {
 /// Su hora local, al segundo, con la diferencia respecto a la mia, y su
 /// cumpleaños.
 class _LocalTime extends ConsumerWidget {
-  const _LocalTime({required this.profile, required this.party});
+  const _LocalTime({
+    required this.profile,
+    required this.party,
+    this.since,
+    this.music,
+  });
 
   final UserProfile profile;
   final bool party;
+
+  /// Solo en vertical: desde cuando sois amigos y que musica tiene puesta.
+  final String? since;
+  final String? music;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -404,13 +522,20 @@ class _LocalTime extends ConsumerWidget {
     final parts = profile.birthdayParts;
     final zone = zoneById(theirZone);
 
+    final tall = Layout.of(context).tall;
+
     return GlossSurface(
       radius: 24,
       elevation: 1.4,
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+      padding: tall
+          ? const EdgeInsets.fromLTRB(16, 12, 16, 12)
+          : const EdgeInsets.fromLTRB(22, 18, 22, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
+        // En vertical la tarjeta se queda del alto de su contenido; en
+        // horizontal llena la columna, como siempre.
+        mainAxisSize: tall ? MainAxisSize.min : MainAxisSize.max,
         children: [
           Row(
             children: [
@@ -423,28 +548,31 @@ class _LocalTime extends ConsumerWidget {
           Text(
             DateFormat('HH:mm').format(there),
             key: const ValueKey<String>('friend.localTime'),
-            style: Ty.clock(T.ink),
+            style: tall ? Ty.clockSmall(T.ink) : Ty.clock(T.ink),
           ),
-          const SizedBox(height: 4),
-          Text(
-            DateFormat.MMMEd(locale).format(there),
-            style: Ty.caption.copyWith(color: T.inkSoft),
-          ),
+          if (!tall) ...[
+            const SizedBox(height: 4),
+            Text(
+              DateFormat.MMMEd(locale).format(there),
+              style: Ty.caption.copyWith(color: T.inkSoft),
+            ),
+          ],
           const SizedBox(height: 2),
           Text(
             zoneDifferenceLabel(l, difference),
             key: const ValueKey<String>('friend.timeDifference'),
             style: Ty.body.copyWith(color: skin.accentDeep, fontWeight: FontWeight.w500),
           ),
-          Text(
-            zone?.city ?? theirZone,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Ty.micro,
-          ),
-          const SizedBox(height: 12),
+          if (!tall)
+            Text(
+              zone?.city ?? theirZone,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Ty.micro,
+            ),
+          SizedBox(height: tall ? 8 : 12),
           const Hairline(),
-          const SizedBox(height: 12),
+          SizedBox(height: tall ? 8 : 12),
           Row(
             children: [
               GlyphIcon(Glyph.cake, size: 18, color: party ? T.warn : skin.accentDeep),
@@ -454,11 +582,47 @@ class _LocalTime extends ConsumerWidget {
                   parts == null
                       ? l.friendNoBirthday
                       : DateFormat.MMMMd(locale).format(DateTime(2000, parts.$2, parts.$3)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Ty.body,
                 ),
               ),
             ],
           ),
+          if (since != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                GlyphIcon(Glyph.heart, size: 18, color: skin.accentDeep),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    since!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Ty.caption.copyWith(color: T.inkSoft),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (music != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                GlyphIcon(Glyph.note, size: 18, color: skin.accentDeep),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    music!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Ty.caption.copyWith(color: T.inkSoft),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

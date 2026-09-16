@@ -18,6 +18,7 @@ import '../../widgets/glyphs.dart';
 import '../../track_text.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/track_tile.dart';
+import '../../layout.dart';
 import '../channel_route.dart';
 
 class DebugChannel extends ConsumerWidget {
@@ -43,6 +44,7 @@ class DebugChannel extends ConsumerWidget {
     final link = ref.watch(systemStatusProvider.select((s) => s.link));
 
     final library = ref.watch(musicLibraryProvider);
+    final layout = Layout.of(context);
 
     final effects = <(Sfx, String)>[
       (Sfx.tick, l.debugSfxTick),
@@ -56,10 +58,10 @@ class DebugChannel extends ConsumerWidget {
       title: l.channelDebug,
       glyph: Glyph.bug,
       child: IbashoScroll(
-        padding: const EdgeInsets.fromLTRB(40, 24, 40, 44),
+        padding: EdgeInsets.fromLTRB(layout.gutter, layout.pick(24, 18), layout.gutter, 44),
         child: Center(
           child: SizedBox(
-            width: 860,
+            width: layout.pick(860, layout.column),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -132,9 +134,24 @@ class DebugChannel extends ConsumerWidget {
                 const SizedBox(height: 22),
                 SectionCard(
                   title: l.debugEffects,
-                  // Row y no Wrap: Wrap da a cada boton todo el ancho y los
-                  // estira uno encima de otro.
-                  child: Row(
+                  // En horizontal, una fila (Wrap estiraria cada boton a todo
+                  // el ancho); en vertical, dos filas que se reparten.
+                  child: layout.tall
+                      ? Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            for (final (sfx, label) in effects)
+                              IbashoButton(
+                                label: label,
+                                glyph: Glyph.play,
+                                height: 44,
+                                cue: sfx,
+                                onPressed: () {},
+                              ),
+                          ],
+                        )
+                      : Row(
                     children: [
                       for (final (i, (sfx, label)) in effects.indexed) ...[
                         if (i > 0) const SizedBox(width: 12),

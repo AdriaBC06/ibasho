@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import '../../audio/audio_service.dart';
@@ -10,6 +12,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
+import '../canvas.dart';
 import 'controls.dart';
 import 'glyphs.dart';
 import 'gloss.dart';
@@ -145,7 +148,12 @@ class _TimezonePickerState extends State<_TimezonePicker> {
             },
           ),
           SizedBox(
-            height: _rowHeight * 7,
+            // El dialogo no puede pasar del alto del lienzo: con poco sitio
+            // se ensenan menos zonas y se desplaza igual.
+            height: math.min(
+              _rowHeight * 7,
+              math.max(_rowHeight * 3, CanvasSize.of(context).height - 330),
+            ),
             child: GlossSurface(
               radius: 18,
               recessed: true,

@@ -23,6 +23,7 @@ import '../../widgets/controls.dart';
 import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
 import '../../widgets/overlays.dart';
+import '../../layout.dart';
 import '../../widgets/text_field.dart';
 
 /// El muro de cumpleaños de una cuenta, año a año.
@@ -49,6 +50,9 @@ class WallPanel extends ConsumerStatefulWidget {
 class _WallPanelState extends ConsumerState<WallPanel> {
   static const int _columns = 2;
   static const int _rows = 2;
+
+  /// En vertical los mensajes van en una sola columna.
+  static const int _tallColumns = 1;
 
   final TextEditingController _text = TextEditingController();
   int? _year;
@@ -122,8 +126,10 @@ class _WallPanelState extends ConsumerState<WallPanel> {
     final canWrite = !widget.own && birthday && year == thisYear && !mine;
     final showComposer = !widget.own && year == thisYear;
 
-    final columns = showComposer ? _columns : _columns + 1;
-    final perPage = columns * _rows;
+    final layout = Layout.of(context);
+    final tall = layout.tall;
+    final columns = tall ? _tallColumns : (showComposer ? _columns : _columns + 1);
+    final perPage = tall ? 2 : columns * _rows;
     final pages = math.max(1, (messages.length / perPage).ceil());
     final page = _page.clamp(0, pages - 1);
     final visible = messages.skip(page * perPage).take(perPage).toList();
@@ -137,17 +143,21 @@ class _WallPanelState extends ConsumerState<WallPanel> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 18, 28, 22),
+      padding: tall
+          ? const EdgeInsets.fromLTRB(14, 12, 14, 14)
+          : const EdgeInsets.fromLTRB(28, 18, 28, 22),
       child: Column(
         children: [
           SizedBox(
-            height: 40,
+            height: tall ? 48 : 40,
             child: Row(
               children: [
                 GlyphIcon(Glyph.cake, size: 24, color: birthday ? T.warn : skin.accentDeep),
                 const SizedBox(width: 10),
-                Text(l.wallTitle, style: Ty.lead),
-                const SizedBox(width: 18),
+                if (!tall) ...[
+                  Text(l.wallTitle, style: Ty.lead),
+                  const SizedBox(width: 18),
+                ],
                 IconPill(
                   key: const ValueKey<String>('wall.olderYear'),
                   glyph: Glyph.arrowLeft,
@@ -155,11 +165,11 @@ class _WallPanelState extends ConsumerState<WallPanel> {
                   onPressed: yearIndex < years.length - 1 ? () => setYear(yearIndex + 1) : null,
                 ),
                 SizedBox(
-                  width: 70,
+                  width: tall ? 56 : 70,
                   child: Text(
                     '$year',
                     textAlign: TextAlign.center,
-                    style: Ty.numeral(22, color: T.ink, weight: FontWeight.w700),
+                    style: Ty.numeral(tall ? 18 : 22, color: T.ink, weight: FontWeight.w700),
                   ),
                 ),
                 IconPill(
@@ -175,9 +185,9 @@ class _WallPanelState extends ConsumerState<WallPanel> {
                     diameter: 32,
                     onPressed: page > 0 ? () => setState(() => _page = page - 1) : null,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 6),
                   Text('${page + 1} / $pages', style: Ty.numeral(16, color: T.inkSoft)),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 6),
                   IconPill(
                     glyph: Glyph.arrowRight,
                     diameter: 32,
@@ -187,14 +197,14 @@ class _WallPanelState extends ConsumerState<WallPanel> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: tall ? 10 : 14),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: _Beside(
+              tall: tall,
               children: [
                 if (showComposer) ...[
                   SizedBox(
-                    width: 380,
+                    width: tall ? double.infinity : 380,
                     child: _Composer(
                       controller: _text,
                       canWrite: canWrite,
@@ -204,7 +214,7 @@ class _WallPanelState extends ConsumerState<WallPanel> {
                       onPost: () => _post(thisYear),
                     ),
                   ),
-                  const SizedBox(width: 20),
+                  SizedBox(width: tall ? 0 : 20, height: tall ? 12 : 0),
                 ],
                 Expanded(
                   child: messages.isEmpty
@@ -220,7 +230,7 @@ class _WallPanelState extends ConsumerState<WallPanel> {
                             final cellW = (box.maxWidth - 16 * (columns - 1)) / columns;
                             // Un mensaje son 140 caracteres: la tarjeta no crece
                             // mas de lo que ocupan.
-                            final cellH = math.min((box.maxHeight - 14) / _rows, 132.0);
+                            final cellH = math.min((box.maxHeight - 14) / (tall ? perPage : _rows), 132.0);
                             return Wrap(
                               spacing: 16,
                               runSpacing: 14,
@@ -307,6 +317,7 @@ class _Composer extends StatelessWidget {
     }
     final length = controller.text.trim().length;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         IbashoTextField(
@@ -416,4 +427,18 @@ class _MessageCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// El escritor y los mensajes: al lado en horizontal, uno debajo del otro en
+/// vertical.
+class _Beside extends StatelessWidget {
+  const _Beside({required this.tall, required this.children});
+
+  final bool tall;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => tall
+      ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children)
+      : Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
 }

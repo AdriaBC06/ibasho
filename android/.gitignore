@@ -1,0 +1,12 @@
+# El envoltorio de Gradle sí entra en el repositorio: es lo que fija la versión
+# con la que se compila, y sin él una copia recién clonada no compila.
+/.gradle
+/captures/
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# La clave de firma no sale de este ordenador.
+key.properties
+**/*.keystore
+**/*.jks

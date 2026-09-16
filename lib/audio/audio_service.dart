@@ -9,6 +9,8 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:flutter/foundation.dart';
 
 import '../backend/tama.dart';
+import '../core/device.dart';
+import 'android_audio.dart';
 import 'tama_voice.dart';
 
 /// Los cinco efectos del entorno.
@@ -145,8 +147,36 @@ class AudioService {
   /// Ultima vez que sono cada efecto, para no encadenar diez ticks por frame.
   final Map<Sfx, DateTime> _lastPlayed = <Sfx, DateTime>{};
 
+  // --- Movil ------------------------------------------------------------
+  //
+  // En Android la app convive con otras: el foco de audio lo lleva el
+  // servicio (no audioplayers), la musica calla si otra app se lo queda y baja
+  // si alguien habla por encima. En segundo plano no suena nada y el motor de
+  // efectos se apaga del todo.
+  //
+  // El modo silencio del telefono no se mira: musica, efectos y voces son
+  // audio de medios, y el timbre en silencio calla el tono y las
+  // notificaciones, no los medios. Mirarlo dejaba la app a medias —sonaba la
+  // musica y no los toques— y sorprendia a quien lleva el movil en vibracion
+  // todo el dia. Para callar Ibasho estan sus dos deslizadores y el volumen
+  // de medios.
+
+  AndroidAudio? _android;
+
+  /// La app esta en segundo plano.
+  bool _suspended = false;
+
+  /// Otra app tiene el foco: la musica no suena.
+  bool _focusLost = false;
+
+  /// Otra app habla un momento por encima: la musica baja.
+  bool _ducked = false;
+
+  static const double _duckedVolume = .2;
+
   Future<void> init() async {
     if (_ready) return;
+    if (Device.isAndroid) await _initAndroid();
     await _initEffects();
     try {
       _music = AudioPlayer(playerId: 'ibasho_bgm');
@@ -204,6 +234,70 @@ class AudioService {
     }
   }
 
+  Future<void> _initAndroid() async {
+    final android = _android = AndroidAudio();
+    try {
+      // El foco lo pide el servicio y no cada reproductor: asi sabe cuando
+      // otra app se lo queda y puede decidir callar, bajar o volver.
+      await AudioPlayer.global.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(
+          audioFocus: AndroidAudioFocus.none,
+          usageType: AndroidUsageType.game,
+          contentType: AndroidContentType.music,
+        ),
+      ));
+    } catch (e) {
+      debugPrint('Ibasho: contexto de audio ($e)');
+    }
+    android.focusChanges.listen((change) {
+      switch (change) {
+        case AudioFocusChange.gain:
+          _focusLost = false;
+          _ducked = false;
+        case AudioFocusChange.loss:
+        case AudioFocusChange.lossTransient:
+          _focusLost = true;
+        case AudioFocusChange.duck:
+          _ducked = true;
+      }
+      unawaited(_serial(_reconcileMusic));
+    });
+  }
+
+  double get _effectiveMusicVolume => _ducked ? _musicVolume * _duckedVolume : _musicVolume;
+
+  /// La app pasa a segundo plano: calla la musica, apaga el motor de efectos y
+  /// suelta el foco. Solo en Android.
+  Future<void> suspend() async {
+    if (_suspended) return;
+    _suspended = true;
+    await _serial(_reconcileMusic);
+    if (_sfxReady) {
+      try {
+        SoLoud.instance.deinit();
+      } catch (_) {}
+      _sfxSources.clear();
+      _chirps.clear();
+      _chirpVoice = null;
+      for (final voices in _liveVoices.values) {
+        voices.clear();
+      }
+      _sfxReady = false;
+    }
+    await _android?.abandonFocus();
+  }
+
+  /// Vuelve del segundo plano: se pide otra vez el foco (una perdida anterior
+  /// se da por olvidada al volver a la app) y todo suena donde estaba.
+  Future<void> resume() async {
+    if (!_suspended) return;
+    _suspended = false;
+    _focusLost = false;
+    _ducked = false;
+    await _initEffects();
+    await _serial(_reconcileMusic);
+  }
+
   Future<void> _reconcileMusic() async {
     if (!_ready || _muteAll) return;
     final player = _music!;
@@ -211,16 +305,20 @@ class AudioService {
     final fade = _fadeNext;
     _fadeNext = false;
     try {
-      final shouldPlay = _musicWanted && _musicVolume > 0;
+      var shouldPlay = _musicWanted && _musicVolume > 0 && !_suspended && !_focusLost;
+      if (shouldPlay && _android != null && !await _android!.requestFocus()) {
+        shouldPlay = false;
+      }
       if (!shouldPlay) {
         if (player.state == PlayerState.playing) await player.pause();
+        if (_android != null && !_suspended && !_focusLost) await _android!.abandonFocus();
         return;
       }
       final wanted = (_guest ?? _track).asset;
       var fadeIn = false;
       if (_loadedAsset != wanted) {
         if (fade && player.state == PlayerState.playing) {
-          await _fade(player, _musicVolume, 0, _fadeOut);
+          await _fade(player, _effectiveMusicVolume, 0, _fadeOut);
         }
         await player.stop();
         await player.setSource(AssetSource(wanted));
@@ -230,10 +328,10 @@ class AudioService {
       if (fadeIn) {
         await player.setVolume(0);
         await player.resume();
-        await _fade(player, 0, _musicVolume, _fadeIn);
+        await _fade(player, 0, _effectiveMusicVolume, _fadeIn);
         return;
       }
-      await player.setVolume(_musicVolume);
+      await player.setVolume(_effectiveMusicVolume);
       if (player.state != PlayerState.playing) await player.resume();
     } catch (e) {
       // La proxima operacion vuelve a cargar la fuente desde cero.
@@ -249,7 +347,7 @@ class AudioService {
   /// si el sistema de audio falla de verdad.
   void _watchMusic(AudioPlayer player) {
     player.onPlayerStateChanged.listen((state) {
-      if (_reconciling || !_musicWanted || _musicVolume <= 0) return;
+      if (_reconciling || !_musicWanted || _musicVolume <= 0 || _suspended || _focusLost) return;
       if (state != PlayerState.stopped && state != PlayerState.completed) return;
       final now = DateTime.now();
       if (now.difference(_lastAutoRestart) < const Duration(seconds: 2)) return;
@@ -267,7 +365,20 @@ class AudioService {
   Future<void> _initEffects() async {
     try {
       final soloud = SoLoud.instance;
-      await soloud.init();
+      if (Device.isAndroid) {
+        // En el movil el mezclador trabaja a la frecuencia nativa (48 kHz) y
+        // con un periodo corto: con el de escritorio, 2048 muestras, un toque
+        // se oye tarde. Si un aparato no admite esa combinacion, arranca con
+        // la de serie antes que quedarse mudo.
+        try {
+          await soloud.init(sampleRate: 48000, bufferSize: _androidBufferSize);
+        } catch (e) {
+          debugPrint('Ibasho: el mezclador a 48 kHz no ha arrancado ($e), se prueba con el de serie');
+          await soloud.init();
+        }
+      } else {
+        await soloud.init();
+      }
       for (final sfx in Sfx.values) {
         _sfxSources[sfx] = await soloud.loadAsset('assets/${sfx.asset}');
         _liveVoices[sfx] = <SoundHandle>[];
@@ -280,6 +391,10 @@ class AudioService {
       _sfxReady = false;
     }
   }
+
+  /// Periodo del mezclador en Android, en muestras. Medido en el dispositivo
+  /// de prueba (ver docs/ARCHITECTURE.md).
+  static const int _androidBufferSize = 512;
 
   Future<void> startMusic() {
     _musicWanted = true;
@@ -298,7 +413,11 @@ class AudioService {
 
   /// Cambia la pista. Si la musica debe sonar, empieza la nueva al momento;
   /// pulsaciones seguidas acaban siempre en la ultima pista, sonando.
+  ///
+  /// Elegir pista es pedir musica: en Android vuelve a pedir el foco aunque
+  /// otra app se lo hubiera quedado.
   Future<void> setTrack(String id) {
+    if (_track.id != id) _focusLost = false;
     _track = MusicTrack.byId(id);
     return _serial(_reconcileMusic);
   }

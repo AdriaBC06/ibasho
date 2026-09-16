@@ -12,6 +12,7 @@ import '../../../theme/type.dart';
 import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
 import '../../widgets/panel.dart';
+import '../../layout.dart';
 import '../channel_route.dart';
 
 /// Los mismos creditos que estan en `CREDITS.md`, dentro de la app.
@@ -21,15 +22,16 @@ class CreditsChannel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = L.of(context)!;
+    final layout = Layout.of(context);
 
     return ChannelScaffold(
       title: l.creditsTitle,
       glyph: Glyph.info,
       child: IbashoScroll(
-        padding: const EdgeInsets.fromLTRB(40, 28, 40, 44),
+        padding: EdgeInsets.fromLTRB(layout.gutter, layout.pick(28, 18), layout.gutter, 44),
         child: Center(
           child: SizedBox(
-            width: 880,
+            width: layout.pick(880, layout.column),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

@@ -2,18 +2,22 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
 import '../../backend/errors.dart';
+import '../../core/device.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../failure_text.dart';
+import '../layout.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import '../widgets/gloss.dart';
@@ -91,6 +95,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final skin = IbashoSkin.of(context);
     final reason = ref.watch(sessionProvider.select((s) => s.reason));
     final notice = _error ?? messageForSignOut(l, reason);
+    final layout = Layout.of(context);
 
     return Bezel(
       child: Center(
@@ -100,24 +105,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IbashoMark(size: 76, accent: skin.accent),
-                const SizedBox(width: 20),
+                IbashoMark(size: layout.pick(76, 60), accent: skin.accent),
+                SizedBox(width: layout.pick(20, 14)),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(l.appName, style: Ty.logo(40, T.ink)),
-                    Text('居場所', style: Ty.logoJa(17, T.inkSoft)),
+                    Text(l.appName, style: Ty.logo(layout.pick(40, 32), T.ink)),
+                    Text('居場所', style: Ty.logoJa(layout.pick(17, 15), T.inkSoft)),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 34),
+            SizedBox(height: layout.pick(34, 22)),
             SizedBox(
-              width: 560,
+              width: math.min(560, layout.width - layout.gutter * 2),
               child: ScreenPanel(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(46, 36, 46, 34),
+                  padding: layout.pick(
+                    const EdgeInsets.fromLTRB(46, 36, 46, 34),
+                    const EdgeInsets.fromLTRB(26, 28, 26, 26),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
@@ -125,12 +133,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Text(l.loginTitle, style: Ty.title),
                       const SizedBox(height: 4),
                       Text(l.loginSubtitle, style: Ty.caption),
-                      const SizedBox(height: 26),
+                      SizedBox(height: layout.pick(26, 16)),
                       IbashoTextField(
                         controller: _username,
                         focusNode: _usernameNode,
                         label: l.loginUsername,
-                        autofocus: true,
+                        // En el movil, abrir el teclado solo taparia media
+                        // pantalla antes de que se vea donde se ha entrado.
+                        autofocus: !Device.isAndroid,
                         enabled: !_working,
                         maxLength: 16,
                         formatters: [
@@ -158,11 +168,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         label: _working ? l.loginWorking : l.loginSubmit,
                         tone: ButtonTone.accent,
                         expand: true,
-                        height: 54,
+                        height: layout.pick(54, 52),
                         cue: Sfx.open,
                         onPressed: _working ? null : _submit,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: layout.pick(16, 12)),
                       Text(
                         l.loginForgotHint,
                         textAlign: TextAlign.center,

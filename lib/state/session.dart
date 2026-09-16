@@ -194,6 +194,26 @@ class SessionController extends StateNotifier<SessionState> {
     return renewed.idToken;
   }
 
+  /// La app vuelve tras un rato en segundo plano (quiza horas).
+  ///
+  /// Los temporizadores no corren con el proceso dormido, asi que la
+  /// renovacion programada puede no haber llegado: si el token ya esta cerca
+  /// de caducar se renueva ahora, antes de que nada lo use, y se vuelve a
+  /// programar la siguiente.
+  Future<void> resume() async {
+    final tokens = state.tokens;
+    if (tokens == null) return;
+    if (DateTime.now().isBefore(tokens.renewAt)) {
+      _scheduleRenewal(tokens);
+      return;
+    }
+    try {
+      await _renew();
+    } catch (e) {
+      debugPrint('Ibasho: renovacion al volver fallida ($e)');
+    }
+  }
+
   Future<void> _renew() async {
     if (_renewing != null) return _renewing!.future;
     final gate = _renewing = Completer<void>();

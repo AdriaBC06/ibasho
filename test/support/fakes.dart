@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:ibasho/state/system_status.dart';
 import 'package:ibasho/backend/errors.dart';
 import 'package:ibasho/backend/ibasho_backend.dart';
 import 'package:ibasho/backend/models.dart';
@@ -19,6 +20,19 @@ const String kAdminUsername = 'adria';
 
 /// Backend en memoria. Sirve para el recorrido visual y para los tests de
 /// interfaz: responde igual que el de verdad sin tocar la red.
+/// Un equipo sin bateria, o con la que se le diga.
+class FakeBatteryWatch implements BatteryWatch {
+  FakeBatteryWatch([this.info]);
+
+  BatteryInfo? info;
+
+  @override
+  Future<BatteryInfo?> read() async => info;
+
+  @override
+  Stream<void> get changes => const Stream<void>.empty();
+}
+
 class FakeIbashoBackend implements IbashoBackend {
   FakeIbashoBackend({
     this.uid = kAdminUid,
@@ -324,6 +338,12 @@ class FakeIbashoBackend implements IbashoBackend {
 
   @override
   Future<LinkQuality> probe() async => link;
+
+  /// Ultimo aviso de segundo plano recibido.
+  bool background = false;
+
+  @override
+  void setBackground(bool background) => this.background = background;
 
   @override
   void dispose() {

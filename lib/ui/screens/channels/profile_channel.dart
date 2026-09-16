@@ -23,6 +23,7 @@ import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/text_field.dart';
 import '../../widgets/timezone_picker.dart';
+import '../../layout.dart';
 import '../../widgets/pressable.dart';
 import '../channel_route.dart';
 import '../tama/tama_creator_screen.dart';
@@ -136,32 +137,40 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
       );
     }
     if (!_seeded) _seed(profile);
+    final layout = Layout.of(context);
+    final tall = layout.tall;
 
     return ChannelScaffold(
       title: l.profileTitle,
       glyph: Glyph.person,
       child: IbashoScroll(
-        padding: const EdgeInsets.fromLTRB(40, 28, 40, 44),
+        padding: EdgeInsets.fromLTRB(layout.gutter, layout.pick(28, 18), layout.gutter, 44),
         child: Center(
           child: SizedBox(
-            width: 880,
+            width: layout.pick(880, layout.column),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                _Stack(
+                  tall: tall,
+                  gap: layout.pick(26, 22),
                   children: [
                     const _ProfileTama(),
-                    const SizedBox(width: 26),
-                    Expanded(
+                    _Grow(
+                      tall: tall,
                       child: SectionCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(l.profileUsername, style: Ty.label),
                             const SizedBox(height: 4),
-                            Text(profile.username, style: Ty.display),
-                            const SizedBox(height: 18),
+                            Text(
+                              profile.username,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: tall ? Ty.title : Ty.display,
+                            ),
+                            SizedBox(height: tall ? 12 : 18),
                             IbashoTextField(
                               controller: _displayName,
                               label: l.profileDisplayName,
@@ -184,27 +193,18 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                 const SizedBox(height: 22),
                 SectionCard(
                   title: l.profileBirthday,
-                  child: Row(
-                    children: [
-                      const GlyphIcon(Glyph.cake, size: 24, color: T.warn),
-                      const SizedBox(width: 18),
-                      _NumberField(controller: _day, label: l.profileDay, width: 96, max: 2),
-                      const SizedBox(width: 12),
-                      _NumberField(controller: _month, label: l.profileMonth, width: 96, max: 2),
-                      const SizedBox(width: 12),
-                      _NumberField(controller: _year, label: l.profileYear, width: 124, max: 4),
-                      const SizedBox(width: 16),
-                      IbashoButton(
-                        label: l.profileClearBirthday,
-                        tone: ButtonTone.quiet,
-                        height: 44,
-                        onPressed: () => setState(() {
-                          _day.clear();
-                          _month.clear();
-                          _year.clear();
-                        }),
-                      ),
-                    ],
+                  // En vertical los tres campos se reparten la fila y el
+                  // borrado baja debajo: en una sola linea no cabrian.
+                  child: _Birthday(
+                    tall: tall,
+                    day: _day,
+                    month: _month,
+                    year: _year,
+                    onClear: () => setState(() {
+                      _day.clear();
+                      _month.clear();
+                      _year.clear();
+                    }),
                   ),
                 ),
                 const SizedBox(height: 22),
@@ -250,16 +250,21 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                       const SizedBox(height: 22),
                       const Hairline(),
                       const SizedBox(height: 18),
-                      Row(
+                      _Stack(
+                        tall: tall,
+                        gap: layout.pick(26, 18),
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Expanded(
+                          _Grow(
+                            tall: tall,
                             child: TimezoneField(
                               value: _timezone,
                               label: l.profileTimezone,
                               onChanged: (id) => setState(() => _timezone = id),
                             ),
                           ),
-                          const SizedBox(width: 26),
+                          // El idioma ocupa lo que pide, como siempre: en
+                          // vertical ya lo estira la columna.
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -286,29 +291,37 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                 const SizedBox(height: 22),
                 const _ProfileMusic(),
                 const SizedBox(height: 26),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IbashoButton(
-                      key: const ValueKey<String>('profile.wall'),
-                      label: l.profileWall,
-                      glyph: Glyph.cake,
-                      height: 52,
-                      cue: null,
-                      onPressed: () => pushChannelPage<void>(context, (_) => const OwnWallScreen()),
-                    ),
-                    const Spacer(),
-                    IbashoButton(
-                      label: state.saving ? l.changePasswordWorking : l.actionSave,
-                      tone: ButtonTone.accent,
-                      glyph: Glyph.check,
-                      height: 52,
-                      minWidth: 200,
-                      cue: null,
-                      onPressed: state.saving ? null : () => _save(profile),
-                    ),
-                  ],
-                ),
+                // En vertical los dos botones se reparten la linea; en
+                // horizontal, cada uno ocupa lo suyo y se separan.
+                Builder(builder: (context) {
+                  final wall = IbashoButton(
+                    key: const ValueKey<String>('profile.wall'),
+                    label: l.profileWall,
+                    glyph: Glyph.cake,
+                    height: 52,
+                    cue: null,
+                    onPressed: () => pushChannelPage<void>(context, (_) => const OwnWallScreen()),
+                  );
+                  final save = IbashoButton(
+                    label: state.saving ? l.changePasswordWorking : l.actionSave,
+                    tone: ButtonTone.accent,
+                    glyph: Glyph.check,
+                    height: 52,
+                    minWidth: tall ? 0 : 200,
+                    cue: null,
+                    onPressed: state.saving ? null : () => _save(profile),
+                  );
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: tall
+                        ? [
+                            Flexible(child: wall),
+                            const SizedBox(width: 12),
+                            Flexible(child: save),
+                          ]
+                        : [wall, const Spacer(), save],
+                  );
+                }),
                 const SizedBox(height: 10),
                 Center(
                   child: Text(
@@ -380,7 +393,12 @@ class OwnWallScreen extends ConsumerWidget {
       child: profile == null
           ? Center(child: Text(l.loading, style: Ty.lead))
           : Padding(
-              padding: const EdgeInsets.fromLTRB(40, 14, 40, 16),
+              padding: EdgeInsets.fromLTRB(
+                Layout.of(context).gutter,
+                14,
+                Layout.of(context).gutter,
+                16,
+              ),
               child: Column(
                 children: [
                   if (isBirthdayToday(profile, now))
@@ -407,13 +425,15 @@ class _NumberField extends StatelessWidget {
   const _NumberField({
     required this.controller,
     required this.label,
-    required this.width,
     required this.max,
+    this.width,
   });
 
   final TextEditingController controller;
   final String label;
-  final double width;
+
+  /// Sin ancho, se queda con el que le den (vertical).
+  final double? width;
   final int max;
 
   @override
@@ -443,36 +463,66 @@ class _ProfileTama extends ConsumerWidget {
               : TamaRoomScreen(tamaId: tama.id),
         );
 
+    final tall = Layout.of(context).tall;
+    final window = TamaWindow(
+      key: const ValueKey<String>('profile.tama'),
+      size: tall ? 132 : 220,
+      radius: tall ? 30 : 44,
+      onTap: open,
+    );
+    final name = Text(
+      tama?.name ?? l.profileTamaEmpty,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: tall ? TextAlign.start : TextAlign.center,
+      style: tama == null ? Ty.micro : Ty.lead,
+    );
+    final open2 = IbashoButton(
+      label: tama == null ? l.tamasCreate : l.tamasTitle,
+      glyph: tama == null ? Glyph.plus : Glyph.tama,
+      tone: ButtonTone.quiet,
+      height: 38,
+      cue: null,
+      onPressed: () => pushChannelPage<void>(
+        context,
+        (_) => tama == null ? const TamaCreatorScreen() : const TamasChannel(),
+      ),
+    );
+
+    // En vertical el Tama no se lleva media pantalla: se pone a un lado, con
+    // su nombre y el acceso al canal al otro.
+    if (tall) {
+      return Row(
+        children: [
+          window,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                name,
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(fit: BoxFit.scaleDown, child: open2),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return SizedBox(
       width: 220,
       child: Column(
         children: [
-          TamaWindow(
-            key: const ValueKey<String>('profile.tama'),
-            size: 220,
-            radius: 44,
-            onTap: open,
-          ),
+          window,
           const SizedBox(height: 12),
-          Text(
-            tama?.name ?? l.profileTamaEmpty,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: tama == null ? Ty.micro : Ty.lead,
-          ),
+          name,
           const SizedBox(height: 8),
-          IbashoButton(
-            label: tama == null ? l.tamasCreate : l.tamasTitle,
-            glyph: tama == null ? Glyph.plus : Glyph.tama,
-            tone: ButtonTone.quiet,
-            height: 38,
-            cue: null,
-            onPressed: () => pushChannelPage<void>(
-              context,
-              (_) => tama == null ? const TamaCreatorScreen() : const TamasChannel(),
-            ),
-          ),
+          open2,
         ],
       ),
     );
@@ -521,9 +571,13 @@ class _FollowTamaChip extends StatelessWidget {
                       color: T.onAccent,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      label,
-                      style: Ty.body.copyWith(color: T.onAccent, fontWeight: FontWeight.w500),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Ty.body.copyWith(color: T.onAccent, fontWeight: FontWeight.w500),
+                      ),
                     ),
                   ],
                 ),
@@ -532,4 +586,114 @@ class _FollowTamaChip extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// Dos bloques uno al lado del otro en horizontal y uno encima del otro en
+/// vertical. Es el reordenamiento que hacen casi todas las pantallas.
+class _Stack extends StatelessWidget {
+  const _Stack({
+    required this.tall,
+    required this.children,
+    this.gap = 18,
+    this.crossAxisAlignment = CrossAxisAlignment.start,
+  });
+
+  final bool tall;
+  final List<Widget> children;
+  final double gap;
+  final CrossAxisAlignment crossAxisAlignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final spaced = <Widget>[
+      for (var i = 0; i < children.length; i++) ...[
+        if (i > 0) SizedBox(width: tall ? 0 : gap, height: tall ? gap : 0),
+        children[i],
+      ],
+    ];
+    return tall
+        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: spaced)
+        : Row(crossAxisAlignment: crossAxisAlignment, children: spaced);
+  }
+}
+
+/// Ocupa lo que sobra en horizontal; en vertical ya estira la columna.
+class _Grow extends StatelessWidget {
+  const _Grow({required this.tall, required this.child});
+
+  final bool tall;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => tall ? child : Expanded(child: child);
+}
+
+/// La fecha de cumpleaños: la tarta, los tres campos y el boton de quitarla.
+class _Birthday extends StatelessWidget {
+  const _Birthday({
+    required this.tall,
+    required this.day,
+    required this.month,
+    required this.year,
+    required this.onClear,
+  });
+
+  final bool tall;
+  final TextEditingController day;
+  final TextEditingController month;
+  final TextEditingController year;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final clear = IbashoButton(
+      label: l.profileClearBirthday,
+      tone: ButtonTone.quiet,
+      height: 44,
+      onPressed: onClear,
+    );
+
+    if (!tall) {
+      return Row(
+        children: [
+          const GlyphIcon(Glyph.cake, size: 24, color: T.warn),
+          const SizedBox(width: 18),
+          _NumberField(controller: day, label: l.profileDay, width: 96, max: 2),
+          const SizedBox(width: 12),
+          _NumberField(controller: month, label: l.profileMonth, width: 96, max: 2),
+          const SizedBox(width: 12),
+          _NumberField(controller: year, label: l.profileYear, width: 124, max: 4),
+          const SizedBox(width: 16),
+          clear,
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 30),
+              child: GlyphIcon(Glyph.cake, size: 24, color: T.warn),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: _NumberField(controller: day, label: l.profileDay, max: 2)),
+            const SizedBox(width: 10),
+            Expanded(child: _NumberField(controller: month, label: l.profileMonth, max: 2)),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: _NumberField(controller: year, label: l.profileYear, max: 4),
+            ),
+          ],
+        ),
+        Align(alignment: Alignment.centerRight, child: clear),
+      ],
+    );
+  }
 }

@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,7 @@ import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/text_field.dart';
+import '../../layout.dart';
 import '../channel_route.dart';
 import 'tama_room_screen.dart';
 
@@ -270,6 +272,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
   @override
   Widget build(BuildContext context) {
     final l = L.of(context)!;
+    final layout = Layout.of(context);
     final tamas = ref.watch(tamasProvider);
     final existing = _isNew ? null : tamas.byId(widget.tamaId);
     final account = ref.watch(sessionProvider.select((s) => s.accountId));
@@ -298,129 +301,112 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
       updatedAt: DateTime.now(),
     );
 
-    return ChannelScaffold(
-      title: _isNew ? l.tamaCreatorNewTitle : l.tamaCreatorEditTitle(existing!.name),
-      glyph: Glyph.tama,
-      onClose: _close,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Escenario: el Tama vivo, con barajar y deshacer debajo.
-          SizedBox(
-            width: 460,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TamaOnStand(
-                  key: const ValueKey<String>('creator.stage'),
-                  tama: preview,
-                  size: 330,
-                  controller: _view,
-                ),
-                const SizedBox(height: 26),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IbashoButton(
-                      key: const ValueKey<String>('creator.shuffle'),
-                      label: l.tamaCreatorShuffle,
-                      glyph: Glyph.dice,
-                      height: 46,
-                      cue: null,
-                      onPressed: canEdit ? _shuffle : null,
-                    ),
-                    const SizedBox(width: 12),
-                    IbashoButton(
-                      key: const ValueKey<String>('creator.undo'),
-                      label: l.tamaCreatorUndo,
-                      glyph: Glyph.undo,
-                      height: 46,
-                      cue: null,
-                      onPressed: _undo.isEmpty ? null : _undoLast,
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    // El boton de atras del sistema pasa por la misma pregunta que la cruz.
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_close());
+      },
+      child: ChannelScaffold(
+        title: _isNew ? l.tamaCreatorNewTitle : l.tamaCreatorEditTitle(existing!.name),
+        glyph: Glyph.tama,
+        onClose: _close,
+        child: _Frame(
+          // Escenario: el Tama vivo, con barajar y deshacer al lado.
+          stage: _Stage(
+            tama: preview,
+            controller: _view,
+            onShuffle: canEdit ? _shuffle : null,
+            onUndo: _undo.isEmpty ? null : _undoLast,
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 22, 40, 22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _TabRail(
-                    value: _tab,
-                    onChanged: (tab) => setState(() => _tab = tab),
-                  ),
-                  const SizedBox(height: 16),
-                  // La misma tarjeta que SectionCard, pero ocupando todo el
-                  // alto: el contenido de cada pestaña se desplaza dentro.
-                  Expanded(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        gradient: const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [T.onAccent, T.cardBottom],
+          body: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  layout.pick(0, layout.gutter),
+                  layout.pick(22, 10),
+                  layout.pick(40, layout.gutter),
+                  layout.pick(22, 14),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TabRail(
+                      value: _tab,
+                      onChanged: (tab) => setState(() => _tab = tab),
+                    ),
+                    SizedBox(height: layout.pick(16, 12)),
+                    // La misma tarjeta que SectionCard, pero ocupando todo el
+                    // alto: el contenido de cada pestaña se desplaza dentro.
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [T.onAccent, T.cardBottom],
+                          ),
+                          border: Border.all(color: T.hairline),
+                          boxShadow: const [
+                            BoxShadow(color: T.shadow, blurRadius: 10, offset: Offset(0, 3)),
+                          ],
                         ),
-                        border: Border.all(color: T.hairline),
-                        boxShadow: const [
-                          BoxShadow(color: T.shadow, blurRadius: 10, offset: Offset(0, 3)),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: IgnorePointer(
-                          ignoring: !canEdit,
-                          child: Opacity(
-                            opacity: canEdit ? 1 : .55,
-                            child: SizedBox.expand(
-                              child: IbashoScroll(
-                                key: ValueKey<CreatorTab>(_tab),
-                                padding: const EdgeInsets.fromLTRB(28, 22, 28, 24),
-                                child: _tabContent(l),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: IgnorePointer(
+                            ignoring: !canEdit,
+                            child: Opacity(
+                              opacity: canEdit ? 1 : .55,
+                              child: SizedBox.expand(
+                                child: IbashoScroll(
+                                  key: ValueKey<CreatorTab>(_tab),
+                                  padding: layout.pick(
+                                    const EdgeInsets.fromLTRB(28, 22, 28, 24),
+                                    const EdgeInsets.fromLTRB(16, 16, 16, 18),
+                                  ),
+                                  child: _tabContent(l),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      if (!canEdit)
-                        Expanded(child: Text(l.tamaCreatorNotCreator, style: Ty.caption))
-                      else
-                        const Spacer(),
-                      IbashoButton(
-                        label: l.actionCancel,
-                        tone: ButtonTone.quiet,
-                        cue: null,
-                        onPressed: _close,
-                      ),
-                      const SizedBox(width: 12),
-                      IbashoButton(
-                        key: const ValueKey<String>('creator.save'),
-                        label: _saving
-                            ? l.changePasswordWorking
-                            : (_isNew ? l.tamaCreatorCreate : l.actionSave),
-                        glyph: Glyph.check,
-                        tone: ButtonTone.accent,
-                        height: 50,
-                        minWidth: 180,
-                        cue: null,
-                        onPressed: !canEdit || _saving || (!_isNew && !_dirty) ? null : _save,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+                    SizedBox(height: layout.pick(16, 12)),
+                    Row(
+                      children: [
+                        if (!canEdit)
+                          Expanded(child: Text(l.tamaCreatorNotCreator, style: Ty.caption))
+                        else if (!layout.tall)
+                          const Spacer(),
+                        IbashoButton(
+                          label: l.actionCancel,
+                          tone: ButtonTone.quiet,
+                          cue: null,
+                          onPressed: _close,
+                        ),
+                        const SizedBox(width: 12),
+                        _Fill(
+                          tall: layout.tall && canEdit,
+                          child: IbashoButton(
+                            key: const ValueKey<String>('creator.save'),
+                            label: _saving
+                                ? l.changePasswordWorking
+                                : (_isNew ? l.tamaCreatorCreate : l.actionSave),
+                            glyph: Glyph.check,
+                            tone: ButtonTone.accent,
+                            height: 50,
+                            expand: layout.tall && canEdit,
+                            minWidth: layout.pick(180, 0),
+                            cue: null,
+                            onPressed: !canEdit || _saving || (!_isNew && !_dirty) ? null : _save,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -498,20 +484,20 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
               ],
             )
           else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            _Wrapped(
               children: [
-                HsvColorPicker(
-                  value: look.bodyColor,
-                  width: 330,
-                  height: 170,
-                  onChangeStart: _checkpoint,
-                  onChanged: (c) => _apply(
-                    _draft.copyWith(look: _draft.look.withColor(hexFromColor(c), TamaColorMode.hex)),
-                    checkpoint: false,
+                LayoutBuilder(
+                  builder: (context, box) => HsvColorPicker(
+                    value: look.bodyColor,
+                    width: math.min(330, box.maxWidth),
+                    height: 170,
+                    onChangeStart: _checkpoint,
+                    onChanged: (c) => _apply(
+                      _draft.copyWith(look: _draft.look.withColor(hexFromColor(c), TamaColorMode.hex)),
+                      checkpoint: false,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 22),
                 Expanded(
                   child: IbashoTextField(
                     key: const ValueKey<String>('creator.hex'),
@@ -631,7 +617,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
                   visible: state.focus,
                   radius: 18,
                   child: SizedBox(
-                    width: 196,
+                    width: Layout.of(context).tall ? 148 : 196,
                     height: 76,
                     child: GlossSurfaceCard(
                       selected: selected,
@@ -769,30 +755,49 @@ class _DialRow extends StatelessWidget {
   final VoidCallback? onChangeStart;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Row(
-          children: [
-            SizedBox(width: 130, child: Text(label, style: Ty.body)),
-            IbashoSlider(
-              value: value / 100,
-              width: 330,
-              ticks: 20,
-              semanticLabel: label,
-              onChangeStart: onChangeStart,
-              onChanged: (f) => onChanged((f * 100).round()),
+  Widget build(BuildContext context) {
+    final tall = Layout.of(context).tall;
+    final number = Text(
+      '$value',
+      textAlign: TextAlign.right,
+      style: Ty.numeral(17, color: T.inkSoft),
+    );
+    final slider = IbashoSlider(
+      value: value / 100,
+      width: tall ? double.infinity : 330,
+      ticks: 20,
+      semanticLabel: label,
+      onChangeStart: onChangeStart,
+      onChanged: (f) => onChanged((f * 100).round()),
+    );
+
+    // En vertical la etiqueta y el numero van encima y el raíl ocupa el ancho
+    // entero: asi se puede arrastrar con el pulgar de lado a lado.
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: tall ? 4 : 7),
+      child: tall
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(label, style: Ty.body)),
+                    number,
+                  ],
+                ),
+                const SizedBox(height: 2),
+                slider,
+              ],
+            )
+          : Row(
+              children: [
+                SizedBox(width: 130, child: Text(label, style: Ty.body)),
+                slider,
+                SizedBox(width: 52, child: number),
+              ],
             ),
-            SizedBox(
-              width: 52,
-              child: Text(
-                '$value',
-                textAlign: TextAlign.right,
-                style: Ty.numeral(17, color: T.inkSoft),
-              ),
-            ),
-          ],
-        ),
-      );
+    );
+  }
 }
 
 /// Pestañas del creador: una fila de pastillas, la elegida tenida de acento.
@@ -817,18 +822,28 @@ class _TabRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
+    final tall = Layout.of(context).tall;
+    final height = tall ? 56.0 : 46.0;
+
+    // En vertical las ocho pestañas no caben de una vez: la tira se arrastra
+    // de lado y cada pastilla tiene su ancho.
+    Widget pill(CreatorTab tab, Widget child) => tall
+        ? SizedBox(width: 96, child: child)
+        : Expanded(flex: tab == CreatorTab.limbs ? 14 : 10, child: child);
+
     return SizedBox(
-      height: 46,
+      height: height,
       child: GlossSurface(
-        radius: 23,
+        radius: height / 2,
         recessed: true,
         padding: const EdgeInsets.all(4),
-        child: Row(
+        child: _TabScroll(
+          tall: tall,
           children: [
             for (final tab in CreatorTab.values)
-              Expanded(
-                flex: tab == CreatorTab.limbs ? 14 : 10,
-                child: Pressable(
+              pill(
+                tab,
+                Pressable(
                   key: ValueKey<String>('creator.tab.${tab.name}'),
                   onPressed: tab == value ? null : () => onChanged(tab),
                   semanticLabel: _label(l, tab),
@@ -848,7 +863,7 @@ class _TabRail extends StatelessWidget {
                     );
                     return selected
                         ? GlossSurface(
-                            radius: 19,
+                            radius: (height - 8) / 2,
                             tint: skin.accent,
                             elevation: .9,
                             borderColor: skin.accentDeep,
@@ -863,6 +878,155 @@ class _TabRail extends StatelessWidget {
       ),
     );
   }
+}
+
+/// La tira de pestañas: fija en horizontal, arrastrable en vertical.
+class _TabScroll extends StatelessWidget {
+  const _TabScroll({required this.tall, required this.children});
+
+  final bool tall;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => tall
+      ? ScrollConfiguration(
+          behavior: const _TabScrollBehavior(),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: Row(children: children),
+          ),
+        )
+      : Row(children: children);
+}
+
+class _TabScrollBehavior extends ScrollBehavior {
+  const _TabScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) =>
+      child;
+
+  @override
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) => child;
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        // Los eventos inyectados llegan sin tipo (ver fingerKinds).
+        PointerDeviceKind.unknown,
+      };
+}
+
+/// El escenario del creador: el Tama vivo con barajar y deshacer. En
+/// horizontal es una columna a un lado; en vertical, una franja arriba con
+/// los dos botones al lado de la criatura.
+class _Stage extends StatelessWidget {
+  const _Stage({
+    required this.tama,
+    required this.controller,
+    required this.onShuffle,
+    required this.onUndo,
+  });
+
+  final Tama tama;
+  final TamaViewController controller;
+  final VoidCallback? onShuffle;
+  final VoidCallback? onUndo;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final layout = Layout.of(context);
+    final tall = layout.tall;
+    final stand = TamaOnStand(
+      key: const ValueKey<String>('creator.stage'),
+      tama: tama,
+      size: tall ? math.min(layout.width * .44, 190) : 330,
+      controller: controller,
+    );
+    final shuffle = IbashoButton(
+      key: const ValueKey<String>('creator.shuffle'),
+      label: l.tamaCreatorShuffle,
+      glyph: Glyph.dice,
+      height: 46,
+      expand: tall,
+      cue: null,
+      onPressed: onShuffle,
+    );
+    final undo = IbashoButton(
+      key: const ValueKey<String>('creator.undo'),
+      label: l.tamaCreatorUndo,
+      glyph: Glyph.undo,
+      height: 46,
+      expand: tall,
+      cue: null,
+      onPressed: onUndo,
+    );
+
+    if (tall) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(layout.gutter, 8, layout.gutter, 4),
+        child: Row(
+          children: [
+            stand,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [shuffle, const SizedBox(height: 10), undo],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 460,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          stand,
+          const SizedBox(height: 26),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [shuffle, const SizedBox(width: 12), undo],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// El escenario y los controles: en fila o en columna.
+class _Frame extends StatelessWidget {
+  const _Frame({required this.stage, required this.body});
+
+  final Widget stage;
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context) => Layout.of(context).tall
+      ? Column(children: [stage, Expanded(child: body)])
+      : Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [stage, Expanded(child: body)],
+        );
+}
+
+/// Ocupa el ancho que sobra solo cuando se le pide.
+class _Fill extends StatelessWidget {
+  const _Fill({required this.tall, required this.child});
+
+  final bool tall;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => tall ? Expanded(child: child) : child;
 }
 
 /// Tarjeta seleccionable de plastico: blanca, o lavada de acento si esta
@@ -894,5 +1058,27 @@ class GlossSurfaceCard extends StatelessWidget {
         child: child,
       ),
     );
+  }
+}
+
+/// En horizontal, una fila; en vertical, una columna. Para los bloques del
+/// creador que en escritorio van uno al lado del otro.
+class _Wrapped extends StatelessWidget {
+  const _Wrapped({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final tall = Layout.of(context).tall;
+    final spaced = <Widget>[
+      for (var i = 0; i < children.length; i++) ...[
+        if (i > 0) SizedBox(width: tall ? 0 : 22, height: tall ? 14 : 0),
+        if (tall && children[i] is Expanded) (children[i] as Expanded).child else children[i],
+      ],
+    ];
+    return tall
+        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: spaced)
+        : Row(crossAxisAlignment: CrossAxisAlignment.start, children: spaced);
   }
 }

@@ -57,6 +57,7 @@ Future<void> main() async {
           secureStoreProvider.overrideWithValue(FakeSecureStore(session: fake.tokens)),
           settingsStoreProvider.overrideWithValue(FakeSettingsStore()..saved = preferences),
           initialPreferencesProvider.overrideWithValue(preferences),
+          batteryWatchProvider.overrideWithValue(FakeBatteryWatch()),
         ],
         child: const IbashoApp(),
       ),

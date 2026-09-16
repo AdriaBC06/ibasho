@@ -14,6 +14,7 @@ import '../../../audio/audio_service.dart';
 import '../../../backend/social.dart';
 import '../../../backend/tama.dart';
 import '../../../core/birthday.dart';
+import '../../../core/device.dart';
 import '../../../core/friend_code.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/friends.dart';
@@ -30,15 +31,18 @@ import '../../widgets/gloss.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/pressable.dart';
+import '../../layout.dart';
 import '../../widgets/slot_tile.dart';
 import '../channel_grid.dart';
 import '../channel_route.dart';
 import '../friends/add_friend_screen.dart';
 import '../friends/friend_profile_screen.dart';
 
-/// Ranuras por pagina: rejilla de 6x2, como la de Tamas.
+/// Ranuras por pagina: rejilla de 6x2, como la de Tamas. En vertical son 3
+/// columnas y las filas que quepan.
 const int _columns = 6;
 const int _perPage = _columns * 2;
+const int _tallColumns = 2;
 
 enum FriendsTab { friends, incoming, outgoing }
 
@@ -61,6 +65,10 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
       widget.initialTab ??
       (ref.read(friendsProvider).incoming.isNotEmpty ? FriendsTab.incoming : FriendsTab.friends);
   int _page = 0;
+
+  /// Ranuras por pagina de la composicion en curso, que en vertical depende
+  /// del alto.
+  int _slots = _perPage;
   DateTime _lastWheel = DateTime.fromMillisecondsSinceEpoch(0);
   final GlobalKey _cardKey = GlobalKey(debugLabel: 'friends.businessCard');
   bool _exporting = false;
@@ -71,7 +79,7 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
     FriendsTab.outgoing => state.outgoing.length,
   };
 
-  int _pageCount(FriendsState state) => math.max(1, (_itemCount(state) / _perPage).ceil());
+  int _pageCount(FriendsState state) => math.max(1, (_itemCount(state) / _slots).ceil());
 
   void _goToPage(int page) {
     final target = page.clamp(0, _pageCount(ref.read(friendsProvider)) - 1);
@@ -129,6 +137,12 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
     setState(() => _exporting = true);
     try {
       final png = await renderBusinessCard(_cardKey);
+      if (Device.isAndroid) {
+        // En el movil no hay dialogo de guardar: se comparte.
+        final code = ref.read(friendsProvider).code;
+        await shareBusinessCard(png, username, l.friendsCardShareText(code == null ? '' : FriendCode.format(code)));
+        return;
+      }
       final path = await saveBusinessCard(png, username);
       if (!mounted) return;
       AudioService.instance.play(Sfx.chime);
@@ -165,6 +179,15 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
     final pages = _pageCount(state);
     if (_page >= pages) _page = pages - 1;
 
+    final layout = Layout.of(context);
+    final tall = layout.tall;
+    final dots = [
+      for (var i = 0; i < pages; i++) ...[
+        if (i > 0) const SizedBox(width: 8),
+        _PageDot(active: i == _page),
+      ],
+    ];
+
     return ChannelScaffold(
       title: l.friendsTitle,
       glyph: Glyph.friends,
@@ -172,18 +195,20 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
           ? null
           : Text(
               l.friendsCount(state.friends.length, maxFriendsPerAccount),
-              style: Ty.numeral(19, color: T.inkSoft),
+              style: Ty.numeral(layout.pick(19, 16), color: T.inkSoft),
             ),
       child: Focus(
         autofocus: true,
         onKeyEvent: _onKey,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
+          padding: EdgeInsets.symmetric(horizontal: layout.gutter),
+          child: LayoutBuilder(builder: (context, box) {
+          final top = tall ? math.max(286.0, math.min(360.0, box.maxHeight * .45)) : 300.0;
+          return Column(
             children: [
               const SizedBox(height: 14),
               SizedBox(
-                height: 300,
+                height: top,
                 child: ScreenPanel(
                   child: _MyCard(
                     cardKey: _cardKey,
@@ -195,26 +220,31 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
                   ),
                 ),
               ),
+              // En vertical las pestañas se llevan su propia fila: con las
+              // flechas al lado no cabrian.
+              if (tall) ...[
+                const SizedBox(height: 10),
+                _Tabs(tab: _tab, state: state, onChanged: _setTab),
+              ],
               SizedBox(
-                height: 54,
+                height: layout.pick(54, 56),
                 child: Row(
                   children: [
                     IconPill(
                       glyph: Glyph.arrowLeft,
-                      diameter: 36,
+                      diameter: layout.pill,
                       onPressed: _page > 0 ? () => _goToPage(_page - 1) : null,
                     ),
                     const Spacer(),
-                    _Tabs(tab: _tab, state: state, onChanged: _setTab),
-                    const SizedBox(width: 18),
-                    for (var i = 0; i < pages; i++) ...[
-                      if (i > 0) const SizedBox(width: 8),
-                      _PageDot(active: i == _page),
+                    if (!tall) ...[
+                      _Tabs(tab: _tab, state: state, onChanged: _setTab),
+                      const SizedBox(width: 18),
                     ],
+                    ...dots,
                     const Spacer(),
                     IconPill(
                       glyph: Glyph.arrowRight,
-                      diameter: 36,
+                      diameter: layout.pill,
                       onPressed: _page < pages - 1 ? () => _goToPage(_page + 1) : null,
                     ),
                   ],
@@ -223,13 +253,33 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
               Expanded(
                 child: Listener(
                   onPointerSignal: _onWheel,
-                  child: ScreenPanel(
+                  child: PageSwipe(
+                    onPrevious: () => _goToPage(_page - 1),
+                    onNext: () => _goToPage(_page + 1),
+                    child: ScreenPanel(
                     child: LayoutBuilder(
                       builder: (context, box) => _PagedSlots(
                         size: box.biggest,
                         page: _page,
                         pages: pages,
+                        tall: tall,
+                        // Las ranuras de amigos llevan cosas dentro (el
+                        // piloto, y dos botones en las solicitudes): en
+                        // vertical van de dos en dos para que todo eso se
+                        // pueda tocar.
+                        columns: tall ? (_tab == FriendsTab.friends ? _tallColumns : 1) : _columns,
+                        // Una solicitud lleva dos botones dentro: en vertical
+                        // ocupa una tira ancha, no una baldosa.
+                        rowHeight: tall && _tab != FriendsTab.friends ? 78.0 : null,
                         count: _itemCount(state),
+                        onSlots: (slots) {
+                          if (slots == _slots) return;
+                          final first = _page * _slots;
+                          _slots = slots;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) setState(() => _page = first ~/ slots);
+                          });
+                        },
                         empty: switch (_tab) {
                           FriendsTab.friends => null,
                           FriendsTab.incoming => l.friendsIncomingEmpty,
@@ -279,11 +329,13 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
                       ),
                     ),
                   ),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
             ],
-          ),
+          );
+          }),
         ),
       ),
     );
@@ -326,15 +378,122 @@ class _MyCard extends ConsumerWidget {
     final now = ref.watch(moodClockProvider);
     final party = profile != null && isBirthdayToday(profile, now);
 
+    final layout = Layout.of(context);
+    final tall = layout.tall;
+    final cardWidth = tall ? math.min(layout.width - 180, 150.0) : 438.0;
+
+    final code = this.code;
+    final codeRow = Row(
+      children: [
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              code == null ? l.friendsCodePending : FriendCode.format(code),
+              key: const ValueKey<String>('friends.code'),
+              style: code == null
+                  ? Ty.lead.copyWith(color: T.inkSoft)
+                  : Ty.numeral(tall ? 26 : 44, weight: FontWeight.w700)
+                      .copyWith(letterSpacing: 1),
+            ),
+          ),
+        ),
+        SizedBox(width: tall ? 8 : 16),
+        IconPill(
+          key: const ValueKey<String>('friends.copy'),
+          glyph: Glyph.copy,
+          diameter: 44,
+          semanticLabel: l.friendsCopyCode,
+          onPressed: onCopy,
+        ),
+      ],
+    );
+
+    // En vertical: la tarjeta pequeña con el codigo al lado, las acciones
+    // debajo y el estado al pie.
+    if (tall) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                SizedBox(
+                  width: cardWidth,
+                  height: cardWidth * businessCardSize.height / businessCardSize.width,
+                  child: FittedBox(
+                    child: RepaintBoundary(
+                      key: cardKey,
+                      child: BusinessCard(
+                        displayName: profile?.displayName ?? username,
+                        accent: skin.accent,
+                        code: code ?? '',
+                        caption: l.friendsYourCode,
+                        tama: tama,
+                        wear: party ? TamaWear.partyHat : TamaWear.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(l.friendsYourCode, style: Ty.label),
+                      const SizedBox(height: 4),
+                      codeRow,
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Expanded(
+                  child: IbashoButton(
+                    key: const ValueKey<String>('friends.add'),
+                    label: l.friendsAdd,
+                    glyph: Glyph.personPlus,
+                    tone: ButtonTone.accent,
+                    height: 48,
+                    expand: true,
+                    cue: null,
+                    onPressed: onAdd,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconPill(
+                  key: const ValueKey<String>('friends.export'),
+                  glyph: Glyph.download,
+                  diameter: 48,
+                  semanticLabel: l.friendsExportCard,
+                  cue: null,
+                  onPressed: exporting ? null : onExport,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const _PresencePicker(),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(30, 26, 32, 26),
-      child: Row(
+      child: _Split(
+        tall: tall,
         children: [
           // La tarjeta se maqueta a su tamaño de diseño y se escala: el PNG
           // sale de este mismo RepaintBoundary a mas resolucion.
           SizedBox(
-            width: 438,
-            height: 438 * businessCardSize.height / businessCardSize.width,
+            width: cardWidth,
+            height: cardWidth * businessCardSize.height / businessCardSize.width,
             child: FittedBox(
               child: RepaintBoundary(
                 key: cardKey,
@@ -349,14 +508,16 @@ class _MyCard extends ConsumerWidget {
               ),
             ),
           ),
-          const SizedBox(width: 38),
+          SizedBox(width: tall ? 14 : 38),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(l.friendsYourCode, style: Ty.label),
-                const SizedBox(height: 6),
+                if (!tall) ...[
+                  Text(l.friendsYourCode, style: Ty.label),
+                  const SizedBox(height: 6),
+                ],
                 Row(
                   children: [
                     Flexible(
@@ -364,15 +525,16 @@ class _MyCard extends ConsumerWidget {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          code == null ? l.friendsCodePending : FriendCode.format(code!),
+                          code == null ? l.friendsCodePending : FriendCode.format(code),
                           key: const ValueKey<String>('friends.code'),
                           style: code == null
                               ? Ty.lead.copyWith(color: T.inkSoft)
-                              : Ty.numeral(44, weight: FontWeight.w700).copyWith(letterSpacing: 1),
+                              : Ty.numeral(tall ? 24 : 44, weight: FontWeight.w700)
+                                  .copyWith(letterSpacing: 1),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: tall ? 8 : 16),
                     IconPill(
                       key: const ValueKey<String>('friends.copy'),
                       glyph: Glyph.copy,
@@ -382,7 +544,7 @@ class _MyCard extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: tall ? 12 : 18),
                 Row(
                   children: [
                     Flexible(
@@ -392,27 +554,39 @@ class _MyCard extends ConsumerWidget {
                         glyph: Glyph.personPlus,
                         tone: ButtonTone.accent,
                         height: 46,
-                        minWidth: 190,
+                        minWidth: tall ? 0 : 190,
                         cue: null,
                         onPressed: onAdd,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Flexible(
-                      child: IbashoButton(
+                    if (tall)
+                      IconPill(
                         key: const ValueKey<String>('friends.export'),
-                        label: exporting ? l.friendsExporting : l.friendsExportCard,
                         glyph: Glyph.download,
-                        height: 46,
+                        diameter: 46,
+                        semanticLabel: l.friendsExportCard,
                         cue: null,
                         onPressed: exporting ? null : onExport,
+                      )
+                    else
+                      Flexible(
+                        child: IbashoButton(
+                          key: const ValueKey<String>('friends.export'),
+                          label: exporting ? l.friendsExporting : l.friendsExportCard,
+                          glyph: Glyph.download,
+                          height: 46,
+                          cue: null,
+                          onPressed: exporting ? null : onExport,
+                        ),
                       ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Text(l.presenceTitle, style: Ty.label),
-                const SizedBox(height: 8),
+                SizedBox(height: tall ? 12 : 20),
+                if (!tall) ...[
+                  Text(l.presenceTitle, style: Ty.label),
+                  const SizedBox(height: 8),
+                ],
                 const _PresencePicker(),
               ],
             ),
@@ -433,12 +607,9 @@ class _PresencePicker extends ConsumerWidget {
     final skin = IbashoSkin.of(context);
     final status = ref.watch(presenceProvider);
 
-    return Row(
-      children: [
-        for (final mode in PresenceMode.values) ...[
-          if (mode.index > 0) const SizedBox(width: 8),
-          Flexible(
-            child: Pressable(
+    final tall = Layout.of(context).tall;
+
+    Widget pill(PresenceMode mode) => Pressable(
               key: ValueKey<String>('presence.${mode.name}'),
               semanticLabel: presenceModeLabel(l, mode),
               onPressed: mode == status.mode
@@ -491,8 +662,33 @@ class _PresencePicker extends ConsumerWidget {
                   ),
                 );
               },
+            );
+
+    // Los cuatro estados: en fila cuando hay ancho; en dos filas de dos en
+    // vertical, para que se lea el nombre entero de cada uno.
+    if (tall) {
+      return Column(
+        children: [
+          for (var row = 0; row < 2; row++) ...[
+            if (row > 0) const SizedBox(height: 8),
+            Row(
+              children: [
+                for (var i = 0; i < 2; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  Expanded(child: pill(PresenceMode.values[row * 2 + i])),
+                ],
+              ],
             ),
-          ),
+          ],
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        for (final mode in PresenceMode.values) ...[
+          if (mode.index > 0) const SizedBox(width: 8),
+          Flexible(child: pill(mode)),
         ],
       ],
     );
@@ -558,15 +754,23 @@ class _PagedSlots extends StatefulWidget {
     required this.size,
     required this.page,
     required this.pages,
+    required this.tall,
+    required this.columns,
+    required this.rowHeight,
     required this.count,
     required this.builder,
+    required this.onSlots,
     this.empty,
   });
 
   final Size size;
   final int page;
   final int pages;
+  final bool tall;
+  final int columns;
+  final double? rowHeight;
   final int count;
+  final ValueChanged<int> onSlots;
   final _SlotBuilder builder;
 
   /// Mensaje cuando no hay nada que ensenar.
@@ -617,8 +821,24 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
   Widget build(BuildContext context) {
     final width = widget.size.width;
     final height = widget.size.height;
-    final tileH = (height - _padV * 2 - _gapV) / 2;
-    final tileW = math.min((width - _padH * 2 - _gapH * (_columns - 1)) / _columns, tileH * 1.18);
+    final columns = widget.columns;
+    final padH = widget.tall ? 16.0 : _padH;
+    final gapH = widget.tall ? 12.0 : _gapH;
+    final available = (width - padH * 2 - gapH * (columns - 1)) / columns;
+    final rowHeight = widget.rowHeight;
+    final rows = widget.tall
+        ? math.max(
+            rowHeight == null ? 2 : 1,
+            ((height - _padV * 2 + _gapV) / ((rowHeight ?? available / 1.18) + _gapV)).floor(),
+          )
+        : 2;
+    final tileH = rowHeight ??
+        (widget.tall
+            ? math.min(available / 1.18, (height - _padV * 2 - _gapV * (rows - 1)) / rows)
+            : (height - _padV * 2 - _gapV) / 2);
+    final tileW = rowHeight == null ? math.min(available, tileH * 1.18) : available;
+    final perPage = columns * rows;
+    widget.onSlots(perPage);
 
     Widget slot(int index) => index < widget.count
         ? widget.builder(index, tileW, tileH)
@@ -644,14 +864,14 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              for (var row = 0; row < 2; row++) ...[
+                              for (var row = 0; row < rows; row++) ...[
                                 if (row > 0) const SizedBox(height: _gapV),
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    for (var col = 0; col < _columns; col++) ...[
-                                      if (col > 0) const SizedBox(width: _gapH),
-                                      slot(page * _perPage + row * _columns + col),
+                                    for (var col = 0; col < columns; col++) ...[
+                                      if (col > 0) SizedBox(width: gapH),
+                                      slot(page * perPage + row * columns + col),
                                     ],
                                   ],
                                 ),
@@ -785,6 +1005,69 @@ class _RequestTile extends ConsumerWidget {
     final card = ref.watch(cardOfProvider(account)).valueOrNull;
     final name = card?.displayName ?? '…';
 
+    final accept = onAccept == null
+        ? null
+        : IconPill(
+            key: ValueKey<String>('friends.accept.$account'),
+            glyph: Glyph.check,
+            diameter: 34,
+            tone: ButtonTone.accent,
+            semanticLabel: l.friendsAccept,
+            cue: null,
+            onPressed: onAccept,
+          );
+    final dismiss = IconPill(
+      key: ValueKey<String>('friends.dismiss.$account'),
+      glyph: Glyph.cross,
+      diameter: 34,
+      semanticLabel: incoming ? l.friendsReject : l.friendsCancel,
+      onPressed: onDismiss,
+    );
+
+    // Ranura ancha (vertical): el Tama a la izquierda, el nombre al centro y
+    // los botones a la derecha, todos del tamaño que se toca.
+    if (width > height * 1.5) {
+      return SlotTile(
+        key: ValueKey<String>('friends.request.$account'),
+        width: width,
+        height: height,
+        tint: card == null ? null : Color.lerp(card.accent, T.shellTop, .9),
+        semanticLabel: name,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          child: Row(
+            children: [
+              IgnorePointer(
+                child: SizedBox(
+                  width: height - 16,
+                  height: height - 12,
+                  child: CardTama(accountId: account, card: card, size: height - 12),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Ty.body.copyWith(color: T.ink, fontWeight: FontWeight.w500),
+                    ),
+                    if (!incoming) Text(l.friendsPending, style: Ty.micro),
+                  ],
+                ),
+              ),
+              if (accept != null) ...[accept, const SizedBox(width: 8)],
+              dismiss,
+            ],
+          ),
+        ),
+      );
+    }
+
     return SlotTile(
       key: ValueKey<String>('friends.request.$account'),
       width: width,
@@ -815,25 +1098,8 @@ class _RequestTile extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (onAccept != null) ...[
-                  IconPill(
-                    key: ValueKey<String>('friends.accept.$account'),
-                    glyph: Glyph.check,
-                    diameter: 34,
-                    tone: ButtonTone.accent,
-                    semanticLabel: l.friendsAccept,
-                    cue: null,
-                    onPressed: onAccept,
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                IconPill(
-                  key: ValueKey<String>('friends.dismiss.$account'),
-                  glyph: Glyph.cross,
-                  diameter: 34,
-                  semanticLabel: incoming ? l.friendsReject : l.friendsCancel,
-                  onPressed: onDismiss,
-                ),
+                if (accept != null) ...[accept, const SizedBox(width: 10)],
+                dismiss,
               ],
             ),
           ),
@@ -855,6 +1121,7 @@ class _AddTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
+    final tall = Layout.of(context).tall;
     return Pressable(
       key: const ValueKey<String>('friends.addTile'),
       cue: null,
@@ -874,20 +1141,25 @@ class _AddTile extends StatelessWidget {
               borderColor: Color.lerp(T.hairline, skin.accent, state.hover)!,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   GlyphIcon(
                     Glyph.personPlus,
-                    size: height * .3,
+                    size: height * (tall ? .28 : .3),
                     color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover)!,
                     strokeWidth: 2.2,
                   ),
-                  SizedBox(height: height * .06),
-                  Text(
+                  SizedBox(height: height * (tall ? .05 : .06)),
+                  Flexible(
+                    child: Text(
                     l.friendsAdd,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Ty.caption.copyWith(
                       color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
                       fontWeight: FontWeight.w500,
                     ),
+                  ),
                   ),
                 ],
               ),
@@ -897,4 +1169,22 @@ class _AddTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Los dos bloques de la pantalla de arriba: en fila si hay ancho, en columna
+/// si no.
+class _Split extends StatelessWidget {
+  const _Split({required this.tall, required this.children});
+
+  final bool tall;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => tall
+      ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(child: children.first),
+          const SizedBox(height: 10),
+          Expanded(child: children.last),
+        ])
+      : Row(children: children);
 }

@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,6 +20,7 @@ import '../widgets/glyphs.dart';
 import '../widgets/gloss.dart';
 import '../widgets/panel.dart';
 import '../widgets/text_field.dart';
+import '../layout.dart';
 
 /// Longitud minima. Firebase exige seis; Ibasho pide algo mas.
 const int minimumPasswordLength = 10;
@@ -88,7 +91,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     return Bezel(
       child: Center(
         child: SizedBox(
-          width: 580,
+          width: math.min(580, Layout.of(context).width - Layout.of(context).gutter * 2),
           child: ScreenPanel(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(46, 38, 46, 34),

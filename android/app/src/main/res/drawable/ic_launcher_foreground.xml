@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La marca de Ibasho: las dos pantallas del entorno, una sobre otra, dentro
+     de la zona segura del icono adaptativo (72 de 108). Es el mismo dibujo que
+     IbashoMark (lib/ui/widgets/logo.dart). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Pantalla superior: blanca, con su filo. -->
+    <path
+        android:pathData="M30.2,25.2 h47.5 a6.5,6.5 0 0 1 6.5,6.5 v17.3 a6.5,6.5 0 0 1 -6.5,6.5 h-47.5 a6.5,6.5 0 0 1 -6.5,-6.5 v-17.3 a6.5,6.5 0 0 1 6.5,-6.5 z"
+        android:fillType="nonZero"
+        android:strokeColor="#C2CED8"
+        android:strokeWidth="0.9">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient android:startY="25.2" android:endY="55.5" android:type="linear">
+                <item android:color="#FFFFFFFF" android:offset="0" />
+                <item android:color="#FFDDE7EF" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Pantalla inferior: la de los canales, tenida de cian. -->
+    <path
+        android:pathData="M23.8,54.0 h60.5 a7.9,7.9 0 0 1 7.9,7.9 v21.0 a7.9,7.9 0 0 1 -7.9,7.9 h-60.5 a7.9,7.9 0 0 1 -7.9,-7.9 v-21.0 a7.9,7.9 0 0 1 7.9,-7.9 z"
+        android:fillType="nonZero"
+        android:strokeColor="#1B6F9E"
+        android:strokeWidth="0.9">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient android:startY="54.0" android:endY="90.8" android:type="linear">
+                <item android:color="#FF8BD5F8" android:offset="0" />
+                <item android:color="#FF1B6F9E" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

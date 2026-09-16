@@ -25,6 +25,7 @@ import '../../widgets/gloss.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/text_field.dart';
+import '../../layout.dart';
 import '../channel_route.dart';
 
 class AdminChannel extends ConsumerStatefulWidget {
@@ -120,14 +121,16 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
       );
     }
 
+    final layout = Layout.of(context);
+
     return ChannelScaffold(
       title: l.adminTitle,
       glyph: Glyph.keycard,
       child: IbashoScroll(
-        padding: const EdgeInsets.fromLTRB(40, 28, 40, 44),
+        padding: EdgeInsets.fromLTRB(layout.gutter, layout.pick(28, 18), layout.gutter, 44),
         child: Center(
           child: SizedBox(
-            width: 900,
+            width: layout.pick(900, layout.column),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -136,45 +139,37 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: IbashoTextField(
-                              controller: _username,
-                              label: l.adminUsername,
-                              hint: l.adminUsernameHint,
-                              maxLength: 16,
-                              error: _usernameError,
-                              formatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'[a-z0-9_]')),
-                              ],
-                              onSubmitted: (_) => _create(),
-                            ),
+                      // En vertical el campo se lleva su fila y los dos
+                      // botones van debajo.
+                      _Rows(
+                        tall: layout.tall,
+                        field: IbashoTextField(
+                          controller: _username,
+                          label: l.adminUsername,
+                          hint: l.adminUsernameHint,
+                          maxLength: 16,
+                          error: _usernameError,
+                          formatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'[a-z0-9_]')),
+                          ],
+                          onSubmitted: (_) => _create(),
+                        ),
+                        actions: [
+                          IbashoButton(
+                            label: l.adminGenerate,
+                            glyph: Glyph.dice,
+                            height: 48,
+                            expand: layout.tall,
+                            onPressed: () => setState(() => _password = generatePassword()),
                           ),
-                          const SizedBox(width: 20),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 25),
-                            child: IbashoButton(
-                              label: l.adminGenerate,
-                              glyph: Glyph.dice,
-                              height: 48,
-                              onPressed: () =>
-                                  setState(() => _password = generatePassword()),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 25),
-                            child: IbashoButton(
-                              label: state.busy ? l.adminCreating : l.adminCreate,
-                              glyph: Glyph.plus,
-                              tone: ButtonTone.accent,
-                              height: 48,
-                              cue: null,
-                              onPressed: state.busy ? null : _create,
-                            ),
+                          IbashoButton(
+                            label: state.busy ? l.adminCreating : l.adminCreate,
+                            glyph: Glyph.plus,
+                            tone: ButtonTone.accent,
+                            height: 48,
+                            expand: layout.tall,
+                            cue: null,
+                            onPressed: state.busy ? null : _create,
                           ),
                         ],
                       ),
@@ -338,7 +333,10 @@ class _VersionLockState extends ConsumerState<_VersionLock> {
             maxLength: 300,
             error: _urlError,
           ),
-          Row(
+          // En vertical los dos botones se reparten en varias lineas si hace
+          // falta; en horizontal van en fila, como siempre.
+          _Buttons(
+            tall: Layout.of(context).tall,
             children: [
               IbashoButton(
                 key: const ValueKey<String>('admin.version.require'),
@@ -347,7 +345,6 @@ class _VersionLockState extends ConsumerState<_VersionLock> {
                 height: 46,
                 onPressed: _working ? null : _require,
               ),
-              const SizedBox(width: 12),
               if (current != null)
                 IbashoButton(
                   key: const ValueKey<String>('admin.version.clear'),
@@ -424,25 +421,23 @@ class _CredentialCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l.adminCredentialWarning,
-                  style: Ty.caption.copyWith(color: T.onAccent),
-                ),
-              ),
-              IbashoButton(
-                label: l.adminCopyBlock,
-                glyph: Glyph.copy,
-                height: 44,
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: block));
-                  if (!context.mounted) return;
-                  showIbashoToast(context, l.actionCopied);
-                },
-              ),
-            ],
+          // El aviso y el boton de copiar: en vertical uno debajo del otro.
+          _Stack(
+            tall: Layout.of(context).tall,
+            warning: Text(
+              l.adminCredentialWarning,
+              style: Ty.caption.copyWith(color: T.onAccent),
+            ),
+            action: IbashoButton(
+              label: l.adminCopyBlock,
+              glyph: Glyph.copy,
+              height: 44,
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: block));
+                if (!context.mounted) return;
+                showIbashoToast(context, l.actionCopied);
+              },
+            ),
           ),
         ],
       ),
@@ -469,6 +464,7 @@ class _AccountRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
+    final tall = Layout.of(context).tall;
     final stateLabel = entry.disabled
         ? l.adminStateDisabled
         : entry.mustChangePassword
@@ -480,9 +476,30 @@ class _AccountRow extends StatelessWidget {
             ? T.warn
             : skin.accent;
 
+    final buttons = [
+      IbashoButton(
+        label: entry.disabled ? l.adminEnable : l.adminDisable,
+        height: 40,
+        expand: tall,
+        onPressed: busy ? null : () => onToggle(!entry.disabled),
+      ),
+      IbashoButton(
+        label: l.adminRegenerate,
+        glyph: Glyph.refresh,
+        height: 40,
+        tone: ButtonTone.quiet,
+        expand: tall,
+        cue: null,
+        onPressed: busy || entry.disabled ? null : onRegenerate,
+      ),
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+      Row(
         children: [
           SizedBox(
             width: 40,
@@ -528,23 +545,105 @@ class _AccountRow extends StatelessWidget {
               style: Ty.micro.copyWith(color: T.ink),
             ),
           ),
-          const SizedBox(width: 18),
-          IbashoButton(
-            label: entry.disabled ? l.adminEnable : l.adminDisable,
-            height: 40,
-            onPressed: busy ? null : () => onToggle(!entry.disabled),
-          ),
-          const SizedBox(width: 10),
-          IbashoButton(
-            label: l.adminRegenerate,
-            glyph: Glyph.refresh,
-            height: 40,
-            tone: ButtonTone.quiet,
-            cue: null,
-            onPressed: busy || entry.disabled ? null : onRegenerate,
-          ),
+          if (!tall) ...[
+            const SizedBox(width: 18),
+            buttons[0],
+            const SizedBox(width: 10),
+            buttons[1],
+          ],
+        ],
+      ),
+      // En vertical los botones de la cuenta van debajo de sus datos.
+      if (tall) ...[
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: buttons[0]),
+            const SizedBox(width: 10),
+            Expanded(child: buttons[1]),
+          ],
+        ),
+      ],
         ],
       ),
     );
   }
+}
+
+/// El campo de alta y sus botones: en fila si hay ancho, en dos filas si no.
+class _Rows extends StatelessWidget {
+  const _Rows({required this.tall, required this.field, required this.actions});
+
+  final bool tall;
+  final Widget field;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    if (tall) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          field,
+          Row(
+            children: [
+              for (var i = 0; i < actions.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                Expanded(child: actions[i]),
+              ],
+            ],
+          ),
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: field),
+        for (var i = 0; i < actions.length; i++) ...[
+          SizedBox(width: i == 0 ? 20 : 12),
+          Padding(padding: const EdgeInsets.only(top: 25), child: actions[i]),
+        ],
+      ],
+    );
+  }
+}
+
+/// Una fila de botones que en vertical se parte en varias lineas.
+class _Buttons extends StatelessWidget {
+  const _Buttons({required this.tall, required this.children});
+
+  final bool tall;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => tall
+      ? Wrap(spacing: 12, runSpacing: 10, children: children)
+      : Row(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) const SizedBox(width: 12),
+              children[i],
+            ],
+          ],
+        );
+}
+
+/// El aviso de la credencial y su boton: al lado en horizontal, apilados en
+/// vertical.
+class _Stack extends StatelessWidget {
+  const _Stack({required this.tall, required this.warning, required this.action});
+
+  final bool tall;
+  final Widget warning;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) => tall
+      ? Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [warning, const SizedBox(height: 12), action],
+        )
+      : Row(children: [Expanded(child: warning), action]);
 }

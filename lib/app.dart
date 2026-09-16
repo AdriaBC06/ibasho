@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'audio/audio_service.dart';
 import 'backend/tama.dart';
+import 'core/device.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'state/debug.dart';
 import 'state/providers.dart';
@@ -17,27 +18,51 @@ import 'state/update_gate.dart';
 import 'theme/skin.dart';
 import 'theme/tokens.dart';
 import 'theme/type.dart';
-import 'ui/activity.dart';
 import 'ui/canvas.dart';
+import 'ui/mobile.dart';
 import 'ui/screens/change_password_screen.dart';
 import 'ui/screens/login_screen.dart';
 import 'ui/screens/shell_screen.dart';
 import 'ui/screens/splash_screen.dart';
 import 'ui/screens/update_required_screen.dart';
 import 'ui/tama/tama_view.dart';
+import 'ui/touch.dart';
 
 /// La raiz es `WidgetsApp`, no `MaterialApp`.
 ///
 /// Es la garantia mas fuerte de que no se cuela ni un widget de Material con
 /// su aspecto por defecto: el tema de Material no llega a existir.
-class IbashoApp extends ConsumerWidget {
+class IbashoApp extends ConsumerStatefulWidget {
   const IbashoApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<IbashoApp> createState() => _IbashoAppState();
+}
+
+class _IbashoAppState extends ConsumerState<IbashoApp> {
+  final BackGate _back = BackGate();
+
+  @override
+  void initState() {
+    super.initState();
+    // Antes que WidgetsApp: el boton de atras del sistema pasa primero por
+    // aqui.
+    WidgetsBinding.instance.addObserver(_back);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(_back);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider);
 
     return WidgetsApp(
+      navigatorKey: rootNavigatorKey,
+      navigatorObservers: [topRouteTracker],
       title: 'Ibasho',
       color: T.cyan,
       locale: locale,
@@ -67,9 +92,11 @@ class IbashoApp extends ConsumerWidget {
           reducedMotion: reduced,
           child: DefaultTextStyle(
             style: Ty.body,
-            child: ActivityWatch(
+            child: MobileLifecycle(
               child: TamaPointerTracker(
-                child: VirtualCanvas(child: navigator!),
+                child: TouchAssist(
+                  child: VirtualCanvas(child: navigator!),
+                ),
               ),
             ),
           ),
@@ -161,7 +188,7 @@ class _AppRootState extends ConsumerState<AppRoot> {
             SessionPhase.booting => const SplashScreen(),
           };
 
-    return AnimatedSwitcher(
+    final switcher = AnimatedSwitcher(
       duration: skin.motion(const Duration(milliseconds: 420)),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
@@ -173,5 +200,9 @@ class _AppRootState extends ConsumerState<AppRoot> {
       ),
       child: KeyedSubtree(key: ValueKey<String>(screen.runtimeType.toString()), child: screen),
     );
+
+    // En Android la raiz nunca se cierra sola: asi el sistema entrega siempre
+    // el gesto de atras a la app, y BackGate pregunta antes de salir.
+    return PopScope(canPop: !Device.isAndroid, child: switcher);
   }
 }

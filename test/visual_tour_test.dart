@@ -73,6 +73,7 @@ Future<void> main() async {
           ),
           settingsStoreProvider.overrideWithValue(settings),
           initialPreferencesProvider.overrideWithValue(preferences),
+          batteryWatchProvider.overrideWithValue(FakeBatteryWatch()),
         ],
         child: const RepaintBoundary(child: IbashoApp()),
       ),

@@ -265,7 +265,16 @@ class BadgeChip extends StatelessWidget {
           children: [
             GlyphIcon(badge.glyph, size: 15, color: ink),
             const SizedBox(width: 6),
-            Text(badgeLabel(l, badge), style: Ty.caption.copyWith(color: ink, height: 1.1)),
+            // En un lienzo estrecho la insignia no empuja: se recorta su
+            // texto antes de desbordar la fila.
+            Flexible(
+              child: Text(
+                badgeLabel(l, badge),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Ty.caption.copyWith(color: ink, height: 1.1),
+              ),
+            ),
           ],
         ),
       ),

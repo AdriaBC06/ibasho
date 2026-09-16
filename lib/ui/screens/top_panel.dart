@@ -6,11 +6,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../backend/models.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
+import '../layout.dart';
 import '../widgets/glyphs.dart';
 import '../widgets/gloss.dart';
 import 'channel_route.dart';
@@ -45,12 +47,16 @@ class TopPanel extends ConsumerWidget {
     final clock = DateFormat('HH:mm').format(now);
     final date = DateFormat.MMMMEEEEd(localeCode).format(now);
 
+    if (Layout.of(context).tall) {
+      return _tall(context, l: l, name: name, clock: clock, date: date, now: now, profile: profile);
+    }
+
     if (_compact) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Row(
           children: [
-            _TamaSlot(size: 56),
+            const _TamaSlot(size: 56),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -152,6 +158,127 @@ class TopPanel extends ConsumerWidget {
               alignment: Alignment.bottomCenter,
               child: _Announcement(),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// El mismo panel, reordenado para un lienzo estrecho: identidad y estado
+  /// arriba, reloj y fecha en el centro. Con el panel encogido se queda todo
+  /// en una tira.
+  Widget _tall(
+    BuildContext context, {
+    required L l,
+    required String name,
+    required String clock,
+    required String date,
+    required DateTime now,
+    required UserProfile? profile,
+  }) {
+    if (_compact) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Row(
+          children: [
+            const _TamaSlot(size: 52),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(name, style: Ty.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  // El reloj se encoge antes que cortarse: en la tira hay poco
+                  // sitio y la hora es lo que no puede faltar.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(clock, style: Ty.clockSmall(T.ink), maxLines: 1),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const StatusBar(compact: true),
+          ],
+        ),
+      );
+    }
+
+    final expanded = height > 340;
+    // Con poco alto, el mensaje de estado se calla antes que apretar el reloj.
+    final roomy = height > 260;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 14, 18, expanded ? 18 : 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // El estado se lleva su propia linea arriba: asi el nombre y el
+          // saludo tienen el ancho entero, que en vertical es lo que falta.
+          const Align(alignment: Alignment.centerRight, child: StatusBar(compact: true)),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _TamaSlot(size: expanded ? 92 : 68),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Ty.title,
+                    ),
+                    Text(
+                      _greeting(l, now),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Ty.caption,
+                    ),
+                    if (roomy && profile != null && profile.statusMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          profile.statusMessage,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Ty.caption.copyWith(color: T.ink),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // El reloj se queda con el hueco que sobre y se encoge antes que
+          // desbordar.
+          Expanded(
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Transform.scale(
+                      scale: expanded ? 1.3 : 1,
+                      child: Text(clock, style: Ty.clock(T.ink)),
+                    ),
+                    SizedBox(height: expanded ? 10 : 2),
+                    Text(
+                      date,
+                      style: Ty.lead.copyWith(color: T.inkSoft, fontWeight: FontWeight.w400),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (expanded) Center(child: _Announcement()),
         ],
       ),
     );

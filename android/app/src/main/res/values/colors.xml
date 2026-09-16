@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- T.bezelTop: el metal que rodea las pantallas. -->
+    <color name="launch_bezel">#E9EEF2</color>
+</resources>

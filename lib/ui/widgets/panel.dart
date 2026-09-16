@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
+import '../layout.dart';
 
 /// Una de las dos pantallas encastradas en el bisel.
 class ScreenPanel extends StatelessWidget {
@@ -160,36 +161,51 @@ class SettingRow extends StatelessWidget {
   final bool divider;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
+  Widget build(BuildContext context) {
+    final tall = Layout.of(context).tall;
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: Ty.body),
+        if (hint != null)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(label, style: Ty.body),
-                      if (hint != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(hint!, style: Ty.caption),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 24),
-                control,
-              ],
-            ),
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(hint!, style: Ty.caption),
           ),
-          if (divider) const Hairline(),
-        ],
-      );
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          // En un lienzo estrecho la etiqueta no comparte fila con el control:
+          // se pone encima y el control ocupa el ancho entero.
+          child: tall
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    text,
+                    const SizedBox(height: 10),
+                    control,
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: text),
+                    const SizedBox(width: 24),
+                    control,
+                  ],
+                ),
+        ),
+        if (divider) const Hairline(),
+      ],
+    );
+  }
 }
 
 /// Linea de 1 px. La unica separacion que usa el entorno.
@@ -276,5 +292,7 @@ class _NoChromeScrollBehavior extends ScrollBehavior {
         PointerDeviceKind.mouse,
         PointerDeviceKind.trackpad,
         PointerDeviceKind.stylus,
+        // Los eventos inyectados llegan sin tipo (ver fingerKinds).
+        PointerDeviceKind.unknown,
       };
 }

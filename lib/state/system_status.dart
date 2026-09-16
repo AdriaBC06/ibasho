@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:async';
-import 'dart:io';
 
+import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../backend/ibasho_backend.dart';
 import '../backend/models.dart';
+import '../core/device.dart';
 
 /// Reloj del entorno. Late al segundo, alineado con el reloj del sistema.
 class Clock extends StateNotifier<DateTime> {
@@ -18,6 +19,18 @@ class Clock extends StateNotifier<DateTime> {
   }
 
   Timer? _timer;
+
+  /// En segundo plano el reloj no late: nadie lo ve.
+  void pause() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  void resume() {
+    if (_timer != null) return;
+    state = DateTime.now();
+    _align();
+  }
 
   void _align() {
     final now = DateTime.now();
@@ -59,9 +72,26 @@ class SystemStatus {
 
 /// Estado del sistema que se ve en la esquina superior derecha.
 class SystemStatusController extends StateNotifier<SystemStatus> {
-  SystemStatusController(this._backend) : super(const SystemStatus()) {
+  SystemStatusController(this._backend, {BatteryWatch? battery})
+      : _battery = battery ?? PluginBatteryWatch(),
+        super(const SystemStatus()) {
+    _start();
+  }
+
+  final IbashoBackend _backend;
+  final BatteryWatch _battery;
+
+  Timer? _batteryTimer;
+  Timer? _linkTimer;
+  StreamSubscription<void>? _batteryChanges;
+
+  void _start() {
     unawaited(_refreshBattery());
     unawaited(_refreshLink());
+    _batteryChanges = _battery.changes.listen(
+      (_) => unawaited(_refreshBattery()),
+      onError: (Object e) => debugPrint('Ibasho: avisos de bateria ($e)'),
+    );
     _batteryTimer = Timer.periodic(
       const Duration(seconds: 20),
       (_) => unawaited(_refreshBattery()),
@@ -74,15 +104,25 @@ class SystemStatusController extends StateNotifier<SystemStatus> {
     );
   }
 
-  final IbashoBackend _backend;
+  /// En segundo plano no se mide nada.
+  void pause() {
+    _batteryTimer?.cancel();
+    _linkTimer?.cancel();
+    unawaited(_batteryChanges?.cancel());
+    _batteryTimer = null;
+    _linkTimer = null;
+    _batteryChanges = null;
+  }
 
-  Timer? _batteryTimer;
-  Timer? _linkTimer;
+  /// Al volver se mide al momento: la red puede haber cambiado entretanto.
+  void resume() {
+    if (_linkTimer != null) return;
+    _start();
+  }
 
   @override
   void dispose() {
-    _batteryTimer?.cancel();
-    _linkTimer?.cancel();
+    pause();
     super.dispose();
   }
 
@@ -92,37 +132,54 @@ class SystemStatusController extends StateNotifier<SystemStatus> {
   }
 
   Future<void> _refreshBattery() async {
-    final info = await readBattery();
+    final info = await _battery.read();
     if (mounted) state = SystemStatus(battery: info, link: state.link);
   }
 }
 
-/// Lee la bateria de sysfs. Sin dependencias y sin plugins.
+/// De donde sale la bateria. Se sustituye en los tests.
+abstract interface class BatteryWatch {
+  /// Nivel y carga, o `null` si el equipo no tiene bateria.
+  Future<BatteryInfo?> read();
+
+  /// Avisa cuando cambia el estado de carga.
+  Stream<void> get changes;
+}
+
+/// Bateria por `battery_plus`: el mismo camino en Android y en Linux (UPower).
 ///
-/// Devuelve `null` en cuanto algo no cuadra: un sobremesa no tiene bateria y
-/// la barra de estado no debe inventarse una.
-Future<BatteryInfo?> readBattery() async {
-  if (!Platform.isLinux) return null;
-  try {
-    final root = Directory('/sys/class/power_supply');
-    if (!await root.exists()) return null;
-    await for (final entry in root.list(followLinks: true)) {
-      final name = entry.path.split('/').last;
-      if (!name.startsWith('BAT')) continue;
-      final capacity = File('${entry.path}/capacity');
-      if (!await capacity.exists()) continue;
-      final level = int.tryParse((await capacity.readAsString()).trim());
-      if (level == null) continue;
-      var charging = false;
-      final status = File('${entry.path}/status');
-      if (await status.exists()) {
-        final value = (await status.readAsString()).trim().toLowerCase();
-        charging = value == 'charging' || value == 'full';
-      }
-      return BatteryInfo(level: level.clamp(0, 100), charging: charging);
+/// Devuelve `null` en cuanto algo no cuadra: un sobremesa no tiene bateria
+/// (UPower da estado desconocido) y la barra de estado no debe inventarse una.
+class PluginBatteryWatch implements BatteryWatch {
+  final Battery _plugin = Battery();
+
+  /// Ultimo estado de carga conocido. En Linux, preguntar el estado abre una
+  /// conexion de D-Bus que el plugin no cierra; el flujo de cambios usa una
+  /// sola, asi que el estado sale de ahi y solo el nivel se pregunta.
+  BatteryState? _state;
+
+  /// En Android el flujo del plugin necesita un permiso privado de androidx
+  /// para registrar su receptor, y ese permiso se quita del manifiesto (ver
+  /// AndroidManifest.xml): la bateria se lee sondeando, que es lo que hacia
+  /// la version de Linux desde el principio.
+  @override
+  Stream<void> get changes => Device.isAndroid
+      ? const Stream<void>.empty()
+      : _plugin.onBatteryStateChanged.map((state) => _state = state);
+
+  @override
+  Future<BatteryInfo?> read() async {
+    try {
+      final state = _state ?? await _plugin.batteryState;
+      _state = state;
+      if (state == BatteryState.unknown) return null;
+      final level = await _plugin.batteryLevel;
+      return BatteryInfo(
+        level: level.clamp(0, 100),
+        charging: state == BatteryState.charging || state == BatteryState.full,
+      );
+    } catch (e) {
+      return null;
     }
-  } catch (e) {
-    debugPrint('Ibasho: no se ha podido leer la bateria ($e)');
   }
-  return null;
 }

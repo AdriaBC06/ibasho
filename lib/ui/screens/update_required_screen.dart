@@ -4,6 +4,8 @@
 
 import 'dart:io';
 
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,6 +21,7 @@ import '../widgets/glyphs.dart';
 import '../widgets/gloss.dart';
 import '../widgets/logo.dart';
 import '../widgets/panel.dart';
+import '../layout.dart';
 
 /// Esta build es mas antigua que la minima exigida: no se deja pasar.
 ///
@@ -46,6 +49,8 @@ class UpdateRequiredScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
+    final layout = Layout.of(context);
+    final tall = layout.tall;
     final requirement = ref.watch(updateRequirementProvider).valueOrNull;
     final minimum = requirement?.minVersion.toString() ?? '';
     final url = requirement?.url;
@@ -53,10 +58,13 @@ class UpdateRequiredScreen extends ConsumerWidget {
     return Bezel(
       child: Center(
         child: SizedBox(
-          width: 640,
+          width: math.min(640, layout.width - layout.gutter * 2),
           child: ScreenPanel(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(48, 40, 48, 38),
+              padding: layout.pick(
+                const EdgeInsets.fromLTRB(48, 40, 48, 38),
+                const EdgeInsets.fromLTRB(22, 26, 22, 24),
+              ),
               child: Column(
                 key: const ValueKey<String>('update.required'),
                 mainAxisSize: MainAxisSize.min,
@@ -78,14 +86,30 @@ class UpdateRequiredScreen extends ConsumerWidget {
                     style: Ty.body.copyWith(color: T.inkSoft),
                   ),
                   const SizedBox(height: 24),
+                  // Las dos versiones y la flecha: si no caben de lado, la
+                  // flecha se queda igual y las pastillas se reparten.
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _VersionChip(label: l.updateYours, version: appVersion, current: false),
-                      const SizedBox(width: 14),
+                      _Fit(
+                        tall: tall,
+                        child: _VersionChip(
+                          label: l.updateYours,
+                          version: appVersion,
+                          current: false,
+                        ),
+                      ),
+                      SizedBox(width: layout.pick(14, 10)),
                       GlyphIcon(Glyph.arrowRight, size: 22, color: skin.accentDeep),
-                      const SizedBox(width: 14),
-                      _VersionChip(label: l.updateNeeded, version: minimum, current: true),
+                      SizedBox(width: layout.pick(14, 10)),
+                      _Fit(
+                        tall: tall,
+                        child: _VersionChip(
+                          label: l.updateNeeded,
+                          version: minimum,
+                          current: true,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 28),
@@ -93,15 +117,18 @@ class UpdateRequiredScreen extends ConsumerWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IbashoButton(
-                          key: const ValueKey<String>('update.download'),
-                          label: l.updateDownload,
-                          glyph: Glyph.download,
-                          tone: ButtonTone.accent,
-                          height: 52,
-                          minWidth: 240,
-                          cue: null,
-                          onPressed: () => _open(url),
+                        _Fit(
+                          tall: tall,
+                          child: IbashoButton(
+                            key: const ValueKey<String>('update.download'),
+                            label: l.updateDownload,
+                            glyph: Glyph.download,
+                            tone: ButtonTone.accent,
+                            height: 52,
+                            minWidth: layout.pick(240, 0),
+                            cue: null,
+                            onPressed: () => _open(url),
+                          ),
                         ),
                       ],
                     ),
@@ -145,4 +172,15 @@ class _VersionChip extends StatelessWidget {
       ],
     );
   }
+}
+
+/// En vertical cede el ancho que haga falta; en horizontal ocupa lo suyo.
+class _Fit extends StatelessWidget {
+  const _Fit({required this.tall, required this.child});
+
+  final bool tall;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => tall ? Flexible(child: child) : child;
 }

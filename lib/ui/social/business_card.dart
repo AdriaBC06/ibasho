@@ -9,6 +9,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../backend/tama.dart';
@@ -348,6 +349,19 @@ Future<Uint8List> renderBusinessCard(GlobalKey boundaryKey) async {
   } finally {
     image.dispose();
   }
+}
+
+/// Comparte el PNG con el menu del sistema (Android): se escribe en la cache
+/// de la app y se entrega a quien elija la persona.
+Future<void> shareBusinessCard(List<int> png, String username, String text) async {
+  final dir = await getTemporaryDirectory();
+  final safe = username.replaceAll(RegExp(r'[^a-z0-9_]'), '');
+  final file = File('${dir.path}/ibasho-${safe.isEmpty ? 'tarjeta' : safe}.png');
+  await file.writeAsBytes(png, flush: true);
+  await SharePlus.instance.share(ShareParams(
+    files: [XFile(file.path, mimeType: 'image/png')],
+    text: text,
+  ));
 }
 
 /// Guarda el PNG en Descargas (o en Documentos si el sistema no tiene) y

@@ -2,12 +2,15 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import '../../audio/audio_service.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
+import '../layout.dart';
 import 'controls.dart';
 import 'gloss.dart';
 
@@ -74,20 +77,33 @@ class IbashoDialog extends StatelessWidget {
   final double width;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: width,
-        child: GlossSurface(
-          radius: 28,
-          elevation: 2.4,
-          padding: const EdgeInsets.fromLTRB(34, 30, 34, 26),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Ty.title),
-              const SizedBox(height: 14),
-              body,
-              const SizedBox(height: 26),
+  Widget build(BuildContext context) {
+    final layout = Layout.of(context);
+    // Un dialogo nunca es mas ancho que el lienzo: en vertical se queda con
+    // el ancho de la pantalla menos sus margenes.
+    final width = math.min(this.width, layout.width - layout.gutter * 2);
+
+    return SizedBox(
+      width: width,
+      child: GlossSurface(
+        radius: 28,
+        elevation: 2.4,
+        padding: layout.pick(
+          const EdgeInsets.fromLTRB(34, 30, 34, 26),
+          const EdgeInsets.fromLTRB(22, 22, 22, 20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: layout.pick(Ty.title, Ty.lead.copyWith(fontWeight: FontWeight.w500))),
+            const SizedBox(height: 14),
+            body,
+            SizedBox(height: layout.pick(26, 20)),
+            // En vertical los dos botones se reparten la linea, y con mas de
+            // dos bajan si no caben. En horizontal van a la derecha, en una
+            // fila, como siempre.
+            if (!layout.tall)
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -96,11 +112,28 @@ class IbashoDialog extends StatelessWidget {
                     actions[i],
                   ],
                 ],
+              )
+            else if (actions.length == 2)
+              Row(
+                children: [
+                  for (var i = 0; i < actions.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 12),
+                    Expanded(child: actions[i]),
+                  ],
+                ],
+              )
+            else
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 12,
+                runSpacing: 10,
+                children: actions,
               ),
-            ],
-          ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
 
 /// Pregunta de si o no.
@@ -123,13 +156,17 @@ Future<bool> askConfirmation(
         IbashoButton(
           label: cancelLabel,
           tone: ButtonTone.quiet,
+          expand: Layout.of(context).tall,
           cue: Sfx.back,
           onPressed: () => Navigator.of(context).pop(false),
         ),
         IbashoButton(
           label: confirmLabel,
           tone: tone,
-          minWidth: 140,
+          expand: Layout.of(context).tall,
+          // En vertical no se fuerza un ancho: los dos botones se reparten
+          // la linea.
+          minWidth: Layout.of(context).pick(140, 0),
           onPressed: () => Navigator.of(context).pop(true),
         ),
       ],
@@ -155,9 +192,9 @@ void showIbashoToast(
   late final OverlayEntry entry;
   entry = OverlayEntry(
     builder: (context) => Positioned(
-      left: 0,
-      right: 0,
-      bottom: 44,
+      left: Layout.of(context).pick(0, 16),
+      right: Layout.of(context).pick(0, 16),
+      bottom: Layout.of(context).pick(44, 28),
       child: IgnorePointer(
         child: Center(
           child: ValueListenableBuilder<bool>(
@@ -179,6 +216,9 @@ void showIbashoToast(
               padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
               child: Text(
                 message,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: Ty.body.copyWith(
                   color: T.onAccent,
                   fontWeight: FontWeight.w500,

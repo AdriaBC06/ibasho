@@ -76,6 +76,13 @@ abstract interface class IbashoBackend {
   /// hacer es dejar escrituras encargadas para cuando la app se cierre.
   PresenceLink openPresenceLink({required Future<String> Function() token});
 
+  /// La app pasa a segundo plano (`true`) o vuelve (`false`).
+  ///
+  /// En segundo plano se cierran las suscripciones en tiempo real y no se
+  /// reintenta nada; al volver se reconectan todas y el servidor manda de
+  /// nuevo el estado completo de cada nodo. Solo lo usa el movil.
+  void setBackground(bool background);
+
   // --- Salud -------------------------------------------------------------
 
   /// Comprueba conectividad real contra el endpoint de la base.

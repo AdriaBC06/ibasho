@@ -17,33 +17,29 @@ import 'session.dart';
 class PresenceStatus {
   const PresenceStatus({
     this.mode = PresenceMode.online,
-    this.idle = false,
     this.connected = false,
   });
 
-  /// Lo que ha elegido la persona.
+  /// Lo que ha elegido la persona. Mientras no elija otra cosa, conectado.
   final PresenceMode mode;
-
-  /// Lleva un rato sin tocar nada.
-  final bool idle;
 
   /// Hay conexion persistente con el servidor.
   final bool connected;
 
   /// Lo que ven sus amigos.
-  PresenceState get published => publishedFor(mode, idle: idle);
+  PresenceState get published => publishedFor(mode);
 
-  PresenceStatus copyWith({PresenceMode? mode, bool? idle, bool? connected}) => PresenceStatus(
+  PresenceStatus copyWith({PresenceMode? mode, bool? connected}) => PresenceStatus(
         mode: mode ?? this.mode,
-        idle: idle ?? this.idle,
         connected: connected ?? this.connected,
       );
 }
 
-/// Estado publicado para una eleccion. Invisible publica exactamente lo mismo
+/// Estado publicado para una eleccion. No hay estados automaticos: sale lo que
+/// la persona ha elegido, y nada mas. Invisible publica exactamente lo mismo
 /// que una desconexion.
-PresenceState publishedFor(PresenceMode mode, {required bool idle}) => switch (mode) {
-      PresenceMode.online => idle ? PresenceState.away : PresenceState.online,
+PresenceState publishedFor(PresenceMode mode) => switch (mode) {
+      PresenceMode.online => PresenceState.online,
       PresenceMode.away => PresenceState.away,
       PresenceMode.busy => PresenceState.busy,
       PresenceMode.invisible => PresenceState.offline,
@@ -60,12 +56,15 @@ PresenceState publishedFor(PresenceMode mode, {required bool idle}) => switch (m
 /// publica `offline` con la misma forma que deja una desconexion de verdad (y
 /// solo si no estaba ya asi, para no mover `lastSeen`), y no se vuelve a
 /// escribir nada mientras dure.
+///
+/// Estar dentro de la app es lo que publica el estado elegido; estar fuera
+/// publica `offline`. No hay ausente automatico: si alguien sale a ausente es
+/// porque lo ha elegido.
 class PresenceController extends StateNotifier<PresenceStatus> {
   PresenceController({
     required IbashoBackend backend,
     required SessionController session,
     required bool active,
-    this.idleAfter = const Duration(minutes: 5),
   })  : _backend = backend,
         _session = session,
         super(const PresenceStatus()) {
@@ -75,13 +74,11 @@ class PresenceController extends StateNotifier<PresenceStatus> {
   final IbashoBackend _backend;
   final SessionController _session;
 
-  /// Sin interaccion durante este rato, conectado pasa a ausente.
-  final Duration idleAfter;
-
   PresenceLink? _link;
   StreamSubscription<bool>? _connection;
-  Timer? _idleCheck;
-  DateTime _lastActivity = DateTime.now();
+
+  /// La app esta en segundo plano: no hay conexion abierta.
+  bool _suspended = false;
 
   /// Lo ultimo que se sabe publicado en el servidor.
   PresenceState? _serverState;
@@ -92,11 +89,47 @@ class PresenceController extends StateNotifier<PresenceStatus> {
 
   @override
   void dispose() {
-    _idleCheck?.cancel();
     unawaited(_connection?.cancel());
     // Cerrar la conexion basta: el servidor ejecuta lo encargado.
     unawaited(_link?.close());
     super.dispose();
+  }
+
+  /// La app pasa a segundo plano (solo movil).
+  ///
+  /// Fuera de la app no se esta: se publica `offline`, que es justo lo que
+  /// dejaria el `onDisconnect`, y se cierra el websocket limpiamente. Quien ya
+  /// estaba invisible no toca nada, porque ya publica exactamente eso.
+  Future<void> suspend() async {
+    if (_suspended) return;
+    _suspended = true;
+    final link = _link;
+    final subscription = _connection;
+    _link = null;
+    _connection = null;
+    await subscription?.cancel();
+    if (link == null) return;
+    if (link.isConnected && _serverState != PresenceState.offline) {
+      final value = {'state': PresenceState.offline.name, 'lastSeen': serverTimestamp};
+      try {
+        await link.setOnDisconnect(_path, value);
+        await link.set(_path, value);
+        _serverState = PresenceState.offline;
+      } catch (e) {
+        debugPrint('Ibasho: no se ha podido dejar la presencia en desconectado ($e)');
+      }
+    }
+    await link.close();
+    if (mounted) state = state.copyWith(connected: false);
+  }
+
+  /// Vuelve del segundo plano: conexion nueva, con su retroceso, y la
+  /// presencia de siempre en cuanto conecte.
+  Future<void> resume() async {
+    if (!_suspended || !mounted) return;
+    _suspended = false;
+    _serverState = null;
+    await _start();
   }
 
   Future<void> _start() async {
@@ -113,7 +146,7 @@ class PresenceController extends StateNotifier<PresenceStatus> {
     } catch (e) {
       debugPrint('Ibasho: no se ha podido leer la presencia ($e)');
     }
-    if (!mounted) return;
+    if (!mounted || _suspended) return;
 
     final link = _link = _backend.openPresenceLink(token: _session.freshToken);
     _connection = link.connection.listen((up) {
@@ -126,32 +159,12 @@ class PresenceController extends StateNotifier<PresenceStatus> {
         unawaited(_apply());
       }
     });
-
-    _idleCheck = Timer.periodic(const Duration(seconds: 15), (_) => _checkIdle());
-  }
-
-  /// Hay movimiento: raton, teclado, un toque.
-  void activity() {
-    _lastActivity = DateTime.now();
-    if (state.idle && mounted) {
-      state = state.copyWith(idle: false);
-      unawaited(_apply());
-    }
-  }
-
-  void _checkIdle() {
-    if (!mounted || state.idle) return;
-    if (DateTime.now().difference(_lastActivity) >= idleAfter) {
-      state = state.copyWith(idle: true);
-      unawaited(_apply());
-    }
   }
 
   /// Fija el estado a mano. Se guarda en la cuenta.
   Future<void> setMode(PresenceMode mode) async {
     if (mode == state.mode) return;
-    state = state.copyWith(mode: mode, idle: false);
-    _lastActivity = DateTime.now();
+    state = state.copyWith(mode: mode);
     unawaited(_apply());
     try {
       await _backend.write(
