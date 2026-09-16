@@ -32,6 +32,14 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# audioplayers_windows llega a <experimental/coroutine> a traves de C++/WinRT.
+# En la STL de MSVC 14.51 —Visual Studio 18, la que traen los runners de
+# GitHub— esa cabecera dejo de ser un aviso y es un error duro (STL1011), asi
+# que el plugin no compila sin esto. Con MSVC 14.44 no hace falta, y por eso
+# compilaba en local y no en el CI. El dia que Microsoft la retire del todo no
+# bastara con silenciarlo: habra que subir audioplayers.
+add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by

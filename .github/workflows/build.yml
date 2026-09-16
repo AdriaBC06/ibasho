@@ -117,8 +117,11 @@ jobs:
         if: matrix.plataforma == 'linux'
         run: |
           sudo apt-get update
+          # gstreamer va aparte y es facil de olvidar: lo pide audioplayers_linux
+          # y sin el, cmake corta con "required packages were not found".
           sudo apt-get install -y clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libasound2-dev
+            libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libasound2-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 
       - name: Compilar Linux
         if: matrix.plataforma == 'linux'
