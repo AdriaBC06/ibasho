@@ -107,7 +107,10 @@ jobs:
       - name: Leer la version de pubspec.yaml
         id: version
         shell: bash
-        run: echo "valor=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' pubspec.yaml)" >> "$GITHUB_OUTPUT"
+        # En bloque y no en linea: el `version: ` del sed lleva dos puntos y
+        # espacio, y en un escalar suelto YAML lo lee como una clave anidada.
+        run: |
+          echo "valor=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' pubspec.yaml)" >> "$GITHUB_OUTPUT"
 
       # ---------------------------------------------------------------- Linux
       - name: Dependencias de escritorio de Linux
