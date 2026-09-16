@@ -40,6 +40,11 @@ Original, sintetizada por `tool/gen_audio.py` y publicada bajo **CC0 1.0**
 | noche (ambiente, bucle de 64 s) | `assets/audio/bgm/noche.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | tick · open · back · error · chime (efectos) | `assets/audio/sfx/*.wav` | Adrià Bonnin Catalán | CC0 1.0 |
 
+Cada pista está además en MP3 (`.mp3`, VBR calidad 2) al lado de su `.ogg`, con
+la misma licencia y el mismo contenido: es lo que suena en Windows, donde el
+sistema no tiene decodificador de Ogg Vorbis. Linux y Android siguen usando los
+`.ogg` originales.
+
 ### Música de terceros
 
 Descargada de OpenGameArt. La licencia se ha comprobado en la página de cada

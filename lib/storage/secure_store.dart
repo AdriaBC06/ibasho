@@ -56,7 +56,8 @@ class _KeyringStore implements SecureStore {
   final FlutterSecureStorage _storage;
 
   @override
-  String get backendName => 'libsecret';
+  // En Windows flutter_secure_storage cifra con DPAPI, no con libsecret.
+  String get backendName => Platform.isWindows ? 'dpapi' : 'libsecret';
 
   @override
   Future<String?> read(String key) => _storage.read(key: key);
@@ -119,6 +120,7 @@ class _EncryptedFileStore implements SecureStore {
   }
 
   static Future<String> _machineId() async {
+    if (Platform.isWindows) return _windowsMachineId();
     for (final path in const ['/etc/machine-id', '/var/lib/dbus/machine-id']) {
       final file = File(path);
       if (await file.exists()) {
@@ -127,6 +129,35 @@ class _EncryptedFileStore implements SecureStore {
       }
     }
     return '${Platform.localHostname}|${Platform.environment['HOME'] ?? ''}';
+  }
+
+  /// Identificador estable de la maquina en Windows.
+  ///
+  /// El equivalente a /etc/machine-id es MachineGuid, que sobrevive a las
+  /// actualizaciones del sistema. El respaldo es el perfil del usuario, que
+  /// tambien es estable. Importa que ninguno de los dos varie entre arranques:
+  /// si cambia, la clave derivada cambia y el almacen cifrado deja de
+  /// descifrarse, de modo que la sesion guardada se pierde.
+  static Future<String> _windowsMachineId() async {
+    try {
+      final result = await Process.run('reg', const [
+        'query',
+        r'HKLM\SOFTWARE\Microsoft\Cryptography',
+        '/v',
+        'MachineGuid',
+        '/reg:64',
+      ]);
+      if (result.exitCode == 0) {
+        final match = RegExp(r'MachineGuid\s+REG_SZ\s+(\S+)')
+            .firstMatch(result.stdout as String);
+        final value = match?.group(1)?.trim();
+        if (value != null && value.isNotEmpty) return value;
+      }
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido leer MachineGuid ($e)');
+    }
+    final env = Platform.environment;
+    return '${Platform.localHostname}|${env['USERPROFILE'] ?? env['HOME'] ?? ''}';
   }
 
   GCMBlockCipher _cipher(Uint8List key, Uint8List nonce, {required bool encrypt}) =>

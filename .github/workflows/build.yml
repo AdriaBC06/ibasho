@@ -1,0 +1,179 @@
+# Ibasho — compila y empaqueta las tres plataformas.
+# Copyright (C) 2026 Adrià Bonnin Catalán
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Para anadir una plataforma basta con anadir una entrada a la matriz de
+# `compilar` y su bloque de pasos, marcado con `if: matrix.plataforma == ...`.
+# Lo comun (checkout, SDK, .env, version) ya esta resuelto para todas.
+#
+# Secrets que espera el repositorio:
+#   IBASHO_API_KEY         obligatorio, clave web del proyecto Firebase
+#   IBASHO_DATABASE_URL    obligatorio, URL de la Realtime Database sin barra final
+#   IBASHO_PROJECT_ID      opcional
+#   IBASHO_EMAIL_DOMAIN    opcional, por defecto ibasho.top
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+#   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+#                          opcionales: si estan, el APK se firma; si no, sale sin firmar.
+
+name: Compilar
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+# La misma version del SDK con la que esta hecho el proyecto (ver .metadata).
+# Subirla sin probar rompe la resolucion de intl: no se toca a la ligera.
+env:
+  FLUTTER_VERSION: '3.41.2'
+
+jobs:
+  comprobar:
+    name: Analisis y tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Reconstruir .env desde los secrets
+        shell: bash
+        env:
+          API_KEY: ${{ secrets.IBASHO_API_KEY }}
+          DATABASE_URL: ${{ secrets.IBASHO_DATABASE_URL }}
+          PROJECT_ID: ${{ secrets.IBASHO_PROJECT_ID }}
+          EMAIL_DOMAIN: ${{ secrets.IBASHO_EMAIL_DOMAIN }}
+        run: |
+          {
+            echo "IBASHO_API_KEY=$API_KEY"
+            echo "IBASHO_DATABASE_URL=$DATABASE_URL"
+            echo "IBASHO_EMAIL_DOMAIN=${EMAIL_DOMAIN:-ibasho.top}"
+            echo "IBASHO_USE_EMULATOR=false"
+            echo "IBASHO_PROJECT_ID=$PROJECT_ID"
+          } > .env
+
+      - run: flutter pub get
+      - run: dart analyze
+      - run: flutter test
+
+  compilar:
+    name: ${{ matrix.nombre }}
+    needs: comprobar
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - plataforma: linux
+            nombre: Linux (bundle)
+            runner: ubuntu-latest
+          - plataforma: android
+            nombre: Android (APK)
+            runner: ubuntu-latest
+          - plataforma: windows
+            nombre: Windows (instalador y zip)
+            runner: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Reconstruir .env desde los secrets
+        shell: bash
+        env:
+          API_KEY: ${{ secrets.IBASHO_API_KEY }}
+          DATABASE_URL: ${{ secrets.IBASHO_DATABASE_URL }}
+          PROJECT_ID: ${{ secrets.IBASHO_PROJECT_ID }}
+          EMAIL_DOMAIN: ${{ secrets.IBASHO_EMAIL_DOMAIN }}
+        run: |
+          {
+            echo "IBASHO_API_KEY=$API_KEY"
+            echo "IBASHO_DATABASE_URL=$DATABASE_URL"
+            echo "IBASHO_EMAIL_DOMAIN=${EMAIL_DOMAIN:-ibasho.top}"
+            echo "IBASHO_USE_EMULATOR=false"
+            echo "IBASHO_PROJECT_ID=$PROJECT_ID"
+          } > .env
+
+      - name: Leer la version de pubspec.yaml
+        id: version
+        shell: bash
+        run: echo "valor=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' pubspec.yaml)" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------- Linux
+      - name: Dependencias de escritorio de Linux
+        if: matrix.plataforma == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libasound2-dev
+
+      - name: Compilar Linux
+        if: matrix.plataforma == 'linux'
+        run: |
+          flutter build linux --release --dart-define-from-file=.env
+          mkdir -p dist
+          tar -czf "dist/Ibasho-${{ steps.version.outputs.valor }}-linux-x64.tar.gz" \
+            -C build/linux/x64/release/bundle .
+
+      # -------------------------------------------------------------- Android
+      - uses: actions/setup-java@v4
+        if: matrix.plataforma == 'android'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar la firma (solo si hay keystore)
+        if: matrix.plataforma == 'android'
+        shell: bash
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "Sin keystore en los secrets: el APK saldra sin firmar (firma de debug)."
+            exit 0
+          fi
+          echo "$KEYSTORE" | base64 -d > android/app/ibasho.jks
+          {
+            echo "storeFile=ibasho.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+
+      - name: Compilar Android
+        if: matrix.plataforma == 'android'
+        run: |
+          flutter build apk --release --dart-define-from-file=.env
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "dist/Ibasho-${{ steps.version.outputs.valor }}-android.apk"
+
+      # -------------------------------------------------------------- Windows
+      - name: Inno Setup
+        if: matrix.plataforma == 'windows'
+        run: choco install innosetup -y --no-progress
+
+      - name: Compilar y empaquetar Windows
+        if: matrix.plataforma == 'windows'
+        shell: pwsh
+        run: .\tool\package_windows.ps1
+
+      # ------------------------------------------------------------ Artefacto
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ibasho-${{ steps.version.outputs.valor }}-${{ matrix.plataforma }}
+          path: dist/*
+          if-no-files-found: error

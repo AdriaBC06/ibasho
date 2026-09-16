@@ -6,8 +6,8 @@ Ibasho es un espacio de juegos multiplataforma inspirado en los menús de sistem
 de Wii y Nintendo 3DS: un launcher de micro-apps con avatares propios (los
 **Tamas**), cuentas, amigos y mensajería.
 
-Este repositorio está en el **checkpoint 3.1** (0.3.1): el entorno, las cuentas,
-los **Tamas** y los **amigos**, en Linux y en Android. Todavía no hay apps dentro, pero el entorno ya se
+Este repositorio está en el **checkpoint 3.2** (0.3.3): el entorno, las cuentas,
+los **Tamas** y los **amigos**, en Linux, Android y Windows. Todavía no hay apps dentro, pero el entorno ya se
 puede usar: splash, login, cambio obligatorio de contraseña, entorno de dos
 paneles con reloj y barra de estado, rejilla de canales con paginación y
 animación de apertura, perfil, ajustes, créditos, panel de administración, el
@@ -16,10 +16,12 @@ códigos de amigo al estilo 3DS, solicitudes, presencia, perfiles con la hora
 local y la música de cada cual, tarjeta de visita exportable y muro de
 cumpleaños.
 
-Plataformas: **Linux desktop** y **Android** (móvil y tableta). La 0.3.1 no
-añade funcionalidades: lleva a Android exactamente lo que ya había, con una
-composición vertical propia y todo lo que un móvil necesita (táctil, botón de
-atrás, ciclo de vida, foco de audio). Windows sigue fuera.
+Plataformas: **Linux desktop**, **Android** (móvil y tableta) y **Windows 10 o
+posterior**, de 64 bits. Ni la 0.3.1 ni la 0.3.3 añaden funcionalidades: llevan
+a cada plataforma nueva exactamente lo que ya había. Android trajo la
+composición vertical y lo que un móvil necesita (táctil, botón de atrás, ciclo
+de vida, foco de audio); Windows no necesitó ninguna rama de composición, porque
+usa la de escritorio y hereda la vertical al estrechar la ventana.
 
 ---
 
@@ -27,6 +29,12 @@ atrás, ciclo de vida, foco de audio). Windows sigue fuera.
 
 - Flutter stable (probado con 3.41) y Dart 3.
 - Toolchain de Linux desktop: `clang`, `cmake`, `ninja`, `pkg-config`, `gtk3`.
+- Para Windows: **Visual Studio 2022** (vale la edición Build Tools) con la carga
+  de trabajo *Desarrollo de escritorio con C++* **y el componente C++ ATL**, que
+  no viene marcado por defecto y sin el cual `flutter_secure_storage` no compila
+  (`atlstr.h: No such file or directory`). Hace falta además el **Modo de
+  desarrollador** de Windows activado, porque la compilación con plugins usa
+  enlaces simbólicos. Para empaquetar, Inno Setup 6.
 - Para Android: SDK de Android (probado con la plataforma 36 y build-tools
   36.1), NDK y un JDK 17 o posterior. `flutter doctor` tiene que dar verde la
   línea de *Android toolchain*.
@@ -93,7 +101,8 @@ que existieran.
 ### 4. Ejecutar
 
 ```sh
-flutter run -d linux --dart-define-from-file=.env          # escritorio
+flutter run -d linux --dart-define-from-file=.env          # escritorio Linux
+flutter run -d windows --dart-define-from-file=.env        # escritorio Windows
 flutter run -d <id-del-movil> --dart-define-from-file=.env # Android
 ```
 
@@ -220,6 +229,106 @@ está en el plástico de la casa (sombras y rebajes desenfocados) a 1080×2400,
 no en los Tamas. En ese teléfono la app se usa bien pero no va fina; **sigue
 pendiente** cachear las superficies estáticas y bajar el ritmo de los Tamas que
 no están en primer plano.
+
+## Windows
+
+La app es la misma y el árbol de widgets también. Windows usa la composición de
+escritorio, la de 1280×800, y no tiene ninguna rama propia de disposición: si se
+estrecha la ventana hasta que sea más alta que ancha, salta a la composición
+vertical igual que en Linux.
+
+### Compilar
+
+```powershell
+flutter build windows --release --dart-define-from-file=.env
+```
+
+Queda en `build\windows\x64\runner\Release\`: `ibasho.exe`, los DLL de los
+plugins y la carpeta `data\`. Flutter no sabe producir un `.exe` único; para
+repartir hay que empaquetar.
+
+Dos requisitos que no son obvios y cuyo error no se explica solo:
+
+- **Componente C++ ATL.** La carga de trabajo de escritorio de Visual Studio no
+  lo marca por defecto, y sin él `flutter_secure_storage` falla con
+  `atlstr.h: No such file or directory`. En Build Tools se añade con
+  `--add Microsoft.VisualStudio.Component.VC.ATL`.
+- **Modo de desarrollador.** Sin él la compilación se detiene con *Building with
+  plugins requires symlink support*. Se activa en
+  *Configuración → Sistema → Para programadores*.
+
+### Empaquetar
+
+```powershell
+.\tool\package_windows.ps1              # compila en release con .env y empaqueta
+.\tool\package_windows.ps1 -SkipBuild   # solo empaqueta lo ya compilado
+```
+
+Deja dos cosas en `dist\`, con la versión sacada de `pubspec.yaml`:
+
+- `Ibasho-<versión>-windows-x64-setup.exe` — instalador de un solo fichero.
+- `Ibasho-<versión>-windows-x64.zip` — la misma build, portable.
+
+El instalador lo describe `windows\packaging\ibasho.iss` (Inno Setup 6). Se
+instala **sin pedir administrador**, en `%LOCALAPPDATA%\Programs\Ibasho`, igual
+que en Linux todo va a `~/.local`. Las preferencias y la sesión guardada viven
+aparte y desinstalar no las toca.
+
+### La música va en MP3
+
+Las pistas viven en Ogg Vorbis, pero Windows no lo decodifica: `audioplayers`
+usa Media Foundation y allí el Ogg no suena, mientras los efectos, que van por
+SoLoud, sí. Por eso cada pista tiene un `.mp3` al lado del `.ogg` y en Windows
+se pide ese; Linux y Android siguen con los `.ogg` originales. Si se añade una
+pista hay que generar las dos:
+
+```sh
+ffmpeg -i assets/audio/bgm/nueva.ogg -c:a libmp3lame -q:a 2 -map_metadata -1 assets/audio/bgm/nueva.mp3
+```
+
+### Qué hace falta en la máquina que lo ejecuta
+
+Windows 10 de 64 bits o posterior, y nada más. El instalador y el zip llevan
+dentro `msvcp140.dll`, `vcruntime140.dll` y `vcruntime140_1.dll`: un Windows
+recién instalado trae el CRT universal (`api-ms-win-crt-*`) pero no el runtime
+de Visual C++, y sin él la app no arranca ni dice por qué falta. Lo copia
+`tool\package_windows.ps1` desde el redistribuible de Visual Studio.
+
+El ejecutable no va firmado con certificado, así que la primera vez SmartScreen
+avisa y hay que elegir *Más información → Ejecutar de todas formas*.
+
+## Integración continua
+
+`.github/workflows/build.yml` compila las tres plataformas y sube cada una como
+artefacto. Se dispara al empujar a `main`, al publicar una etiqueta `v*` y a
+mano desde la pestaña *Actions*.
+
+Primero corre un trabajo de comprobación con `dart analyze` y `flutter test`; si
+falla, no se compila nada. Después, un trabajo por plataforma:
+
+| Plataforma | Runner | Artefacto |
+|---|---|---|
+| Linux | `ubuntu-latest` | `Ibasho-<versión>-linux-x64.tar.gz` |
+| Android | `ubuntu-latest` | `Ibasho-<versión>-android.apk` |
+| Windows | `windows-latest` | instalador `.exe` y zip |
+
+El `.env` **se reconstruye en el runner desde los *secrets*** del repositorio y
+nunca sale del árbol. Hay que dar de alta `IBASHO_API_KEY` e
+`IBASHO_DATABASE_URL`; `IBASHO_PROJECT_ID` e `IBASHO_EMAIL_DOMAIN` son
+opcionales.
+
+La firma de Android también es opcional: si están `ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` y `ANDROID_KEY_PASSWORD`, el
+APK sale firmado; si no, sale con la firma de depuración sin romper la build.
+
+La versión del SDK está fijada en `FLUTTER_VERSION` y es la misma que registra
+`.metadata`. Subirla no es inocuo: con una Flutter más nueva, `flutter_localizations`
+exige `intl ^0.20.3` y la resolución de dependencias falla contra el `intl 0.20.2`
+que fija `pubspec.yaml`.
+
+Para añadir una plataforma se añade una entrada a la matriz de `compilar` y su
+bloque de pasos con `if: matrix.plataforma == ...`; lo común —checkout, SDK,
+`.env`, versión y subida del artefacto— ya está resuelto para todas.
 
 ## Tests
 
@@ -428,11 +537,16 @@ modificado podría ignorarlo.
   cumpleaños. Hecho.
 - **0.3.1 · checkpoint 3.1** — Android: composición vertical, táctil, botón de
   atrás, ciclo de vida, foco de audio y empaquetado. Hecho.
+- **0.3.2** — arreglos sobre la 0.3.1: sonido de medios en el móvil y estados de
+  presencia. Hecho.
+- **0.3.3 · checkpoint 3.2** — Windows: runner propio, instalador de un solo
+  fichero, runtime de Visual C++ incluido e integración continua para las tres
+  plataformas. Hecho.
 - **0.4.0** — mensajería.
 - **Más adelante** — **traspasar un Tama** a un amigo para que lo cuide y juegue con él (quien lo
   creó sigue siendo quien edita su aspecto, y el cuidador ve los cambios al
   momento); una tienda donde desbloquear chuches; jugar con los Tamas, accesorios, mensajería, notificaciones,
-  monedas, micro-apps y Windows.
+  monedas y micro-apps.
 
 ## Licencia
 

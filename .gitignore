@@ -18,6 +18,9 @@ build/
 # Linux desktop
 linux/flutter/ephemeral/
 
+# Paquetes listos para repartir (los genera tool/package_windows.ps1)
+dist/
+
 # Localizacion generada
 lib/l10n/gen/
 

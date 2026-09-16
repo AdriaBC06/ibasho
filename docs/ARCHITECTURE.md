@@ -84,6 +84,7 @@ lib/
       tama/            habitación y creador de un Tama
       friends/         añadir amigo, perfil de un amigo y muro de cumpleaños
 android/                   proyecto de Android (manifiesto, Gradle, iconos, MainActivity)
+windows/                   proyecto de Windows (runner nativo, icono, instalador)
 test/
   tall_tour_test.dart      recorrido visual en vertical, en dos tamaños de movil
   touch_targets_test.dart  ninguna zona tactil por debajo de 48 dp; asistente en horizontal
@@ -536,6 +537,76 @@ combinación se reintenta con la de serie antes que quedarse sin efectos.
 
 ---
 
+## 3-ter. Windows
+
+Windows no enciende ninguna rama de composición: usa la de escritorio, la misma
+que Linux, y `Device` no tiene ningún `isWindows`. Lo único propio es el runner
+nativo y dos sitios donde el código daba por hecho que el sistema era Linux.
+
+### Ventana (`windows/runner/`)
+
+- `main.cpp`: título «Ibasho» y 1280×800, el lienzo virtual a escala 1, igual
+  que hace `my_application.cc` en Linux.
+- `win32_window.cpp` atiende `WM_GETMINMAXINFO` para que la ventana no baje de
+  360×640 lógicos, escalados con el DPI del monitor. Ese suelo es el tamaño del
+  móvil más pequeño que miden los tests: por debajo, la composición vertical ya
+  no cabe.
+- `Runner.rc` lleva autor, licencia y nombre de producto. La versión la inyecta
+  Flutter desde `pubspec.yaml`, así que no se escribe a mano. El fichero va en
+  UTF-8 **con BOM**: sin él, `rc.exe` lo lee como ANSI y rompe los acentos del
+  nombre del autor.
+- `resources/app_icon.ico` sale del mismo PNG que usa Linux
+  (`linux/packaging/ibasho.png`), con las seis resoluciones que pide Windows,
+  de 16 a 256.
+
+### Lo que daba por hecho que era Linux (`lib/storage/secure_store.dart`)
+
+- `backendName` devolvía siempre `libsecret`. En Windows `flutter_secure_storage`
+  cifra con DPAPI, y ese nombre es lo que se lee en el canal de depuración.
+- `_machineId()` solo miraba `/etc/machine-id`. En Windows usa el `MachineGuid`
+  del registro, con el perfil del usuario como respaldo. Ese valor entra en el
+  PBKDF2 del almacén cifrado: si cambiara entre arranques, la sesión guardada
+  dejaría de descifrarse, así que no se deriva de nada volátil.
+
+### Dónde viven los datos
+
+`getApplicationSupportDirectory()` en Windows no sale de un identificador de la
+app: `path_provider` lo construye con el **VERSIONINFO del ejecutable**, o sea
+`%APPDATA%\<CompanyName>\<ProductName>` tal y como los declara `Runner.rc`. Hoy
+eso es `%APPDATA%\Adrià Bonnin Catalán\Ibasho`, y ahí van `preferences.json` y
+el llavero. Tocar esos dos campos muda la carpeta y deja atrás los datos de
+quien ya tuviera la app: no se cambian sin pensarlo.
+
+En esa carpeta aparece `flutter_secure_storage.dat`, que es el almacén DPAPI. Si
+aparece `session.vault`, es que el llavero no respondió y se usó el respaldo
+cifrado propio.
+
+### Formato de la música
+
+`audioplayers` en Windows es Media Foundation, y Media Foundation no decodifica
+Ogg Vorbis: las seis pistas salían mudas mientras los efectos, que van por
+SoLoud con sus propios decodificadores, sonaban bien. Por eso `MusicTrack.asset`
+es un getter y no un campo: guarda la ruta del `.ogg` y devuelve la del `.mp3`
+cuando `Device.isWindows`. Los dos ficheros viven juntos en `assets/audio/bgm/`.
+
+Conviene saber que el MP3 no es *gapless*: el codificador añade unos
+milisegundos de silencio al principio y al final, así que el bucle de una pista
+puede tener una costura que en Ogg no está. Si llegara a molestar, la salida es
+llevar la música a SoLoud en Windows, que ya decodifica Ogg —`ogg.dll` y
+`vorbis.dll` viajan en la build por él— a cambio de duplicar la lógica de
+reproducción.
+
+La tarjeta de visita no necesitó tocarse: la rama que no es Android ya guardaba
+el PNG en Descargas, y `getDownloadsDirectory()` existe en Windows.
+
+### Empaquetado
+
+`windows/packaging/ibasho.iss` (Inno Setup 6) y `tool/package_windows.ps1`, que
+además mete en el paquete el runtime de Visual C++ porque Windows no lo trae.
+Los detalles, en el apartado de Windows del README.
+
+---
+
 ## 4. Motor de sonido (`lib/audio/`)
 
 `AudioService.instance` es un singleton. Si el audio no arranca, la app sigue en
@@ -546,7 +617,8 @@ silencio.
 - `init()`: inicializa efectos y crea el reproductor `ibasho_bgm` en bucle.
 - `startMusic()`, `stopMusic()`.
 - `setTrack(String id)`: `MusicTrack.byId(id)`; cambia de pista y suena si la
-  música debe sonar.
+  música debe sonar. `MusicTrack.asset` devuelve `.ogg` o `.mp3` según el
+  sistema (ver «3-ter. Windows»).
 - `setMusicVolume(double)`: a 0 pausa el reproductor.
 - `musicVolume`, `track`.
 - `playProfileTrack(MusicTrack)` / `endProfileTrack()`: pone la pista de un
@@ -904,8 +976,8 @@ suave hasta 52 horas.
 
 ### Comprobar que el escritorio no ha cambiado
 
-La regla del puerto a móvil es que **Linux no puede empeorar**, y eso se
-comprueba con números, no a ojo: el recorrido visual se corre en una copia de
+La regla de cada puerto es que **las plataformas que ya funcionaban no pueden
+empeorar**, y eso se comprueba con números, no a ojo: el recorrido visual se corre en una copia de
 la última versión conocida buena y en el árbol de trabajo, y las imágenes se
 comparan píxel a píxel.
 
@@ -916,6 +988,10 @@ cp .env /tmp/ibasho-base/.env
 flutter test test/visual_tour_test.dart
 # y comparar /tmp/ibasho-base/build/screenshots con build/screenshots
 ```
+
+El recorrido no depende del sistema: en Windows valen los mismos comandos
+cambiando las rutas, y la 0.3.3 se cerró comparando así sus 110 capturas contra
+la 0.3.2, todas idénticas.
 
 Las dos pasadas se hacen seguidas, porque el reloj del entorno sale en la
 captura. Lo único que puede salir distinto es el reloj, el número de versión,

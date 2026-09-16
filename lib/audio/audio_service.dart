@@ -57,20 +57,30 @@ enum MusicTrack {
 
   const MusicTrack(
     this.id,
-    this.asset,
+    this._asset,
     this.author,
     this.license, {
     this.unlockedByDefault = false,
   });
 
   final String id;
-  final String asset;
+  final String _asset;
   final String author;
   final String license;
 
   /// Si ya esta en la lista de musica del menu sin haberla escuchado antes en
   /// ninguna app.
   final bool unlockedByDefault;
+
+  /// Ruta del fichero de la pista.
+  ///
+  /// Las pistas viven en Ogg Vorbis, que es lo que suena en Linux y en Android.
+  /// Windows no lo decodifica: audioplayers va por Media Foundation, y alli el
+  /// Ogg no tiene decodificador, asi que la musica salia muda mientras los
+  /// efectos —que van por SoLoud, con sus propios decodificadores— si sonaban.
+  /// Al lado de cada .ogg hay un .mp3 equivalente, y en Windows se pide ese.
+  String get asset =>
+      Device.isWindows ? _asset.replaceFirst('.ogg', '.mp3') : _asset;
 
   static const MusicTrack fallback = MusicTrack.calma;
 

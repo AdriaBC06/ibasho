@@ -19,7 +19,14 @@ abstract final class Device {
   /// Movil Android: sin raton, con boton de atras, ciclo de vida de movil.
   static bool get isAndroid => debugAndroid ?? (!kIsWeb && Platform.isAndroid);
 
+  /// Escritorio Windows: cambia el formato de audio que admite el sistema.
+  static bool get isWindows => debugWindows ?? (!kIsWeb && Platform.isWindows);
+
   /// Solo para tests: fuerza la rama de Android.
   @visibleForTesting
   static bool? debugAndroid;
+
+  /// Solo para tests: fuerza la rama de Windows.
+  @visibleForTesting
+  static bool? debugWindows;
 }
