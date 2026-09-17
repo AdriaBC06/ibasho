@@ -1042,5 +1042,20 @@
   "adminGroupError": "no se ha podido crear",
   "updateOrVisit": "o entra en esta dirección desde cualquier navegador:",
   "@updateOrVisit": {"description": "Pie de la pantalla de version antigua, encima de la URL de descarga."},
-  "updateOpenFailed": "no se ha podido abrir el navegador: copia la dirección"
+  "updateOpenFailed": "no se ha podido abrir el navegador: copia la dirección",
+  "adminNewsHeadlineEn": "título en inglés (opcional)",
+  "@adminNewsHeadlineEn": {
+    "description": "Campo de la traduccion del titulo en el formulario de noticias."
+  },
+  "adminNewsBodyEn": "texto en inglés (opcional)",
+  "adminNewsOptionEn": "opción {number} en inglés",
+  "@adminNewsOptionEn": {
+    "description": "Campo de la traduccion de una opcion de la encuesta.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "adminNewsTranslation": "sin traducción, todo el mundo la ve en castellano"
 }

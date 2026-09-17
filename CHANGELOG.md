@@ -7,8 +7,17 @@ versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dar
 
 ## 0.4.1 — Que el primer mensaje se vea
 
-Sin funcionalidades nuevas: cinco arreglos de cosas que se rompían justo al
-usarlas.
+Arreglos de cosas que se rompían justo al usarlas, y las noticias en dos
+idiomas.
+
+### Añadido
+
+- **Las noticias se pueden publicar en castellano y en inglés**, y cada cual
+  las lee en el suyo. Título, texto y las opciones de una encuesta. Sin
+  traducción se ve la castellana, que es mejor que un hueco; y una encuesta
+  traducida a medias se descarta entera, porque media encuesta en cada idioma
+  se lee peor que la original. Se publica desde el panel o con
+  `tool/post_news.dart --title-en --body-en --option-en`.
 
 ### Arreglado
 

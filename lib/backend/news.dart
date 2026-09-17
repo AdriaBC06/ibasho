@@ -44,8 +44,11 @@ class NewsItem {
     required this.at,
     required this.by,
     this.body = '',
+    this.titleEn,
+    this.bodyEn,
     this.version,
     this.options = const <String>[],
+    this.optionsEn = const <String>[],
     this.tally = const <int>[],
     this.voters = 0,
     this.closesAt,
@@ -57,6 +60,11 @@ class NewsItem {
   final String title;
   final String body;
 
+  /// La misma entrada en ingles. Ausente = no esta traducida, y entonces se
+  /// enseña la castellana: mas vale leerla en el otro idioma que no leerla.
+  final String? titleEn;
+  final String? bodyEn;
+
   /// La version que anuncia, si es una novedad de version.
   final String? version;
 
@@ -67,6 +75,10 @@ class NewsItem {
 
   /// Opciones de la encuesta, en orden.
   final List<String> options;
+
+  /// Las mismas opciones en ingles, si las hay. Tiene que medir igual que
+  /// `options` para poder usarse; si no, se ignora entera.
+  final List<String> optionsEn;
 
   /// Votos por opcion, alineado con `options`.
   final List<int> tally;
@@ -81,6 +93,20 @@ class NewsItem {
   final bool closed;
 
   bool get isPoll => kind == NewsKind.poll && options.length >= pollOptionsMin;
+
+  /// El titulo en el idioma de la cuenta.
+  String titleIn(String locale) =>
+      locale == 'en' && titleEn != null && titleEn!.isNotEmpty ? titleEn! : title;
+
+  /// El texto en el idioma de la cuenta.
+  String bodyIn(String locale) =>
+      locale == 'en' && bodyEn != null && bodyEn!.isNotEmpty ? bodyEn! : body;
+
+  /// Las opciones en el idioma de la cuenta. Si la traduccion no cuadra en
+  /// numero se usan las originales enteras: media encuesta traducida seria
+  /// peor que ninguna.
+  List<String> optionsIn(String locale) =>
+      locale == 'en' && optionsEn.length == options.length ? optionsEn : options;
 
   /// Si todavia se puede votar.
   bool isOpenAt(DateTime now) =>
@@ -100,18 +126,22 @@ class NewsItem {
     final at = raw['at'];
     if (at is! num) return null;
 
-    final rawOptions = raw['options'];
-    final options = <String>[];
-    if (rawOptions is Map) {
-      for (var i = 0; i < pollOptionsMax; i++) {
-        final value = rawOptions['$i'];
-        if (value is String) options.add(value);
+    List<String> readOptions(Object? rawOptions) {
+      final out = <String>[];
+      if (rawOptions is Map) {
+        for (var i = 0; i < pollOptionsMax; i++) {
+          final value = rawOptions['$i'];
+          if (value is String) out.add(value);
+        }
+      } else if (rawOptions is List) {
+        for (final value in rawOptions) {
+          if (value is String) out.add(value);
+        }
       }
-    } else if (rawOptions is List) {
-      for (final value in rawOptions) {
-        if (value is String) options.add(value);
-      }
+      return out;
     }
+
+    final options = readOptions(raw['options']);
 
     final rawTally = raw['tally'];
     final tally = <int>[
@@ -131,10 +161,13 @@ class NewsItem {
       kind: NewsKind.byName(raw['kind']),
       title: raw['title'] as String,
       body: raw['body'] is String ? raw['body'] as String : '',
+      titleEn: raw['titleEn'] is String ? raw['titleEn'] as String : null,
+      bodyEn: raw['bodyEn'] is String ? raw['bodyEn'] as String : null,
       version: raw['version'] is String ? raw['version'] as String : null,
       at: DateTime.fromMillisecondsSinceEpoch(at.toInt()),
       by: raw['by'] is String ? raw['by'] as String : '',
       options: List<String>.unmodifiable(options),
+      optionsEn: List<String>.unmodifiable(readOptions(raw['optionsEn'])),
       tally: List<int>.unmodifiable(tally),
       voters: rawVoters is Map ? rawVoters.length : 0,
       closesAt: closesAt is num

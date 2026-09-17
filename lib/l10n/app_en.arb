@@ -722,5 +722,16 @@
   "adminGroupExists": "the group already exists",
   "adminGroupError": "it could not be created",
   "updateOrVisit": "or open this address in any browser:",
-  "updateOpenFailed": "the browser could not be opened: copy the address"
+  "updateOpenFailed": "the browser could not be opened: copy the address",
+  "adminNewsHeadlineEn": "title in Spanish (optional)",
+  "adminNewsBodyEn": "text in Spanish (optional)",
+  "adminNewsOptionEn": "option {number} in Spanish",
+  "@adminNewsOptionEn": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "adminNewsTranslation": "without a translation, everyone sees it in Spanish"
 }

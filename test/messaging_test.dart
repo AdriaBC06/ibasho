@@ -463,6 +463,46 @@ Future<void> main() async {
       expect((after['tally']! as Map)['1'], 1);
     });
 
+    test('cada cual lee la noticia en su idioma, y si falta en castellano', () {
+      final item = NewsItem.fromJson('AAAAAAAAAAAAAAAAAAAA', {
+        'kind': 'poll',
+        'title': 'Que viene despues',
+        'body': 'Elige tu',
+        'titleEn': 'What comes next',
+        'bodyEn': 'Your call',
+        'at': DateTime.now().millisecondsSinceEpoch,
+        'by': 'Ibasho',
+        'options': {'0': 'Un minijuego', '1': 'Una tienda'},
+        'optionsEn': {'0': 'A minigame', '1': 'A shop'},
+      })!;
+      expect(item.titleIn('es'), 'Que viene despues');
+      expect(item.titleIn('en'), 'What comes next');
+      expect(item.bodyIn('en'), 'Your call');
+      expect(item.optionsIn('en'), <String>['A minigame', 'A shop']);
+
+      // Sin traduccion se ve la castellana: mejor eso que un hueco.
+      final suelta = NewsItem.fromJson('BBBBBBBBBBBBBBBBBBBB', {
+        'kind': 'note',
+        'title': 'Aviso',
+        'body': 'Sin traducir',
+        'at': DateTime.now().millisecondsSinceEpoch,
+        'by': 'Ibasho',
+      })!;
+      expect(suelta.titleIn('en'), 'Aviso');
+      expect(suelta.bodyIn('en'), 'Sin traducir');
+
+      // Y una traduccion a medias de las opciones se descarta entera.
+      final coja = NewsItem.fromJson('CCCCCCCCCCCCCCCCCCCC', {
+        'kind': 'poll',
+        'title': 'Cual',
+        'at': DateTime.now().millisecondsSinceEpoch,
+        'by': 'Ibasho',
+        'options': {'0': 'Uno', '1': 'Dos'},
+        'optionsEn': {'0': 'One'},
+      })!;
+      expect(coja.optionsIn('en'), <String>['Uno', 'Dos']);
+    });
+
     test('una encuesta cerrada no admite votos', () async {
       final backend = FakeIbashoBackend()
         ..seed('/news/AAAAAAAAAAAAAAAAAAAA', {

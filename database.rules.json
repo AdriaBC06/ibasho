@@ -604,6 +604,19 @@
             ".validate": "$index.matches(/^[0-3]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
           }
         },
+        // La misma entrada en ingles. Opcional: sin ella, la app enseña la
+        // castellana, que es mejor que no enseñar nada.
+        "titleEn": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
+        },
+        "bodyEn": {
+          ".validate": "newData.isString() && newData.val().length <= 600"
+        },
+        "optionsEn": {
+          "$index": {
+            ".validate": "$index.matches(/^[0-3]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+          }
+        },
         "tally": {
           "$option": {
             ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $option.matches(/^[0-3]$/) && root.child('news').child($newsId).child('kind').val() === 'poll' && root.child('news').child($newsId).child('closed').val() !== true && (!root.child('news').child($newsId).child('closesAt').exists() || root.child('news').child($newsId).child('closesAt').val() > now)",

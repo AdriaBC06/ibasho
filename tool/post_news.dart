@@ -4,7 +4,12 @@
 //
 // Uso:
 //   dart run tool/post_news.dart --kind update --title "Ibasho 0.4.0" \
-//       --version 0.4.0 --body "Mensajes cifrados, noticias y sugerencias."
+//       --version 0.4.0 --body "Mensajes cifrados, noticias y sugerencias." \
+//       --title-en "Ibasho 0.4.0" --body-en "Encrypted messages, news, ideas."
+//
+// Cada entrada puede ir en los dos idiomas: `--title-en`, `--body-en` y un
+// `--option-en` por cada `--option`, en el mismo orden. Sin ellos la app
+// enseña la version castellana a todo el mundo.
 //
 //   dart run tool/post_news.dart --kind poll --title "¿Que viene despues?" \
 //       --option "Un minijuego" --option "Una tienda" --closes 7
@@ -69,6 +74,9 @@ Future<int> main(List<String> args) async {
   final version = options.single('version');
   final by = options.single('by') ?? 'Ibasho';
   final optionList = options.all('option');
+  final titleEn = options.single('title-en');
+  final bodyEn = options.single('body-en');
+  final optionsEn = options.all('option-en');
 
   if (!_kinds.contains(kind)) {
     stderr.writeln('--kind tiene que ser update, note o poll.');
@@ -94,6 +102,24 @@ Future<int> main(List<String> args) async {
     stderr.writeln('Solo las encuestas llevan --option.');
     return 64;
   }
+  if (titleEn != null && (titleEn.isEmpty || titleEn.length > _titleMax)) {
+    stderr.writeln('--title-en pasa de $_titleMax caracteres.');
+    return 64;
+  }
+  if (bodyEn != null && bodyEn.length > _bodyMax) {
+    stderr.writeln('--body-en pasa de $_bodyMax caracteres.');
+    return 64;
+  }
+  // O estan todas traducidas o ninguna: media encuesta en ingles y media en
+  // castellano se lee peor que la original entera.
+  if (optionsEn.isNotEmpty && optionsEn.length != optionList.length) {
+    stderr.writeln('Hacen falta tantos --option-en como --option, o ninguno.');
+    return 64;
+  }
+  if (optionsEn.any((o) => o.isEmpty || o.length > _optionMax)) {
+    stderr.writeln('Cada --option-en tiene que medir entre 1 y $_optionMax.');
+    return 64;
+  }
 
   final closesDays = int.tryParse(options.single('closes') ?? '');
   final now = DateTime.now();
@@ -104,9 +130,15 @@ Future<int> main(List<String> args) async {
     'version': ?version,
     'at': now.millisecondsSinceEpoch,
     'by': by,
+    'titleEn': ?titleEn,
+    'bodyEn': ?bodyEn,
     if (optionList.isNotEmpty)
       'options': <String, Object?>{
         for (var i = 0; i < optionList.length; i++) '$i': optionList[i],
+      },
+    if (optionsEn.isNotEmpty)
+      'optionsEn': <String, Object?>{
+        for (var i = 0; i < optionsEn.length; i++) '$i': optionsEn[i],
       },
     if (closesDays != null)
       'closesAt': now.add(Duration(days: closesDays)).millisecondsSinceEpoch,

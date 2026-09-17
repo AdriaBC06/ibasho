@@ -32,8 +32,13 @@ class NewsComposer extends ConsumerStatefulWidget {
 class _NewsComposerState extends ConsumerState<NewsComposer> {
   final TextEditingController _title = TextEditingController();
   final TextEditingController _body = TextEditingController();
+  final TextEditingController _titleEn = TextEditingController();
+  final TextEditingController _bodyEn = TextEditingController();
   final TextEditingController _version = TextEditingController();
   final List<TextEditingController> _options = [
+    for (var i = 0; i < pollOptionsMin; i++) TextEditingController(),
+  ];
+  final List<TextEditingController> _optionsEn = [
     for (var i = 0; i < pollOptionsMin; i++) TextEditingController(),
   ];
 
@@ -50,8 +55,10 @@ class _NewsComposerState extends ConsumerState<NewsComposer> {
   void dispose() {
     _title.dispose();
     _body.dispose();
+    _titleEn.dispose();
+    _bodyEn.dispose();
     _version.dispose();
-    for (final option in _options) {
+    for (final option in [..._options, ..._optionsEn]) {
       option.dispose();
     }
     super.dispose();
@@ -69,6 +76,7 @@ class _NewsComposerState extends ConsumerState<NewsComposer> {
     if (_options.length >= pollOptionsMax) return;
     setState(() {
       _options.add(TextEditingController());
+      _optionsEn.add(TextEditingController());
       _optionsError = null;
     });
   }
@@ -77,6 +85,7 @@ class _NewsComposerState extends ConsumerState<NewsComposer> {
     if (_options.length <= pollOptionsMin) return;
     setState(() {
       _options.removeAt(index).dispose();
+      _optionsEn.removeAt(index).dispose();
       _optionsError = null;
     });
   }
@@ -128,6 +137,12 @@ class _NewsComposerState extends ConsumerState<NewsComposer> {
         ? displayName
         : ref.read(sessionProvider).username;
     final version = _version.text.trim();
+    // O estan todas las opciones traducidas o no se manda ninguna: el modelo
+    // descarta una traduccion incompleta, asi que mas vale no guardarla.
+    final optionsEn = [
+      for (final option in _optionsEn)
+        if (option.text.trim().isNotEmpty) option.text.trim(),
+    ];
 
     setState(() {
       _busy = true;
@@ -138,6 +153,11 @@ class _NewsComposerState extends ConsumerState<NewsComposer> {
           kind: _kind,
           title: title,
           body: _body.text.trim(),
+          titleEn: _titleEn.text.trim(),
+          bodyEn: _bodyEn.text.trim(),
+          optionsEn: poll && optionsEn.length == options.length
+              ? optionsEn
+              : const <String>[],
           version: _kind == NewsKind.update && version.isNotEmpty ? version : null,
           options: poll ? options : const <String>[],
           closesAt: poll && _closeAfter > 0
@@ -202,6 +222,26 @@ class _NewsComposerState extends ConsumerState<NewsComposer> {
             multiline: true,
             enabled: !_busy,
           ),
+          // La traduccion va detras del original y es opcional: sin ella la
+          // app enseña la castellana a todo el mundo, que es mejor que no
+          // enseñar nada.
+          IbashoTextField(
+            controller: _titleEn,
+            label: l.adminNewsHeadlineEn,
+            maxLength: newsTitleMax,
+            enabled: !_busy,
+          ),
+          IbashoTextField(
+            controller: _bodyEn,
+            label: l.adminNewsBodyEn,
+            maxLength: newsBodyMax,
+            multiline: true,
+            enabled: !_busy,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(l.adminNewsTranslation, style: Ty.caption),
+          ),
           // La version solo tiene sentido en una novedad: es la que se anuncia.
           if (_kind == NewsKind.update)
             IbashoTextField(
@@ -216,11 +256,21 @@ class _NewsComposerState extends ConsumerState<NewsComposer> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: IbashoTextField(
-                      controller: _options[i],
-                      label: l.adminNewsOption(i + 1),
-                      maxLength: pollOptionMax,
-                      enabled: !_busy,
+                    child: Column(
+                      children: [
+                        IbashoTextField(
+                          controller: _options[i],
+                          label: l.adminNewsOption(i + 1),
+                          maxLength: pollOptionMax,
+                          enabled: !_busy,
+                        ),
+                        IbashoTextField(
+                          controller: _optionsEn[i],
+                          label: l.adminNewsOptionEn(i + 1),
+                          maxLength: pollOptionMax,
+                          enabled: !_busy,
+                        ),
+                      ],
                     ),
                   ),
                   // El boton se baja el alto de la etiqueta del campo para

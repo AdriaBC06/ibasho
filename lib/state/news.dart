@@ -180,8 +180,11 @@ class NewsController extends StateNotifier<NewsState> {
     required NewsKind kind,
     required String title,
     String body = '',
+    String? titleEn,
+    String? bodyEn,
     String? version,
     List<String> options = const <String>[],
+    List<String> optionsEn = const <String>[],
     DateTime? closesAt,
     required String by,
   }) async {
@@ -190,12 +193,20 @@ class NewsController extends StateNotifier<NewsState> {
       'kind': kind.name,
       'title': title,
       if (body.isNotEmpty) 'body': body,
+      if (titleEn != null && titleEn.isNotEmpty) 'titleEn': titleEn,
+      if (bodyEn != null && bodyEn.isNotEmpty) 'bodyEn': bodyEn,
       'version': ?version,
       'at': serverTimestamp,
       'by': by,
       if (options.isNotEmpty)
         'options': <String, Object?>{
           for (var i = 0; i < options.length; i++) '$i': options[i],
+        },
+      // Solo si estan todas: media encuesta traducida se lee peor que la
+      // original entera, y el modelo la descarta igualmente.
+      if (optionsEn.length == options.length && options.isNotEmpty)
+        'optionsEn': <String, Object?>{
+          for (var i = 0; i < optionsEn.length; i++) '$i': optionsEn[i],
         },
       if (closesAt != null) 'closesAt': closesAt.millisecondsSinceEpoch,
     };

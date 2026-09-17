@@ -401,10 +401,17 @@ test('el tablon lo lee todo el mundo y lo escribe solo el admin', async () => {
     at: now,
     by: 'admin',
     version: '0.4.0',
+    // La entrada puede ir en los dos idiomas.
+    titleEn: 'Ibasho 0.4.0',
+    bodyEn: 'Encrypted messages, news and ideas.',
   };
   await assertSucceeds(set(ref(db(ADMIN), '/news/UUUUUUUUUUUUUUUUUUUU'), nuevo));
   await assertFails(set(ref(db(ANA), '/news/VVVVVVVVVVVVVVVVVVVV'), nuevo));
   await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/title`), ''));
+  await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/titleEn`), ''));
+  await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/bodyEn`), 'x'.repeat(601)));
+  // Y un campo que las reglas no conocen sigue sin entrar.
+  await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/titleFr`), 'Salut'));
 });
 
 test('el voto es anonimo: solo cuenta, y de uno en uno', async () => {

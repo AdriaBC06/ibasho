@@ -113,10 +113,10 @@ class NewsEntry extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(item.title, style: Ty.lead),
-          if (item.body.isNotEmpty) ...[
+          Text(item.titleIn(locale), style: Ty.lead),
+          if (item.bodyIn(locale).isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(item.body, style: Ty.body.copyWith(color: T.inkSoft)),
+            Text(item.bodyIn(locale), style: Ty.body.copyWith(color: T.inkSoft)),
           ],
           if (item.isPoll) ...[
             const SizedBox(height: 18),
@@ -229,13 +229,14 @@ class _Poll extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = L.of(context)!;
+    final opciones = item.optionsIn(Localizations.localeOf(context).languageCode);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < item.options.length; i++)
+        for (var i = 0; i < opciones.length; i++)
           _PollOption(
-            label: item.options[i],
+            label: opciones[i],
             share: item.share(i),
             mine: myVote == i,
             open: open,
