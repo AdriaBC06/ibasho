@@ -5,6 +5,46 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.4.1 — Que el primer mensaje se vea
+
+Sin funcionalidades nuevas: cinco arreglos de cosas que se rompían justo al
+usarlas.
+
+### Arreglado
+
+- **El primer mensaje que le escribes a alguien ya aparece.** Hasta que la
+  conversación no existe, las reglas niegan leerla —no tiene `a` ni `b`, así
+  que nadie es de ella—, y el cliente se rendía: ni leía ni abría el flujo en
+  tiempo real. El mensaje entraba en la base de datos y no salía nunca en
+  pantalla. Ahora una lectura denegada se trata como una conversación vacía, el
+  flujo se abre en cuanto hay algo que leer, y lo que mandas **se pinta al
+  momento**, sin esperar a que el servidor te lo devuelva: el viaje de ida y
+  vuelta se notaba, y un mensaje que tarda en aparecer parece un mensaje
+  perdido.
+- **La conversación deja de rehacerse sola.** Dependía del estado entero del
+  canal de mensajes, así que cada aviso al buzón y cada marca de lectura la
+  destruía y la volvía a montar, releyendo y **redescifrando el historial
+  entero**. Ahora depende del controlador, que no cambia.
+- **El historial se ordena por conversación más reciente**, no por antigüedad
+  de la amistad.
+- **El botón «descargar la nueva» funciona en Android.** Abría el navegador con
+  `Process.start`, que tenía rama para Linux, macOS y Windows y **ninguna para
+  Android**: en el móvil el botón sonaba y no hacía nada, justo donde más falta
+  hace. Ahora va por `url_launcher`, que además abre bien un navegador en un
+  Linux sin `xdg-open`.
+- **La dirección de descarga se ve escrita, siempre.** Debajo del botón, con su
+  botón de copiar. Es el único camino que no depende de que haya un navegador
+  que abrir ni de que la build sepa abrirlo: quien se quede tirado puede
+  teclearla en otro aparato. Antes, si el botón fallaba, desde dentro de la app
+  no había forma de saber a dónde ir.
+
+### Nota sobre las versiones anteriores
+
+El arreglo del botón no puede llegar a una build que ya está instalada. Quien esté en
+0.3.x o en 0.4.0 y se encuentre el aviso de actualizar seguirá viendo el botón
+mudo en Android: hay que darle la dirección por fuera. A partir de la 0.4.1 el
+botón funciona, así que es la última vez.
+
 ## 0.4.0 — Hablar (checkpoint 4)
 
 La primera versión en la que Ibasho deja de ser una casa vacía: un tablón donde

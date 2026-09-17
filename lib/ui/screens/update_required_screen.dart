@@ -2,12 +2,12 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import 'dart:io';
-
 import 'dart:math' as math;
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../audio/audio_service.dart';
 import '../../core/version.dart';
@@ -27,26 +27,52 @@ import '../layout.dart';
 ///
 /// Sustituye a todo lo demas (login y entorno). Si el admin baja la version
 /// minima o se instala la nueva, desaparece sola.
-class UpdateRequiredScreen extends ConsumerWidget {
+class UpdateRequiredScreen extends ConsumerStatefulWidget {
   const UpdateRequiredScreen({super.key});
 
-  Future<void> _open(String url) async {
+  @override
+  ConsumerState<UpdateRequiredScreen> createState() => _UpdateRequiredScreenState();
+}
+
+class _UpdateRequiredScreenState extends ConsumerState<UpdateRequiredScreen> {
+  bool _failed = false;
+  bool _copied = false;
+
+  /// Abre la pagina de descargas en el navegador del sistema.
+  ///
+  /// Con `url_launcher` y no con `Process.start`: aquello solo sabia de
+  /// escritorio —tenia rama para Linux, macOS y Windows y **ninguna para
+  /// Android**—, asi que en el movil el boton sonaba y no hacia nada, que es
+  /// justo donde mas falta hace. De regalo, esto tambien es lo que abre bien
+  /// un navegador en un Linux sin `xdg-open`.
+  ///
+  /// `false` si no se ha podido: entonces la pantalla se queda con la
+  /// direccion escrita, que es lo unico que no puede fallar.
+  Future<bool> _open(String url) async {
     AudioService.instance.play(Sfx.open);
     try {
-      if (Platform.isLinux) {
-        await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
-      } else if (Platform.isMacOS) {
-        await Process.start('open', [url], mode: ProcessStartMode.detached);
-      } else if (Platform.isWindows) {
-        await Process.start('cmd', ['/c', 'start', '', url], mode: ProcessStartMode.detached);
-      }
+      final target = Uri.tryParse(url);
+      if (target == null) return false;
+      return await launchUrl(target, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('Ibasho: no se ha podido abrir la descarga ($e)');
+      return false;
     }
   }
 
+  Future<void> _download(String url) async {
+    final ok = await _open(url);
+    if (mounted) setState(() => _failed = !ok);
+  }
+
+  Future<void> _copy(String url) async {
+    await Clipboard.setData(ClipboardData(text: url));
+    AudioService.instance.play(Sfx.tick);
+    if (mounted) setState(() => _copied = true);
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final layout = Layout.of(context);
@@ -127,11 +153,46 @@ class UpdateRequiredScreen extends ConsumerWidget {
                             height: 52,
                             minWidth: layout.pick(240, 0),
                             cue: null,
-                            onPressed: () => _open(url),
+                            onPressed: () => _download(url),
                           ),
                         ),
                       ],
                     ),
+                  // La direccion, escrita y copiable, pase lo que pase con el
+                  // boton. Es el unico camino que no depende de que haya un
+                  // navegador que abrir, ni de que esta build sepa abrirlo:
+                  // quien se quede tirado siempre puede teclearla en otro
+                  // aparato.
+                  if (url != null) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      _failed ? l.updateOpenFailed : l.updateOrVisit,
+                      textAlign: TextAlign.center,
+                      style: Ty.caption.copyWith(color: _failed ? T.warn : T.inkSoft),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          // Texto pelado, no `SelectableText`: eso es de
+                          // Material y aqui no entra ni uno. Para llevarsela
+                          // esta el boton de al lado.
+                          child: Text(
+                            url,
+                            textAlign: TextAlign.center,
+                            style: Ty.body.copyWith(color: skin.accentDeep),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        IconPill(
+                          glyph: _copied ? Glyph.check : Glyph.copy,
+                          semanticLabel: _copied ? l.actionCopied : l.actionCopy,
+                          onPressed: () => _copy(url),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   Text(l.updateHint, textAlign: TextAlign.center, style: Ty.caption),
                 ],

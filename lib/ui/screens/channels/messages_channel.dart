@@ -108,6 +108,10 @@ class _Conversations extends ConsumerWidget {
     final l = L.of(context)!;
     final channel = ref.watch(messagesProvider);
     final friends = ref.watch(friendsProvider);
+    // De la conversacion mas reciente a la mas antigua, no por antiguedad de
+    // la amistad: lo que se busca aqui es con quien hablabas hace un rato.
+    final conversaciones =
+        channel.byRecency(friends.friends, (f) => f.accountId);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -133,11 +137,11 @@ class _Conversations extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var i = 0; i < friends.friends.length; i++) ...[
+                for (var i = 0; i < conversaciones.length; i++) ...[
                   if (i > 0) const Hairline(),
                   _FriendRow(
-                    accountId: friends.friends[i].accountId,
-                    unread: channel.unreadFrom(friends.friends[i].accountId),
+                    accountId: conversaciones[i].accountId,
+                    unread: channel.unreadFrom(conversaciones[i].accountId),
                   ),
                 ],
               ],

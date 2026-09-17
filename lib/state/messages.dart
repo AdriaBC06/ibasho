@@ -69,6 +69,35 @@ class MessagesState {
 
   bool get globalFull => globalMembers.length >= maxGroupMembers;
 
+  /// Cuando se movio por ultima vez la conversacion con alguien.
+  ///
+  /// Sale de lo mas reciente entre el ultimo mensaje suyo y la ultima vez que
+  /// se leyo lo suyo. Lo segundo hace de rastro de lo propio: el aviso del
+  /// buzon solo lo deja quien escribe, asi que sin eso una conversacion en la
+  /// que solo se ha hablado no contaria como reciente.
+  DateTime? activityWith(String accountId) {
+    final last = inbox[accountId];
+    final read = readDirect[accountId];
+    if (last == null) return read;
+    if (read == null) return last;
+    return last.isAfter(read) ? last : read;
+  }
+
+  /// Los amigos ordenados por conversacion mas reciente. Quien no tiene nada
+  /// se queda al final, en el orden en que venga.
+  List<T> byRecency<T>(List<T> friends, String Function(T) accountOf) {
+    final out = List<T>.of(friends);
+    out.sort((a, b) {
+      final x = activityWith(accountOf(a));
+      final y = activityWith(accountOf(b));
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return y.compareTo(x);
+    });
+    return out;
+  }
+
   MessagesState copyWith({
     Map<String, DateTime>? inbox,
     Map<String, DateTime>? readDirect,

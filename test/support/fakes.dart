@@ -63,6 +63,13 @@ class FakeIbashoBackend implements IbashoBackend {
   /// Escrituras recibidas, por si un test quiere comprobarlas.
   final List<(String path, Object? value)> writes = <(String, Object?)>[];
 
+  /// Rutas que se comportan como si las reglas negaran la lectura.
+  ///
+  /// El backend falso no aplica reglas, y hay casos en los que eso esconde
+  /// fallos reales: una conversacion que aun no existe no se puede leer, y el
+  /// cliente tiene que apañarselas igual. Con esto un test puede reproducirlo.
+  bool Function(String path)? denyRead;
+
   AuthTokens get tokens => AuthTokens(
         uid: uid,
         idToken: 'id-token',
@@ -283,6 +290,9 @@ class FakeIbashoBackend implements IbashoBackend {
     DatabaseQuery? query,
   }) async {
     _db.reads.add(path);
+    if (denyRead?.call(path) ?? false) {
+      throw const IbashoException(IbashoFailure.permissionDenied);
+    }
     return _snapshot(path, query);
   }
 
@@ -318,6 +328,10 @@ class FakeIbashoBackend implements IbashoBackend {
     late final StreamController<DatabaseEvent> controller;
     controller = StreamController<DatabaseEvent>(
       onListen: () {
+        if (denyRead?.call(path) ?? false) {
+          controller.addError(const IbashoException(IbashoFailure.permissionDenied));
+          return;
+        }
         _watchers.add((path, query, controller));
         controller.add(DatabaseEvent(path: '/', data: _snapshot(path, query), isPatch: false));
       },

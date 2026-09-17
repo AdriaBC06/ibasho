@@ -720,5 +720,7 @@
   "adminGroupCreate": "create the group",
   "adminGroupCreated": "group created",
   "adminGroupExists": "the group already exists",
-  "adminGroupError": "it could not be created"
+  "adminGroupError": "it could not be created",
+  "updateOrVisit": "or open this address in any browser:",
+  "updateOpenFailed": "the browser could not be opened: copy the address"
 }

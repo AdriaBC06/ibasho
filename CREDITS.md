@@ -75,6 +75,7 @@ Guardadas en `reserved/audio/bgm/` para usos futuros. No están en
 | Riverpod | Remi Rousselet | MIT | https://riverpod.dev |
 | audioplayers | Blue Fire | MIT | https://pub.dev/packages/audioplayers |
 | pointycastle | The Legion of the Bouncy Castle | MIT | https://pub.dev/packages/pointycastle |
+| url_launcher | The Flutter Authors | BSD 3-Clause | https://pub.dev/packages/url_launcher |
 | flutter_secure_storage | Julian Steenbakker | BSD 3-Clause | https://pub.dev/packages/flutter_secure_storage |
 | timezone (base de datos IANA embebida) | timezone project authors | BSD 2-Clause | https://pub.dev/packages/timezone |
 | http, intl, crypto, path_provider | Dart / Flutter team | BSD 3-Clause | https://pub.dev |

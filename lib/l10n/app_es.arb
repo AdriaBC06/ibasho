@@ -1039,5 +1039,8 @@
   "adminGroupCreate": "crear el grupo",
   "adminGroupCreated": "grupo creado",
   "adminGroupExists": "el grupo ya existe",
-  "adminGroupError": "no se ha podido crear"
+  "adminGroupError": "no se ha podido crear",
+  "updateOrVisit": "o entra en esta dirección desde cualquier navegador:",
+  "@updateOrVisit": {"description": "Pie de la pantalla de version antigua, encima de la URL de descarga."},
+  "updateOpenFailed": "no se ha podido abrir el navegador: copia la dirección"
 }

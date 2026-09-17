@@ -271,8 +271,11 @@ final conversationProvider = StateNotifierProvider.family<ConversationController
   return ConversationController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
-    identity: ref.watch(identityProvider),
-    channel: ref.watch(messagesProvider),
+    // Solo las claves y el controlador del canal, nunca sus estados enteros:
+    // con ellos, la conversacion se rehacia —y se volvia a descifrar— cada vez
+    // que llegaba un aviso al buzon.
+    keys: ref.watch(identityProvider.select((i) => i.keys)),
+    channel: ref.watch(messagesProvider.notifier),
     target: target,
   );
 });

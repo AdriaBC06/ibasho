@@ -110,6 +110,12 @@ const List<CreditEntry> softwareCredits = <CreditEntry>[
     note: _timezone,
   ),
   CreditEntry(
+    title: 'url_launcher',
+    author: 'The Flutter Authors',
+    license: 'BSD 3-Clause',
+    url: 'https://pub.dev/packages/url_launcher',
+  ),
+  CreditEntry(
     title: 'flutter_secure_storage',
     author: 'Julian Steenbakker',
     license: 'BSD 3-Clause',

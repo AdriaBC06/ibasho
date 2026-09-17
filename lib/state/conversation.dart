@@ -13,7 +13,7 @@ import '../backend/messaging.dart';
 import '../backend/models.dart';
 import '../backend/push_id.dart';
 import '../crypto/worker.dart';
-import 'identity.dart';
+import '../crypto/keys.dart';
 import 'messages.dart';
 import 'session.dart';
 
@@ -97,12 +97,12 @@ class ConversationController extends StateNotifier<ConversationState> {
   ConversationController({
     required IbashoBackend backend,
     required SessionController session,
-    required IdentityState identity,
-    required MessagesState channel,
+    required IdentityKeys? keys,
+    required MessagesController channel,
     required this.target,
   })  : _backend = backend,
         _session = session,
-        _identity = identity,
+        _keys = keys,
         _channel = channel,
         super(const ConversationState()) {
     if (_me.isNotEmpty && session.state.phase == SessionPhase.active) {
@@ -112,12 +112,35 @@ class ConversationController extends StateNotifier<ConversationState> {
 
   final IbashoBackend _backend;
   final SessionController _session;
-  final IdentityState _identity;
-  final MessagesState _channel;
+
+  /// Las claves de esta cuenta, o `null` si aun no estan.
+  final IdentityKeys? _keys;
+
+  /// El controlador del canal, no su estado.
+  ///
+  /// A proposito: con el estado, esta conversacion se destruia y se volvia a
+  /// montar —releyendo y redescifrando entera— cada vez que se movia el buzon
+  /// o una marca de lectura, que es constantemente.
+  final MessagesController _channel;
+
   final ConversationTarget target;
 
   StreamSubscription<DatabaseEvent>? _watch;
   Object? _tree;
+
+  /// Si el flujo en tiempo real esta escuchando de verdad.
+  ///
+  /// Hace falta saberlo porque en una conversacion que aun no existe las
+  /// reglas **deniegan la lectura**: `/dm/<par>` no tiene `a` ni `b` hasta que
+  /// se manda el primer mensaje, y sin ellos nadie es de la conversacion. El
+  /// flujo se vuelve a levantar en cuanto hay algo que leer.
+  bool _watching = false;
+
+  /// Lo mandado desde aqui que el servidor todavia no ha devuelto.
+  ///
+  /// Se pinta en cuanto sale, sin esperar al eco: el viaje de ida y vuelta se
+  /// nota, y un mensaje que tarda en aparecer parece un mensaje perdido.
+  final Map<String, Message> _sent = {};
 
   /// Sobres por abrir, de los mas nuevos a los mas viejos.
   final List<StoredMessage> _pending = [];
@@ -155,19 +178,32 @@ class ConversationController extends StateNotifier<ConversationState> {
       final token = await _session.freshToken();
       _tree = await _backend.read('$_root/msgs', idToken: token);
     } catch (e) {
-      debugPrint('Ibasho: no se ha podido leer la conversacion ($e)');
-      if (mounted) state = state.copyWith(loading: false, failed: true);
-      return;
+      // Que falle no es un error que contar: una conversacion que todavia no
+      // existe no se puede leer, y es el caso de la primera vez que se le
+      // escribe a alguien. Se sigue como si estuviera vacia.
+      debugPrint('Ibasho: la conversacion aun no se puede leer ($e)');
+      _tree = null;
     }
     if (!mounted) return;
 
     await _refresh(first: true);
     if (!mounted) return;
+    _listen();
+  }
 
+  /// Abre el flujo en tiempo real. Se puede llamar mas de una vez.
+  void _listen() {
+    if (_watching) return;
+    _watching = true;
     _watch = _backend.watch('$_root/msgs', token: _session.freshToken).listen((e) {
       _tree = applyDatabaseEvent(_tree, e);
       unawaited(_refresh());
-    }, onError: (Object e) => debugPrint('Ibasho: stream de la conversacion ($e)'));
+    }, onError: (Object e) {
+      debugPrint('Ibasho: stream de la conversacion ($e)');
+      _watching = false;
+      unawaited(_watch?.cancel());
+      _watch = null;
+    });
   }
 
   /// Vuelve a mirar el arbol local y abre lo que haga falta.
@@ -191,7 +227,7 @@ class ConversationController extends StateNotifier<ConversationState> {
 
   /// Abre una tanda de los que quedan.
   Future<void> _openMore() async {
-    final keys = _identity.keys;
+    final keys = _keys;
     if (keys == null || _pending.isEmpty) return;
     final tanda = _pending.take(_batch).toList(growable: false);
     _pending.removeRange(0, tanda.length);
@@ -231,23 +267,27 @@ class ConversationController extends StateNotifier<ConversationState> {
     return out;
   }
 
-  List<Message> _assemble(List<StoredMessage> stored) => List<Message>.unmodifiable(
-        stored.map(
-          (m) => Message(
-            id: m.id,
-            at: m.at,
-            from: m.from,
-            kind: m.kind,
-            body: _opened[m.id],
-          ),
-        ),
-      );
+  List<Message> _assemble(List<StoredMessage> stored) {
+    final out = <Message>[
+      for (final m in stored)
+        Message(id: m.id, at: m.at, from: m.from, kind: m.kind, body: _opened[m.id]),
+    ];
+    // Lo que ya ha vuelto del servidor deja de estar pendiente.
+    _sent.removeWhere((id, _) => stored.any((m) => m.id == id));
+    if (_sent.isNotEmpty) {
+      out.addAll(_sent.values);
+      // Los ids de push ordenan por tiempo, asi que lo recien mandado cae
+      // solo en su sitio: al final.
+      out.sort((a, b) => a.id.compareTo(b.id));
+    }
+    return List<Message>.unmodifiable(out);
+  }
 
   Future<SendBlock?> _checkBlock() async {
-    if (_identity.keys == null) return SendBlock.noKeys;
+    if (_keys == null) return SendBlock.noKeys;
     switch (target) {
       case GroupTarget():
-        return _channel.inGlobal ? null : SendBlock.notMember;
+        return _channel.state.inGlobal ? null : SendBlock.notMember;
       case DirectTarget(:final accountId):
         try {
           final token = await _session.freshToken();
@@ -269,7 +309,7 @@ class ConversationController extends StateNotifier<ConversationState> {
   /// quien lo recibe y la poda de lo viejo. O entra todo o no entra nada.
   Future<bool> send(MessageBody body) async {
     if (!state.canSend) return false;
-    final keys = _identity.keys;
+    final keys = _keys;
     if (keys == null) return false;
 
     final recipients = _recipients();
@@ -289,7 +329,22 @@ class ConversationController extends StateNotifier<ConversationState> {
       };
       final token = await _session.freshToken();
       await _backend.merge('/', writes, idToken: token);
-      if (mounted) state = state.copyWith(sending: false);
+      if (!mounted) return true;
+
+      // Se pinta ya, sin esperar a que el servidor lo devuelva por el flujo.
+      // Ademas es lo unico que lo hace visible la primera vez que se escribe a
+      // alguien: hasta que existe la conversacion, las reglas no dejan leerla.
+      _opened[id] = body;
+      _sent[id] = Message(
+        id: id,
+        at: DateTime.now(),
+        from: _me,
+        kind: body.kind,
+        body: body,
+      );
+      // Y con la conversacion ya creada, el flujo por fin puede abrirse.
+      _listen();
+      state = state.copyWith(sending: false, messages: _assemble(_stored()));
       return true;
     } catch (e) {
       debugPrint('Ibasho: el mensaje no ha salido ($e)');
@@ -305,6 +360,9 @@ class ConversationController extends StateNotifier<ConversationState> {
       final token = await _session.freshToken();
       await _backend.remove('$_root/msgs/$messageId', idToken: token);
       _opened.remove(messageId);
+      if (_sent.remove(messageId) != null && mounted) {
+        state = state.copyWith(messages: _assemble(_stored()));
+      }
       return true;
     } catch (e) {
       debugPrint('Ibasho: no se ha podido borrar el mensaje ($e)');
@@ -315,7 +373,7 @@ class ConversationController extends StateNotifier<ConversationState> {
   /// A quien hay que cifrarle: siempre incluye a quien escribe, o no podria
   /// releer lo que acaba de mandar.
   Map<String, String> _recipients() {
-    final keys = _identity.keys;
+    final keys = _keys;
     if (keys == null) return const <String, String>{};
     switch (target) {
       case DirectTarget(:final accountId):
@@ -327,7 +385,7 @@ class ConversationController extends StateNotifier<ConversationState> {
         };
       case GroupTarget():
         return <String, String>{
-          for (final m in _channel.globalMembers) m.accountId: m.pub,
+          for (final m in _channel.state.globalMembers) m.accountId: m.pub,
           _me: keys.public.encoded,
         };
     }

@@ -225,6 +225,59 @@ Future<void> main() async {
       expect(state.messages.last.readable, isFalse);
     });
 
+    test('el primer mensaje a alguien aparece aunque no se pudiera leer', () async {
+      // El caso que se vio usandolo: hasta que la conversacion no existe, las
+      // reglas niegan leerla —no hay `a` ni `b`, asi que nadie es de ella— y
+      // la lectura y el flujo fallan. El mensaje entraba en la base y no salia
+      // nunca en pantalla.
+      final backend = FakeIbashoBackend();
+      final pair = directPairId(backend.uid, kLuis);
+      backend.denyRead = (path) =>
+          path.startsWith('/dm/$pair') && backend.peek('/dm/$pair/a') == null;
+
+      final (container, luis) = await conversation(backend);
+
+      const target = DirectTarget(kLuis);
+      container.listen(conversationProvider(target), (_, _) {}, fireImmediately: true);
+      await settle(40);
+      expect(container.read(conversationProvider(target)).messages, isEmpty);
+
+      expect(
+        await container
+            .read(conversationProvider(target).notifier)
+            .send(const TextBody('primera')),
+        isTrue,
+      );
+      await settle(20);
+
+      final state = container.read(conversationProvider(target));
+      expect(state.messages, hasLength(1), reason: 'tiene que verse al mandarlo');
+      expect((state.messages.single.body! as TextBody).text, 'primera');
+      expect(state.messages.single.from, backend.uid);
+
+      // Y de verdad salio: el otro lado puede abrirlo.
+      final raw = (backend.peek('/dm/$pair/msgs')! as Map).values.first! as Map;
+      expect(SealedEnvelope.fromJson(raw)!.open(kLuis, luis),
+          '{"t":"text","b":"primera"}');
+    });
+
+    test('lo mandado no se duplica cuando el servidor lo devuelve', () async {
+      final backend = FakeIbashoBackend();
+      final (container, _) = await conversation(backend);
+      const target = DirectTarget(kLuis);
+      container.listen(conversationProvider(target), (_, _) {}, fireImmediately: true);
+      await settle(30);
+
+      await container
+          .read(conversationProvider(target).notifier)
+          .send(const TextBody('hola'));
+      await settle(40);
+
+      final mensajes = container.read(conversationProvider(target)).messages;
+      expect(mensajes, hasLength(1));
+      expect((mensajes.single.body! as TextBody).text, 'hola');
+    });
+
     test('un sticker viaja con el aspecto dentro y se vuelve a pintar igual', () {
       final tama = mireiaTama();
       final body = StickerBody(
@@ -481,6 +534,19 @@ Future<void> main() async {
       expect(state.unreadInGlobal, isTrue);
       // Dos conversaciones, no los mensajes que haya dentro.
       expect(state.unreadCount, 2);
+    });
+
+    test('las conversaciones se ordenan por la mas reciente', () {
+      final ahora = DateTime.now();
+      final state = MessagesState(
+        inbox: {'b': ahora, 'c': ahora.subtract(const Duration(days: 2))},
+        readDirect: {'a': ahora.subtract(const Duration(hours: 1))},
+      );
+      // b escribio hace nada; a se leyo hace una hora; c hace dos dias; d nunca.
+      expect(
+        state.byRecency(<String>['a', 'b', 'c', 'd'], (x) => x),
+        <String>['b', 'a', 'c', 'd'],
+      );
     });
 
     test('el tablon cuenta lo publicado despues de la ultima visita', () {
