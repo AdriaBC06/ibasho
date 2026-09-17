@@ -40,3 +40,6 @@ __pycache__/
 # Sistema
 .DS_Store
 *.swp
+
+# Los binarios publicados en Hosting: se bajan del CI, no se versionan.
+hosting/public/descargas/

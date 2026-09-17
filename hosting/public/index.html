@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ibasho — descargas</title>
+<meta name="description" content="Descarga Ibasho para Windows, Android y Linux.">
+<style>
+  :root {
+    --ink: #3a4750;
+    --ink-soft: #7c8b97;
+    --accent: #5bc8f5;
+    --accent-deep: #1b8fd0;
+    --hairline: #c2ced8;
+    --card: #ffffff;
+    --top: #ffffff;
+    --bottom: #dde7ef;
+    --warn: #e8a33d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 48px 16px 64px;
+    font-family: "Segoe UI", Roboto, -apple-system, "Helvetica Neue", sans-serif;
+    color: var(--ink);
+    background: linear-gradient(180deg, var(--top) 0%, var(--bottom) 100%);
+    background-attachment: fixed;
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 40px; }
+  .mark {
+    display: inline-block; padding: 14px 20px; border-radius: 22px;
+    background: linear-gradient(180deg, #7fd8fa 0%, var(--accent-deep) 100%);
+    box-shadow: 0 6px 18px rgba(27,143,208,.32), inset 0 1px 0 rgba(255,255,255,.6);
+    color: #fff; font-size: 30px; font-weight: 700; letter-spacing: .04em;
+  }
+  h1 { font-size: 26px; margin: 20px 0 4px; font-weight: 600; }
+  .tagline { color: var(--ink-soft); margin: 0; font-size: 15px; }
+  .version {
+    display: inline-block; margin-top: 14px; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid var(--hairline); color: var(--ink-soft);
+    font-size: 13px; font-variant-numeric: tabular-nums;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 16px;
+    padding: 18px 20px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    box-shadow: 0 2px 10px rgba(58,71,80,.06);
+  }
+  .card .what { flex: 1 1 200px; min-width: 0; }
+  .card h2 { font-size: 17px; margin: 0 0 3px; font-weight: 600; }
+  .card p { margin: 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.45; }
+  a.get {
+    display: inline-block; padding: 11px 20px; border-radius: 12px; text-decoration: none;
+    background: linear-gradient(180deg, #7fd8fa 0%, var(--accent-deep) 100%);
+    color: #fff; font-weight: 600; font-size: 14.5px; white-space: nowrap;
+    box-shadow: 0 3px 10px rgba(27,143,208,.3), inset 0 1px 0 rgba(255,255,255,.55);
+  }
+  a.get:hover { filter: brightness(1.06); }
+  a.alt { color: var(--accent-deep); font-size: 13px; text-decoration: none; }
+  a.alt:hover { text-decoration: underline; }
+  .note {
+    border-left: 3px solid var(--warn); background: rgba(232,163,61,.08);
+    padding: 14px 16px; border-radius: 0 12px 12px 0; margin: 28px 0 0;
+    font-size: 14px; line-height: 1.55;
+  }
+  .note strong { color: var(--ink); }
+  footer {
+    margin-top: 36px; text-align: center; font-size: 12.5px; color: var(--ink-soft); line-height: 1.7;
+  }
+  footer a { color: var(--ink-soft); }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e7eef3; --ink-soft: #93a4b1; --hairline: #35424c;
+      --card: #202a32; --top: #151d23; --bottom: #0f1519;
+    }
+    .note { background: rgba(232,163,61,.12); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="mark">居場所</div>
+    <h1>Ibasho</h1>
+    <p class="tagline">tu lugar</p>
+    <span class="version">versión 0.4.0</span>
+  </header>
+
+  <div class="card">
+    <div class="what">
+      <h2>Windows</h2>
+      <p>10 o posterior, 64 bits. Instalador de un solo fichero; no pide administrador.</p>
+    </div>
+    <a class="get" href="descargas/Ibasho-0.4.0-windows-x64-setup.exe">Descargar</a>
+  </div>
+
+  <div class="card">
+    <div class="what">
+      <h2>Android</h2>
+      <p>Móvil y tableta. Hay que permitir instalar de orígenes desconocidos. Si tenías una versión anterior, desinstálala antes.</p>
+    </div>
+    <a class="get" href="descargas/Ibasho-0.4.0-android.apk">Descargar</a>
+  </div>
+
+  <div class="card">
+    <div class="what">
+      <h2>Linux</h2>
+      <p>64 bits. Descomprime y ejecuta <code>ibasho</code>.</p>
+    </div>
+    <a class="get" href="descargas/Ibasho-0.4.0-linux-x64.tar.gz">Descargar</a>
+  </div>
+
+  <div class="note">
+    <strong>Al entrar te enseñará una clave de respaldo de doce palabras.</strong>
+    Apúntalas en papel. Son lo único que abre tus mensajes en otro aparato, y no
+    hay otra copia: ni yo puedo recuperarlas. Eso es justamente lo que hace que
+    nadie más pueda leer lo que escribes.
+  </div>
+
+  <footer>
+    <p>
+      ¿No baja? Están también en
+      <a href="https://github.com/AdriaBC06/ibasho/releases/tag/v0.4.0">GitHub</a>,
+      junto al <a href="https://github.com/AdriaBC06/ibasho/blob/main/CHANGELOG.md">registro de cambios</a>
+      y el <a href="https://github.com/AdriaBC06/ibasho">código</a>.
+    </p>
+    <p>Ibasho · GPL-3.0-or-later · Adrià Bonnin Catalán</p>
+  </footer>
+</main>
+</body>
+</html>
