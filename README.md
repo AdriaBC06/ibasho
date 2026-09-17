@@ -6,15 +6,18 @@ Ibasho es un espacio de juegos multiplataforma inspirado en los menús de sistem
 de Wii y Nintendo 3DS: un launcher de micro-apps con avatares propios (los
 **Tamas**), cuentas, amigos y mensajería.
 
-Este repositorio está en el **checkpoint 3.2** (0.3.3): el entorno, las cuentas,
-los **Tamas** y los **amigos**, en Linux, Android y Windows. Todavía no hay apps dentro, pero el entorno ya se
-puede usar: splash, login, cambio obligatorio de contraseña, entorno de dos
-paneles con reloj y barra de estado, rejilla de canales con paginación y
-animación de apertura, perfil, ajustes, créditos, panel de administración, el
-canal de Tamas con su creador y la habitación de cada uno, y el canal de amigos:
-códigos de amigo al estilo 3DS, solicitudes, presencia, perfiles con la hora
-local y la música de cada cual, tarjeta de visita exportable y muro de
-cumpleaños.
+Este repositorio está en el **checkpoint 4** (0.4.0): el entorno, las cuentas,
+los **Tamas**, los **amigos** y, ahora, **hablar**. En Linux, Android y Windows.
+Todavía no hay apps dentro, pero el entorno ya se puede usar: splash, login,
+cambio obligatorio de contraseña, entorno de dos paneles con reloj y barra de
+estado, rejilla de canales con paginación y animación de apertura, perfil,
+ajustes, créditos, panel de administración, el canal de Tamas con su creador y
+la habitación de cada uno, el canal de amigos —códigos al estilo 3DS,
+solicitudes, presencia, perfiles con la hora local y la música de cada cual,
+tarjeta de visita exportable y muro de cumpleaños—, y los tres canales nuevos:
+**mensajes** cifrados de punta a punta con stickers de tus Tamas y un grupo
+abierto, **noticias** con encuestas anónimas, y **sugerencias** con respuesta.
+En la barra de estado hay además un contador de monedas, hoy a cero para todos.
 
 Plataformas: **Linux desktop**, **Android** (móvil y tableta) y **Windows 10 o
 posterior**, de 64 bits. Ni la 0.3.1 ni la 0.3.3 añaden funcionalidades: llevan
@@ -334,7 +337,7 @@ bloque de pasos con `if: matrix.plataforma == ...`; lo común —checkout, SDK,
 
 ```sh
 flutter analyze          # sin avisos
-flutter test             # entorno, Tamas, amigos y recorrido visual (PNG en build/screenshots/)
+flutter test             # entorno, Tamas, amigos, cifrado, mensajes y recorrido visual (PNG en build/screenshots/)
 ./tool/test_rules.sh     # reglas de seguridad contra el emulador de la Realtime Database
 ./tool/test_e2e.sh       # cuentas, Tamas, amigos y presencia contra los emuladores de Auth y Database
 ```
@@ -376,23 +379,44 @@ local), cargan `database.rules.json` y comprueban, entre otras cosas, que:
   acepta quien la recibió;
 - el amigo número 101 es imposible, con el mismo patrón de contador que los Tamas;
 - el muro acepta un mensaje por amigo y año, y rechaza el segundo;
-- los códigos de amigo los da el admin con el contador y no se tocan nunca.
+- los códigos de amigo los da el admin con el contador y no se tocan nunca;
+- la clave pública la lee cualquier miembro y **el respaldo sólo su dueña**, ni
+  siquiera un administrador;
+- las monedas las pone un admin y **nadie se las pone a sí mismo**;
+- una conversación sólo se abre entre amigos y sólo en su sitio (el id son los
+  dos `accountId` ordenados, y las reglas lo comprueban contra `a` y `b`), sólo
+  la leen los dos que hablan, y un mensaje va firmado por quien lo manda y
+  cerrado para los dos;
+- un mensaje no se puede editar una vez dicho, y cualquiera de los dos puede
+  borrar para podar;
+- sin estar dentro del grupo no se lee ni se escribe nada, y unirse exige la
+  clave pública propia y que el grupo esté abierto;
+- el voto de una encuesta sube un recuento **de uno en uno** y sólo apuntándose
+  como votante, y **lo que uno vota no lo lee nadie más**, tampoco el admin;
+- una sugerencia viva por cuenta, nadie manda en nombre de otro ni se firma su
+  propio veredicto, y el buzón se puede cerrar para todos.
+
+Los dos ficheros de reglas (`rules.test.mjs` y `rules_04.test.mjs`) comparten
+un único emulador y cada uno vacía la base antes de cada caso, así que van en
+serie (`node --test --test-concurrency=1`): en paralelo se pisan.
 
 ## Arquitectura
 
 ```
 lib/
   backend/     IbashoBackend (contrato) y RestIbashoBackend (REST + SSE contra Firebase)
-  state/       Riverpod: sesión, perfil, admin, Tamas, amigos, presencia, preferencias, reloj y estado del sistema
-  storage/     sesión cifrada (libsecret o AES-256-GCM) y preferencias locales
+  crypto/      cifrado de punta a punta: claves, sobres, frase de respaldo y el isolate que lo abre
+  state/       Riverpod: sesión, perfil, admin, Tamas, amigos, presencia, identidad, mensajes, noticias, sugerencias, monedas, preferencias, reloj y estado del sistema
+  storage/     sesión cifrada (libsecret, DPAPI o AES-256-GCM) y preferencias locales
   audio/       música, efectos y la voz sintetizada de los Tamas
   theme/       tokens de color, escala tipográfica, acentos legibles y piel en tiempo de ejecución
   ui/          lienzo virtual, controles propios, pantallas y canales
-  ui/tama/     la criatura: pintor, animador, vista viva y piezas de interfaz
+  ui/tama/     la criatura: pintor, animador, vista viva, stickers y piezas de interfaz
   ui/social/   presencia, avatares desde la ficha, insignias y tarjeta de visita
   l10n/        catálogos ARB es / en
 tool/
   bootstrap_admin.dart   primer administrador
+  post_news.dart         publicar en el tablón sin abrir la app
   dev_seed.dart          cuentas de prueba para los emuladores
   gen_audio.py           generador del set sonoro (CC0)
   test_rules.sh          tests de reglas
@@ -407,6 +431,14 @@ Decisiones de fondo:
 - **La UI no sabe que hay REST.** Todo pasa por `IbashoBackend`, para poder
   cambiar a los SDK nativos en Android sin tocar nada más.
 - **Sin Material.** La raíz es `WidgetsApp`; todos los controles son propios.
+- **El servidor no puede leer los mensajes, y no es una promesa: es que no
+  tiene la clave.** Las reglas de la base sólo comprueban quién escribe y para
+  quién va cada sobre; lo que hay dentro no lo pueden mirar. Todo el cifrado es
+  `pointycastle` en Dart puro, igual que el resto de la red.
+- **Lo caro no va en el hilo que pinta.** Abrir un sobre cuesta una
+  multiplicación escalar sobre la curva —unos 9 ms en un portátil, bastante más
+  en un móvil—, así que descifrar y cifrar pasan por un isolate, y una
+  conversación se abre por tandas empezando por los últimos mensajes.
 - **Dos composiciones, un solo árbol.** Con la ventana horizontal, el lienzo
   virtual de 800 de alto escalado con `FittedBox`; con la ventana vertical,
   pixeles logicos de verdad y las pantallas recolocadas. Lo decide la
@@ -503,6 +535,88 @@ y en el perfil.
   mensaje por año, de hasta 140 caracteres. Las reglas no pueden saber qué día
   es: eso lo decide el cliente, y está documentado en las propias reglas.
 
+## Mensajes
+
+Los mensajes de Ibasho van **cifrados de punta a punta**: quien tenga la base de
+datos delante ve sobres cerrados, marcas de tiempo y quién habla con quién, y
+nada más. Ni el administrador ni el dueño del proyecto pueden leerlos.
+
+- **Cada cuenta tiene un par de claves** ECDH sobre P-256, generado en el
+  aparato la primera vez que se entra. La pública se publica en
+  `/users/{accountId}/keys/pub`, porque sin ella nadie podría escribirte.
+- **Cada mensaje lleva su propia clave** AES-256-GCM y un par efímero. La clave
+  se envuelve una vez por destinatario (ECDH efímero → HKDF-SHA256 → AES-GCM),
+  así que un mensaje de grupo se cifra una sola vez y no N veces.
+- **Stickers**: uno de tus Tamas con una de ocho caras. El aspecto viaja dentro
+  del sobre, no por referencia: se sigue viendo igual aunque luego edites o
+  borres ese Tama, y lo ve quien lo recibe aunque no tenga permiso para leerlo.
+- **El grupo «Global»** lo crea un administrador desde su panel. Cualquiera se
+  une, nadie invita, y **hasta que no entras no se descarga ni un mensaje**. Al
+  entrar ves lo que se escriba a partir de ese momento, nunca lo anterior:
+  es lo que se paga por que no haga falta que nadie esté conectado para
+  repartir claves. Tope de 32 miembros, que es el del sobre.
+- **El historial se poda solo**: 300 mensajes por conversación y nada de más de
+  90 días. Lo borra el mismo cliente que escribe, en la misma operación.
+
+### La clave de respaldo
+
+La clave privada vive en el llavero del sistema —libsecret en Linux, DPAPI en
+Windows, el Keystore en Android— y, envuelta con una frase de **doce palabras**,
+en la base. La frase se enseña **una sola vez** al crear la cuenta; después se
+puede volver a mirar en **ajustes → ver mi clave de respaldo**, pero sólo desde
+un aparato que la tenga guardada: del respaldo de la base no se saca.
+
+```
+brisa  tatami  cobre  helecho
+quinto lima    nieve  farol
+tinta  roble   dulce  isla
+```
+
+En un móvil nuevo, o tras reinstalar, se teclea una vez y vuelve el historial
+entero. Se puede escribir en mayúsculas, con tildes que la lista no lleva, o
+cortando cada palabra a partir de la cuarta letra, que ya identifica a una sola.
+
+**No depende de la contraseña**, y es deliberado: un administrador puede
+resetear la contraseña de una cuenta —es lo que hace `regenerar credencial`— sin
+llevarse por delante un solo mensaje, y sigue sin poder leer ninguno. Lo que sí
+pasa es que **si se pierde la frase y no queda ningún aparato con la clave, ese
+historial no lo recupera nadie**. Es el precio de que no haya una puerta de
+atrás.
+
+## Noticias y sugerencias
+
+- **Noticias**: novedades de versión, avisos y encuestas. Las publica un
+  administrador desde el canal, o `tool/post_news.dart` sin abrir la app:
+
+  ```sh
+  dart run tool/post_news.dart --kind update --title "Ibasho 0.4.0" \
+      --version 0.4.0 --body "Mensajes cifrados, noticias y sugerencias."
+
+  dart run tool/post_news.dart --kind poll --title "¿Qué viene después?" \
+      --option "Un minijuego" --option "Una tienda" --closes 7
+
+  dart run tool/post_news.dart --list
+  ```
+
+- **Las encuestas son anónimas de verdad, no sólo en la pantalla.** En la
+  entrada quedan dos cosas: cuántos votos lleva cada opción y quién ya ha
+  votado. **A qué votó cada cual** vive únicamente en `/users/{cuenta}/votes`,
+  que no lee nadie más. El precio es que las reglas no pueden comprobar que el
+  −1 de un cambio de voto caiga en la opción que tenías antes; en un grupo de
+  conocidos es un precio razonable a cambio de que el recuento no tenga nombres.
+- **Sugerencias**: título de 30 y texto de 200. Una viva por cuenta —hasta que
+  no hay veredicto no se puede mandar otra, y lo aplican las reglas—, el
+  administrador acepta o rechaza con un motivo opcional, y lo aceptado pasa a
+  una lista pública. El buzón se cierra desde el mismo canal.
+
+## Monedas
+
+Un contador por cuenta en la barra de estado, junto a la batería y la señal.
+Está a cero para todo el mundo y **todavía no se gasta en nada**. Lo que ya
+importa es que nadie pueda ponérselas a sí mismo: `/users/{cuenta}/coins` sólo
+lo escribe un administrador, desde su panel, y la app no tiene ni una ruta que
+lo intente desde la cuenta propia.
+
 ## Versiones y bloqueo
 
 La versión de la app vive en `lib/core/version.dart` (`appVersion`, igual que
@@ -542,11 +656,13 @@ modificado podría ignorarlo.
 - **0.3.3 · checkpoint 3.2** — Windows: runner propio, instalador de un solo
   fichero, runtime de Visual C++ incluido e integración continua para las tres
   plataformas. Hecho.
-- **0.4.0** — mensajería.
-- **Más adelante** — **traspasar un Tama** a un amigo para que lo cuide y juegue con él (quien lo
-  creó sigue siendo quien edita su aspecto, y el cuidador ve los cambios al
-  momento); una tienda donde desbloquear chuches; jugar con los Tamas, accesorios, mensajería, notificaciones,
-  monedas y micro-apps.
+- **0.4.0 · checkpoint 4** — hablar: canal de noticias con encuestas anónimas,
+  mensajería cifrada de punta a punta con stickers de Tama y grupo abierto,
+  buzón de sugerencias con veredicto, y contador de monedas. Hecho.
+- **Más adelante** — **traspasar un Tama** a un amigo para que lo cuide y juegue
+  con él (quien lo creó sigue siendo quien edita su aspecto, y el cuidador ve
+  los cambios al momento); una tienda donde gastar las monedas; jugar con los
+  Tamas, accesorios, notificaciones y micro-apps.
 
 ## Licencia
 

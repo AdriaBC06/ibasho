@@ -796,5 +796,248 @@
     }
   },
   "adminVersionCleared": "bloqueo quitado",
-  "adminVersionError": "no se ha podido cambiar la versión mínima"
+  "adminVersionError": "no se ha podido cambiar la versión mínima",
+  "channelNews": "noticias",
+  "@channelNews": {
+    "description": "Nombre del canal de noticias en la rejilla."
+  },
+  "channelMessages": "mensajes",
+  "@channelMessages": {
+    "description": "Nombre del canal de mensajes en la rejilla."
+  },
+  "channelSuggestions": "sugerencias",
+  "@channelSuggestions": {
+    "description": "Nombre del canal de sugerencias en la rejilla."
+  },
+  "keysPreparing": "preparando el cifrado…",
+  "keysTitle": "tu clave de respaldo",
+  "@keysTitle": {
+    "description": "Cabecera de la pantalla que enseña las doce palabras."
+  },
+  "keysIntro": "Estas doce palabras abren tus mensajes en cualquier aparato. Apúntalas en papel y guárdalas donde nadie las vea.",
+  "keysWarning": "no hay otra copia: sin ellas se pierde todo lo que te hayan escrito",
+  "keysCopy": "copiar",
+  "keysCopied": "copiada",
+  "keysConfirm": "ya la he apuntado",
+  "keysShowAgain": "ver mi clave de respaldo",
+  "@keysShowAgain": {
+    "description": "Entrada en Ajustes."
+  },
+  "keysShowUnknown": "este aparato no guarda tu clave de respaldo",
+  "keysRestoreTitle": "escribe tu clave de respaldo",
+  "keysRestoreIntro": "Esta cuenta ya tiene mensajes cifrados y este aparato no sabe abrirlos. Escribe las doce palabras.",
+  "keysRestoreHint": "doce palabras separadas por espacios",
+  "keysRestoreSubmit": "recuperar",
+  "keysRestoreWorking": "abriendo…",
+  "keysErrorCount": "tienen que ser doce palabras",
+  "keysErrorWord": "«{word}» no está en la lista",
+  "@keysErrorWord": {
+    "description": "Palabra de la frase que no existe.",
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "keysErrorChecksum": "hay alguna palabra mal copiada o cambiada de sitio",
+  "keysErrorNoMatch": "esa clave no abre el respaldo de esta cuenta",
+  "keysUnavailable": "no se ha podido preparar el cifrado",
+  "keysRetry": "reintentar",
+  "keysLockedTitle": "hace falta tu clave de respaldo",
+  "messagesTitle": "mensajes",
+  "messagesPrivacy": "cifrado de punta a punta",
+  "@messagesPrivacy": {
+    "description": "Pie del canal: recuerda que nadie mas puede leerlo."
+  },
+  "messagesEmpty": "aquí aparecerán tus conversaciones",
+  "messagesNoFriends": "añade amigos para poder escribirles",
+  "messagesEmptyConversation": "todavía no os habéis escrito",
+  "messagesComposeHint": "escribe algo",
+  "messagesSend": "enviar",
+  "messagesSending": "enviando…",
+  "messagesFailed": "no ha salido, inténtalo otra vez",
+  "messagesUnreadable": "este mensaje no se puede mostrar",
+  "messagesDecrypting": "abriendo lo anterior…",
+  "messagesOtherNoKeys": "esta persona todavía no ha entrado desde que hay cifrado",
+  "messagesDeleteTitle": "¿borrar el mensaje?",
+  "messagesDeleteBody": "Desaparece también para quien lo recibió.",
+  "messagesDelete": "borrar",
+  "messagesLeft": "quedan {left}",
+  "@messagesLeft": {
+    "description": "Caracteres que quedan al escribir.",
+    "placeholders": {
+      "left": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesYou": "tú",
+  "groupGlobalName": "Global",
+  "@groupGlobalName": {
+    "description": "Nombre del grupo abierto que trae Ibasho. No se traduce."
+  },
+  "groupJoin": "unirme",
+  "groupJoining": "entrando…",
+  "groupLeave": "salir del grupo",
+  "groupLockedTitle": "únete para leer y escribir",
+  "groupLockedBody": "El grupo Global está abierto a todo el mundo. Hasta que no entres no se descarga ni un mensaje.",
+  "groupJoinedNote": "verás lo que se escriba a partir de ahora",
+  "groupMembers": "{count, plural, =1{1 miembro} other{{count} miembros}}",
+  "@groupMembers": {
+    "description": "Cuanta gente hay en el grupo.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupFull": "el grupo está lleno",
+  "groupClosed": "el grupo no admite gente nueva",
+  "groupNoKeys": "espera a que termine de prepararse el cifrado",
+  "groupLeaveConfirmTitle": "¿salir del grupo?",
+  "groupLeaveConfirmBody": "Dejarás de ver la conversación. Lo que escribiste se queda para los demás.",
+  "groupMissing": "todavía no hay ningún grupo",
+  "stickerOpen": "sticker",
+  "stickerPickTama": "elige un Tama",
+  "stickerPickFace": "elige una cara",
+  "stickerNone": "no tienes Tamas todavía",
+  "stickerSend": "mandar",
+  "stickerFaceHappy": "contento",
+  "stickerFaceWink": "guiño",
+  "stickerFaceSurprised": "sorpresa",
+  "stickerFaceAngry": "enfado",
+  "stickerFaceLove": "amor",
+  "stickerFaceSad": "triste",
+  "stickerFaceSleepy": "sueño",
+  "stickerFaceWave": "saludo",
+  "newsTitle": "noticias",
+  "newsEmpty": "todavía no hay nada por aquí",
+  "newsKindUpdate": "novedad",
+  "newsKindNote": "aviso",
+  "newsKindPoll": "encuesta",
+  "newsVersionTag": "versión {version}",
+  "@newsVersionTag": {
+    "description": "Etiqueta de la version que anuncia una novedad.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "newsBy": "de {name}",
+  "@newsBy": {
+    "description": "Quien publico la entrada.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pollVotes": "{count, plural, =0{sin votos} =1{1 voto} other{{count} votos}}",
+  "@pollVotes": {
+    "description": "Recuento total de una encuesta.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pollClosed": "encuesta cerrada",
+  "pollClosesOn": "cierra el {date}",
+  "@pollClosesOn": {
+    "description": "Fecha en la que se cierra sola.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "pollNoClose": "sin fecha de cierre",
+  "pollAnonymous": "los votos son anónimos",
+  "pollChangeHint": "puedes cambiar el voto mientras siga abierta",
+  "pollYourVote": "tu voto",
+  "pollError": "el voto no ha entrado",
+  "adminNewsSection": "publicar en noticias",
+  "adminNewsKind": "qué es",
+  "adminNewsHeadline": "título",
+  "adminNewsBody": "texto",
+  "adminNewsVersion": "versión que anuncia",
+  "adminNewsOption": "opción {number}",
+  "@adminNewsOption": {
+    "description": "Campo de una opcion de la encuesta.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "adminNewsAddOption": "añadir opción",
+  "adminNewsRemoveOption": "quitar",
+  "adminNewsCloseAfter": "cierra en",
+  "adminNewsDays": "{days, plural, =1{1 día} other{{days} días}}",
+  "@adminNewsDays": {
+    "description": "Cuanto dura una encuesta.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "adminNewsNoDeadline": "a mano",
+  "adminNewsPublish": "publicar",
+  "adminNewsPublished": "publicado",
+  "adminNewsError": "no se ha podido publicar",
+  "adminNewsErrorEmpty": "falta el título",
+  "adminNewsErrorOptions": "una encuesta necesita al menos dos opciones",
+  "adminNewsClosePoll": "cerrar encuesta",
+  "adminNewsDelete": "borrar entrada",
+  "adminNewsDeleteConfirm": "¿borrar la entrada del tablón?",
+  "suggestTitle": "sugerencias",
+  "suggestIntro": "Cuenta una idea para Ibasho. Mientras la tuya espere respuesta no puedes mandar otra.",
+  "suggestHeadline": "título",
+  "suggestBody": "cuéntala",
+  "suggestSend": "mandar",
+  "suggestSending": "mandando…",
+  "suggestClosed": "el buzón está cerrado ahora mismo",
+  "suggestYours": "tu sugerencia",
+  "suggestStatusPending": "esperando respuesta",
+  "suggestStatusAccepted": "aceptada",
+  "suggestStatusRejected": "rechazada",
+  "suggestAnother": "mandar otra sugerencia",
+  "suggestAcceptedList": "aceptadas",
+  "suggestAcceptedEmpty": "aún no hay ninguna aceptada",
+  "suggestError": "no se ha podido mandar",
+  "suggestErrorEmpty": "falta el título o el texto",
+  "suggestDecidedBy": "— {name}",
+  "@suggestDecidedBy": {
+    "description": "Firma del admin que decidio.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSuggestSection": "sugerencias por revisar",
+  "adminSuggestEmpty": "no hay ninguna esperando",
+  "adminSuggestAccept": "aceptar",
+  "adminSuggestReject": "rechazar",
+  "adminSuggestNote": "motivo (opcional)",
+  "adminSuggestBox": "buzón de sugerencias",
+  "adminSuggestBoxOpen": "abierto",
+  "adminSuggestBoxClosed": "cerrado",
+  "adminSuggestError": "no se ha podido guardar el veredicto",
+  "coinsLabel": "monedas",
+  "@coinsLabel": {
+    "description": "Etiqueta del contador de monedas."
+  },
+  "adminCoinsSection": "monedas",
+  "adminCoinsAmount": "cantidad",
+  "adminCoinsGive": "poner",
+  "adminCoinsDone": "monedas puestas",
+  "adminCoinsError": "no se han podido poner",
+  "adminGroupSection": "grupo Global",
+  "adminGroupCreate": "crear el grupo",
+  "adminGroupCreated": "grupo creado",
+  "adminGroupExists": "el grupo ya existe",
+  "adminGroupError": "no se ha podido crear"
 }

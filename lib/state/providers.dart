@@ -13,7 +13,13 @@ import '../theme/tokens.dart';
 import 'accent_sync.dart';
 import 'admin.dart';
 import 'card.dart';
+import 'coins.dart';
+import 'conversation.dart';
 import 'friends.dart';
+import 'identity.dart';
+import 'messages.dart';
+import 'news.dart';
+import 'suggestions.dart';
 import 'music_library.dart';
 import 'preferences.dart';
 import 'presence.dart';
@@ -227,3 +233,91 @@ final friendsProvider = StateNotifierProvider<FriendsController, FriendsState>((
 /// Solicitudes pendientes de responder: la insignia del canal de amigos.
 final pendingRequestsProvider =
     Provider<int>((ref) => ref.watch(friendsProvider.select((f) => f.incoming.length)));
+
+// --- 0.4.0: cifrado, mensajes, noticias, sugerencias y monedas -------------
+
+/// Las claves de cifrado de la cuenta en este aparato.
+///
+/// Va antes que la mensajeria a proposito: sin claves no hay conversacion que
+/// abrir, y quien las mira decide si hay que enseñar la frase de respaldo.
+final identityProvider =
+    StateNotifierProvider<IdentityController, IdentityState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return IdentityController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    store: ref.watch(secureStoreProvider),
+  );
+});
+
+/// El canal de mensajes: quien tiene algo sin leer y como esta el grupo.
+final messagesProvider =
+    StateNotifierProvider<MessagesController, MessagesState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return MessagesController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    identity: ref.watch(identityProvider),
+  );
+});
+
+/// Una conversacion abierta. Se crea al entrar y se tira al salir: lo
+/// descifrado no sobrevive al cierre del canal.
+final conversationProvider = StateNotifierProvider.family<ConversationController,
+    ConversationState, ConversationTarget>((ref, target) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  return ConversationController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    identity: ref.watch(identityProvider),
+    channel: ref.watch(messagesProvider),
+    target: target,
+  );
+});
+
+/// El tablon de noticias y encuestas.
+final newsProvider = StateNotifierProvider<NewsController, NewsState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return NewsController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+  );
+});
+
+/// El buzon de sugerencias.
+final suggestionsProvider =
+    StateNotifierProvider<SuggestionsController, SuggestionsState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return SuggestionsController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    isAdmin: ref.watch(sessionProvider.select((s) => s.isAdmin)),
+  );
+});
+
+/// Las monedas de la cuenta en curso.
+final coinsProvider = StateNotifierProvider<CoinsController, int>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return CoinsController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+  );
+});
+
+/// Conversaciones con algo sin leer: la chapa del canal de mensajes.
+final unreadMessagesProvider =
+    Provider<int>((ref) => ref.watch(messagesProvider.select((m) => m.unreadCount)));
+
+/// Entradas del tablon sin ver: la chapa del canal de noticias.
+final unreadNewsProvider =
+    Provider<int>((ref) => ref.watch(newsProvider.select((n) => n.unreadCount)));
+
+/// Sugerencias esperando veredicto. Solo se llena si quien mira es admin, asi
+/// que la chapa del canal de sugerencias solo se le enciende a el.
+final pendingSuggestionsProvider =
+    Provider<int>((ref) => ref.watch(suggestionsProvider.select((s) => s.pending.length)));

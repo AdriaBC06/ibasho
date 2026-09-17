@@ -18,6 +18,7 @@ import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../layout.dart';
 import '../channel_route.dart';
+import '../messages/backup_key.dart';
 import '../../track_text.dart';
 import '../../widgets/track_tile.dart';
 import 'change_own_password_dialog.dart';
@@ -29,6 +30,7 @@ class SettingsChannel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context)!;
+    final keyPhrase = ref.watch(identityProvider.select((i) => i.phrase));
     final skin = IbashoSkin.of(context);
     final preferences = ref.watch(preferencesProvider);
     final controller = ref.read(preferencesProvider.notifier);
@@ -207,6 +209,36 @@ class SettingsChannel extends ConsumerWidget {
                               showIbashoToast(context, l.changeOwnPasswordDone);
                             }
                           },
+                        ),
+                      ),
+                      // La clave de respaldo se puede volver a mirar, pero
+                      // solo desde un aparato que la tenga guardada en el
+                      // llavero: del respaldo de la base no se saca, que es
+                      // justo lo que hace que nadie mas pueda leer tus
+                      // mensajes.
+                      SettingRow(
+                        label: l.keysShowAgain,
+                        hint: keyPhrase.isEmpty ? l.keysShowUnknown : null,
+                        control: IbashoButton(
+                          label: l.keysShowAgain,
+                          glyph: Glyph.lock,
+                          height: 44,
+                          onPressed: keyPhrase.isEmpty
+                              ? null
+                              : () => showIbashoModal<void>(
+                                    context,
+                                    (_) => IbashoDialog(
+                                      title: l.keysTitle,
+                                      body: BackupWords(words: keyPhrase),
+                                      actions: [
+                                        IbashoButton(
+                                          label: l.actionClose,
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                         ),
                       ),
                       SettingRow(

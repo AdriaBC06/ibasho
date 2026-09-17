@@ -149,3 +149,10 @@ final friendCountOfProvider = StreamProvider.autoDispose.family<int, String>((re
   _linger(ref);
   return _liveNode(ref, '/users/$account/friendCount').map((raw) => raw is num ? raw.toInt() : 0);
 });
+
+/// Las monedas de una cuenta. Las leen sus amigos y los administradores, que
+/// son quienes las reparten; el resto, no.
+final coinsOfProvider = StreamProvider.autoDispose.family<int, String>((ref, account) {
+  _linger(ref);
+  return _liveNode(ref, '/users/$account/coins').map((raw) => raw is num ? raw.toInt() : 0);
+});

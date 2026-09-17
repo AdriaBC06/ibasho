@@ -136,37 +136,47 @@ class _ChannelGridState extends State<ChannelGrid>
         animation: _slide,
         builder: (context, _) => Transform.translate(
           offset: Offset(-_current * widget.width, 0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var page = 0; page < pageCount; page++)
-                SizedBox(
-                  width: widget.width,
-                  height: widget.height,
-                  child: _Page(
-                    channels: widget.channels
-                        .skip(page * perPage)
-                        .take(perPage)
-                        .toList(growable: false),
-                    perPage: perPage,
-                    columns: columns,
-                    tileWidth: tileW,
-                    tileHeight: tileH,
-                    gapH: tall
-                        ? ChannelGrid.tallGapH
-                        : compact
-                            ? 16
-                            : ChannelGrid._gapH,
-                    gapV: tall ? ChannelGrid.tallGapV : ChannelGrid._gapV,
-                    compact: !tall && compact,
-                    // En vertical la pagina se completa con ranuras hundidas:
-                    // la rejilla es siempre de 3x3, como el HOME de la
-                    // consola.
-                    fill: tall,
-                    glyphOnly: tall && tileH < 58,
+          // Las paginas van una al lado de otra en una fila que es tan ancha
+          // como todas juntas, y el `ClipRect` enseña solo la que toca. Sin
+          // esto la fila recibe el ancho del panel y se queja de desbordar en
+          // cuanto hay mas de una pagina, que es justo lo normal: el recorte
+          // es el mecanismo, no un accidente.
+          child: OverflowBox(
+            minWidth: 0,
+            maxWidth: double.infinity,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var page = 0; page < pageCount; page++)
+                  SizedBox(
+                    width: widget.width,
+                    height: widget.height,
+                    child: _Page(
+                      channels: widget.channels
+                          .skip(page * perPage)
+                          .take(perPage)
+                          .toList(growable: false),
+                      perPage: perPage,
+                      columns: columns,
+                      tileWidth: tileW,
+                      tileHeight: tileH,
+                      gapH: tall
+                          ? ChannelGrid.tallGapH
+                          : compact
+                              ? 16
+                              : ChannelGrid._gapH,
+                      gapV: tall ? ChannelGrid.tallGapV : ChannelGrid._gapV,
+                      compact: !tall && compact,
+                      // En vertical la pagina se completa con ranuras hundidas:
+                      // la rejilla es siempre de 3x3, como el HOME de la
+                      // consola.
+                      fill: tall,
+                      glyphOnly: tall && tileH < 58,
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -5,7 +5,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:intl/intl.dart';
+
 import '../../backend/models.dart';
+import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../state/system_status.dart';
 import '../../theme/skin.dart';
@@ -25,6 +28,7 @@ class StatusBar extends ConsumerWidget {
     final status = ref.watch(systemStatusProvider);
     final skin = IbashoSkin.of(context);
     final preferences = ref.watch(preferencesProvider);
+    final coins = ref.watch(coinsProvider);
 
     final bars = switch (status.link) {
       LinkQuality.offline => 0,
@@ -37,6 +41,12 @@ class StatusBar extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // Las monedas van las primeras, antes de los indicadores del aparato:
+        // son de la cuenta, no del cacharro. Hoy estan a cero para todo el
+        // mundo y aun asi se enseñan, porque el sitio tiene que existir antes
+        // de que haya algo que gastar.
+        _CoinsReadout(coins: coins, accent: skin.accentDeep, compact: compact),
+        SizedBox(width: compact ? 16 : 22),
         // Sin bateria no se dibuja nada ni se deja hueco.
         if (status.battery != null) ...[
           _BatteryReadout(battery: status.battery!, accent: skin.accent),
@@ -55,6 +65,49 @@ class StatusBar extends ConsumerWidget {
               changeLanguage(ref, preferences.localeCode == 'es' ? 'en' : 'es'),
         ),
       ],
+    );
+  }
+}
+
+/// El monedero, con el mismo peso visual que la bateria: glifo y cifra.
+class _CoinsReadout extends StatelessWidget {
+  const _CoinsReadout({
+    required this.coins,
+    required this.accent,
+    required this.compact,
+  });
+
+  final int coins;
+  final Color accent;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    return Semantics(
+      label: '$coins ${l.coinsLabel}',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GlyphIcon(
+            Glyph.coin,
+            size: compact ? 15 : 17,
+            // El acento, no la tinta suave: es lo unico de la barra que crece
+            // con lo que haces, y tiene que verse que esta vivo.
+            color: accent,
+            strokeWidth: 1.7,
+          ),
+          const SizedBox(width: 7),
+          Text(
+            // Con separador de millares: en cuanto haya algo que gastar, un
+            // "1.250" se lee de un vistazo y un "1250" no.
+            NumberFormat.decimalPattern(
+              Localizations.localeOf(context).languageCode,
+            ).format(coins),
+            style: Ty.numeral(15, color: T.inkSoft),
+          ),
+        ],
+      ),
     );
   }
 }

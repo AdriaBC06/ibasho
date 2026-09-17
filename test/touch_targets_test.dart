@@ -112,6 +112,9 @@ Future<void> main() async {
       ('profile', 'perfil'),
       ('tamas', 'tus Tamas'),
       ('friends', 'amigos'),
+      ('messages', 'mensajes'),
+      ('news', 'noticias'),
+      ('suggestions', 'sugerencias'),
       ('admin', 'administracion'),
       ('debug', 'depuracion'),
     ]) {

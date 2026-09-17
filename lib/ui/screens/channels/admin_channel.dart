@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +15,8 @@ import '../../../backend/models.dart';
 import '../../../core/version.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/admin.dart';
+import '../../../state/coins.dart';
+import '../../../state/people.dart';
 import '../../../state/providers.dart';
 import '../../../state/update_gate.dart';
 import '../../../theme/skin.dart';
@@ -197,6 +201,8 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
                 const SizedBox(height: 22),
                 const _VersionLock(),
                 const SizedBox(height: 22),
+                const _GlobalGroupSection(),
+                const SizedBox(height: 22),
                 SectionCard(
                   title: l.adminListSection,
                   padding: const EdgeInsets.fromLTRB(26, 6, 26, 10),
@@ -233,6 +239,59 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// El grupo Global. No se pueden crear grupos desde la app: este lo crea el
+/// admin una sola vez y a partir de ahi cada cual se une si quiere.
+class _GlobalGroupSection extends ConsumerStatefulWidget {
+  const _GlobalGroupSection();
+
+  @override
+  ConsumerState<_GlobalGroupSection> createState() => _GlobalGroupSectionState();
+}
+
+class _GlobalGroupSectionState extends ConsumerState<_GlobalGroupSection> {
+  bool _working = false;
+
+  Future<void> _create() async {
+    final l = L.of(context)!;
+    setState(() => _working = true);
+    final ok = await ref.read(adminProvider.notifier).createGlobalGroup();
+    if (!mounted) return;
+    setState(() => _working = false);
+    AudioService.instance.play(ok ? Sfx.open : Sfx.error);
+    showIbashoToast(
+      context,
+      ok ? l.adminGroupCreated : l.adminGroupError,
+      isError: !ok,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final group = ref.watch(messagesProvider.select((m) => m.global));
+
+    return SectionCard(
+      title: l.adminGroupSection,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 4),
+          Text(
+            group == null ? l.groupMissing : l.adminGroupExists,
+            style: Ty.caption,
+          ),
+          const SizedBox(height: 14),
+          IbashoButton(
+            label: l.adminGroupCreate,
+            glyph: Glyph.friends,
+            onPressed: group != null || _working ? null : () => unawaited(_create()),
+          ),
+        ],
       ),
     );
   }
@@ -564,6 +623,8 @@ class _AccountRow extends StatelessWidget {
           ],
         ),
       ],
+      const SizedBox(height: 10),
+      _CoinsField(accountId: entry.accountId, busy: busy),
         ],
       ),
     );
@@ -571,6 +632,98 @@ class _AccountRow extends StatelessWidget {
 }
 
 /// El campo de alta y sus botones: en fila si hay ancho, en dos filas si no.
+/// Las monedas de una cuenta, desde el panel.
+///
+/// Es el unico sitio de la app donde se escriben: las reglas solo dejan
+/// tocarlas a un admin, y a proposito no hay ninguna ruta que permita a una
+/// cuenta subirse las suyas. De momento no se gastan en nada, pero el sitio
+/// donde darlas tiene que existir antes que aquello en lo que gastarlas.
+class _CoinsField extends ConsumerStatefulWidget {
+  const _CoinsField({required this.accountId, required this.busy});
+
+  final String accountId;
+  final bool busy;
+
+  @override
+  ConsumerState<_CoinsField> createState() => _CoinsFieldState();
+}
+
+class _CoinsFieldState extends ConsumerState<_CoinsField> {
+  final TextEditingController _amount = TextEditingController();
+  bool _working = false;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  Future<void> _give() async {
+    final l = L.of(context)!;
+    final value = int.tryParse(_amount.text.trim());
+    if (value == null || value < 0 || value > maxCoins) {
+      AudioService.instance.play(Sfx.error);
+      showIbashoToast(context, l.adminCoinsError, isError: true);
+      return;
+    }
+    setState(() => _working = true);
+    final ok =
+        await ref.read(coinsProvider.notifier).setFor(widget.accountId, value);
+    if (!mounted) return;
+    setState(() => _working = false);
+    AudioService.instance.play(ok ? Sfx.open : Sfx.error);
+    showIbashoToast(
+      context,
+      ok ? l.adminCoinsDone : l.adminCoinsError,
+      isError: !ok,
+    );
+    if (ok) _amount.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final skin = IbashoSkin.of(context);
+    final current = ref.watch(coinsOfProvider(widget.accountId)).valueOrNull ?? 0;
+
+    return Row(
+      children: [
+        GlyphIcon(Glyph.coin, size: 16, color: skin.accentDeep),
+        const SizedBox(width: 8),
+        Text('$current', style: Ty.numeral(14, color: T.inkSoft)),
+        const SizedBox(width: 14),
+        // Flexible y no de ancho fijo: en la composicion vertical la fila de
+        // una cuenta se queda en 264 puntos y un campo de 120 no cabe con el
+        // boton al lado.
+        Flexible(
+          fit: FlexFit.loose,
+          child: SizedBox(
+            width: 120,
+            child: IbashoTextField(
+              controller: _amount,
+              label: l.adminCoinsAmount,
+              enabled: !widget.busy && !_working,
+              formatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              maxLength: 9,
+              onSubmitted: (_) => unawaited(_give()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        IbashoButton(
+          label: l.adminCoinsGive,
+          height: 40,
+          tone: ButtonTone.quiet,
+          cue: null,
+          onPressed: widget.busy || _working ? null : () => unawaited(_give()),
+        ),
+      ],
+    );
+  }
+}
+
 class _Rows extends StatelessWidget {
   const _Rows({required this.tall, required this.field, required this.actions});
 

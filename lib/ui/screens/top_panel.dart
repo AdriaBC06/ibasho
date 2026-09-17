@@ -71,7 +71,13 @@ class TopPanel extends ConsumerWidget {
             ),
             Text(clock, style: Ty.clockSmall(T.ink)),
             const SizedBox(width: 26),
-            const StatusBar(compact: true),
+            const Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: StatusBar(compact: true),
+              ),
+            ),
           ],
         ),
       );
@@ -200,7 +206,17 @@ class TopPanel extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 10),
-            const StatusBar(compact: true),
+            // Y los indicadores hacen lo mismo que el reloj: en la tira no
+            // hay sitio para todos a tamaño natural —las monedas se sumaron a
+            // la bateria, la señal y el idioma— y encogerse se lee mejor que
+            // recortarse por la derecha.
+            const Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: StatusBar(compact: true),
+              ),
+            ),
           ],
         ),
       );

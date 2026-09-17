@@ -63,6 +63,10 @@ enum Glyph {
   paste,
   star,
   send,
+  news,
+  chat,
+  bulb,
+  coin,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -656,6 +660,56 @@ class _GlyphPainter extends CustomPainter {
           stroke,
         );
         canvas.drawLine(const Offset(11.2, 13), const Offset(20.2, 4), stroke);
+      case Glyph.news:
+        // Tablon: el marco, el recuadro de la foto y tres renglones.
+        canvas.drawRRect(
+          RRect.fromLTRBR(3.2, 5, 20.8, 19, const Radius.circular(2.2)),
+          stroke,
+        );
+        canvas.drawRRect(
+          RRect.fromLTRBR(5.8, 8, 11.4, 12.6, const Radius.circular(1)),
+          stroke,
+        );
+        for (final y in const <double>[8.6, 10.8]) {
+          canvas.drawLine(Offset(13.4, y), Offset(18.4, y), stroke);
+        }
+        for (final y in const <double>[15, 16.8]) {
+          canvas.drawLine(Offset(5.8, y), Offset(18.4, y), stroke);
+        }
+      case Glyph.chat:
+        // Bocadillo con el rabito abajo a la izquierda.
+        canvas.drawPath(
+          Path()
+            ..moveTo(6.2, 4.4)
+            ..lineTo(17.8, 4.4)
+            ..arcToPoint(const Offset(20.8, 7.4),
+                radius: const Radius.circular(3))
+            ..lineTo(20.8, 13.6)
+            ..arcToPoint(const Offset(17.8, 16.6),
+                radius: const Radius.circular(3))
+            ..lineTo(10.4, 16.6)
+            ..lineTo(6.6, 20.4)
+            ..lineTo(6.6, 16.6)
+            ..arcToPoint(const Offset(3.2, 13.6),
+                radius: const Radius.circular(3))
+            ..lineTo(3.2, 7.4)
+            ..arcToPoint(const Offset(6.2, 4.4),
+                radius: const Radius.circular(3))
+            ..close(),
+          stroke,
+        );
+      case Glyph.bulb:
+        // Bombilla: la idea. El casquillo son dos renglones cortos.
+        canvas.drawCircle(const Offset(12, 9.6), 5.2, stroke);
+        canvas.drawLine(const Offset(9.6, 14.2), const Offset(9.6, 16.4), stroke);
+        canvas.drawLine(const Offset(14.4, 14.2), const Offset(14.4, 16.4), stroke);
+        canvas.drawLine(const Offset(9.4, 17.2), const Offset(14.6, 17.2), stroke);
+        canvas.drawLine(const Offset(10.4, 19.6), const Offset(13.6, 19.6), stroke);
+      case Glyph.coin:
+        // Moneda de canto: dos circulos concentricos y nada mas, para que se
+        // lea a 16 pixeles en la barra de estado.
+        canvas.drawCircle(const Offset(12, 12), 8.2, stroke);
+        canvas.drawCircle(const Offset(12, 12), 4.4, stroke);
     }
 
     canvas.restore();

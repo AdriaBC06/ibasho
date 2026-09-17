@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../backend/errors.dart';
 import '../backend/ibasho_backend.dart';
+import '../backend/messaging.dart';
 import '../backend/models.dart';
 import '../core/friend_code.dart';
 import 'session.dart';
@@ -319,6 +320,30 @@ class AdminController extends StateNotifier<AdminState> {
 
   /// Da codigo a las cuentas que se crearon antes de que existieran. Se lanza
   /// solo al abrir el panel; no hace nada si ya lo tienen todas.
+  /// Crea el grupo Global. Una sola vez en la vida del proyecto.
+  ///
+  /// Los grupos no se crean desde la app —solo unirse—, asi que alguien tiene
+  /// que poner el primero. `open` en true es lo que hace que cualquiera pueda
+  /// entrar sin invitacion.
+  Future<bool> createGlobalGroup() async {
+    try {
+      final token = await _session.freshToken();
+      await _backend.write(
+        '/groups/$globalGroupId/meta',
+        <String, Object?>{
+          'name': 'Global',
+          'open': true,
+          'createdAt': serverTimestamp,
+        },
+        idToken: token,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido crear el grupo Global ($e)');
+      return false;
+    }
+  }
+
   Future<int> assignMissingFriendCodes() async {
     try {
       final token = await _session.freshToken();

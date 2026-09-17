@@ -1,10 +1,11 @@
 # Arquitectura de Ibasho
 
-Estado del proyecto en la versión **0.3.1** (checkpoint 3.1: Android). Este documento
+Estado del proyecto en la versión **0.4.0** (checkpoint 4: hablar). Este documento
 describe lo que existe en el repositorio.
 
-Plataformas: Linux desktop y Android. Flutter stable 3.41, Dart 3 (`sdk: ^3.11.0`).
-Un solo árbol de widgets para las dos: lo que cambia está en `lib/ui/canvas.dart`
+Plataformas: Linux desktop, Android y Windows. Flutter stable 3.41, Dart 3
+(`sdk: ^3.11.0`).
+Un solo árbol de widgets para las tres: lo que cambia está en `lib/ui/canvas.dart`
 (la forma del lienzo), `lib/ui/layout.dart` (las medidas de cada composición),
 `lib/ui/touch.dart` (zonas táctiles), `lib/ui/mobile.dart` (ciclo de vida, atrás
 e inmersivo) y `lib/core/device.dart` (la única bandera de plataforma).
@@ -31,7 +32,18 @@ lib/
     models.dart              AuthTokens, AllowlistEntry, UserProfile, DatabaseEvent, DatabaseQuery, serverTimestamp…
     tama.dart                modelo de los Tamas (Tama, TamaLook, TamaWear, TamaVoice, TamaCare, TamaFood, humor)
     social.dart              UserCard, PresenceMode, PresenceState, Presence, Friendship, FriendRequest, WallMessage
+    messaging.dart           mensajes y grupos (Message, MessageBody, TextBody, StickerBody, StoredMessage, GroupInfo, GroupMember, InboxEntry)
+    news.dart                NewsItem y NewsKind: el tablón y sus encuestas
+    suggestions.dart         Suggestion, SuggestionStatus y AcceptedSuggestion
     errors.dart              IbashoFailure e IbashoException
+  crypto/                cifrado de punta a punta, todo en Dart puro sobre pointycastle
+    keys.dart            IdentityKeys y PublicKey: par ECDH sobre P-256 y secreto compartido
+    envelope.dart        SealedEnvelope: sellar y abrir un mensaje para varios destinatarios
+    mnemonic.dart        la frase de respaldo: entropía ↔ doce palabras, con suma de comprobación
+    wordlist.dart        las 512 palabras del alfabeto de la frase (no se toca nunca)
+    backup.dart          KeyBackup: la privada envuelta con la frase (Argon2id + AES-GCM)
+    worker.dart          CryptoWorker: cifrar y descifrar en un isolate, por tandas
+    random.dart          azar del sistema y el SecureRandom que pide pointycastle
   core/
     device.dart        Device.isAndroid: la unica rama por plataforma
     env.dart           configuración inyectada en compilación (Env)
@@ -58,6 +70,12 @@ lib/
     people.dart        datos en vivo de otras cuentas (ficha, Tama público, perfil, presencia, música, muro)
     pantry.dart        unlockedFoodsProvider
     music_library.dart MusicLibraryController
+    identity.dart      IdentityController: trae las claves a este aparato, o las crea
+    messages.dart      MessagesController: avisos de sin leer, grupo y lecturas
+    conversation.dart  ConversationController: una conversación abierta (descifrar, mandar, podar)
+    news.dart          NewsController: tablón, voto anónimo y publicación (admin)
+    suggestions.dart   SuggestionsController: buzón, veredicto y apertura (admin)
+    coins.dart         CoinsController: el monedero (lo escribe solo un admin)
     preferences.dart   PreferencesController
     system_status.dart Clock y SystemStatusController (batería y conexión)
     debug.dart         DebugController
@@ -767,6 +785,18 @@ coincide con su uid).
     tama                 string push id de un Tama cuyo keeper es $accountId (Tama de perfil); card/tamaId igual
     tamaCount            number entero 0–99
     tamaLastChange       string push id del último Tama creado o borrado
+    keys
+        pub                string base64, 80–128: la pública ECDH (punto sin comprimir)
+        backup             { v: 1, s: sal ≤ 64, d: privada envuelta ≤ 256 }
+        at                 number > 0 y ≤ now
+    coins                number entero 0–999999999
+    inbox/$fromId        { at: number > 0 y ≤ now }  ← lo escribe quien manda
+    reads
+        dm/$withId         number > 0
+        group/$groupId     number > 0
+        news               number > 0
+    groups/$groupId      number > 0 y ≤ now (espejo de la pertenencia)
+    votes/$newsId        number entero 0–3: lo votado, y solo lo lee su dueña
 
 /tamas/$tamaId           ($tamaId ^[-0-9A-Za-z_]{20}$)
     schema               1
@@ -807,6 +837,50 @@ coincide con su uid).
     minVersion           string ^\d{1,4}\.\d{1,4}\.\d{1,4}$
     url?                 string https://…, ≤ 300
 /system/friendCodeCounter  number entero: el siguiente contador (ausente = 1), sube de 1 en 1
+/system/suggestionsOpen    boolean (ausente = abierto)
+
+/dm/$pairId                los dos accountId ordenados, unidos por '_'
+    a                    string: el menor de los dos
+    b                    string: el mayor; $pairId === a + '_' + b
+    msgs/$msgId          ($msgId push id)
+        at                 number > 0 y ≤ now
+        from               string accountId de quien lo manda
+        kind               'text' | 'sticker'
+        e                  string 80–128: la pública efímera del sobre
+        c                  string 1–8192: nonce || texto cifrado || MAC, en base64
+        k/$recipient       string ≤ 256: la clave del mensaje envuelta para esa cuenta
+                           (obligatorio: una entrada para `a` y otra para `b`)
+
+/groups/$groupId           ($groupId ^[a-z0-9_]{1,32}$; hoy solo existe `global`)
+    meta                 { name 1–24, open boolean, createdAt } — lo escribe un admin
+    members/$memberId    { at, pub } — `pub` tiene que ser la de esa cuenta
+    msgs/$msgId          igual que en /dm, con `k` conteniendo al menos a quien escribe
+    lastAt               number > 0 y ≤ now: para la chapa sin leer la conversación
+
+/news/$newsId              ($newsId push id)
+    kind                 'update' | 'note' | 'poll'
+    title                string 1–60
+    body?                string ≤ 600
+    version?             string mayor.menor.parche
+    at                   number > 0
+    by                   string 1–24 (nombre visible de quien publica)
+    closesAt?            number > 0
+    closed?              boolean
+    options/$index       string 1–40 ($index 0–3)
+    tally/$option        number entero ≥ 0: solo se mueve de uno en uno
+    voters/$voterId      true: que ha votado, nunca a qué
+
+/suggestions/$accountId    la última sugerencia de esa cuenta
+    title                string 1–30
+    body                 string 1–200
+    at                   number > 0 y ≤ now
+    status               'pending' | 'accepted' | 'rejected'
+    note?                string ≤ 140 (lo escribe el admin al decidir)
+    decidedAt?           number > 0
+    decidedBy?           string 1–24
+
+/acceptedSuggestions/$id   la lista pública
+    { title 1–30, by 1–24, at > 0 }
 ```
 
 `.indexOn`: `/allowlist` sobre `username` y `disabled`; `/tamas` sobre `keeper`.
@@ -842,6 +916,25 @@ coincide con su uid).
 | `…/care` | — | el `keeper` |
 | `/system` | miembro habilitado | admin |
 | `/system/update` | cualquiera, sin sesión | (vía `/system`) |
+| `…/keys/pub` | cualquier miembro (es pública: sin ella nadie te escribe) | la dueña |
+| `…/keys/backup` | **solo la dueña**, ni un admin | la dueña |
+| `…/coins` | sus amigos y cualquier admin | **solo un admin** |
+| `…/inbox/$fromId` | la dueña | crear: `$fromId`, si es amigo suyo; borrar: la dueña |
+| `…/reads`, `…/votes` | solo la dueña | la dueña |
+| `…/groups/$groupId` | solo la dueña | la dueña, con la entrada de miembro en la misma escritura |
+| `/dm/$pairId` | `a` y `b`, nadie más (tampoco un admin) | — (cada hijo) |
+| `…/a`, `…/b` | — | crear, una sola vez: uno de los dos, si el otro es amigo suyo y `$pairId` cuadra |
+| `…/msgs/$msgId` | (vía `/dm/$pairId`) | crear: `a` o `b`, con `from` propio y `k` para los dos; borrar: cualquiera de los dos (la poda); **editar, nadie** |
+| `/groups/$groupId/meta` | miembro habilitado (para ver a qué te unes) | admin |
+| `…/members` | los miembros del grupo | cada cual la suya: entrar si `open`, con su propia `pub`; salir siempre |
+| `…/msgs/$msgId` | los miembros | crear: un miembro, con `from` propio; borrar: un miembro |
+| `…/lastAt` | miembro habilitado | los miembros del grupo |
+| `/news` | miembro habilitado | admin |
+| `…/tally/$option` | (vía `/news`) | cualquier miembro, ±1 y solo apuntándose en `voters` con la encuesta abierta |
+| `…/voters/$voterId` | (vía `/news`) | `$voterId`, con la encuesta abierta |
+| `/suggestions` | admin | — |
+| `/suggestions/$accountId` | la dueña o un admin | la dueña si el buzón está abierto, no hay ninguna `pending` y manda `status: pending` sin `note`; el admin, siempre |
+| `/acceptedSuggestions` | miembro habilitado | admin |
 
 ### Contador de Tamas
 
@@ -893,7 +986,15 @@ reparte los que falten al abrir el panel.
 | `AdminController` | alta multi-ruta con código de amigo (ver arriba), `/admins/$uid`, `/allowlist/$uid/disabled`; regenerar crea `/allowlist/$nuevoUid` con el mismo `accountId`, copia `/admins` si lo era y marca la vieja `disabled` y `retired` |
 | `TamasController` | multi-ruta de creación y borrado (con `card` si cambia el Tama de perfil); `PATCH /tamas/$id` (name, personality, voice, look, updatedAt); `/tamas/$id/care/lastPetted` y `/lastFed` (`serverTimestamp`, como mucho una vez cada 30 s y 5 s por Tama); `PATCH /users/$acc` con `tama` y `card` |
 | `AdminController` (versión) | `/system/update` (`requireVersion(appVersion, url:)`) y su borrado |
+| `IdentityController` | `/users/$acc/keys` (pub, backup y at) la primera vez, y nunca más |
+| `MessagesController` | multi-ruta de entrada y salida del grupo (`groups/$gid/members/$acc` + `users/$acc/groups/$gid`); `/users/$acc/reads/dm/$otro`, `/reads/group/$gid` |
+| `ConversationController` | multi-ruta de envío: el mensaje, `a` y `b` la primera vez, `users/$otro/inbox/$yo` (o `groups/$gid/lastAt`) y los `null` de la poda, todo en una operación; `DELETE` de un mensaje suelto |
+| `NewsController` | multi-ruta de voto (`news/$id/tally/$opción` ±1, `news/$id/voters/$yo`, `users/$yo/votes/$id`); `/users/$acc/reads/news`; solo admin: `/news/$id`, `/news/$id/closed`, y su borrado |
+| `SuggestionsController` | `/suggestions/$acc` entero; solo admin: multi-ruta del veredicto (`status`, `note`, `decidedAt`, `decidedBy` y `acceptedSuggestions/$id`) y `/system/suggestionsOpen` |
+| `CoinsController` | solo admin: `/users/$otro/coins` |
+| `AdminController` (grupo) | `/groups/global/meta` |
 | `tool/bootstrap_admin.dart` | `/allowlist/$uid`, `/admins/$uid`, `/usernames/$username`, `/friendCodes/$code`, `/users/$uid/friendCode`, `/system/friendCodeCounter` con la CLI de Firebase |
+| `tool/post_news.dart` | `/news/$id`, `/news/$id/closed` y su borrado, también con la CLI |
 
 El humor de un Tama no se guarda: `TamaMoodReading.of(tama, now)` lo calcula a
 partir de `lastPetted` y `lastFed` (sin cuidados cuenta `createdAt`), con caída
@@ -931,6 +1032,105 @@ suave hasta 52 horas.
 
 ---
 
+## 5-bis. Cifrado de punta a punta (`lib/crypto/`)
+
+La promesa de la 0.4.0 es que los mensajes no los puede leer nadie más, ni
+siquiera quien tenga la base de datos delante. No es una regla de seguridad: es
+que el servidor no tiene la clave. Las reglas sólo comprueban **quién** escribe
+y **para quién** va cada sobre; lo de dentro no lo pueden mirar.
+
+Todo es `pointycastle` en Dart puro, como el resto de la red: los plugins
+nativos no cubren Linux, y aquí además interesa que el mismo código corra igual
+en las tres plataformas.
+
+### La curva
+
+`ECDH` sobre **NIST P-256** (`ECCurve_secp256r1`). X25519 sería más limpia, pero
+pointycastle 4 no la trae y meter una dependencia nativa en tres plataformas
+costaba más de lo que valía: P-256 está en la misma familia de seguridad.
+
+- La privada es un escalar de 32 bytes; la pública, el punto sin comprimir
+  (`04 || X || Y`, 65 bytes) en base64. Sin comprimir a propósito:
+  descomprimir pide una raíz cuadrada modular y no compensa ahorrar 32 bytes en
+  un nodo que se lee una vez.
+- `PublicKey.tryParse` valida que el punto esté de verdad en la curva
+  (multiplicándolo por el orden) y **nunca lanza**: lo que llega de la base es
+  dato ajeno y quien lo manda puede tener la app parcheada.
+
+### El sobre (`envelope.dart`)
+
+```
+{ "e": "<punto efímero>",
+  "c": "<nonce || texto cifrado || MAC>",
+  "k": { "<accountId>": "<nonce || clave envuelta || MAC>", … } }
+```
+
+1. Una clave AES-256 aleatoria por mensaje cifra el texto **una sola vez**
+   (AES-256-GCM, nonce de 12 bytes, MAC de 128 bits).
+2. Un par efímero, distinto en cada mensaje, hace ECDH con cada destinatario.
+3. `HKDF-SHA256(secreto, sal = el punto efímero, info = "ibasho.envelope.v1|<accountId>")`
+   da una clave de envoltorio **distinta por mensaje y por destinatario**: sin
+   el `info`, dos mensajes al mismo amigo reutilizarían clave.
+4. Esa clave envuelve la del mensaje, con AES-GCM otra vez.
+
+Quien envía se incluye siempre entre los destinatarios, o no podría releer lo
+que acaba de mandar: la efímera se tira en cuanto sale de ahí, que es lo que da
+el secreto hacia adelante. Tope de 32 destinatarios, que es también el de
+miembros de un grupo.
+
+### La frase de respaldo (`mnemonic.dart`, `wordlist.dart`, `backup.dart`)
+
+La privada vive en el llavero del sistema y, envuelta, en
+`/users/{cuenta}/keys/backup`. La envoltura es
+`Argon2id(frase, sal, 3 pasadas, 32 MiB) → AES-256-GCM`.
+
+El coste del derivado no es lo que la protege —la frase ya trae 104 bits de
+azar y nadie recorre 2¹⁰⁴—, pero encarece el único ataque con sentido, una
+frase copiada a medias, y 32 MiB los aguanta el móvil más modesto.
+
+- 12 palabras × 9 bits = 108: **104 de entropía** (13 bytes) y **4 de suma de
+  comprobación** (los primeros bits de `SHA-256` de la entropía). Una errata al
+  teclear se detecta quince de cada dieciséis veces.
+- Las 512 palabras son castellanas, sin tildes ni eñes, de 3 a 8 letras, con
+  **las cuatro primeras letras únicas**: se puede teclear a medias. La lista
+  está ordenada (búsqueda binaria) y **no se toca nunca**: cambiarla invalida
+  todas las frases ya entregadas. `test/wordlist_test.dart` sella esas
+  propiedades.
+- `normalizeWord` acepta lo que se teclea de verdad: mayúsculas, tildes que la
+  lista no lleva y espacios de más.
+
+**No depende de la contraseña**, y es la decisión de fondo: un admin puede
+resetear credenciales sin llevarse por delante el historial, y sigue sin poder
+leerlo. El precio, dicho en voz alta: perder la frase sin ningún aparato con la
+clave es perder ese historial, porque no hay puerta de atrás.
+
+### Dónde se abre (`worker.dart`)
+
+Abrir un sobre cuesta una multiplicación escalar: **~9 ms** en un portátil y
+bastante más en un móvil. Una conversación llena son 300, o sea casi tres
+segundos de pantalla congelada. Por eso:
+
+- todo lo caro pasa por `Isolate.run` — cruzan sólo bytes y mapas, nunca
+  `IdentityKeys`, que lleva puntos de la curva y no viaja;
+- `ConversationController` pide los mensajes **de los nuevos a los viejos y en
+  tandas de 30**, así que lo primero que se ve aparece enseguida y el resto
+  llega mientras se sube;
+- lo ya descifrado se guarda en memoria por id: un mensaje nuevo no obliga a
+  reabrir los anteriores. Al cerrar el canal se va con el controlador: el texto
+  en claro no toca el disco en ningún momento.
+
+Sellar para 32 miembros son ~190 ms, que también van al isolate: poco para una
+espera, demasiado para un fotograma.
+
+### Lo que sigue viéndose desde fuera
+
+Honestamente: el cifrado tapa el contenido, no los metadatos. Quien tenga la
+base sigue viendo **quién habla con quién**, **cuándo** y **cuánto**, y si un
+mensaje es texto o sticker (`kind`, que está fuera del sobre porque las reglas
+lo validan). Taparlo pediría otra arquitectura entera.
+
+---
+
 ## 6. Tests y emulador
 
 | Comando | Qué ejecuta |
@@ -941,9 +1141,20 @@ suave hasta 52 horas.
 | `flutter test test/touch_targets_test.dart` | mide cada control en un móvil pequeño: ninguno por debajo de 48 dp |
 | `flutter test test/visual_tour_test.dart` | capturas de pantallas `01-…` a `34b-…` (amigos desde `24-…`; `34-tarjeta.png` es la tarjeta exportada) |
 | `flutter test test/tama_gallery_test.dart` | hojas `g1-piezas` a `g7b-comida-sola` |
-| `./tool/test_rules.sh` | instala `test/rules/node_modules` si falta y ejecuta `firebase emulators:exec --project demo-ibasho --only database "npm --prefix test/rules test"` (`node --test rules.test.mjs`, con `@firebase/rules-unit-testing`) |
+| `flutter test test/crypto_test.dart test/wordlist_test.dart` | claves, sobres, frase de respaldo y las propiedades de la lista de 512 palabras |
+| `flutter test test/messaging_test.dart` | lo que hace la app con el cifrado: crear y recuperar claves, mandar y leer, podar, unirse al grupo, votar y el buzón |
+| `./tool/test_rules.sh` | instala `test/rules/node_modules` si falta y ejecuta `firebase emulators:exec --project demo-ibasho --only database "npm --prefix test/rules test"` (`node --test --test-concurrency=1 rules.test.mjs rules_04.test.mjs`, con `@firebase/rules-unit-testing`) |
 | `./tool/test_e2e.sh` | `firebase emulators:exec --project demo-ibasho --only auth,database` con `flutter test test/e2e` y los defines del emulador |
 
+- Los dos ficheros de reglas comparten un único emulador y cada uno vacía la
+  base antes de cada caso, así que **van en serie**: en paralelo se pisan el
+  estado de partida y fallan tests de los dos lados.
+- `test/messaging_test.dart` usa `ProviderContainer` y `test()`, no
+  `testWidgets()`: el descifrado ocurre en un isolate de verdad y bajo el reloj
+  simulado de los tests de widgets no terminaría nunca.
+- El backend falso **no aplica las reglas**, a propósito: si las aplicara, esos
+  tests pasarían por lo que prohíbe el servidor y no por lo que hace el cliente.
+  Lo otro lo cubren los tests de reglas.
 - `RtdbClient` omite `auth` cuando el token es la cadena vacía: así se leen nodos
   públicos como `/system/update` antes de iniciar sesión.
 - Emuladores (`firebase.json`): Realtime Database en `127.0.0.1:9000`, Auth en

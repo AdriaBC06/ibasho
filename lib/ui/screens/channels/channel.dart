@@ -12,8 +12,11 @@ import 'admin_channel.dart';
 import 'coming_soon_channel.dart';
 import 'debug_channel.dart';
 import 'friends_channel.dart';
+import 'messages_channel.dart';
+import 'news_channel.dart';
 import 'profile_channel.dart';
 import 'settings_channel.dart';
+import 'suggestions_channel.dart';
 import 'tamas_channel.dart';
 
 /// Un hueco de la rejilla.
@@ -41,7 +44,11 @@ class ChannelSpec {
 }
 
 /// Cuantas ranuras libres ensena el entorno mientras no haya apps.
-const int emptySlotCount = 2;
+///
+/// Una, no dos: con los tres canales de la 0.4.0 una cuenta normal tiene siete,
+/// y la octava ranura deja la primera pagina justa. Con dos, el entorno pasaba
+/// a dos paginas para enseñar un hueco.
+const int emptySlotCount = 1;
 
 /// Canales por pagina: rejilla de 4x2 en horizontal, de 3x3 en vertical.
 int channelsPerPage({required bool tall}) => tall ? 9 : 8;
@@ -71,6 +78,29 @@ List<ChannelSpec> channelsFor({required bool isAdmin}) => <ChannelSpec>[
         label: (l) => l.channelFriends,
         builder: (_) => const FriendsChannel(),
         badge: pendingRequestsProvider,
+      ),
+      ChannelSpec(
+        id: 'messages',
+        glyph: Glyph.chat,
+        label: (l) => l.channelMessages,
+        builder: (_) => const MessagesChannel(),
+        badge: unreadMessagesProvider,
+      ),
+      ChannelSpec(
+        id: 'news',
+        glyph: Glyph.news,
+        label: (l) => l.channelNews,
+        builder: (_) => const NewsChannel(),
+        badge: unreadNewsProvider,
+      ),
+      ChannelSpec(
+        id: 'suggestions',
+        glyph: Glyph.bulb,
+        label: (l) => l.channelSuggestions,
+        builder: (_) => const SuggestionsChannel(),
+        // Solo se enciende al admin: `pending` unicamente se llena si quien
+        // mira puede leer el buzon entero.
+        badge: pendingSuggestionsProvider,
       ),
       if (isAdmin)
         ChannelSpec(

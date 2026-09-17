@@ -5,6 +5,98 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.4.0 — Hablar (checkpoint 4)
+
+La primera versión en la que Ibasho deja de ser una casa vacía: un tablón donde
+se anuncian las versiones y se vota, mensajes cifrados entre amigos con
+*stickers* de tus propios Tamas, un grupo abierto al que unirse, un buzón de
+sugerencias con respuesta, y un monedero que todavía no gasta nadie.
+
+### Añadido
+
+- **Canal de mensajes, cifrado de punta a punta.** Cada mensaje viaja dentro de
+  un sobre cerrado: una clave AES-256-GCM propia por mensaje, envuelta una vez
+  por destinatario con ECDH sobre P-256 y HKDF, con par efímero por mensaje.
+  Lo que queda en la Realtime Database es ruido, marcas de tiempo y quién habla
+  con quién; el texto no lo puede leer nadie más, tampoco quien tenga la base
+  entera delante. Todo en Dart puro con `pointycastle`, que es lo que ya usaba
+  el almacén de sesión.
+- **Clave de respaldo de doce palabras.** La clave privada vive en el llavero
+  del sistema (libsecret, DPAPI o el Keystore de Android) y, envuelta con una
+  frase de doce palabras, en la base. La frase se enseña una sola vez al crear
+  la cuenta y se puede volver a mirar desde Ajustes en un aparato que la tenga.
+  En un móvil nuevo se teclea una vez y vuelve el historial entero. **No cuelga
+  de la contraseña**: un administrador puede resetearla mil veces sin llevarse
+  por delante un solo mensaje, y sigue sin poder leer ninguno. El alfabeto son
+  512 palabras castellanas sin tildes ni eñes, con las cuatro primeras letras
+  únicas para poder teclear a medias, y una suma de comprobación que caza las
+  erratas quince de cada dieciséis veces.
+- **Stickers de Tama.** Se elige uno de tus Tamas y una de ocho caras
+  —contento, guiño, sorpresa, enfado, amor, triste, sueño, saludo— y el sticker
+  se dibuja en vivo con el mismo pintor de siempre: no hay ni un mapa de bits.
+  El aspecto del Tama viaja **dentro** del sobre, no por referencia, así que se
+  sigue viendo igual años después aunque lo edites o lo borres, y lo ve quien
+  lo recibe aunque no tenga permiso para leer ese Tama en la base.
+- **Grupo «Global».** Los grupos no se crean desde la app: el administrador
+  pone éste una vez y cada cual se une si quiere. Hasta que no entras no se
+  descarga ni un mensaje, y al entrar ves lo que se escriba a partir de ese
+  momento, nunca lo anterior. Cada mensaje se cifra una vez y su clave se
+  envuelve para cada miembro, hasta 32.
+- **Canal de noticias.** Novedades de versión, avisos y encuestas, publicados
+  por un administrador desde el propio canal o con `tool/post_news.dart` sin
+  abrir la app. **Las encuestas son anónimas de verdad, no sólo en la
+  pantalla**: en la entrada sólo hay cuántos votos lleva cada opción y quién ya
+  ha votado; a qué votó cada cual vive únicamente en su propio árbol, que no
+  lee nadie más. Los resultados se mueven en vivo y el voto se puede cambiar
+  mientras la encuesta siga abierta, con fecha de cierre o cerrándola a mano.
+- **Canal de sugerencias.** Título de 30 caracteres y texto de 200. Una viva
+  por cuenta: hasta que no hay veredicto no se puede mandar otra, y lo aplican
+  las reglas, no sólo la pantalla. El administrador acepta o rechaza con un
+  motivo opcional, y lo aceptado pasa a una lista pública para que se vea que
+  las sugerencias van a alguna parte. El buzón se puede cerrar para todos sin
+  tocar lo que ya hay dentro.
+- **Monedas.** Un contador por cuenta en la barra de estado, junto a la batería
+  y la señal. Está a cero para todo el mundo y todavía no se gasta en nada; lo
+  que importa ya es que **nadie pueda ponérselas a sí mismo**: sólo escribe un
+  administrador, desde su panel, y la app no tiene ni una ruta que lo intente
+  desde la cuenta propia.
+- **Chapas de sin leer.** El mismo mecanismo que ya avisaba de las solicitudes
+  de amistad ahora enciende también los iconos de mensajes y de noticias en el
+  menú de inicio, y el de sugerencias para quien pueda revisarlas. Los mensajes
+  sin leer se saben con un único flujo: quien escribe deja un aviso —sólo de
+  quién y cuándo, nada del mensaje— en el árbol de quien recibe, en vez de
+  abrir una suscripción por conversación.
+- **El historial se poda solo.** Cada conversación guarda los últimos 300
+  mensajes y nada de más de 90 días. Lo borra el mismo cliente que escribe, en
+  la misma operación que manda, así que no hay ninguna tarea de limpieza en
+  ninguna parte y la base no crece sin freno.
+
+### Arreglado
+
+- **La rejilla de canales ya no se queja con más de una página.** Las páginas
+  van una al lado de otra en una fila tan ancha como todas juntas y el recorte
+  enseña la que toca; ese es el mecanismo desde el principio, pero la fila
+  recibía el ancho del panel y desbordaba. Hasta ahora no se veía porque nunca
+  había habido más de ocho canales.
+- **Los indicadores de la barra de estado se encogen antes que cortarse**, como
+  ya hacía el reloj. Con las monedas sumadas a la batería, la señal y el
+  idioma, en la tira estrecha de un móvil de 360 puntos no cabían a tamaño
+  natural.
+- **Los tests de reglas ya no se pisan entre ellos.** Las dos tandas comparten
+  un único emulador y cada una vacía la base antes de cada caso; `node --test`
+  las lanzaba en paralelo. Ahora van en serie.
+
+### Cifrado, en corto
+
+| | |
+|---|---|
+| Identidad | ECDH sobre P-256 (`pointycastle`), clave pública en `/users/{cuenta}/keys/pub` |
+| Mensaje | AES-256-GCM con clave propia; par efímero por mensaje |
+| Envoltorio | ECDH efímero → HKDF-SHA256 (sal: el punto efímero; info: el destinatario) → AES-256-GCM |
+| Respaldo | Argon2id (3 pasadas, 32 MiB) sobre la frase → AES-256-GCM sobre la privada |
+| Frase | 12 palabras de 512 → 104 bits de entropía y 4 de comprobación |
+| Dónde se abre | En un isolate y por tandas de 30, empezando por los últimos: abrir un sobre cuesta unos 9 ms y una conversación llena son 300 |
+
 ## 0.3.3 — Windows (checkpoint 3.2)
 
 Ibasho deja de ser cosa de Linux y Android: la misma app, el mismo árbol de

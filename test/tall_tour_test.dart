@@ -20,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ibasho/app.dart';
 import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/core/friend_code.dart';
+import 'package:ibasho/crypto/keys.dart';
 import 'package:ibasho/state/providers.dart';
 import 'package:ibasho/state/system_status.dart';
 import 'package:ibasho/ui/widgets/controls.dart';
@@ -225,6 +226,80 @@ Future<void> main() async {
         await settle(tester, 20);
         await shoot(tester, '13b-perfil-amigo-muro');
         await settle(tester, 60);
+      });
+
+      testWidgets('mensajes: clave de respaldo, conversacion y stickers',
+          (tester) async {
+        final backend = social()
+          // Sin clave publica del otro lado no se puede escribir, y esta
+          // pantalla ensena justamente eso: la conversacion con el compositor
+          // activo. La clave es de verdad, generada aqui.
+          ..seed('/users/$kMireiaUid/keys/pub', IdentityKeys.generate().public.encoded)
+          ..seed('/groups/global/meta', {
+            'name': 'Global',
+            'open': true,
+            'createdAt': DateTime.now().millisecondsSinceEpoch,
+          });
+        await boot(tester, backend: backend);
+        await settle(tester, 100);
+        await tester.tap(find.byKey(const ValueKey<String>('channel.messages')));
+        await settle(tester, 120);
+        // Lo primero de todo es la clave de respaldo: la unica pantalla de
+        // Ibasho que pide algo antes de dejar pasar.
+        await shoot(tester, '14-clave-de-respaldo');
+
+        await tester.tap(find.text('ya la he apuntado'));
+        await settle(tester, 60);
+        await shoot(tester, '15-mensajes');
+
+        await tester.tap(find.text('Mireia'));
+        await settle(tester, 80);
+        await shoot(tester, '16-conversacion');
+
+        // El selector de stickers: las ocho caras, pintadas con el Tama
+        // elegido, que es lo que hay que ver antes de mandar una.
+        await tester.tap(find.byKey(const ValueKey<String>('conversation.sticker')));
+        await settle(tester, 80);
+        await shoot(tester, '16b-stickers');
+      });
+
+      testWidgets('noticias y sugerencias', (tester) async {
+        final now = DateTime.now();
+        final backend = social()
+          ..seed('/news/AAAAAAAAAAAAAAAAAAAA', {
+            'kind': 'update',
+            'title': 'Ibasho 0.4.0',
+            'body': 'Mensajes cifrados, noticias, sugerencias y monedas.',
+            'version': '0.4.0',
+            'at': now.millisecondsSinceEpoch,
+            'by': 'Ibasho',
+          })
+          ..seed('/news/BBBBBBBBBBBBBBBBBBBB', {
+            'kind': 'poll',
+            'title': 'Que viene despues',
+            'at': now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+            'by': 'Ibasho',
+            'options': {'0': 'Un minijuego', '1': 'Una tienda', '2': 'Una habitacion compartida'},
+            'tally': {'0': 5, '1': 2, '2': 1},
+            'closesAt': now.add(const Duration(days: 2)).millisecondsSinceEpoch,
+          })
+          ..seed('/acceptedSuggestions/AAAAAAAAAAAAAAAAAAAA', {
+            'title': 'Musica en la habitacion',
+            'by': 'Mireia',
+            'at': now.millisecondsSinceEpoch,
+          });
+        await boot(tester, backend: backend);
+        await settle(tester, 100);
+
+        await tester.tap(find.byKey(const ValueKey<String>('channel.news')));
+        await settle(tester, 80);
+        await shoot(tester, '17-noticias');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await settle(tester, 40);
+        await tester.tap(find.byKey(const ValueKey<String>('channel.suggestions')));
+        await settle(tester, 80);
+        await shoot(tester, '18-sugerencias');
       });
 
       testWidgets('creditos, depuracion y zona horaria', (tester) async {

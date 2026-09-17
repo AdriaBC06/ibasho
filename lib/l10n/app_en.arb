@@ -511,5 +511,214 @@
   "adminVersionClear": "remove the lock",
   "adminVersionRequired": "{version} is now required",
   "adminVersionCleared": "lock removed",
-  "adminVersionError": "could not change the minimum version"
+  "adminVersionError": "could not change the minimum version",
+  "channelNews": "news",
+  "channelMessages": "messages",
+  "channelSuggestions": "suggestions",
+  "keysPreparing": "setting up encryption…",
+  "keysTitle": "your backup key",
+  "keysIntro": "These twelve words unlock your messages on any device. Write them down on paper and keep them somewhere safe.",
+  "keysWarning": "there is no other copy: without them everything written to you is lost",
+  "keysCopy": "copy",
+  "keysCopied": "copied",
+  "keysConfirm": "i have written it down",
+  "keysShowAgain": "show my backup key",
+  "keysShowUnknown": "this device does not hold your backup key",
+  "keysRestoreTitle": "type your backup key",
+  "keysRestoreIntro": "This account already has encrypted messages and this device cannot open them. Type the twelve words.",
+  "keysRestoreHint": "twelve words separated by spaces",
+  "keysRestoreSubmit": "restore",
+  "keysRestoreWorking": "unlocking…",
+  "keysErrorCount": "it has to be twelve words",
+  "keysErrorWord": "\"{word}\" is not on the list",
+  "@keysErrorWord": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "keysErrorChecksum": "some word is mistyped or out of place",
+  "keysErrorNoMatch": "that key does not unlock this account",
+  "keysUnavailable": "encryption could not be set up",
+  "keysRetry": "try again",
+  "keysLockedTitle": "your backup key is needed",
+  "messagesTitle": "messages",
+  "messagesPrivacy": "end-to-end encrypted",
+  "messagesEmpty": "your conversations will show up here",
+  "messagesNoFriends": "add friends so you can write to them",
+  "messagesEmptyConversation": "nothing written yet",
+  "messagesComposeHint": "type something",
+  "messagesSend": "send",
+  "messagesSending": "sending…",
+  "messagesFailed": "it did not go through, try again",
+  "messagesUnreadable": "this message cannot be shown",
+  "messagesDecrypting": "opening older messages…",
+  "messagesOtherNoKeys": "this person has not signed in since encryption exists",
+  "messagesDeleteTitle": "delete the message?",
+  "messagesDeleteBody": "It disappears for the other side too.",
+  "messagesDelete": "delete",
+  "messagesLeft": "{left} left",
+  "@messagesLeft": {
+    "placeholders": {
+      "left": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesYou": "you",
+  "groupGlobalName": "Global",
+  "groupJoin": "join",
+  "groupJoining": "joining…",
+  "groupLeave": "leave the group",
+  "groupLockedTitle": "join to read and write",
+  "groupLockedBody": "The Global group is open to everyone. Until you join, not a single message is downloaded.",
+  "groupJoinedNote": "you will see what gets written from now on",
+  "groupMembers": "{count, plural, =1{1 member} other{{count} members}}",
+  "@groupMembers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupFull": "the group is full",
+  "groupClosed": "the group is not taking anyone new",
+  "groupNoKeys": "wait until encryption is ready",
+  "groupLeaveConfirmTitle": "leave the group?",
+  "groupLeaveConfirmBody": "You will stop seeing the conversation. What you wrote stays for the others.",
+  "groupMissing": "there is no group yet",
+  "stickerOpen": "sticker",
+  "stickerPickTama": "pick a Tama",
+  "stickerPickFace": "pick a face",
+  "stickerNone": "you have no Tamas yet",
+  "stickerSend": "send it",
+  "stickerFaceHappy": "happy",
+  "stickerFaceWink": "wink",
+  "stickerFaceSurprised": "surprised",
+  "stickerFaceAngry": "cross",
+  "stickerFaceLove": "love",
+  "stickerFaceSad": "sad",
+  "stickerFaceSleepy": "sleepy",
+  "stickerFaceWave": "wave",
+  "newsTitle": "news",
+  "newsEmpty": "nothing here yet",
+  "newsKindUpdate": "update",
+  "newsKindNote": "notice",
+  "newsKindPoll": "poll",
+  "newsVersionTag": "version {version}",
+  "@newsVersionTag": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "newsBy": "by {name}",
+  "@newsBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pollVotes": "{count, plural, =0{no votes} =1{1 vote} other{{count} votes}}",
+  "@pollVotes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pollClosed": "poll closed",
+  "pollClosesOn": "closes on {date}",
+  "@pollClosesOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "pollNoClose": "no closing date",
+  "pollAnonymous": "votes are anonymous",
+  "pollChangeHint": "you can change your vote while it is open",
+  "pollYourVote": "your vote",
+  "pollError": "the vote did not go through",
+  "adminNewsSection": "post to news",
+  "adminNewsKind": "what it is",
+  "adminNewsHeadline": "title",
+  "adminNewsBody": "text",
+  "adminNewsVersion": "version it announces",
+  "adminNewsOption": "option {number}",
+  "@adminNewsOption": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "adminNewsAddOption": "add option",
+  "adminNewsRemoveOption": "remove",
+  "adminNewsCloseAfter": "closes in",
+  "adminNewsDays": "{days, plural, =1{1 day} other{{days} days}}",
+  "@adminNewsDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "adminNewsNoDeadline": "by hand",
+  "adminNewsPublish": "post",
+  "adminNewsPublished": "posted",
+  "adminNewsError": "could not be posted",
+  "adminNewsErrorEmpty": "the title is missing",
+  "adminNewsErrorOptions": "a poll needs at least two options",
+  "adminNewsClosePoll": "close poll",
+  "adminNewsDelete": "delete entry",
+  "adminNewsDeleteConfirm": "delete this entry from the board?",
+  "suggestTitle": "suggestions",
+  "suggestIntro": "Tell us an idea for Ibasho. While yours is waiting for an answer you cannot send another.",
+  "suggestHeadline": "title",
+  "suggestBody": "tell it",
+  "suggestSend": "send",
+  "suggestSending": "sending…",
+  "suggestClosed": "the box is closed right now",
+  "suggestYours": "your suggestion",
+  "suggestStatusPending": "waiting for an answer",
+  "suggestStatusAccepted": "accepted",
+  "suggestStatusRejected": "turned down",
+  "suggestAnother": "send another suggestion",
+  "suggestAcceptedList": "accepted",
+  "suggestAcceptedEmpty": "none accepted yet",
+  "suggestError": "it could not be sent",
+  "suggestErrorEmpty": "the title or the text is missing",
+  "suggestDecidedBy": "— {name}",
+  "@suggestDecidedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSuggestSection": "suggestions to review",
+  "adminSuggestEmpty": "none waiting",
+  "adminSuggestAccept": "accept",
+  "adminSuggestReject": "turn down",
+  "adminSuggestNote": "reason (optional)",
+  "adminSuggestBox": "suggestion box",
+  "adminSuggestBoxOpen": "open",
+  "adminSuggestBoxClosed": "closed",
+  "adminSuggestError": "the decision could not be saved",
+  "coinsLabel": "coins",
+  "adminCoinsSection": "coins",
+  "adminCoinsAmount": "amount",
+  "adminCoinsGive": "set",
+  "adminCoinsDone": "coins set",
+  "adminCoinsError": "they could not be set",
+  "adminGroupSection": "Global group",
+  "adminGroupCreate": "create the group",
+  "adminGroupCreated": "group created",
+  "adminGroupExists": "the group already exists",
+  "adminGroupError": "it could not be created"
 }
