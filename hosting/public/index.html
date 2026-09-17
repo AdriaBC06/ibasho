@@ -3,131 +3,357 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ibasho — descargas</title>
-<meta name="description" content="Descarga Ibasho para Windows, Android y Linux.">
+<title>Ibasho</title>
+<meta name="description" content="Ibasho — descargas para Windows, Android y Linux.">
+<meta name="theme-color" content="#1D242A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@500;700&display=swap" rel="stylesheet">
 <style>
+  /* Los tokens de lib/theme/tokens.dart, sin un solo color inventado. */
   :root {
-    --ink: #3a4750;
-    --ink-soft: #7c8b97;
-    --accent: #5bc8f5;
-    --accent-deep: #1b8fd0;
-    --hairline: #c2ced8;
-    --card: #ffffff;
-    --top: #ffffff;
-    --bottom: #dde7ef;
-    --warn: #e8a33d;
+    --shell-top:#FFFFFF; --shell-bottom:#DDE7EF;
+    --bezel-top:#E9EEF2; --bezel-bottom:#B6C4CF;
+    --hairline:#C2CED8; --ink:#3A4750; --ink-soft:#7C8B97;
+    --accent:#5BC8F5; --accent-deep:#1B8FD0; --on-accent:#FFFFFF;
+    --letterbox:#1D242A;
+    --well-top:#D5DFE7; --well-bottom:#F2F6F9;
+    --tint-top:#89D7F8; --tint-bottom:#4EADD5;
+    --specular:rgba(255,255,255,.60); --specular-soft:rgba(255,255,255,.18);
+    --glint-panel:rgba(255,255,255,.549); --glint-rim:rgba(255,255,255,.40);
+    --bezel-recess:rgba(58,71,80,.18);
+    --shadow:rgba(58,71,80,.122); --shadow-deep:rgba(58,71,80,.20);
+    --panel-radius:30px; --tile-radius:20px; --button-radius:22px;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing:border-box; }
+
+  /* Fuera del lienzo virtual, el relleno de la ventana. */
   body {
-    margin: 0;
-    min-height: 100vh;
-    padding: 48px 16px 64px;
-    font-family: "Segoe UI", Roboto, -apple-system, "Helvetica Neue", sans-serif;
-    color: var(--ink);
-    background: linear-gradient(180deg, var(--top) 0%, var(--bottom) 100%);
-    background-attachment: fixed;
+    margin:0; min-height:100dvh; padding:0;
+    display:flex; align-items:stretch; justify-content:center;
+    background:var(--letterbox);
+    font-family:"Zen Kaku Gothic New","Segoe UI",Roboto,sans-serif;
+    font-size:15px; line-height:1.45; color:var(--ink);
+    -webkit-font-smoothing:antialiased;
   }
-  main { max-width: 640px; margin: 0 auto; }
-  header { text-align: center; margin-bottom: 40px; }
-  .mark {
-    display: inline-block; padding: 14px 20px; border-radius: 22px;
-    background: linear-gradient(180deg, #7fd8fa 0%, var(--accent-deep) 100%);
-    box-shadow: 0 6px 18px rgba(27,143,208,.32), inset 0 1px 0 rgba(255,255,255,.6);
-    color: #fff; font-size: 30px; font-weight: 700; letter-spacing: .04em;
+
+  /* El lienzo: el bisel sobre el que flotan las dos pantallas. */
+  /* El bisel llena la ventana; dentro, las dos pantallas se reparten el alto
+     igual que en el entorno: la de arriba con su medida y la de abajo con lo
+     que quede. */
+  .canvas {
+    width:100%; min-height:100dvh;
+    background:linear-gradient(180deg,var(--bezel-top) 0%,var(--bezel-bottom) 100%);
+    padding:clamp(10px,1.4vw,20px);
+    display:flex; flex-direction:column; gap:clamp(8px,1.1vw,14px);
   }
-  h1 { font-size: 26px; margin: 20px 0 4px; font-weight: 600; }
-  .tagline { color: var(--ink-soft); margin: 0; font-size: 15px; }
-  .version {
-    display: inline-block; margin-top: 14px; padding: 4px 12px; border-radius: 999px;
-    border: 1px solid var(--hairline); color: var(--ink-soft);
-    font-size: 13px; font-variant-numeric: tabular-nums;
+  /* Lo que se lee no crece sin fin en un monitor ancho: el entorno tiene un
+     lienzo de 1280 y las baldosas una medida, no se estiran. */
+  .wide { width:100%; max-width:1180px; margin:0 auto; }
+
+  /* ScreenPanel: rebaje del bisel, cuerpo y banda de brillo. */
+  .panel {
+    position:relative; border-radius:var(--panel-radius);
+    border:1px solid var(--hairline);
+    background:linear-gradient(180deg,var(--shell-top) 0%,var(--shell-bottom) 100%);
+    box-shadow:0 0 0 1.5px var(--glint-rim), 0 3px 8px var(--bezel-recess);
+    overflow:hidden;
   }
-  .card {
-    background: var(--card); border: 1px solid var(--hairline); border-radius: 16px;
-    padding: 18px 20px; margin-bottom: 14px;
-    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-    box-shadow: 0 2px 10px rgba(58,71,80,.06);
+  .panel::before {
+    content:""; position:absolute; inset:0 0 auto 0; height:40%;
+    background:linear-gradient(180deg,var(--glint-panel) 0%,rgba(255,255,255,0) 100%);
+    pointer-events:none;
   }
-  .card .what { flex: 1 1 200px; min-width: 0; }
-  .card h2 { font-size: 17px; margin: 0 0 3px; font-weight: 600; }
-  .card p { margin: 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.45; }
-  a.get {
-    display: inline-block; padding: 11px 20px; border-radius: 12px; text-decoration: none;
-    background: linear-gradient(180deg, #7fd8fa 0%, var(--accent-deep) 100%);
-    color: #fff; font-weight: 600; font-size: 14.5px; white-space: nowrap;
-    box-shadow: 0 3px 10px rgba(27,143,208,.3), inset 0 1px 0 rgba(255,255,255,.55);
+  .panel > * { position:relative; }
+
+  /* --- Panel de arriba: identidad, reloj y barra de estado ------------- */
+  .top {
+    flex:0 0 auto; padding:clamp(18px,2.2vw,28px) clamp(18px,2.4vw,34px);
+    display:flex; flex-direction:column; min-height:clamp(220px,34vh,340px);
   }
-  a.get:hover { filter: brightness(1.06); }
-  a.alt { color: var(--accent-deep); font-size: 13px; text-decoration: none; }
-  a.alt:hover { text-decoration: underline; }
-  .note {
-    border-left: 3px solid var(--warn); background: rgba(232,163,61,.08);
-    padding: 14px 16px; border-radius: 0 12px 12px 0; margin: 28px 0 0;
-    font-size: 14px; line-height: 1.55;
+  .ident { display:flex; align-items:flex-start; gap:18px; }
+  /* La ranura del Tama: un hueco hundido. */
+  .slot {
+    width:84px; height:84px; flex:none; border-radius:var(--tile-radius);
+    border:1px solid var(--hairline);
+    background:linear-gradient(180deg,var(--well-top) 0%,var(--well-bottom) 100%);
+    box-shadow:inset 0 2px 4px var(--shadow-deep);
+    display:grid; place-items:center;
   }
-  .note strong { color: var(--ink); }
-  footer {
-    margin-top: 36px; text-align: center; font-size: 12.5px; color: var(--ink-soft); line-height: 1.7;
+  .who { flex:1 1 auto; min-width:0; padding-top:2px; }
+  .who h1 {
+    font-size:clamp(24px,2.6vw,34px); font-weight:500; line-height:1.12;
+    margin:0; letter-spacing:-.2px;
   }
-  footer a { color: var(--ink-soft); }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --ink: #e7eef3; --ink-soft: #93a4b1; --hairline: #35424c;
-      --card: #202a32; --top: #151d23; --bottom: #0f1519;
+  .who .sub { margin:3px 0 0; font-size:13px; color:var(--ink-soft); }
+  .status { display:flex; align-items:center; gap:18px; flex:none; padding-top:6px; }
+  .status .coins { display:flex; align-items:center; gap:7px; color:var(--ink-soft); }
+  .status .coins b {
+    font-family:"M PLUS Rounded 1c",sans-serif; font-weight:500; font-size:15px;
+    color:var(--ink-soft); font-variant-numeric:tabular-nums;
+  }
+  #lang {
+    font-family:"M PLUS Rounded 1c",sans-serif; font-weight:700; font-size:15px;
+    letter-spacing:1.2px; color:var(--ink-soft);
+    background:none; border:0; padding:2px 4px; cursor:pointer; border-radius:9px;
+  }
+  #lang:hover { color:var(--accent-deep); }
+  #lang:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .clock {
+    text-align:center; flex:1 1 auto;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .clock .big {
+    font-family:"M PLUS Rounded 1c",sans-serif; font-weight:700;
+    font-size:clamp(38px,5.4vw,64px);
+    line-height:1; letter-spacing:-1.2px; color:var(--ink); font-variant-numeric:tabular-nums;
+  }
+  .clock .date { margin:10px 0 0; font-size:15px; color:var(--ink-soft); }
+
+  /* --- Panel de abajo: la rejilla de canales --------------------------- */
+  .bottom {
+    flex:1 1 auto; padding:clamp(18px,2.2vw,30px) clamp(16px,2.4vw,34px);
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .grid {
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:clamp(12px,2vw,28px);
+  }
+  /* ChannelTile: plastico teñido con el acento. */
+  .tile {
+    position:relative; display:block; text-decoration:none;
+    border-radius:var(--tile-radius); border:1px solid var(--accent-deep);
+    background:linear-gradient(180deg,var(--tint-top) 0%,var(--tint-bottom) 100%);
+    box-shadow:0 1.5px 5px var(--shadow), 0 .5px 1.6px var(--shadow-deep);
+    aspect-ratio:1.6; max-height:min(38vh,260px); overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    color:var(--on-accent); transition:transform .18s cubic-bezier(.22,.94,.26,1.05), filter .18s;
+  }
+  .tile::before {
+    content:""; position:absolute; inset:0 0 auto 0; height:49%;
+    background:linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.10) 100%);
+    border-radius:var(--tile-radius) var(--tile-radius) 50% 50% / 0 0 100% 100%;
+    pointer-events:none;
+  }
+  .tile > * { position:relative; z-index:1; }
+  .tile:hover { transform:translateY(-4px) rotate(-.5deg); filter:brightness(1.05); }
+  .tile:active { transform:translateY(2px); filter:brightness(.96); }
+  .tile:focus-visible { outline:3px solid var(--accent-deep); outline-offset:3px; }
+  .tile .name { font-size:clamp(14px,1.3vw,18px); font-weight:500; text-shadow:0 1px 1px rgba(11,34,48,.25); }
+  .tile .meta {
+    font-size:11px; opacity:.85; font-family:"M PLUS Rounded 1c",sans-serif; font-weight:500;
+  }
+
+  .hints {
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:clamp(12px,2vw,28px);
+    margin:clamp(12px,1.6vw,20px) auto 0; padding:0; list-style:none;
+  }
+  .hints li { font-size:13px; color:var(--ink-soft); text-align:center; }
+  .hints code {
+    font-family:"M PLUS Rounded 1c",monospace; font-weight:500; font-size:12.5px; color:var(--ink);
+    background:linear-gradient(180deg,var(--well-top) 0%,var(--well-bottom) 100%);
+    border:1px solid var(--hairline); border-radius:6px; padding:0 5px;
+  }
+
+  /* --- La fila de pastillas de abajo del entorno ----------------------- */
+  .dock { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 4px; }
+  .pill {
+    display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+    padding:10px 18px; border-radius:var(--button-radius);
+    border:1px solid var(--hairline); color:var(--ink); font-size:13px;
+    background:linear-gradient(180deg,var(--shell-top) 0%,var(--shell-bottom) 100%);
+    box-shadow:0 1.5px 5px var(--shadow), 0 .5px 1.6px var(--shadow-deep);
+  }
+  .pill:hover { filter:brightness(1.04); }
+  .dock .dots { display:flex; gap:7px; }
+  .dock .dots i { width:8px; height:8px; border-radius:50%; background:var(--hairline); }
+  .dock .dots i.on { background:var(--accent); }
+
+  .fineprint { flex:0 0 auto; text-align:center; font-size:11px; color:var(--ink-soft); padding:2px 4px 0; }
+  .fineprint a { color:var(--ink-soft); }
+
+  /* En vertical, la rejilla se convierte en una columna de filas tocables y
+     el panel de arriba deja de reservar alto: manda el contenido. */
+  @media (max-width:760px) {
+    .top { min-height:0; }
+    /* Las pantallas dejan de estirarse: se quedan con su contenido y el bisel
+       ocupa lo que sobre, como cuando el entorno no llena el alto. */
+    .bottom { flex:0 1 auto; justify-content:flex-start; }
+    .grid, .hints { grid-template-columns:1fr; }
+    .tile {
+      aspect-ratio:auto; max-height:none; min-height:64px; padding:14px 18px;
+      flex-direction:row; justify-content:flex-start; gap:16px;
     }
-    .note { background: rgba(232,163,61,.12); }
+    .tile .meta { margin-left:auto; }
+    .hints { display:none; }
+    .slot { width:64px; height:64px; }
+    .dock { flex-wrap:wrap; justify-content:center; }
+    .dock .dots { order:3; width:100%; justify-content:center; }
+  }
+  /* Ventana muy baja (un portatil en horizontal, el movil tumbado): el
+     entorno prefiere encogerse a que aparezca una barra de desplazamiento. */
+  @media (max-height:620px) {
+    .top { min-height:0; padding:14px 22px 16px; }
+    .bottom { padding:14px 22px; }
+    .clock { margin-top:10px; }
+    .clock .big { font-size:clamp(26px,3.4vw,38px); }
+    .clock .date { font-size:13px; }
+    .slot { width:58px; height:58px; }
+    .slot svg { width:38px; height:38px; }
+    /* Con poco alto la letra pequeña sobra antes que la rejilla. */
+    .hints { display:none; }
+    .tile { max-height:120px; gap:5px; }
+    .tile svg { width:26px; height:26px; }
   }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <div class="mark">居場所</div>
-    <h1>Ibasho</h1>
-    <p class="tagline">tu lugar</p>
-    <span class="version">versión 0.4.0</span>
-  </header>
+<div class="canvas">
 
-  <div class="card">
-    <div class="what">
-      <h2>Windows</h2>
-      <p>10 o posterior, 64 bits. Instalador de un solo fichero; no pide administrador.</p>
+  <!-- Pantalla de arriba -->
+  <section class="panel top">
+    <div class="ident wide">
+      <div class="slot">
+        <!-- La marca: las dos pantallas del entorno, una sobre otra. -->
+        <svg width="52" height="52" viewBox="0 0 100 100" role="img" aria-label="Ibasho">
+          <defs>
+            <linearGradient id="vacia" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DDE7EF"/>
+            </linearGradient>
+            <linearGradient id="llena" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#86D6F8"/><stop offset="1" stop-color="#4090B2"/>
+            </linearGradient>
+            <linearGradient id="brillo" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#FFF" stop-opacity=".70"/>
+              <stop offset=".52" stop-color="#FFF" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <rect x="17" y="10" width="66" height="33" rx="9" fill="url(#vacia)" stroke="#C2CED8" stroke-width="1.2"/>
+          <rect x="17" y="10" width="66" height="33" rx="9" fill="url(#brillo)"/>
+          <rect x="8" y="50" width="84" height="40" rx="11" fill="url(#llena)" stroke="#4090B2" stroke-width="1.2"/>
+          <rect x="8" y="50" width="84" height="40" rx="11" fill="url(#brillo)"/>
+        </svg>
+      </div>
+      <div class="who">
+        <h1>Ibasho</h1>
+        <p class="sub">居場所 · <span data-i18n="tagline">tu lugar</span></p>
+      </div>
+      <div class="status">
+        <span class="coins" title="monedas">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1B8FD0" stroke-width="1.7">
+            <circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.4"/>
+          </svg><b>0</b>
+        </span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B8FD0" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+          <path d="M4.5 13.5a10.5 10.5 0 0 1 15 0"/><path d="M7.5 16.6a6.2 6.2 0 0 1 9 0"/><circle cx="12" cy="20" r="1.2" fill="#1B8FD0"/>
+        </svg>
+        <button id="lang" type="button" aria-label="Cambiar idioma">ES</button>
+      </div>
     </div>
-    <a class="get" href="descargas/Ibasho-0.4.0-windows-x64-setup.exe">Descargar</a>
-  </div>
 
-  <div class="card">
-    <div class="what">
-      <h2>Android</h2>
-      <p>Móvil y tableta. Hay que permitir instalar de orígenes desconocidos. Si tenías una versión anterior, desinstálala antes.</p>
+    <div class="clock wide">
+      <div class="big">0.4.0</div>
+      <p class="date" data-i18n="pick">elige tu sistema</p>
     </div>
-    <a class="get" href="descargas/Ibasho-0.4.0-android.apk">Descargar</a>
-  </div>
+  </section>
 
-  <div class="card">
-    <div class="what">
-      <h2>Linux</h2>
-      <p>64 bits. Descomprime y ejecuta <code>ibasho</code>.</p>
+  <!-- Pantalla de abajo: los canales -->
+  <section class="panel bottom">
+    <div class="grid wide">
+      <a class="tile" href="https://github.com/AdriaBC06/ibasho/releases/download/v0.4.0/Ibasho-0.4.0-windows-x64-setup.exe">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3.4" y="4.4" width="17.2" height="15.2" rx="2.4"/>
+          <path d="M12 4.4v15.2M3.4 12h17.2"/>
+        </svg>
+        <span class="name">Windows</span>
+        <span class="meta" data-i18n="winMeta">instalador · 25 MB</span>
+      </a>
+      <a class="tile" href="https://github.com/AdriaBC06/ibasho/releases/download/v0.4.0/Ibasho-0.4.0-android.apk">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5.2 12.4a6.8 6.8 0 0 1 13.6 0"/>
+          <path d="M5.2 12.4h13.6v5.2a2 2 0 0 1-2 2H7.2a2 2 0 0 1-2-2z"/>
+          <path d="M7.6 6.2 6.4 4.2M16.4 6.2l1.2-2"/>
+          <path d="M9.4 9.4h.01M14.6 9.4h.01"/>
+        </svg>
+        <span class="name">Android</span>
+        <span class="meta" data-i18n="andMeta">APK · 79 MB</span>
+      </a>
+      <a class="tile" href="https://github.com/AdriaBC06/ibasho/releases/download/v0.4.0/Ibasho-0.4.0-linux-x64.tar.gz">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8.6 9.2c0-3 1.4-5 3.4-5s3.4 2 3.4 5c0 1.6 3 4.2 3 7.2 0 2.2-2.8 3.4-6.4 3.4S5.6 18.6 5.6 16.4c0-3 3-5.6 3-7.2z"/>
+          <path d="M10.4 8.2h.01M13.6 8.2h.01"/>
+          <path d="M11 11.2c.6.6 1.4.6 2 0"/>
+        </svg>
+        <span class="name">Linux</span>
+        <span class="meta" data-i18n="linMeta">tar.gz · 34 MB</span>
+      </a>
     </div>
-    <a class="get" href="descargas/Ibasho-0.4.0-linux-x64.tar.gz">Descargar</a>
-  </div>
+    <ul class="hints wide">
+      <li data-i18n="winHint">Windows 10 o posterior, 64 bits. No pide administrador.</li>
+      <li data-i18n="andHint">Permite instalar de orígenes desconocidos y desinstala la versión anterior.</li>
+      <li data-i18n-html="linHint">64 bits. Descomprime y ejecuta <code>ibasho</code>.</li>
+    </ul>
+  </section>
 
-  <div class="note">
-    <strong>Al entrar te enseñará una clave de respaldo de doce palabras.</strong>
-    Apúntalas en papel. Son lo único que abre tus mensajes en otro aparato, y no
-    hay otra copia: ni yo puedo recuperarlas. Eso es justamente lo que hace que
-    nadie más pueda leer lo que escribes.
-  </div>
+  <!-- La fila de pastillas del entorno -->
+  <nav class="dock wide">
+    <a class="pill" href="https://github.com/AdriaBC06/ibasho/releases/download/v0.4.0/Ibasho-0.4.0-windows-x64.zip" data-i18n="portable">zip portable</a>
+    <span class="dots"><i class="on"></i><i></i></span>
+    <a class="pill" href="https://github.com/AdriaBC06/ibasho/releases/tag/v0.4.0" data-i18n="allDownloads">todas las descargas</a>
+  </nav>
 
-  <footer>
-    <p>
-      ¿No baja? Están también en
-      <a href="https://github.com/AdriaBC06/ibasho/releases/tag/v0.4.0">GitHub</a>,
-      junto al <a href="https://github.com/AdriaBC06/ibasho/blob/main/CHANGELOG.md">registro de cambios</a>
-      y el <a href="https://github.com/AdriaBC06/ibasho">código</a>.
-    </p>
-    <p>Ibasho · GPL-3.0-or-later · Adrià Bonnin Catalán</p>
-  </footer>
-</main>
+  <p class="fineprint wide">
+    <span data-i18n="served">Las descargas las sirve GitHub.</span>
+    <a href="https://github.com/AdriaBC06/ibasho/blob/main/CHANGELOG.md" data-i18n="changelog">Registro de cambios</a> ·
+    <a href="https://github.com/AdriaBC06/ibasho" data-i18n="source">Código</a> ·
+    GPL-3.0-or-later · Adrià Bonnin Catalán
+  </p>
+</div>
+
+<script>
+  // Dos idiomas, con el mismo boton ES/EN que lleva la barra de estado de la
+  // app. Se recuerda la eleccion; si no hay ninguna, manda el navegador.
+  var T = {
+    es: {
+      tagline:"tu lugar", pick:"elige tu sistema",
+      winMeta:"instalador · 25 MB", andMeta:"APK · 79 MB", linMeta:"tar.gz · 34 MB",
+      winHint:"Windows 10 o posterior, 64 bits. No pide administrador.",
+      andHint:"Permite instalar de orígenes desconocidos y desinstala la versión anterior.",
+      linHint:"64 bits. Descomprime y ejecuta <code>ibasho</code>.",
+      portable:"zip portable", allDownloads:"todas las descargas",
+      served:"Las descargas las sirve GitHub.", changelog:"Registro de cambios", source:"Código"
+    },
+    en: {
+      tagline:"your place", pick:"pick your system",
+      winMeta:"installer · 25 MB", andMeta:"APK · 79 MB", linMeta:"tar.gz · 34 MB",
+      winHint:"Windows 10 or later, 64-bit. No admin rights needed.",
+      andHint:"Allow installs from unknown sources, and uninstall any earlier version.",
+      linHint:"64-bit. Extract and run <code>ibasho</code>.",
+      portable:"portable zip", allDownloads:"all downloads",
+      served:"Downloads are served by GitHub.", changelog:"Changelog", source:"Source"
+    }
+  };
+  var boton = document.getElementById('lang');
+  function pon(idioma) {
+    var d = T[idioma];
+    document.documentElement.lang = idioma;
+    document.querySelectorAll('[data-i18n]').forEach(function (n) {
+      var v = d[n.dataset.i18n]; if (v) n.textContent = v;
+    });
+    document.querySelectorAll('[data-i18nHtml],[data-i18n-html]').forEach(function (n) {
+      var v = d[n.dataset.i18nHtml]; if (v) n.innerHTML = v;
+    });
+    boton.textContent = idioma.toUpperCase();
+    try { localStorage.setItem('ibasho.lang', idioma); } catch (e) {}
+  }
+  var guardado = null;
+  try { guardado = localStorage.getItem('ibasho.lang'); } catch (e) {}
+  pon(guardado || ((navigator.language || 'es').slice(0, 2) === 'es' ? 'es' : 'en'));
+  boton.addEventListener('click', function () {
+    pon(document.documentElement.lang === 'es' ? 'en' : 'es');
+  });
+</script>
 </body>
 </html>
