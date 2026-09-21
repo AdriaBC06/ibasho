@@ -112,7 +112,10 @@ class _ChannelGridState extends State<ChannelGrid>
         widget.height - ChannelGrid.tallPadV * 2,
       );
       final byWidth = (inner.width - ChannelGrid.tallGapH * 2) / 3;
-      final byHeight = (inner.height - ChannelGrid.tallGapV * 2) / 3 * ChannelGrid.tallAspect;
+      final byHeight =
+          (inner.height - ChannelGrid.tallGapV * 2) /
+          3 *
+          ChannelGrid.tallAspect;
       tileW = math.max(56, math.min(byWidth, byHeight));
       tileH = tileW / ChannelGrid.tallAspect;
     } else if (compact) {
@@ -126,7 +129,8 @@ class _ChannelGridState extends State<ChannelGrid>
         widget.height - ChannelGrid._padV * 2,
       );
       final byWidth = (inner.width - ChannelGrid._gapH * 3) / 4;
-      final byHeight = (inner.height - ChannelGrid._gapV) / 2 * ChannelGrid._aspect;
+      final byHeight =
+          (inner.height - ChannelGrid._gapV) / 2 * ChannelGrid._aspect;
       tileW = math.max(90, math.min(byWidth, byHeight));
       tileH = tileW / ChannelGrid._aspect;
     }
@@ -134,17 +138,22 @@ class _ChannelGridState extends State<ChannelGrid>
     return ClipRect(
       child: AnimatedBuilder(
         animation: _slide,
-        builder: (context, _) => Transform.translate(
-          offset: Offset(-_current * widget.width, 0),
-          // Las paginas van una al lado de otra en una fila que es tan ancha
-          // como todas juntas, y el `ClipRect` enseña solo la que toca. Sin
-          // esto la fila recibe el ancho del panel y se queja de desbordar en
-          // cuanto hay mas de una pagina, que es justo lo normal: el recorte
-          // es el mecanismo, no un accidente.
-          child: OverflowBox(
-            minWidth: 0,
-            maxWidth: double.infinity,
-            alignment: Alignment.centerLeft,
+        // Las paginas van una al lado de otra en una fila que es tan ancha
+        // como todas juntas, y el `ClipRect` enseña solo la que toca. Sin
+        // esto la fila recibe el ancho del panel y se queja de desbordar en
+        // cuanto hay mas de una pagina, que es justo lo normal: el recorte
+        // es el mecanismo, no un accidente.
+        //
+        // El desplazamiento va DENTRO del `OverflowBox`: un toque solo llega a
+        // un hijo si cae dentro del tamaño de su padre, y con la traslacion
+        // fuera la pagina 2 en adelante quedaba fuera del `OverflowBox` y no
+        // recibia ni un clic.
+        builder: (context, _) => OverflowBox(
+          minWidth: 0,
+          maxWidth: double.infinity,
+          alignment: Alignment.centerLeft,
+          child: Transform.translate(
+            offset: Offset(-_current * widget.width, 0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -164,14 +173,14 @@ class _ChannelGridState extends State<ChannelGrid>
                       gapH: tall
                           ? ChannelGrid.tallGapH
                           : compact
-                              ? 16
-                              : ChannelGrid._gapH,
+                          ? 16
+                          : ChannelGrid._gapH,
                       gapV: tall ? ChannelGrid.tallGapV : ChannelGrid._gapV,
                       compact: !tall && compact,
-                      // En vertical la pagina se completa con ranuras hundidas:
-                      // la rejilla es siempre de 3x3, como el HOME de la
-                      // consola.
-                      fill: tall,
+                      // Toda pagina se completa con ranuras hundidas: la
+                      // rejilla es siempre de 4x2 (3x3 en vertical), como el
+                      // HOME de la consola.
+                      fill: tall || !compact,
                       glyphOnly: tall && tileH < 58,
                     ),
                   ),
@@ -234,7 +243,10 @@ class _Page extends StatelessWidget {
     final rows = <Widget>[];
     final rowCount = (perPage / columns).ceil();
     for (var row = 0; row < rowCount; row++) {
-      final slice = channels.skip(row * columns).take(columns).toList(growable: false);
+      final slice = channels
+          .skip(row * columns)
+          .take(columns)
+          .toList(growable: false);
       if (slice.isEmpty && !fill) continue;
       rows.add(
         Row(

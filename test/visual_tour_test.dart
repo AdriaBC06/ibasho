@@ -11,6 +11,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -23,6 +24,7 @@ import 'package:ibasho/state/providers.dart';
 import 'package:ibasho/storage/settings_store.dart';
 import 'package:ibasho/core/friend_code.dart';
 import 'package:ibasho/theme/tokens.dart';
+import 'package:ibasho/ui/screens/channels/coming_soon_channel.dart';
 import 'package:ibasho/ui/social/business_card.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -224,6 +226,46 @@ Future<void> main() async {
     await tester.tap(find.text('Madrid'));
     await settle(tester, 20);
     await shoot(tester, '14-zona-horaria');
+  });
+
+  testWidgets('con un regalo en la rejilla, la segunda pagina se puede tocar',
+      (tester) async {
+    final backend = FakeIbashoBackend();
+    backend.seed('/users/${backend.uid}/games/minesweeper', {
+      'state': 'gift',
+      'at': DateTime.now().millisecondsSinceEpoch,
+    });
+    await boot(tester, backend: backend);
+    await settle(tester, 100);
+    await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+    await settle(tester, 30);
+    await tester.tap(find.byKey(const ValueKey<String>('channel.slot-0')));
+    await settle(tester, 60);
+    expect(find.byType(ComingSoonChannel), findsOneWidget);
+  });
+
+  // Con el dedo un toque sin destino lo recoge `TouchAssist`, asi que solo un
+  // raton de verdad delata una pagina cuyos canales no reciben el clic.
+  testWidgets('con raton, la segunda pagina tambien se abre', (tester) async {
+    final backend = FakeIbashoBackend();
+    await boot(tester, backend: backend);
+    await settle(tester, 100);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    final next = tester.getCenter(find.byKey(const ValueKey<String>('grid.next')));
+    await mouse.moveTo(next);
+    await mouse.down(next);
+    await mouse.up();
+    await settle(tester, 30);
+
+    final slot = tester.getCenter(find.byKey(const ValueKey<String>('channel.slot-0')));
+    await mouse.moveTo(slot);
+    await settle(tester, 10);
+    await mouse.down(slot);
+    await mouse.up();
+    await settle(tester, 60);
+    expect(find.byType(ComingSoonChannel), findsOneWidget);
   });
 
   testWidgets('ranura libre', (tester) async {
