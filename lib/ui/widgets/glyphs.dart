@@ -67,6 +67,9 @@ enum Glyph {
   chat,
   bulb,
   coin,
+  mine,
+  yatai,
+  gift,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -710,6 +713,73 @@ class _GlyphPainter extends CustomPainter {
         // lea a 16 pixeles en la barra de estado.
         canvas.drawCircle(const Offset(12, 12), 8.2, stroke);
         canvas.drawCircle(const Offset(12, 12), 4.4, stroke);
+      case Glyph.mine:
+        // La mina del buscaminas: un cuerpo redondo con pinchos que nacen en
+        // su borde (como las patas del bicho) y una mecha que remata en una
+        // chispa en forma de aspa.
+        const centre = Offset(12, 13.4);
+        const radius = 5.6;
+        canvas.drawCircle(centre, radius, stroke);
+        for (var i = 0; i < 8; i++) {
+          final angle = i * math.pi / 4;
+          final dir = Offset(math.cos(angle), math.sin(angle));
+          canvas.drawLine(centre + dir * radius, centre + dir * (radius + 2.1), stroke);
+        }
+        const fuseAngle = -2.15;
+        final fuseStart =
+            centre + Offset(math.cos(fuseAngle), math.sin(fuseAngle)) * radius;
+        final spark = fuseStart + const Offset(2.9, -4.1);
+        canvas.drawPath(
+          Path()
+            ..moveTo(fuseStart.dx, fuseStart.dy)
+            ..quadraticBezierTo(fuseStart.dx + 2.4, fuseStart.dy - 3.4, spark.dx, spark.dy),
+          stroke,
+        );
+        canvas.drawLine(spark + const Offset(-1.3, -1.3), spark + const Offset(1.3, 1.3), stroke);
+        canvas.drawLine(spark + const Offset(-1.3, 1.3), spark + const Offset(1.3, -1.3), stroke);
+      case Glyph.yatai:
+        // El puesto del Yatai: dos postes y un toldo a rayas en un solo
+        // trazo, y el farolillo colgando por separado, con aire de por medio.
+        canvas.drawPath(
+          Path()
+            ..moveTo(3.2, 17.2)
+            ..lineTo(3.2, 6.4)
+            ..lineTo(6.4, 9.6)
+            ..lineTo(9.6, 6.4)
+            ..lineTo(12, 9.6)
+            ..lineTo(14.4, 6.4)
+            ..lineTo(17.6, 9.6)
+            ..lineTo(20.8, 6.4)
+            ..lineTo(20.8, 17.2)
+            ..lineTo(3.2, 17.2),
+          stroke,
+        );
+        canvas.drawLine(const Offset(12, 9.9), const Offset(12, 10.4), stroke);
+        canvas.drawOval(
+          Rect.fromCenter(center: const Offset(12, 13.4), width: 5, height: 5.6),
+          stroke,
+        );
+        canvas.drawLine(const Offset(10.1, 13.4), const Offset(13.9, 13.4), stroke);
+      case Glyph.gift:
+        // Un regalo envuelto: la caja, el lazo vertical que la cruza de canto
+        // a canto y el moño arriba, sin tocarla.
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              const Rect.fromLTWH(4, 10, 16, 10), const Radius.circular(2.4)),
+          stroke,
+        );
+        canvas.drawLine(const Offset(12, 10), const Offset(12, 20), stroke);
+        canvas.drawLine(const Offset(4, 15), const Offset(11, 15), stroke);
+        canvas.drawLine(const Offset(13, 15), const Offset(20, 15), stroke);
+        canvas.drawOval(
+          Rect.fromCenter(center: const Offset(9, 7.4), width: 4, height: 3.6),
+          stroke,
+        );
+        canvas.drawOval(
+          Rect.fromCenter(center: const Offset(15, 7.4), width: 4, height: 3.6),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(12, 7.8), 1, stroke);
     }
 
     canvas.restore();

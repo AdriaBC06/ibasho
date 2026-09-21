@@ -174,6 +174,10 @@ Future<void> main() async {
       ..seed('/system/update', {'minVersion': '0.3.0', 'url': 'https://ibasho.top/descargar'});
     await boot(tester, backend: backend);
     await settle(tester, 100);
+    // El Yatai llena la primera pagina de ocho canales: administracion cae en
+    // la segunda.
+    await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+    await settle(tester, 30);
     await tester.tap(find.byKey(const ValueKey<String>('channel.admin')));
     await settle(tester, 60);
     await shoot(tester, '10-administracion');
@@ -193,9 +197,21 @@ Future<void> main() async {
   testWidgets('depuracion', (tester) async {
     await boot(tester, backend: FakeIbashoBackend());
     await settle(tester, 100);
+    await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+    await settle(tester, 30);
     await tester.tap(find.byKey(const ValueKey<String>('channel.debug')));
     await settle(tester, 60);
     await shoot(tester, '13-depuracion');
+  });
+
+  testWidgets('yatai', (tester) async {
+    final backend = FakeIbashoBackend()
+      ..seed('/shop/prices', {'game_minesweeper': 0, 'food_cookie': 3, 'food_candy': 3});
+    await boot(tester, backend: backend);
+    await settle(tester, 100);
+    await tester.tap(find.byKey(const ValueKey<String>('channel.yatai')));
+    await settle(tester, 60);
+    await shoot(tester, '12-yatai');
   });
 
   testWidgets('selector de zona horaria', (tester) async {
@@ -213,6 +229,8 @@ Future<void> main() async {
   testWidgets('ranura libre', (tester) async {
     await boot(tester, backend: FakeIbashoBackend());
     await settle(tester, 100);
+    await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+    await settle(tester, 30);
     await tester.tap(find.byKey(const ValueKey<String>('channel.slot-0')));
     await settle(tester, 60);
     await shoot(tester, '11-proximamente');

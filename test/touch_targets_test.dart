@@ -115,9 +115,16 @@ Future<void> main() async {
       ('messages', 'mensajes'),
       ('news', 'noticias'),
       ('suggestions', 'sugerencias'),
+      ('yatai', 'Yatai'),
       ('admin', 'administracion'),
       ('debug', 'depuracion'),
     ]) {
+      // El Yatai suma un noveno canal fijo: en vertical (9 por pagina) el de
+      // depuracion cae ya en la segunda pagina.
+      if (channel == 'debug') {
+        await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+        await settle(tester, 30);
+      }
       await tester.tap(find.byKey(ValueKey<String>('channel.$channel')));
       await settle(tester, 50);
       audit(tester, name);

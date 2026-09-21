@@ -51,8 +51,8 @@ enum TamaColorMode {
 /// Lo que se le puede dar de comer a un Tama.
 ///
 /// No se guarda en el Tama: los cuidados solo apuntan cuando comio, no el que.
-/// Las que no vienen de serie se desbloquearan en la tienda de un checkpoint
-/// futuro, igual que la musica de las apps.
+/// Las que no vienen de serie se venden bloqueadas en el Yatai: hoy solo se
+/// pueden mirar, se desbloquearan cuando llegue su turno.
 enum TamaFood {
   cookie(unlockedByDefault: true),
   candy(unlockedByDefault: true),

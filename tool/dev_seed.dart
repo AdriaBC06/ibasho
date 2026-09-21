@@ -114,6 +114,12 @@ Future<int> main() async {
     }
     tree['system/friendCodeCounter'] = counter;
     tree['system/announcement'] = {'text': 'datos de prueba del checkpoint 3', 'updatedAt': ms};
+    // Precios del Yatai, los mismos que carga tool/seed_shop.dart en produccion.
+    tree['shop/prices'] = {
+      'game_minesweeper': 0,
+      'food_cookie': 3,
+      'food_candy': 3,
+    };
 
     final adria = people[0], mireia = people[1], pau = people[2], laia = people[3];
     void friends(_Person a, _Person b) {

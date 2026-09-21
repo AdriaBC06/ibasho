@@ -70,9 +70,11 @@ class TamasController extends StateNotifier<TamasState> {
     required IbashoBackend backend,
     required SessionController session,
     required Future<UserCard> Function(String? tamaId, String? tamaColor) cardOf,
+    required Future<bool> Function(TamaFood food) consumeFood,
   })  : _backend = backend,
         _session = session,
         _cardOf = cardOf,
+        _consumeFood = consumeFood,
         super(const TamasState()) {
     unawaited(_start());
   }
@@ -83,6 +85,9 @@ class TamasController extends StateNotifier<TamasState> {
   /// La ficha publica apunta al Tama de perfil: cualquier escritura que lo
   /// cambie la lleva en la misma operacion, o las reglas la rechazan.
   final Future<UserCard> Function(String? tamaId, String? tamaColor) _cardOf;
+
+  /// Gasta una unidad de la despensa. `false` si no quedaba ninguna.
+  final Future<bool> Function(TamaFood food) _consumeFood;
 
   StreamSubscription<DatabaseEvent>? _listWatch;
   StreamSubscription<DatabaseEvent>? _profileWatch;
@@ -263,9 +268,14 @@ class TamasController extends StateNotifier<TamasState> {
   Future<void> pet(String id) => _care(id, 'lastPetted', _lastPetWrite, petWriteGap,
       (care, at) => care.copyWith(lastPetted: at));
 
-  /// Una chuche.
-  Future<void> feed(String id) => _care(id, 'lastFed', _lastFeedWrite, feedWriteGap,
-      (care, at) => care.copyWith(lastFed: at));
+  /// Una chuche. Gasta primero una unidad de esa comida en la despensa; si no
+  /// quedaba ninguna, no se llega a dar de comer y devuelve `false`.
+  Future<bool> feed(String id, TamaFood food) async {
+    if (!await _consumeFood(food)) return false;
+    await _care(id, 'lastFed', _lastFeedWrite, feedWriteGap,
+        (care, at) => care.copyWith(lastFed: at));
+    return true;
+  }
 
   Future<void> _care(
     String id,

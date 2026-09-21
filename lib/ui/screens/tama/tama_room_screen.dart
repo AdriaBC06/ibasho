@@ -51,9 +51,16 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
     unawaited(ref.read(tamasProvider.notifier).pet(tama.id));
   }
 
-  void _feed(Tama tama, TamaFood food) {
+  Future<void> _feed(Tama tama, TamaFood food) async {
+    final l = L.of(context)!;
+    final ok = await ref.read(tamasProvider.notifier).feed(tama.id, food);
+    if (!ok) {
+      if (!mounted) return;
+      AudioService.instance.play(Sfx.error);
+      showIbashoToast(context, l.pantryEmptyToast);
+      return;
+    }
     _view.feed(food);
-    unawaited(ref.read(tamasProvider.notifier).feed(tama.id));
   }
 
   Future<void> _setProfile(Tama tama) async {
@@ -484,6 +491,7 @@ class _FoodCarouselState extends ConsumerState<_FoodCarousel> {
   Widget build(BuildContext context) {
     final l = L.of(context)!;
     final unlocked = ref.watch(unlockedFoodsProvider);
+    final pantry = ref.watch(pantryProvider);
     // Primero las que se tienen.
     final foods = [
       ...TamaFood.values.where(unlocked.contains),
@@ -518,6 +526,7 @@ class _FoodCarouselState extends ConsumerState<_FoodCarousel> {
                           food: food,
                           label: foodLabel(l, food),
                           locked: !unlocked.contains(food),
+                          units: unlocked.contains(food) ? pantry[food] ?? 0 : null,
                           onPressed: () {
                             if (unlocked.contains(food)) {
                               widget.onFeed(food);
@@ -576,12 +585,18 @@ class _FoodButton extends StatelessWidget {
     required this.food,
     required this.label,
     required this.locked,
+    required this.units,
     required this.onPressed,
   });
 
   final TamaFood food;
   final String label;
   final bool locked;
+
+  /// Unidades en la despensa. `null` cuando esta bloqueada: entonces no hay
+  /// nada que contar.
+  final int? units;
+
   final VoidCallback onPressed;
 
   static const double _size = 52;
@@ -589,12 +604,16 @@ class _FoodButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
+    // Sin unidades se hunde igual que una bloqueada, pero enseñando el "0" en
+    // vez de un candado: se sabe que se tuvo, no que falte desbloquearla.
+    final empty = !locked && units == 0;
+    final recessed = locked || empty;
     return Pressable(
       onPressed: onPressed,
       cue: null,
       semanticLabel: locked ? '$label · ${L.of(context)!.tamaFoodLockedShort}' : label,
       builder: (context, state) {
-        final ease = skin.reducedMotion || locked
+        final ease = skin.reducedMotion || recessed
             ? 0.0
             : Curves.easeOutBack.transform(state.hover.clamp(0.0, 1.0));
         return Padding(
@@ -603,7 +622,7 @@ class _FoodButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Transform.translate(
-                offset: Offset(0, -4 * ease + (locked ? 0 : 2 * state.press)),
+                offset: Offset(0, -4 * ease + (recessed ? 0 : 2 * state.press)),
                 child: FocusRing(
                   visible: state.focus,
                   radius: _size / 2,
@@ -612,15 +631,15 @@ class _FoodButton extends StatelessWidget {
                     height: _size,
                     child: GlossSurface(
                       radius: _size / 2,
-                      recessed: locked,
-                      elevation: locked ? 0 : 1 + ease * .8,
-                      sink: locked ? 0 : state.press * 1.5,
-                      borderColor: locked ? T.hairline : Color.lerp(T.hairline, skin.accent, state.hover)!,
+                      recessed: recessed,
+                      elevation: recessed ? 0 : 1 + ease * .8,
+                      sink: recessed ? 0 : state.press * 1.5,
+                      borderColor: recessed ? T.hairline : Color.lerp(T.hairline, skin.accent, state.hover)!,
                       child: Stack(
                         children: [
                           Positioned.fill(
                             child: Opacity(
-                              opacity: locked ? .38 : 1,
+                              opacity: recessed ? .38 : 1,
                               child: CustomPaint(painter: TamaFoodPainter(food)),
                             ),
                           ),
@@ -629,6 +648,12 @@ class _FoodButton extends StatelessWidget {
                               right: 4,
                               bottom: 4,
                               child: GlyphIcon(Glyph.lock, size: 14, color: T.inkSoft),
+                            ),
+                          if (units != null)
+                            Positioned(
+                              right: 2,
+                              top: 2,
+                              child: _UnitsBadge(count: units!),
                             ),
                         ],
                       ),
@@ -643,13 +668,39 @@ class _FoodButton extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: Ty.micro.copyWith(
-                  color: locked ? T.inkSoft.withValues(alpha: .7) : Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
+                  color: recessed ? T.inkSoft.withValues(alpha: .7) : Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// Las unidades que quedan en la despensa, en una esquina de la chuche.
+class _UnitsBadge extends StatelessWidget {
+  const _UnitsBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final skin = IbashoSkin.of(context);
+    return GlossSurface(
+      radius: 8,
+      tint: count == 0 ? null : skin.accent,
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        style: Ty.micro.copyWith(
+          color: count == 0 ? T.inkSoft : T.onAccent,
+          fontWeight: FontWeight.w600,
+          fontSize: 10,
+        ),
+      ),
     );
   }
 }

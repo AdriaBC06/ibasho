@@ -35,6 +35,7 @@ lib/
     messaging.dart           mensajes y grupos (Message, MessageBody, TextBody, StickerBody, StoredMessage, GroupInfo, GroupMember, InboxEntry)
     news.dart                NewsItem y NewsKind: el tablón y sus encuestas
     suggestions.dart         Suggestion, SuggestionStatus y AcceptedSuggestion
+    shop.dart                el catálogo del Yatai (ShopItem, ShopSection), Receipt y GameInstall
     errors.dart              IbashoFailure e IbashoException
   crypto/                cifrado de punta a punta, todo en Dart puro sobre pointycastle
     keys.dart            IdentityKeys y PublicKey: par ECDH sobre P-256 y secreto compartido
@@ -68,17 +69,20 @@ lib/
     presence.dart      PresenceController: estado elegido y publicación (con onDisconnect)
     update_gate.dart   UpdateRequirement, updateRequirementProvider y updateLockedProvider
     people.dart        datos en vivo de otras cuentas (ficha, Tama público, perfil, presencia, música, muro)
-    pantry.dart        unlockedFoodsProvider
+    pantry.dart        unlockedFoodsProvider y PantryController: unidades de comida y stock inicial
     music_library.dart MusicLibraryController
     identity.dart      IdentityController: trae las claves a este aparato, o las crea
     messages.dart      MessagesController: avisos de sin leer, grupo y lecturas
     conversation.dart  ConversationController: una conversación abierta (descifrar, mandar, podar)
     news.dart          NewsController: tablón, voto anónimo y publicación (admin)
     suggestions.dart   SuggestionsController: buzón, veredicto y apertura (admin)
-    coins.dart         CoinsController: el monedero (lo escribe solo un admin)
+    coins.dart         CoinsController: el monedero (lo da solo un admin)
+    shop.dart          ShopController: precios, juegos comprados, compra y desenvolver
     preferences.dart   PreferencesController
     system_status.dart Clock y SystemStatusController (batería y conexión)
     debug.dart         DebugController
+  games/               los juegos que activa el Yatai: lógica pura y su canal
+    minesweeper/       buscaminas: minesweeper.dart (tablero y reglas), minesweeper_channel.dart (las dos pantallas), minesweeper_store.dart (récords locales)
   storage/
     secure_store.dart  sesión cifrada (libsecret o archivo AES-256-GCM)
     settings_store.dart preferencias locales en JSON
@@ -186,6 +190,9 @@ abierto al pasar a bloqueado); si no, la pantalla de la fase de sesión.
 | `announcementProvider` | `StreamProvider<String?>` | `/system/announcement` en tiempo real |
 | `musicLibraryProvider` | `StateNotifierProvider` | pistas desbloqueadas y pista del menú |
 | `unlockedFoodsProvider` | `Provider<Set<TamaFood>>` | chuches con `unlockedByDefault` (galleta y caramelo) |
+| `pantryProvider` | `StateNotifierProvider<PantryController, Map<TamaFood, int>>` | unidades de cada comida (`/users/$acc/pantry`); pide el stock inicial de las de serie que falten |
+| `shopProvider` | `StateNotifierProvider<ShopController, ShopState>` | precios (`/shop/prices`) y juegos comprados (`/users/$acc/games`) |
+| `installedGamesProvider` | `Provider<Map<String, GameInstall>>` | juegos comprados, envueltos o abiertos: la rejilla los pinta tras el Yatai |
 | `debugProvider` | `StateNotifierProvider` | cámara lenta y gráfica de rendimiento (no se persiste) |
 | `updateRequirementProvider` | `StreamProvider<UpdateRequirement?>` | `/system/update` leído sin sesión y seguido por SSE; `null` sin red o sin nodo |
 | `updateLockedProvider` | `Provider<bool>` | `appVersion` < `minVersion` |
@@ -359,9 +366,16 @@ la caja ni supera el 50 % de alfa.
 - `ChannelTile`: al pasar el ratón se inclina 2° y sube 4 px con
   `easeOutBack`; al pulsar se hunde 2 px. Con el dedo no hay paso por encima:
   el hundimiento es inmediato y lo vistoso se guarda para la apertura.
-- `ChannelSpec(id, glyph, label, builder, empty, badge)`; `channelsFor(isAdmin:)`
-  devuelve ajustes, perfil, Tamas, amigos, administración y depuración (estas dos
-  solo para admin) y `emptySlotCount` (2) ranuras libres.
+- `ChannelSpec(id, glyph, label, builder, empty, badge, gift, gameId)`;
+  `channelsFor(...)` devuelve ajustes, perfil, Tamas, amigos, mensajes,
+  noticias, sugerencias, **Yatai**, los juegos comprados (en el orden de
+  `gameChannelRegistry`, que da glifo, nombre y canal de cada `gameId`),
+  administración y depuración (estas dos solo para admin) y `emptySlotCount`
+  (1) ranura libre.
+- Un juego comprado y aún envuelto (`gift`) se pinta como un regalo que se
+  balancea; tocarlo lo desenvuelve (620 ms, el lazo se funde en el icono del
+  juego) y llama a `ShopController.unwrap`, sin abrir el canal. Solo esas
+  baldosas animan en reposo.
   `channelsPerPage(tall:)` = 8 en horizontal, 9 en vertical.
   `badge` es un `ProviderListenable<int>`: `ChannelTile` pinta `CountBadge` en la
   esquina, fuera de la inclinación, cuando no es 0.
@@ -790,6 +804,10 @@ coincide con su uid).
         backup             { v: 1, s: sal ≤ 64, d: privada envuelta ≤ 256 }
         at                 number > 0 y ≤ now
     coins                number entero 0–999999999
+    shop
+        last               { item: id del catálogo, qty: 1–99, at: === now }: el recibo de la última compra
+    pantry/$food         number entero 0–9999 ($food: uno de los diez TamaFood)
+    games/$gameId        { state: 'gift' | 'open', at }  ($gameId ^[a-z0-9_]{1,32}$)
     inbox/$fromId        { at: number > 0 y ≤ now }  ← lo escribe quien manda
     reads
         dm/$withId         number > 0
@@ -838,6 +856,8 @@ coincide con su uid).
     url?                 string https://…, ≤ 300
 /system/friendCodeCounter  number entero: el siguiente contador (ausente = 1), sube de 1 en 1
 /system/suggestionsOpen    boolean (ausente = abierto)
+
+/shop/prices/$itemId       number entero 0–999999999 (game_minesweeper, food_cookie…)
 
 /dm/$pairId                los dos accountId ordenados, unidos por '_'
     a                    string: el menor de los dos
@@ -918,7 +938,11 @@ coincide con su uid).
 | `/system/update` | cualquiera, sin sesión | (vía `/system`) |
 | `…/keys/pub` | cualquier miembro (es pública: sin ella nadie te escribe) | la dueña |
 | `…/keys/backup` | **solo la dueña**, ni un admin | la dueña |
-| `…/coins` | sus amigos y cualquier admin | **solo un admin** |
+| `…/coins` | sus amigos y cualquier admin | un admin, siempre; la dueña, solo restando precio × cantidad con un recibo fresco en la misma escritura |
+| `…/shop/last` | la dueña | la dueña: `at === now`, el artículo tiene precio y, si no es gratis, el saldo baja exactamente lo que cuesta |
+| `…/pantry/$food` | la dueña | la dueña, sin borrar: el stock inicial (5, una vez, solo galleta y caramelo), −1 al comer, o + `qty` con un recibo fresco de esa comida |
+| `…/games/$gameId` | la dueña | la dueña, sin borrar: crear en `gift` con un recibo fresco de ese juego y `qty` 1; después solo `gift` → `open` |
+| `/shop/prices` | miembro habilitado | admin |
 | `…/inbox/$fromId` | la dueña | crear: `$fromId`, si es amigo suyo; borrar: la dueña |
 | `…/reads`, `…/votes` | solo la dueña | la dueña |
 | `…/groups/$groupId` | solo la dueña | la dueña, con la entrada de miembro en la misma escritura |
@@ -984,7 +1008,7 @@ reparte los que falten al abrir el panel.
 | `cardKeeperProvider` | `/users/$acc/card` cuando no cuadra con perfil, acento y Tama de perfil |
 | `MusicLibraryController` | `/users/$acc/music/menuTrack`, `/users/$acc/music/profileTrack` (o la borra), `/users/$acc/music/unlocked/$track`, borra `unlocked` |
 | `AdminController` | alta multi-ruta con código de amigo (ver arriba), `/admins/$uid`, `/allowlist/$uid/disabled`; regenerar crea `/allowlist/$nuevoUid` con el mismo `accountId`, copia `/admins` si lo era y marca la vieja `disabled` y `retired` |
-| `TamasController` | multi-ruta de creación y borrado (con `card` si cambia el Tama de perfil); `PATCH /tamas/$id` (name, personality, voice, look, updatedAt); `/tamas/$id/care/lastPetted` y `/lastFed` (`serverTimestamp`, como mucho una vez cada 30 s y 5 s por Tama); `PATCH /users/$acc` con `tama` y `card` |
+| `TamasController` | multi-ruta de creación y borrado (con `card` si cambia el Tama de perfil); `PATCH /tamas/$id` (name, personality, voice, look, updatedAt); `/tamas/$id/care/lastPetted` y `/lastFed` (`serverTimestamp`, como mucho una vez cada 30 s y 5 s por Tama; dar de comer gasta antes una unidad de la despensa y, sin ninguna, no hace nada); `PATCH /users/$acc` con `tama` y `card` |
 | `AdminController` (versión) | `/system/update` (`requireVersion(appVersion, url:)`) y su borrado |
 | `IdentityController` | `/users/$acc/keys` (pub, backup y at) la primera vez, y nunca más |
 | `MessagesController` | multi-ruta de entrada y salida del grupo (`groups/$gid/members/$acc` + `users/$acc/groups/$gid`); `/users/$acc/reads/dm/$otro`, `/reads/group/$gid` |
@@ -992,6 +1016,9 @@ reparte los que falten al abrir el panel.
 | `NewsController` | multi-ruta de voto (`news/$id/tally/$opción` ±1, `news/$id/voters/$yo`, `users/$yo/votes/$id`); `/users/$acc/reads/news`; solo admin: `/news/$id`, `/news/$id/closed`, y su borrado |
 | `SuggestionsController` | `/suggestions/$acc` entero; solo admin: multi-ruta del veredicto (`status`, `note`, `decidedAt`, `decidedBy` y `acceptedSuggestions/$id`) y `/system/suggestionsOpen` |
 | `CoinsController` | solo admin: `/users/$otro/coins` |
+| `ShopController` | multi-ruta de compra desde la raíz: `users/$acc/shop/last` (con `serverTimestamp`), `users/$acc/coins` si no es gratis, y `users/$acc/pantry/$food` o `users/$acc/games/$id`; `/users/$acc/games/$id/state` al desenvolver |
+| `PantryController` | `/users/$acc/pantry/$food`: 5 la primera vez, y −1 cada vez que se da de comer |
+| `tool/seed_shop.dart` | `/shop/prices` entero, con la CLI |
 | `AdminController` (grupo) | `/groups/global/meta` |
 | `tool/bootstrap_admin.dart` | `/allowlist/$uid`, `/admins/$uid`, `/usernames/$username`, `/friendCodes/$code`, `/users/$uid/friendCode`, `/system/friendCodeCounter` con la CLI de Firebase |
 | `tool/post_news.dart` | `/news/$id`, `/news/$id/closed` y su borrado, también con la CLI |

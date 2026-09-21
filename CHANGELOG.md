@@ -5,6 +5,65 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.5.0 — La tienda (checkpoint 5)
+
+Las monedas por fin sirven para algo. Llega **Yatai** (屋台), el puesto de
+feria de Ibasho: una tienda al estilo del Canal Tienda de la Wii o la eShop de
+la 3DS, con su escaparate arriba y el mostrador abajo.
+
+### Añadido
+
+- **El canal Yatai**, con tres secciones:
+  - **Juegos.** Vienen dentro de la app; comprarlos solo los activa. Tras
+    confirmar, una **descarga** de bloques al estilo Wii rellena la barra y
+    avisa de que el regalo espera en el menú.
+  - **Tamas.** Comida por unidades —×1, ×5 o ×10—, solo de la que la cuenta
+    tiene desbloqueada: hoy, galleta y caramelo. Las demás se ven con candado.
+  - **Gacha.** Una máquina de cápsulas apagada: **próximamente**.
+- **Los juegos llegan envueltos.** Un juego recién comprado aparece en la
+  rejilla como un **regalo** que se balancea; al tocarlo se desenvuelve, sale
+  su icono y desde entonces es un canal más. Como los regalos de la 3DS.
+- **Buscaminas**, el primer juego, a 0 monedas. Usa las dos pantallas: arriba
+  tu Tama de perfil hace de carita y reacciona a cada jugada —se asusta al
+  destapar, celebra al ganar, cae KO al perder—, con las minas que quedan, el
+  tiempo, el mejor tiempo de cada nivel y un **minimapa** del tablero entero;
+  abajo, el tablero. Tres niveles (9×9, 12×12 y 16×16). Tocar destapa;
+  mantener pulsado o clic derecho pone bandera, y hay un interruptor pico /
+  bandera para quien no quiera mantener. Tocar un número con sus banderas
+  puestas destapa los vecinos. El primer toque nunca es una mina. En un móvil,
+  el nivel difícil se puede ampliar y desplazar, y el minimapa marca qué parte
+  se está viendo.
+- **`tool/seed_shop.dart`** carga los precios del Yatai (`/shop/prices`). Un
+  artículo sin precio sale como «no disponible».
+
+### Cambiado
+
+- **La comida se gasta.** Darle una chuche a un Tama consume una unidad. Cada
+  cuenta recibe **5 de cada comida de serie** la primera vez que abre la 0.5.0,
+  y la tira de la habitación enseña cuántas quedan; una agotada se hunde con un
+  0 y avisa de que se repone en el Yatai.
+- **Las monedas se pueden gastar.** Siguen dándolas solo los administradores,
+  pero la dueña puede restarse las suyas, y solo al comprar.
+
+### Seguridad
+
+- Cada compra es **una escritura multi-ruta**: recibo (`shop/last`, con la
+  hora del servidor), saldo nuevo y lo comprado. Las reglas exigen que el
+  recibo sea de ese mismo instante, que el saldo baje **exactamente** precio ×
+  cantidad, y que la despensa o el juego solo cambien si ese recibo lo
+  justifica. Un recibo viejo no sirve para una segunda compra.
+- La despensa y los juegos **no se pueden borrar**, el stock inicial solo se
+  da una vez, y al comer solo se puede restar de una en una.
+- `test/rules/rules_05.test.mjs` cubre compras con y sin saldo, restas que no
+  cuadran, recibos reutilizados, comida bloqueada, el stock inicial repetido y
+  los regalos.
+
+### Nota para desplegar
+
+Una build 0.4.x no sabe que la comida se gasta y seguiría dando de comer
+gratis. Después de publicar las reglas y los precios, **exige la 0.5.0** desde
+el panel de administración.
+
 ## 0.4.1 — Que el primer mensaje se vea
 
 Arreglos de cosas que se rompían justo al usarlas, y las noticias en dos

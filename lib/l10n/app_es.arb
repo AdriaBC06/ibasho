@@ -1060,5 +1060,123 @@
       }
     }
   },
-  "adminNewsTranslation": "sin traducción, todo el mundo la ve en castellano"
+  "adminNewsTranslation": "sin traducción, todo el mundo la ve en castellano",
+  "channelMinesweeper": "buscaminas",
+  "@channelMinesweeper": {"description": "Etiqueta de la rejilla de canales para el buscaminas."},
+  "minesweeperTitle": "buscaminas",
+  "@minesweeperTitle": {"description": "Titulo del canal del buscaminas."},
+  "minesweeperEasy": "fácil",
+  "@minesweeperEasy": {"description": "Nombre de la dificultad facil del buscaminas (9x9, 10 minas)."},
+  "minesweeperMedium": "media",
+  "@minesweeperMedium": {"description": "Nombre de la dificultad media del buscaminas (12x12, 24 minas)."},
+  "minesweeperHard": "difícil",
+  "@minesweeperHard": {"description": "Nombre de la dificultad dificil del buscaminas (16x16, 40 minas)."},
+  "minesweeperMinesLeft": "minas",
+  "@minesweeperMinesLeft": {"description": "Etiqueta del contador de minas sin marcar."},
+  "minesweeperTime": "tiempo",
+  "@minesweeperTime": {"description": "Etiqueta del cronometro de la partida."},
+  "minesweeperBest": "mejor",
+  "@minesweeperBest": {"description": "Etiqueta del mejor tiempo guardado para la dificultad en curso."},
+  "minesweeperDig": "cavar",
+  "@minesweeperDig": {"description": "Modo tactil: tocar destapa una casilla."},
+  "minesweeperFlag": "bandera",
+  "@minesweeperFlag": {"description": "Modo tactil: tocar pone o quita una bandera."},
+  "minesweeperRestart": "reiniciar",
+  "@minesweeperRestart": {"description": "Boton para empezar una partida nueva."},
+  "minesweeperWin": "¡has ganado!",
+  "@minesweeperWin": {"description": "Mensaje al destapar todas las casillas seguras."},
+  "minesweeperLose": "¡boom!",
+  "@minesweeperLose": {"description": "Mensaje al destapar una mina."},
+  "channelYatai": "Yatai",
+  "@channelYatai": {"description": "Etiqueta de la rejilla de canales para la tienda."},
+  "yataiTitle": "Yatai",
+  "@yataiTitle": {"description": "Titulo del canal de la tienda."},
+  "yataiTabGames": "juegos",
+  "@yataiTabGames": {"description": "Pestaña de la seccion de juegos del Yatai."},
+  "yataiTabTamas": "Tamas",
+  "@yataiTabTamas": {"description": "Pestaña de la seccion de comida del Yatai."},
+  "yataiTabGacha": "gacha",
+  "@yataiTabGacha": {"description": "Pestaña de la seccion de gacha del Yatai."},
+  "yataiPriceFree": "gratis",
+  "@yataiPriceFree": {"description": "Precio de un articulo que cuesta 0 monedas."},
+  "yataiPriceNotAvailable": "no disponible",
+  "@yataiPriceNotAvailable": {"description": "Se enseña cuando un articulo aun no tiene precio."},
+  "yataiYourBalance": "tu saldo",
+  "@yataiYourBalance": {"description": "Etiqueta del saldo de monedas en el escaparate del Yatai."},
+  "yataiUnitsOwned": "{count, plural, =0{no tienes ninguna} =1{tienes 1} other{tienes {count}}}",
+  "@yataiUnitsOwned": {
+    "description": "Unidades que tienes de una comida, en el escaparate del Yatai.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "yataiBuy": "comprar",
+  "@yataiBuy": {"description": "Boton para comprar un articulo con precio."},
+  "yataiGet": "conseguir",
+  "@yataiGet": {"description": "Boton para conseguir un articulo gratuito."},
+  "yataiInstalled": "instalado",
+  "@yataiInstalled": {"description": "Estado de un juego ya comprado, en el boton y en la insignia de la rejilla."},
+  "yataiLocked": "bloqueada",
+  "@yataiLocked": {"description": "Estado de una comida no desbloqueada, en el boton del escaparate."},
+  "yataiQuantity": "cantidad",
+  "@yataiQuantity": {"description": "Etiqueta del selector de cantidad al comprar comida."},
+  "yataiTotal": "{count, plural, =1{total: 1 moneda} other{total: {count} monedas}}",
+  "@yataiTotal": {
+    "description": "Total a pagar en el selector de cantidad.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "yataiConfirmTitle": "¿comprar {name}?",
+  "@yataiConfirmTitle": {
+    "description": "Titulo de la confirmacion de compra.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "yataiConfirmBodyFree": "es gratis: se añade a tu cuenta sin gastar nada.",
+  "@yataiConfirmBodyFree": {"description": "Cuerpo de la confirmacion de compra de un articulo gratuito."},
+  "yataiConfirmBodyPrice": "{price, plural, =1{cuesta 1 moneda.} other{cuesta {price} monedas.}}",
+  "@yataiConfirmBodyPrice": {
+    "description": "Cuerpo de la confirmacion de compra de un articulo con precio.",
+    "placeholders": {
+      "price": {"type": "int"}
+    }
+  },
+  "yataiInstallingTitle": "instalando…",
+  "@yataiInstallingTitle": {"description": "Titulo de la descarga falsa mientras se compra."},
+  "yataiInstallingBody": "un momento…",
+  "@yataiInstallingBody": {"description": "Cuerpo de la descarga falsa mientras se compra."},
+  "yataiDoneGame": "¡Listo! Tu regalo te espera en el menú.",
+  "@yataiDoneGame": {"description": "Mensaje al terminar de comprar un juego."},
+  "yataiDoneFood": "{count, plural, =1{1 unidad de {food} a la despensa} other{{count} unidades de {food} a la despensa}}",
+  "@yataiDoneFood": {
+    "description": "Mensaje al terminar de comprar comida.",
+    "placeholders": {
+      "count": {"type": "int"},
+      "food": {"type": "String"}
+    }
+  },
+  "yataiErrorNoPrice": "todavía no está a la venta.",
+  "@yataiErrorNoPrice": {"description": "Error al comprar un articulo sin precio."},
+  "yataiErrorInsufficientCoins": "no te llegan las monedas.",
+  "@yataiErrorInsufficientCoins": {"description": "Error al comprar sin saldo suficiente."},
+  "yataiErrorFoodLocked": "esa comida está bloqueada.",
+  "@yataiErrorFoodLocked": {"description": "Error al comprar una comida no desbloqueada."},
+  "yataiErrorAlreadyOwned": "ya lo tienes.",
+  "@yataiErrorAlreadyOwned": {"description": "Error al comprar un juego que ya esta en la cuenta."},
+  "yataiErrorNetwork": "sin conexión. Inténtalo otra vez.",
+  "@yataiErrorNetwork": {"description": "Error de red al comprar."},
+  "yataiErrorRejected": "no se ha podido comprar.",
+  "@yataiErrorRejected": {"description": "Error generico al comprar."},
+  "yataiGachaTitle": "próximamente",
+  "@yataiGachaTitle": {"description": "Titulo del panel de la seccion de gacha."},
+  "yataiGachaBody": "la máquina de cápsulas aún está de camino.",
+  "@yataiGachaBody": {"description": "Cuerpo del panel de la seccion de gacha."},
+  "yataiDescGame": "un buscaminas clásico, de dos pantallas.",
+  "@yataiDescGame": {"description": "Descripcion generica de un juego en el escaparate del Yatai."},
+  "yataiDescFood": "una chuche para dar de comer a tu Tama.",
+  "@yataiDescFood": {"description": "Descripcion generica de una comida en el escaparate del Yatai."},
+  "pantryEmptyToast": "se ha acabado — la encontrarás en Yatai",
+  "@pantryEmptyToast": {"description": "Aviso al tocar una comida sin unidades en la habitacion del Tama."}
 }

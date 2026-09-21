@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../backend/ibasho_backend.dart';
 import '../backend/rest_ibasho_backend.dart';
+import '../backend/shop.dart';
+import '../backend/tama.dart';
 import '../storage/secure_store.dart';
 import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
@@ -19,12 +21,14 @@ import 'friends.dart';
 import 'identity.dart';
 import 'messages.dart';
 import 'news.dart';
+import 'pantry.dart';
 import 'suggestions.dart';
 import 'music_library.dart';
 import 'preferences.dart';
 import 'presence.dart';
 import 'profile.dart';
 import 'session.dart';
+import 'shop.dart';
 import 'system_status.dart';
 import 'tamas.dart';
 
@@ -109,6 +113,19 @@ final tamasProvider = StateNotifierProvider<TamasController, TamasState>((ref) {
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
     cardOf: (id, color) => cardForTama(ref, id, color),
+    consumeFood: (food) => ref.read(pantryProvider.notifier).consume(food),
+  );
+});
+
+/// La despensa de la cuenta: unidades de cada comida.
+final pantryProvider =
+    StateNotifierProvider<PantryController, Map<TamaFood, int>>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return PantryController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    unlockedFoods: ref.watch(unlockedFoodsProvider),
   );
 });
 
@@ -311,6 +328,25 @@ final coinsProvider = StateNotifierProvider<CoinsController, int>((ref) {
     session: ref.watch(sessionProvider.notifier),
   );
 });
+
+/// El Yatai: precios y juegos comprados, y la compra en si.
+final shopProvider = StateNotifierProvider<ShopController, ShopState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return ShopController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    coinsOf: () => ref.read(coinsProvider),
+    pantryQtyOf: (food) => ref.read(pantryProvider)[food] ?? 0,
+    unlockedFoodsOf: () => ref.read(unlockedFoodsProvider),
+  );
+});
+
+/// Los juegos comprados, por id: la rejilla los ensena como regalo o canal
+/// segun su estado.
+final installedGamesProvider = Provider<Map<String, GameInstall>>(
+  (ref) => ref.watch(shopProvider.select((s) => s.games)),
+);
 
 /// Conversaciones con algo sin leer: la chapa del canal de mensajes.
 final unreadMessagesProvider =

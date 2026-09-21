@@ -310,8 +310,11 @@ void main() {
     // Dos equipos de la misma cuenta: lo que se hace en uno llega al otro.
     Future<UserCard> tamaCard(String? id, String? color) async =>
         UserCard(displayName: 'alba', tamaId: id);
-    final desk = TamasController(backend: backend, session: alba, cardOf: tamaCard);
-    final laptop = TamasController(backend: backend, session: alba, cardOf: tamaCard);
+    Future<bool> noFood(TamaFood food) async => true;
+    final desk =
+        TamasController(backend: backend, session: alba, cardOf: tamaCard, consumeFood: noFood);
+    final laptop =
+        TamasController(backend: backend, session: alba, cardOf: tamaCard, consumeFood: noFood);
     addTearDown(desk.dispose);
     addTearDown(laptop.dispose);
     await _until(() => desk.state.loaded && laptop.state.loaded, 'listas iniciales');

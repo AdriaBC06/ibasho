@@ -346,13 +346,81 @@
             ".validate": false
           }
         },
-        // Monedas del juego. Hoy no las gasta nadie y todo el mundo esta a 0:
-        // lo que importa de la regla es que nadie se las pueda poner a si
-        // mismo. Solo escribe el admin; las leen la dueña y sus amigos.
+        // Monedas del juego. El admin las sigue pudiendo poner directamente
+        // (repartirlas de regalo, corregir un fallo). La dueña, ademas, puede
+        // bajarlas ella misma, pero solo dentro de la misma escritura que dan
+        // el recibo de una compra: `shop/last` tiene que quedar con `at ===
+        // now` en esa misma operacion, y el descuento tiene que cuadrar con
+        // exactitud (vieja - precio*cantidad). Nunca se puede subir sola: la
+        // unica forma de que suban sin un admin de por medio no existe. Las
+        // leen la dueña y sus amigos.
         "coins": {
           ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (root.child('admins').child(auth.uid).exists() || root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists())",
-          ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
-          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999"
+          ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.parent().child('shop').child('last').child('at').val() === now))",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999 && (root.child('admins').child(auth.uid).exists() || newData.val() === (data.exists() ? data.val() : 0) - root.child('shop').child('prices').child(newData.parent().child('shop').child('last').child('item').val()).val() * newData.parent().child('shop').child('last').child('qty').val())"
+        },
+        // El recibo de la ultima compra: `{item, qty, at}`. Es la dueña quien
+        // lo escribe, siempre dentro de la misma operacion multi-ruta que
+        // toca `coins`, `pantry` o `games`. `at === now` es lo que evita que
+        // un recibo viejo sirva para otra cosa: solo vale en la escritura
+        // exacta en la que nace. Si el precio del articulo es 0, no hace
+        // falta que `coins` se mueva; si no, tiene que bajar en precio*qty.
+        "shop": {
+          "last": {
+            ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+            ".validate": "newData.hasChildren(['item', 'qty', 'at']) && newData.child('at').val() === now && root.child('shop').child('prices').child(newData.child('item').val()).exists() && (root.child('shop').child('prices').child(newData.child('item').val()).val() === 0 || (data.parent().parent().child('coins').exists() && newData.parent().parent().child('coins').val() === data.parent().parent().child('coins').val() - root.child('shop').child('prices').child(newData.child('item').val()).val() * newData.child('qty').val()))",
+            "item": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,32}$/)"
+            },
+            "qty": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 99"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        // La despensa: unidades de cada comida. No se puede borrar
+        // (`newData.exists()`), y cada escritura tiene que ser una de tres:
+        // el stock inicial de 5 la primera vez que se lee una comida de serie
+        // (hoy galleta y caramelo; las demas se desbloquearan en un
+        // checkpoint futuro y ampliaran esta lista), comer (resta 1) o
+        // comprar (un recibo fresco de `food_$food` que suma `qty`). La
+        // compra tambien esta restringida a las comidas de serie por ahora:
+        // ampliar esta lista es lo unico que hara falta tocar aqui cuando se
+        // desbloqueen mas.
+        "pantry": {
+          "$food": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+            ".validate": "$food.matches(/^(cookie|candy|cupcake|apple|dango|mochi|lollipop|iceCream|donut|flan)$/) && newData.exists() && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999 && ((!data.exists() && newData.val() === 5 && ($food === 'cookie' || $food === 'candy')) || (data.exists() && newData.val() === data.val() - 1) || (($food === 'cookie' || $food === 'candy') && newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'food_' + $food && newData.val() === (data.exists() ? data.val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val()))"
+          }
+        },
+        // Los juegos comprados: `{state: 'gift'|'open', at}`. No se pueden
+        // borrar. Crear uno exige un recibo fresco de `game_$gameId` con
+        // `qty === 1`; a partir de ahi el unico cambio que se acepta es pasar
+        // de envuelto a abierto (desenvolverlo), y `at` no se toca: es la
+        // fecha en que se compro, no la de abrirlo.
+        "games": {
+          "$gameId": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+            ".validate": "$gameId.matches(/^[a-z0-9_]{1,32}$/) && newData.exists() && newData.hasChildren(['state', 'at']) && ((!data.exists() && newData.child('state').val() === 'gift' && newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'game_' + $gameId && newData.parent().parent().child('shop').child('last').child('qty').val() === 1) || (data.exists() && data.child('state').val() === 'gift' && newData.child('state').val() === 'open' && newData.child('at').val() === data.child('at').val()))",
+            "state": {
+              ".validate": "newData.isString() && (newData.val() === 'gift' || newData.val() === 'open')"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         },
         // Aviso de mensaje nuevo, escrito por quien manda en el arbol de quien
         // recibe. No lleva nada del mensaje —ni cifrado— solo de quien viene y
@@ -689,6 +757,19 @@
         },
         "$other": {
           ".validate": false
+        }
+      }
+    },
+    // Precios del Yatai, uno por articulo (`game_minesweeper`, `food_cookie`,
+    // `food_candy`...). Los carga el admin con `tool/seed_shop.dart`; sin
+    // precio, un articulo no se puede comprar. Los lee cualquier cuenta con
+    // sesion, porque hace falta para enseñar el escaparate.
+    "shop": {
+      "prices": {
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+        "$itemId": {
+          ".validate": "$itemId.matches(/^[a-z0-9_]{1,32}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999"
         }
       }
     },

@@ -5,6 +5,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../backend/shop.dart';
+import '../../../games/minesweeper/minesweeper_channel.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
 import '../../widgets/glyphs.dart';
@@ -18,6 +20,7 @@ import 'profile_channel.dart';
 import 'settings_channel.dart';
 import 'suggestions_channel.dart';
 import 'tamas_channel.dart';
+import 'yatai_channel.dart';
 
 /// Un hueco de la rejilla.
 @immutable
@@ -29,6 +32,8 @@ class ChannelSpec {
     required this.builder,
     this.empty = false,
     this.badge,
+    this.gift = false,
+    this.gameId,
   });
 
   final String id;
@@ -41,19 +46,63 @@ class ChannelSpec {
 
   /// Numero que se pinta sobre el icono (solicitudes pendientes). Nada si es 0.
   final ProviderListenable<int>? badge;
+
+  /// Un juego recien comprado: la ranura se ensena como un regalo envuelto y
+  /// tocarla lo desenvuelve en vez de abrir el canal.
+  final bool gift;
+
+  /// Id del juego en `/users/{cuenta}/games/{gameId}`. Solo los canales de
+  /// juegos lo llevan, y hace falta para desenvolver.
+  final String? gameId;
 }
 
-/// Cuantas ranuras libres ensena el entorno mientras no haya apps.
+/// Un juego comprable: con esto y una entrada aqui, el juego ya sale en la
+/// rejilla en cuanto se compra. `channelsFor` hace el resto.
+class GameChannelEntry {
+  const GameChannelEntry({
+    required this.glyph,
+    required this.label,
+    required this.builder,
+  });
+
+  final Glyph glyph;
+  final String Function(L) label;
+  final WidgetBuilder builder;
+}
+
+/// Registro de juegos: la clave es el `gameId` del catalogo del Yatai
+/// (`lib/backend/shop.dart`) y de `/users/{cuenta}/games/{gameId}`.
+final Map<String, GameChannelEntry> gameChannelRegistry = <String, GameChannelEntry>{
+  'minesweeper': GameChannelEntry(
+    glyph: Glyph.mine,
+    label: (l) => l.channelMinesweeper,
+    builder: (_) => const MinesweeperChannel(),
+  ),
+};
+
+/// Cuantas ranuras libres ensena el entorno mientras no haya apps propias.
 ///
-/// Una, no dos: con los tres canales de la 0.4.0 una cuenta normal tiene siete,
-/// y la octava ranura deja la primera pagina justa. Con dos, el entorno pasaba
-/// a dos paginas para enseñar un hueco.
+/// Una, no dos: el Yatai ya deja la rejilla de una cuenta nueva justa en la
+/// primera pagina en horizontal (ocho canales fijos). Con dos, el entorno
+/// pasaba a una pagina de mas solo para enseñar un segundo hueco vacio.
 const int emptySlotCount = 1;
 
 /// Canales por pagina: rejilla de 4x2 en horizontal, de 3x3 en vertical.
 int channelsPerPage({required bool tall}) => tall ? 9 : 8;
 
-List<ChannelSpec> channelsFor({required bool isAdmin}) => <ChannelSpec>[
+List<ChannelSpec> channelsFor({
+  required bool isAdmin,
+  Map<String, GameInstall> installedGames = const <String, GameInstall>{},
+}) {
+  // Los juegos comprados, en el orden en que se compraron. Solo entran los
+  // que el registro conoce: si el backend trae un id que la app aun no sabe
+  // pintar, se ignora en vez de reventar la rejilla.
+  final games = installedGames.entries
+      .where((e) => gameChannelRegistry.containsKey(e.key))
+      .toList()
+    ..sort((a, b) => a.value.at.compareTo(b.value.at));
+
+  return <ChannelSpec>[
       ChannelSpec(
         id: 'settings',
         glyph: Glyph.gear,
@@ -102,6 +151,21 @@ List<ChannelSpec> channelsFor({required bool isAdmin}) => <ChannelSpec>[
         // mira puede leer el buzon entero.
         badge: pendingSuggestionsProvider,
       ),
+      ChannelSpec(
+        id: 'yatai',
+        glyph: Glyph.yatai,
+        label: (l) => l.channelYatai,
+        builder: (_) => const YataiChannel(),
+      ),
+      for (final entry in games)
+        ChannelSpec(
+          id: 'game-${entry.key}',
+          glyph: gameChannelRegistry[entry.key]!.glyph,
+          label: gameChannelRegistry[entry.key]!.label,
+          builder: gameChannelRegistry[entry.key]!.builder,
+          gift: entry.value.isGift,
+          gameId: entry.key,
+        ),
       if (isAdmin)
         ChannelSpec(
           id: 'admin',
@@ -125,3 +189,4 @@ List<ChannelSpec> channelsFor({required bool isAdmin}) => <ChannelSpec>[
           builder: (_) => const ComingSoonChannel(),
         ),
     ];
+}

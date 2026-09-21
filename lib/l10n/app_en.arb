@@ -736,5 +736,77 @@
       }
     }
   },
-  "adminNewsTranslation": "without a translation, everyone sees it in Spanish"
+  "adminNewsTranslation": "without a translation, everyone sees it in Spanish",
+  "channelMinesweeper": "minesweeper",
+  "minesweeperTitle": "minesweeper",
+  "minesweeperEasy": "easy",
+  "minesweeperMedium": "medium",
+  "minesweeperHard": "hard",
+  "minesweeperMinesLeft": "mines",
+  "minesweeperTime": "time",
+  "minesweeperBest": "best",
+  "minesweeperDig": "dig",
+  "minesweeperFlag": "flag",
+  "minesweeperRestart": "restart",
+  "minesweeperWin": "you win!",
+  "minesweeperLose": "boom!",
+  "channelYatai": "Yatai",
+  "yataiTitle": "Yatai",
+  "yataiTabGames": "games",
+  "yataiTabTamas": "Tamas",
+  "yataiTabGacha": "gacha",
+  "yataiPriceFree": "free",
+  "yataiPriceNotAvailable": "not available",
+  "yataiYourBalance": "your balance",
+  "yataiUnitsOwned": "{count, plural, =0{you have none} =1{you have 1} other{you have {count}}}",
+  "@yataiUnitsOwned": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "yataiBuy": "buy",
+  "yataiGet": "get",
+  "yataiInstalled": "installed",
+  "yataiLocked": "locked",
+  "yataiQuantity": "quantity",
+  "yataiTotal": "{count, plural, =1{total: 1 coin} other{total: {count} coins}}",
+  "@yataiTotal": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "yataiConfirmTitle": "buy {name}?",
+  "@yataiConfirmTitle": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "yataiConfirmBodyFree": "it's free: it will be added to your account at no cost.",
+  "yataiConfirmBodyPrice": "{price, plural, =1{it costs 1 coin.} other{it costs {price} coins.}}",
+  "@yataiConfirmBodyPrice": {
+    "placeholders": {
+      "price": {"type": "int"}
+    }
+  },
+  "yataiInstallingTitle": "installing…",
+  "yataiInstallingBody": "just a moment…",
+  "yataiDoneGame": "Done! Your gift is waiting for you in the menu.",
+  "yataiDoneFood": "{count, plural, =1{1 unit of {food} in the pantry} other{{count} units of {food} in the pantry}}",
+  "@yataiDoneFood": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "food": {"type": "String"}
+    }
+  },
+  "yataiErrorNoPrice": "not for sale yet.",
+  "yataiErrorInsufficientCoins": "you don't have enough coins.",
+  "yataiErrorFoodLocked": "that food is locked.",
+  "yataiErrorAlreadyOwned": "you already have it.",
+  "yataiErrorNetwork": "no connection. Try again.",
+  "yataiErrorRejected": "couldn't buy it.",
+  "yataiGachaTitle": "coming soon",
+  "yataiGachaBody": "the capsule machine is still on its way.",
+  "yataiDescGame": "a classic minesweeper, on two screens.",
+  "yataiDescFood": "a treat to feed your Tama.",
+  "pantryEmptyToast": "all gone — you'll find it in Yatai"
 }

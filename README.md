@@ -6,18 +6,19 @@ Ibasho es un espacio de juegos multiplataforma inspirado en los menús de sistem
 de Wii y Nintendo 3DS: un launcher de micro-apps con avatares propios (los
 **Tamas**), cuentas, amigos y mensajería.
 
-Este repositorio está en el **checkpoint 4** (0.4.0): el entorno, las cuentas,
-los **Tamas**, los **amigos** y, ahora, **hablar**. En Linux, Android y Windows.
-Todavía no hay apps dentro, pero el entorno ya se puede usar: splash, login,
-cambio obligatorio de contraseña, entorno de dos paneles con reloj y barra de
-estado, rejilla de canales con paginación y animación de apertura, perfil,
-ajustes, créditos, panel de administración, el canal de Tamas con su creador y
-la habitación de cada uno, el canal de amigos —códigos al estilo 3DS,
-solicitudes, presencia, perfiles con la hora local y la música de cada cual,
-tarjeta de visita exportable y muro de cumpleaños—, y los tres canales nuevos:
-**mensajes** cifrados de punta a punta con stickers de tus Tamas y un grupo
-abierto, **noticias** con encuestas anónimas, y **sugerencias** con respuesta.
-En la barra de estado hay además un contador de monedas, hoy a cero para todos.
+Este repositorio está en el **checkpoint 5** (0.5.0): el entorno, las cuentas,
+los **Tamas**, los **amigos**, **hablar** y, ahora, **la tienda**. En Linux,
+Android y Windows. El entorno ya se puede usar: splash, login, cambio
+obligatorio de contraseña, entorno de dos paneles con reloj y barra de estado,
+rejilla de canales con paginación y animación de apertura, perfil, ajustes,
+créditos, panel de administración, el canal de Tamas con su creador y la
+habitación de cada uno, el canal de amigos —códigos al estilo 3DS, solicitudes,
+presencia, perfiles con la hora local y la música de cada cual, tarjeta de
+visita exportable y muro de cumpleaños—, **mensajes** cifrados de punta a punta
+con stickers de tus Tamas y un grupo abierto, **noticias** con encuestas
+anónimas, **sugerencias** con respuesta y **Yatai** (屋台), el puesto donde se
+gastan las monedas: juegos que se activan —el primero, un buscaminas a dos
+pantallas— y comida para los Tamas, que ahora se gasta al dársela.
 
 Plataformas: **Linux desktop**, **Android** (móvil y tableta) y **Windows 10 o
 posterior**, de 64 bits. Ni la 0.3.1 ni la 0.3.3 añaden funcionalidades: llevan
@@ -406,7 +407,8 @@ serie (`node --test --test-concurrency=1`): en paralelo se pisan.
 lib/
   backend/     IbashoBackend (contrato) y RestIbashoBackend (REST + SSE contra Firebase)
   crypto/      cifrado de punta a punta: claves, sobres, frase de respaldo y el isolate que lo abre
-  state/       Riverpod: sesión, perfil, admin, Tamas, amigos, presencia, identidad, mensajes, noticias, sugerencias, monedas, preferencias, reloj y estado del sistema
+  state/       Riverpod: sesión, perfil, admin, Tamas, despensa, amigos, presencia, identidad, mensajes, noticias, sugerencias, monedas, tienda, preferencias, reloj y estado del sistema
+  games/       los juegos que se activan en el Yatai (hoy, el buscaminas)
   storage/     sesión cifrada (libsecret, DPAPI o AES-256-GCM) y preferencias locales
   audio/       música, efectos y la voz sintetizada de los Tamas
   theme/       tokens de color, escala tipográfica, acentos legibles y piel en tiempo de ejecución
@@ -417,6 +419,7 @@ lib/
 tool/
   bootstrap_admin.dart   primer administrador
   post_news.dart         publicar en el tablón sin abrir la app
+  seed_shop.dart         precios del Yatai
   dev_seed.dart          cuentas de prueba para los emuladores
   gen_audio.py           generador del set sonoro (CC0)
   test_rules.sh          tests de reglas
@@ -487,8 +490,9 @@ y en el perfil.
 - **Comida de verdad.** Diez chuches dibujadas en `lib/ui/tama/tama_food.dart`
   (galleta, caramelo, magdalena, manzana, dango, mochi, piruleta, helado, dónut
   y flan) que se eligen en una tira deslizable de la habitación. De serie solo
-  se tienen la galleta y el caramelo; el resto sale bloqueado hasta que llegue
-  la tienda (`unlockedFoodsProvider`).
+  se tienen la galleta y el caramelo; el resto sale bloqueado
+  (`unlockedFoodsProvider`). Cada comida va **por unidades**: darla gasta una,
+  la cuenta empieza con 5 de cada una de serie y se reponen en el Yatai.
 - **Un registro por Tama.** `/tamas/{tamaId}` guarda `creator` y `keeper`. Solo
   el creador edita nombre, personalidad, voz y aspecto; el cuidador escribe los
   cuidados. Traspasar un Tama a un amigo será cambiar `keeper`.
@@ -609,13 +613,35 @@ atrás.
   administrador acepta o rechaza con un motivo opcional, y lo aceptado pasa a
   una lista pública. El buzón se cierra desde el mismo canal.
 
-## Monedas
+## Monedas y Yatai
 
 Un contador por cuenta en la barra de estado, junto a la batería y la señal.
-Está a cero para todo el mundo y **todavía no se gasta en nada**. Lo que ya
-importa es que nadie pueda ponérselas a sí mismo: `/users/{cuenta}/coins` sólo
-lo escribe un administrador, desde su panel, y la app no tiene ni una ruta que
-lo intente desde la cuenta propia.
+Las monedas **solo las da un administrador**, desde su panel: nadie puede
+ponérselas a sí mismo. Lo único que puede hacer la dueña con las suyas es
+gastarlas en el **Yatai** (屋台, el puesto de feria), el canal de la tienda:
+
+- **Juegos.** Vienen dentro de la app; comprarlos solo los activa. Un juego
+  recién comprado aparece en la rejilla **envuelto como un regalo**, y al
+  tocarlo se desenvuelve y queda como un canal más. El primero es un
+  buscaminas que usa las dos pantallas: arriba tu Tama reacciona a cada jugada,
+  con el contador, el tiempo, el récord y un minimapa del tablero; abajo, el
+  tablero.
+- **Tamas.** Unidades de comida, solo de las que la cuenta tiene desbloqueadas.
+- **Gacha.** Próximamente.
+
+Cada compra es **una sola escritura multi-ruta**: un recibo en
+`/users/{cuenta}/shop/last` (`{item, qty, at}` con `at` del servidor), el saldo
+nuevo y lo comprado (`pantry/{comida}` o `games/{juego}`). Las reglas
+comprueban unas ramas contra otras: el recibo tiene que ser de este mismo
+instante, el saldo tiene que bajar exactamente precio × cantidad, y la despensa
+o el juego solo cambian si el recibo lo justifica. Los precios viven en
+`/shop/prices`; los escribe el administrador y se cargan con:
+
+```sh
+dart run tool/seed_shop.dart
+```
+
+Un artículo sin precio sale como «no disponible».
 
 ## Versiones y bloqueo
 
@@ -634,7 +660,7 @@ Solo se puede exigir la versión de la build desde la que se pulsa, para no
 dejarse fuera. También vale la CLI:
 
 ```sh
-firebase database:set /system/update --data '{"minVersion":"0.4.0","url":"https://…"}'
+firebase database:set /system/update --data '{"minVersion":"0.5.0","url":"https://…"}'
 ```
 
 Es un cerrojo de la app para que el grupo actualice, no una defensa: un cliente
@@ -659,10 +685,13 @@ modificado podría ignorarlo.
 - **0.4.0 · checkpoint 4** — hablar: canal de noticias con encuestas anónimas,
   mensajería cifrada de punta a punta con stickers de Tama y grupo abierto,
   buzón de sugerencias con veredicto, y contador de monedas. Hecho.
-- **Más adelante** — **traspasar un Tama** a un amigo para que lo cuide y juegue
-  con él (quien lo creó sigue siendo quien edita su aspecto, y el cuidador ve
-  los cambios al momento); una tienda donde gastar las monedas; jugar con los
-  Tamas, accesorios, notificaciones y micro-apps.
+- **0.5.0 · checkpoint 5** — la tienda: canal Yatai con juegos que se activan y
+  llegan envueltos como regalo, el buscaminas a dos pantallas, y comida por
+  unidades para los Tamas. Hecho.
+- **Más adelante** — el **gacha** del Yatai; **traspasar un Tama** a un amigo
+  para que lo cuide y juegue con él (quien lo creó sigue siendo quien edita su
+  aspecto, y el cuidador ve los cambios al momento); más juegos, jugar con los
+  Tamas, accesorios y notificaciones.
 
 ## Licencia
 

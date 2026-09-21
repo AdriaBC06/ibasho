@@ -305,12 +305,19 @@ Future<void> main() async {
       testWidgets('creditos, depuracion y zona horaria', (tester) async {
         await boot(tester, backend: FakeIbashoBackend());
         await settle(tester, 100);
+        // El Yatai deja depuracion en la segunda pagina (nueve por pagina en
+        // vertical, y ya hay diez canales fijos con un admin).
+        await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+        await settle(tester, 30);
         await tester.tap(find.byKey(const ValueKey<String>('channel.debug')));
         await settle(tester, 60);
         await shoot(tester, '15-depuracion');
         await tester.tap(find.byType(IconPill).last);
         await settle(tester, 40);
 
+        // Volvemos a la primera pagina: ajustes vive antes de depuracion.
+        await tester.tap(find.byKey(const ValueKey<String>('grid.previous')));
+        await settle(tester, 30);
         await tester.tap(find.byKey(const ValueKey<String>('channel.settings')));
         await settle(tester, 60);
         await tester.drag(find.byType(Scrollable).last, const Offset(0, -700));

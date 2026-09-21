@@ -126,8 +126,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     super.dispose();
   }
 
-  List<ChannelSpec> get _channels =>
-      channelsFor(isAdmin: ref.read(sessionProvider).isAdmin);
+  List<ChannelSpec> get _channels => channelsFor(
+        isAdmin: ref.read(sessionProvider).isAdmin,
+        installedGames: ref.watch(installedGamesProvider),
+      );
 
   int _pageCount(bool tall) =>
       math.max(1, (_channels.length / channelsPerPage(tall: tall)).ceil());
@@ -327,6 +329,7 @@ class _ControlRail extends StatelessWidget {
           // Las flechas en los extremos, simetricas; ampliar al lado de la
           // derecha, hacia dentro.
           IconPill(
+            key: const ValueKey<String>('grid.previous'),
             glyph: Glyph.arrowLeft,
             diameter: diameter,
             onPressed: page > 0 ? onPrevious : null,
@@ -341,6 +344,7 @@ class _ControlRail extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           IconPill(
+            key: const ValueKey<String>('grid.next'),
             glyph: Glyph.arrowRight,
             diameter: diameter,
             onPressed: page < pageCount - 1 ? onNext : null,
