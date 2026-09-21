@@ -174,8 +174,6 @@ void main() {
       gameId: 'minesweeper',
     );
 
-    // Mientras esta envuelto el regalo se balancea sin parar, asi que aqui no
-    // vale `pumpAndSettle`: nunca terminaria de asentarse.
     await _boot(
       tester,
       const Size(360, 780),
