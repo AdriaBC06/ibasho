@@ -33,6 +33,9 @@ class PreferencesController extends StateNotifier<Preferences> {
   Future<void> setReducedMotion(bool value) =>
       _commit(state.copyWith(reducedMotion: value));
 
+  Future<void> setHourFormat24(bool value) =>
+      _commit(state.copyWith(hourFormat24: value));
+
   Future<void> rememberAccent(String hex) async {
     if (hex == state.accentHex) return;
     await _commit(state.copyWith(accentHex: hex));

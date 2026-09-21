@@ -14,6 +14,7 @@ import '../../../backend/models.dart';
 import '../../../backend/social.dart';
 import '../../../backend/tama.dart';
 import '../../../core/birthday.dart';
+import '../../../core/clock_format.dart';
 import '../../../core/timezones.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/people.dart';
@@ -514,6 +515,8 @@ class _LocalTime extends ConsumerWidget {
     final skin = IbashoSkin.of(context);
     final locale = ref.watch(localeProvider).languageCode;
     final now = ref.watch(clockProvider);
+    final hourFormat24 =
+        ref.watch(preferencesProvider.select((p) => p.hourFormat24));
     final mine = ref.watch(profileProvider.select((p) => p.profile?.timezone)) ?? '';
     final myZone = mine.isEmpty ? localTimezoneName() : mine;
     final theirZone = profile.timezone.isEmpty ? myZone : profile.timezone;
@@ -546,7 +549,7 @@ class _LocalTime extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            DateFormat('HH:mm').format(there),
+            formatClock(there, hourFormat24: hourFormat24),
             key: const ValueKey<String>('friend.localTime'),
             style: tall ? Ty.clockSmall(T.ink) : Ty.clock(T.ink),
           ),

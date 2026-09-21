@@ -21,6 +21,7 @@ class Preferences {
     this.accentHex = '',
     this.musicTrack = '',
     this.profileMusicMuted = false,
+    this.hourFormat24 = true,
   });
 
   final double musicVolume;
@@ -50,6 +51,9 @@ class Preferences {
   /// de ambiente.
   final bool profileMusicMuted;
 
+  /// Formato de reloj: `true` es 24 h, `false` es 12 h con AM/PM.
+  final bool hourFormat24;
+
   Preferences copyWith({
     double? musicVolume,
     double? effectsVolume,
@@ -60,6 +64,7 @@ class Preferences {
     String? accentHex,
     String? musicTrack,
     bool? profileMusicMuted,
+    bool? hourFormat24,
   }) =>
       Preferences(
         musicVolume: musicVolume ?? this.musicVolume,
@@ -72,6 +77,7 @@ class Preferences {
         accentHex: accentHex ?? this.accentHex,
         musicTrack: musicTrack ?? this.musicTrack,
         profileMusicMuted: profileMusicMuted ?? this.profileMusicMuted,
+        hourFormat24: hourFormat24 ?? this.hourFormat24,
       );
 
   Map<String, Object?> toJson() => {
@@ -84,6 +90,7 @@ class Preferences {
         'accentHex': accentHex,
         'musicTrack': musicTrack,
         'profileMusicMuted': profileMusicMuted,
+        'hourFormat24': hourFormat24,
       };
 
   static Preferences fromJson(Map<String, Object?> json) {
@@ -100,6 +107,7 @@ class Preferences {
       accentHex: (json['accentHex'] as String?) ?? '',
       musicTrack: (json['musicTrack'] as String?) ?? '',
       profileMusicMuted: (json['profileMusicMuted'] as bool?) ?? false,
+      hourFormat24: (json['hourFormat24'] as bool?) ?? true,
     );
   }
 }

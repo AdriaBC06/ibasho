@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 
 import '../../../audio/audio_service.dart';
 import '../../../backend/messaging.dart';
+import '../../../core/clock_format.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/conversation.dart';
 import '../../../state/messages.dart';
@@ -251,7 +252,7 @@ class _Thread extends StatelessWidget {
       a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-class _Bubble extends StatelessWidget {
+class _Bubble extends ConsumerWidget {
   const _Bubble({
     required this.message,
     required this.mine,
@@ -265,10 +266,12 @@ class _Bubble extends StatelessWidget {
   final VoidCallback? onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final code = Localizations.localeOf(context).languageCode;
+    final hourFormat24 =
+        ref.watch(preferencesProvider.select((p) => p.hourFormat24));
     final body = message.body;
 
     final content = switch (body) {
@@ -340,7 +343,7 @@ class _Bubble extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      DateFormat.Hm(code).format(message.at),
+                      formatClock(message.at, hourFormat24: hourFormat24),
                       style: Ty.numeral(11, color: T.inkSoft),
                     ),
                   ],

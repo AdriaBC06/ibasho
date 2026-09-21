@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../backend/models.dart';
+import '../../core/clock_format.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
@@ -37,14 +38,13 @@ class TopPanel extends ConsumerWidget {
     final profile = ref.watch(profileProvider.select((p) => p.profile));
     final username = ref.watch(sessionProvider.select((s) => s.username));
     final localeCode = ref.watch(preferencesProvider.select((p) => p.localeCode));
+    final hourFormat24 =
+        ref.watch(preferencesProvider.select((p) => p.hourFormat24));
 
     final name = profile?.displayName.isNotEmpty == true
         ? profile!.displayName
         : username;
-    // Formato fijo de 24 h con dos digitos: el patron localizado de intl pone
-    // "4:25" en espanol y "04:25" en ingles, y el reloj no debe saltar al
-    // cambiar de idioma.
-    final clock = DateFormat('HH:mm').format(now);
+    final clock = formatClock(now, hourFormat24: hourFormat24);
     final date = DateFormat.MMMMEEEEd(localeCode).format(now);
 
     if (Layout.of(context).tall) {

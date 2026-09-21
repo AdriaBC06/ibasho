@@ -159,10 +159,21 @@ class SettingsChannel extends ConsumerWidget {
                       SettingRow(
                         label: l.settingsReducedMotion,
                         hint: l.settingsReducedMotionHint,
-                        divider: false,
                         control: IbashoToggle(
                           value: preferences.reducedMotion,
                           onChanged: controller.setReducedMotion,
+                        ),
+                      ),
+                      SettingRow(
+                        label: l.settingsHourFormat,
+                        divider: false,
+                        control: IbashoSegmented<bool>(
+                          options: [
+                            (true, l.settingsHourFormat24),
+                            (false, l.settingsHourFormat12),
+                          ],
+                          value: preferences.hourFormat24,
+                          onChanged: controller.setHourFormat24,
                         ),
                       ),
                     ],
