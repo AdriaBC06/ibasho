@@ -352,38 +352,91 @@
         // el recibo de una compra: `shop/last` tiene que quedar con `at ===
         // now` en esa misma operacion, y el descuento tiene que cuadrar con
         // exactitud (vieja - precio*cantidad). Desde la 0.5.0 tambien puede
-        // subirlas, pero solo cobrando un premio de un juego: `rewards` tiene
-        // que quedar con `at === now` en la misma escritura y la subida tiene
-        // que ser justo lo que `rewards.earned` crece ese dia (ver `rewards`).
+        // subirlas, pero solo cobrando un premio de un juego o el bono diario:
+        // `earnings.last` o `login.last` tienen que quedar con `at === now` en
+        // la misma escritura, y son sus reglas las que exigen que la subida
+        // sea justo la que toca (ver `earnings` y `login`).
         // Las leen la dueña y sus amigos.
         "coins": {
           ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (root.child('admins').child(auth.uid).exists() || root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists())",
-          ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (newData.parent().child('shop').child('last').child('at').val() === now || newData.parent().child('rewards').child('at').val() === now)))",
-          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999 && (root.child('admins').child(auth.uid).exists() || (newData.parent().child('shop').child('last').child('at').val() === now && newData.val() === (data.exists() ? data.val() : 0) - root.child('shop').child('prices').child(newData.parent().child('shop').child('last').child('item').val()).val() * newData.parent().child('shop').child('last').child('qty').val()) || (newData.parent().child('rewards').child('at').val() === now && newData.val() === (data.exists() ? data.val() : 0) + newData.parent().child('rewards').child('earned').val() - (data.parent().child('rewards').child('day').val() === newData.parent().child('rewards').child('day').val() ? data.parent().child('rewards').child('earned').val() : 0)))"
+          ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (newData.parent().child('shop').child('last').child('at').val() === now || newData.parent().child('earnings').child('last').child('at').val() === now || newData.parent().child('login').child('last').child('at').val() === now)))",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999 && (root.child('admins').child(auth.uid).exists() || (newData.parent().child('shop').child('last').child('at').val() === now && newData.val() === (data.exists() ? data.val() : 0) - root.child('shop').child('prices').child(newData.parent().child('shop').child('last').child('item').val()).val() * newData.parent().child('shop').child('last').child('qty').val()) || (newData.parent().child('earnings').child('last').child('at').val() === now && newData.parent().child('earnings').child(newData.parent().child('earnings').child('last').child('game').val()).child('at').val() === now) || newData.parent().child('login').child('last').child('at').val() === now)"
         },
-        // Premios de los juegos: `{game, day, earned, at}`. `day` es el dia
-        // UTC (`floor(now / 86400000)`) y `earned` las monedas cobradas ese
-        // dia. Cada cobro sube `earned` en 3, 5 u 8 (lo que da cada nivel), o
-        // en menos si con eso se llega justo al tope de 20; un dia nuevo
-        // empieza de cero. Hace falta tener el juego, dejar 15 s desde el
-        // cobro anterior, y que `coins` suba exactamente lo mismo en la misma
-        // escritura. No se puede comprobar que la partida se gano de verdad:
-        // lo que protege es el techo diario, que es bajo.
-        "rewards": {
+        // Premios de los juegos, desde la 0.5.1 con un tope de 20 al dia por
+        // juego. `earnings/{juego}` es `{day, earned, at}`: `day` es el dia
+        // UTC (`floor(now / 86400000)`) y `earned` lo cobrado en ese juego
+        // ese dia. Cada cobro sube `earned` en 3, 5 u 8, o en menos si con
+        // eso se llega justo a 20; un dia nuevo empieza de cero. Hace falta
+        // tener el juego y que `coins` suba exactamente lo mismo en la misma
+        // escritura. `earnings/last` dice que juego cobro por ultima vez, y
+        // entre dos cobros, sean del juego que sean, tienen que pasar 15 s.
+        // No se puede comprobar que la partida se gano de verdad: lo que
+        // protege es el techo diario.
+        //
+        // El nodo `rewards` de la 0.5.0 (un tope de 20 entre todos) ya no
+        // tiene reglas: lo que haya se queda y no se puede escribir.
+        "earnings": {
           ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
-          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
-          ".validate": "newData.hasChildren(['game', 'day', 'earned', 'at']) && newData.child('at').val() === now && root.child('users').child($accountId).child('games').child(newData.child('game').val()).exists() && newData.child('day').val() * 86400000 <= now && (newData.child('day').val() + 1) * 86400000 > now && (!data.exists() || now - data.child('at').val() >= 15000) && ((newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) === 3 || newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) === 5 || newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) === 8) || (newData.child('earned').val() === 20 && newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) > 0 && newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) < 8)) && newData.parent().child('coins').val() === (data.parent().child('coins').exists() ? data.parent().child('coins').val() : 0) + newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)",
-          "game": {
-            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,32}$/)"
+          "last": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+            ".validate": "newData.hasChildren(['game', 'at']) && newData.child('at').val() === now && newData.parent().child(newData.child('game').val()).child('at').val() === now && (!data.exists() || now - data.child('at').val() >= 15000)",
+            "game": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,32}$/) && newData.val() !== 'last'"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
           },
-          "day": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+          "$game": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+            ".validate": "$game.matches(/^[a-z0-9_]{1,32}$/) && newData.hasChildren(['day', 'earned', 'at']) && newData.child('at').val() === now && root.child('users').child($accountId).child('games').child($game).exists() && newData.child('day').val() * 86400000 <= now && (newData.child('day').val() + 1) * 86400000 > now && newData.parent().child('last').child('game').val() === $game && newData.parent().child('last').child('at').val() === now && ((newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 3 || (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 5 || (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 8 || (newData.child('earned').val() === 20 && (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) > 0 && (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) < 8)) && newData.parent().parent().child('coins').val() === (data.parent().parent().child('coins').exists() ? data.parent().parent().child('coins').val() : 0) + (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0))",
+            "day": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+            },
+            "earned": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 20"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        // Bono diario (0.5.1): una vez por dia UTC, las mismas monedas para
+        // todo el mundo. `login/last` es `{day, at}` y `login/days/{dia}` el
+        // historial del calendario. Lo que da cada dia sale del propio numero
+        // de dia, y las reglas lo calculan igual que la app
+        // (`loginBonusFor`): viernes 10, sabado y domingo 15, y de lunes a
+        // jueves entre 3 y 7. El dia 0 (1-1-1970) fue jueves, asi que
+        // `(dia + 3) % 7` da 0 el lunes. Entre semana, `floor(x * 5 / 2^32)`
+        // con `x = dia * 2654435761 % 2^32`, escrito sin `floor`. Un admin puede borrar su propio
+        // `login` para volver a probar el bono.
+        "login": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".write": "auth != null && root.child('admins').child(auth.uid).exists() && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && !newData.exists()",
+          "last": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+            ".validate": "newData.hasChildren(['day', 'at']) && newData.child('at').val() === now && newData.child('day').val() * 86400000 <= now && (newData.child('day').val() + 1) * 86400000 > now && (!data.exists() || data.child('day').val() < newData.child('day').val()) && newData.parent().child('days').child(newData.child('day').val() + '').val() === true && newData.parent().parent().child('coins').val() === (data.parent().parent().child('coins').exists() ? data.parent().parent().child('coins').val() : 0) + (((newData.child('day').val() + 3) % 7) === 4 ? 10 : (((newData.child('day').val() + 3) % 7) >= 5 ? 15 : 3 + ((newData.child('day').val() * 2654435761 % 4294967296) * 5 - (newData.child('day').val() * 2654435761 % 4294967296) * 5 % 4294967296) / 4294967296))",
+            "day": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
           },
-          "earned": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 20"
-          },
-          "at": {
-            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+          "days": {
+            "$day": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists() && !data.exists()",
+              ".validate": "newData.val() === true && newData.parent().parent().child('last').child('day').val() + '' === $day && newData.parent().parent().child('last').child('at').val() === now"
+            }
           },
           "$other": {
             ".validate": false

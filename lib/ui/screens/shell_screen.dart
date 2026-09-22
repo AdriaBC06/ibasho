@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../audio/audio_service.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/card.dart';
+import '../../state/login_bonus.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
@@ -24,6 +26,7 @@ import '../widgets/panel.dart';
 import 'channel_grid.dart';
 import 'channel_route.dart';
 import 'channels/channel.dart';
+import 'login_bonus_panel.dart';
 import 'top_panel.dart';
 
 /// Los tres estados del boton de ampliar.
@@ -107,6 +110,19 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
   void initState() {
     super.initState();
     _magnify = AnimationController(vsync: this, duration: T.magnify, value: 1);
+    // El bono diario se ofrece solo al entrar, una vez por sesion, en cuanto
+    // se sabe que el de hoy esta sin cobrar.
+    ref.listenManual(loginBonusProvider, (_, bonus) => _offerBonus(bonus), fireImmediately: true);
+  }
+
+  bool _bonusOffered = false;
+
+  void _offerBonus(LoginBonusState bonus) {
+    if (_bonusOffered || !loginBonusAutoOpen || !bonus.loaded || bonus.claimedToday) return;
+    _bonusOffered = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(showLoginBonus(context));
+    });
   }
 
   PanelBalance _balance = PanelBalance.balanced;

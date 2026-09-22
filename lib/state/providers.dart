@@ -20,6 +20,7 @@ import 'rewards.dart';
 import 'conversation.dart';
 import 'friends.dart';
 import 'identity.dart';
+import 'login_bonus.dart';
 import 'messages.dart';
 import 'news.dart';
 import 'pantry.dart';
@@ -345,6 +346,17 @@ final rewardsProvider = StateNotifierProvider<RewardsController, RewardsState>((
   ref.watch(sessionProvider.select((s) => s.accountId));
   ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
   return RewardsController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    coinsOf: () => ref.read(coinsProvider),
+  );
+});
+
+/// El bono diario: unas monedas por entrar, una vez al dia.
+final loginBonusProvider = StateNotifierProvider<LoginBonusController, LoginBonusState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return LoginBonusController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
     coinsOf: () => ref.read(coinsProvider),

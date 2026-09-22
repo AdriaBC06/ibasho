@@ -114,7 +114,7 @@ Future<void> main() async {
         ..seed('/shop/prices', {
           'game_minesweeper': 0,
           'game_tsumiki': 10,
-          'game_nihongo': 150,
+          'game_nihongo': 50,
           for (final food in TamaFood.values) 'food_${food.name}': 3,
         })
         ..seed('/users/${FakeIbashoBackend().uid}/coins', coins);

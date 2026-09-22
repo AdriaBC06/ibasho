@@ -613,8 +613,9 @@ atrás.
 
 Un contador por cuenta en la barra de estado, junto a la batería y la señal.
 Las monedas las da un administrador desde su panel, y se ganan jugando: cada
-victoria en un juego del Yatai da unas pocas, con un **tope de 20 al día**.
-Nadie puede ponérselas a sí mismo de otra forma. Se gastan en el **Yatai**
+victoria en un juego del Yatai da unas pocas, con un **tope de 20 al día en
+cada juego** que su menú deja a la vista, y el **bono diario** da unas cuantas
+más solo por entrar. Nadie puede ponérselas a sí mismo de otra forma. Se gastan en el **Yatai**
 (屋台, el puesto de feria), el canal de la tienda:
 
 - **Juegos.** Vienen dentro de la app; comprarlos solo los activa. Un juego
@@ -623,15 +624,25 @@ Nadie puede ponérselas a sí mismo de otra forma. Se gastan en el **Yatai**
   buscaminas en una sola escena: uno de tus Tamas, distinto en cada ronda,
   reacciona a cada jugada y habla en un bocadillo junto al tablero. Tres
   niveles y un tablero del día, medallas por tiempo, el sello «sin banderas» y
-  una pantalla de resultados con las monedas ganadas (3, 5 u 8).
+  una pantalla de resultados con las monedas ganadas (3, 5 u 8). El tablero
+  del día, una vez ganado, se cierra hasta el día siguiente.
 - **Tamas.** Unidades de comida, solo de las que la cuenta tiene desbloqueadas.
 - **Gacha.** Próximamente.
 
-Cobrar un premio también es una escritura multi-ruta: `/users/{cuenta}/rewards`
-(`{game, day, earned, at}`, con `day` el día UTC) y el saldo nuevo. Las reglas
-exigen tener el juego, que el cobro sea de hoy, de 3, 5 u 8 (o lo justo para
-llegar al tope), que no pase de 20 al día, que haya 15 s desde el anterior y
-que el saldo suba exactamente lo cobrado.
+Cobrar un premio también es una escritura multi-ruta:
+`/users/{cuenta}/earnings/{juego}` (`{day, earned, at}`, con `day` el día UTC),
+`earnings/last` (`{game, at}`) y el saldo nuevo. Las reglas exigen tener el
+juego, que el cobro sea de hoy, de 3, 5 u 8 (o lo justo para llegar al tope),
+que no pase de 20 al día en ese juego, que haya 15 s desde el anterior cobro
+de cualquier juego y que el saldo suba exactamente lo cobrado.
+
+El **bono diario** se abre solo al entrar, una vez al día (UTC): un calendario
+del mes con lo que da cada día, el mismo para todo el mundo —de lunes a jueves
+entre 3 y 7, los viernes 10 y el fin de semana 15—, y al cobrar cae el sello
+rojo sobre hoy y las monedas vuelan a la cabecera. Se escribe en
+`/users/{cuenta}/login` (`last: {day, at}` y `days/{día}: true`) junto con el
+saldo, y las reglas calculan lo que toca a partir del número de día con la
+misma cuenta que `loginBonusFor`.
 
 Cada compra es **una sola escritura multi-ruta**: un recibo en
 `/users/{cuenta}/shop/last` (`{item, qty, at}` con `at` del servidor), el saldo

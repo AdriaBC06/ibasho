@@ -289,9 +289,13 @@ class LevelCard extends StatelessWidget {
     final medal = choice.daily ? null : records.medals[level];
     final stamp = !choice.daily && records.noFlags.contains(level);
 
+    // Ganado hoy, el del dia se cierra hasta manana: se ve el tiempo y el
+    // candado, y no se puede volver a jugar.
+    final locked = choice.daily && today != null;
+
     final name = choice.daily ? l.minesweeperDaily : levelName(l, level);
     final sub = choice.daily
-        ? (today == null ? l.minesweeperLevelSize(level.width, level.height, level.mines) : l.minesweeperDailyDone(formatDuration(today)))
+        ? (today == null ? l.minesweeperLevelSize(level.width, level.height, level.mines) : l.minesweeperDailyLocked(formatDuration(today)))
         : l.minesweeperLevelSize(level.width, level.height, level.mines);
 
     return SlotTile(
@@ -300,7 +304,7 @@ class LevelCard extends StatelessWidget {
       height: height,
       selected: selected,
       semanticLabel: name,
-      onPressed: onPressed,
+      onPressed: locked ? null : onPressed,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: height * .14),
         child: Row(
@@ -324,7 +328,9 @@ class LevelCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (medal != null || stamp)
+            if (locked)
+              GlyphIcon(Glyph.lock, size: height * .3, color: T.inkSoft, strokeWidth: 2.2)
+            else if (medal != null || stamp)
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

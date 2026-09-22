@@ -17,10 +17,12 @@ import '../../../theme/type.dart';
 import '../../widgets/controls.dart';
 import '../../widgets/glyphs.dart';
 import '../../track_text.dart';
+import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/track_tile.dart';
 import '../../layout.dart';
 import '../channel_route.dart';
+import '../login_bonus_panel.dart';
 import 'channel.dart';
 
 class DebugChannel extends ConsumerWidget {
@@ -134,6 +136,8 @@ class DebugChannel extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
+                const _BonusSection(),
+                const SizedBox(height: 22),
                 SectionCard(
                   title: l.debugEffects,
                   // En horizontal, una fila (Wrap estiraria cada boton a todo
@@ -246,6 +250,65 @@ class _InfoRow extends StatelessWidget {
         label: label,
         control: Text(value, style: Ty.numeral(14, color: T.inkSoft)),
       );
+}
+
+/// Probar el bono diario: verlo sin cobrar, abrir el de verdad u olvidar el
+/// de la cuenta propia para cobrarlo otra vez (las reglas solo dejan a un
+/// admin borrar el suyo).
+class _BonusSection extends ConsumerWidget {
+  const _BonusSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
+    final bonus = ref.watch(loginBonusProvider);
+    return SectionCard(
+      title: l.debugBonus,
+      padding: const EdgeInsets.fromLTRB(26, 12, 26, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l.debugBonusHint, style: Ty.caption),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              IbashoButton(
+                key: const Key('debug.bonus.preview'),
+                label: l.debugBonusPreview,
+                glyph: Glyph.play,
+                height: 40,
+                onPressed: () => showLoginBonus(context, preview: true),
+              ),
+              IbashoButton(
+                key: const Key('debug.bonus.open'),
+                label: l.debugBonusOpen,
+                glyph: Glyph.coin,
+                height: 40,
+                onPressed: bonus.loaded ? () => showLoginBonus(context) : null,
+              ),
+              IbashoButton(
+                key: const Key('debug.bonus.reset'),
+                label: l.debugBonusReset,
+                glyph: Glyph.refresh,
+                tone: ButtonTone.quiet,
+                height: 40,
+                onPressed: bonus.claimedToday
+                    ? () async {
+                        final ok = await ref.read(loginBonusProvider.notifier).debugReset();
+                        if (!ok && context.mounted) {
+                          showIbashoToast(context, l.debugBonusResetFailed, isError: true);
+                        }
+                      }
+                    : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Dar o quitar juegos a la cuenta propia sin pasar por el Yatai. Las reglas

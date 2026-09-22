@@ -215,8 +215,15 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
 
   // --- Partida ----------------------------------------------------------------
 
+  /// El tablero del dia ya ganado hoy: queda cerrado hasta manana.
+  bool get _dailyDone => _records.daily.containsKey(dayKey(DateTime.now()));
+
   void _restart([BoardChoice? choice]) {
     final l = L.of(context)!;
+    var next = choice ?? _choice;
+    // Ganado el del dia, «otra ronda» ya no lo repite: se pasa a facil.
+    final dailyLocked = next.daily && _dailyDone;
+    if (dailyLocked) next = const BoardChoice.level(MinesweeperLevel.easy);
     _ticker?.cancel();
     _resultsTimer?.cancel();
     _stopwatch = null;
@@ -224,7 +231,7 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
     _fx.clear();
     AudioService.instance.play(Sfx.tick);
     setState(() {
-      _choice = choice ?? _choice;
+      _choice = next;
       _game = _newGame(_choice);
       _joy = .2;
       _streak = 0;
@@ -234,7 +241,9 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
       _reward = null;
       _rewardPending = false;
       _pickTama();
-      _say(_choice.daily ? l.minesweeperBubbleDaily : l.minesweeperBubbleStart);
+      _say(dailyLocked
+          ? l.minesweeperBubbleDailyLocked
+          : (_choice.daily ? l.minesweeperBubbleDaily : l.minesweeperBubbleStart));
     });
     _kickFx();
     _tama.hop();
@@ -591,7 +600,9 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
                   ),
                 ),
                 _readouts(l, height: 58),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
+                const DailyCoinsMeter(game: 'minesweeper', height: 42),
+                const SizedBox(height: 12),
                 LayoutBuilder(builder: (context, box) {
                   const gap = 10.0;
                   final w = (box.maxWidth - gap) / 2;
@@ -735,6 +746,8 @@ class _LevelDialog extends StatelessWidget {
         builder: (context, box) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const DailyCoinsMeter(game: 'minesweeper', height: 42),
+            const SizedBox(height: 12),
             for (final c in BoardChoice.all) ...[
               LevelCard(
                 choice: c,

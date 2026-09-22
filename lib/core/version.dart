@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 
 /// La version de esta build. Tiene que coincidir con `version:` de
 /// `pubspec.yaml` (lo comprueba `test/update_gate_test.dart`).
-const String appVersion = '0.5.0';
+const String appVersion = '0.5.1';
 
 /// Una version `mayor.menor.parche`.
 @immutable

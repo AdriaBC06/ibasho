@@ -265,23 +265,35 @@ test('un desconocido no puede firmarse el recibo de otra cuenta', async () => {
   assert.ok(true);
 });
 
-// --- Premios de los juegos -------------------------------------------------
+// --- Premios de los juegos (0.5.1: tope de 20 por juego) -------------------
 
 const DAY = 86400000;
 const today = () => Math.floor(Date.now() / DAY);
 
-async function giveMinesweeper(uid) {
+async function giveGame(uid, game = 'minesweeper') {
   await testEnv.withSecurityRulesDisabled(async (context) => {
-    await set(ref(context.database(), `/users/${uid}/games/minesweeper`), {
+    await set(ref(context.database(), `/users/${uid}/games/${game}`), {
       state: 'open',
       at: now - 1000,
     });
   });
 }
 
-const claim = (uid, { earned, coins, day = today(), game = 'minesweeper' }) =>
+const giveMinesweeper = (uid) => giveGame(uid);
+
+async function earnedBefore(uid, game, { day = today(), earned, lastAt = now - 60000 }) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await update(ref(context.database(), `/users/${uid}/earnings`), {
+      [game]: { day, earned, at: lastAt },
+      last: { game, at: lastAt },
+    });
+  });
+}
+
+const claim = (uid, { earned, coins, day = today(), game = 'minesweeper', last = game }) =>
   update(ref(db(uid), '/'), {
-    [`users/${uid}/rewards`]: { game, day, earned, at: serverTimestamp() },
+    [`users/${uid}/earnings/${game}`]: { day, earned, at: serverTimestamp() },
+    [`users/${uid}/earnings/last`]: { game: last, at: serverTimestamp() },
     [`users/${uid}/coins`]: coins,
   });
 
@@ -301,46 +313,52 @@ test('el premio solo vale 3, 5 u 8, y las monedas tienen que cuadrar', async () 
   await assertFails(claim(ANA, { earned: 5, coins: 110 }));
   // Tocar el premio sin mover las monedas tampoco.
   await assertFails(
-    set(ref(db(ANA), `/users/${ANA}/rewards`), {
-      game: 'minesweeper',
-      day: today(),
-      earned: 5,
-      at: serverTimestamp(),
+    update(ref(db(ANA), `/users/${ANA}/earnings`), {
+      minesweeper: { day: today(), earned: 5, at: serverTimestamp() },
+      last: { game: 'minesweeper', at: serverTimestamp() },
     }),
   );
+  // Ni el premio sin su puntero, ni el puntero a otro juego.
+  await assertFails(
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/earnings/minesweeper`]: { day: today(), earned: 5, at: serverTimestamp() },
+      [`users/${ANA}/coins`]: 105,
+    }),
+  );
+  await assertFails(claim(ANA, { earned: 5, coins: 105, last: 'tsumiki' }));
 });
 
 test('las monedas no suben sin un premio fresco', async () => {
   await giveMinesweeper(ANA);
   await assertFails(set(ref(db(ANA), `/users/${ANA}/coins`), 105));
+  // Un puntero fresco sin premio detras tampoco.
+  await assertFails(
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/earnings/last`]: { game: 'minesweeper', at: serverTimestamp() },
+      [`users/${ANA}/coins`]: 150,
+    }),
+  );
 });
 
-test('el tope diario es de 20, y se puede llegar justo a el', async () => {
+test('el tope es de 20 al dia en cada juego, y se puede llegar justo a el', async () => {
   await giveMinesweeper(ANA);
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    await set(ref(context.database(), `/users/${ANA}/rewards`), {
-      game: 'minesweeper',
-      day: today(),
-      earned: 16,
-      at: now - 60000,
-    });
-  });
+  await earnedBefore(ANA, 'minesweeper', { earned: 16 });
   // 16 + 8 pasaria de 20.
   await assertFails(claim(ANA, { earned: 24, coins: 108 }));
   // Completar hasta 20 si que vale.
   await assertSucceeds(claim(ANA, { earned: 20, coins: 104 }));
 });
 
+test('el tope de un juego no cuenta para otro', async () => {
+  await giveMinesweeper(ANA);
+  await giveGame(ANA, 'tsumiki');
+  await earnedBefore(ANA, 'minesweeper', { earned: 20 });
+  await assertSucceeds(claim(ANA, { game: 'tsumiki', earned: 8, coins: 108 }));
+});
+
 test('un dia nuevo empieza de cero', async () => {
   await giveMinesweeper(ANA);
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    await set(ref(context.database(), `/users/${ANA}/rewards`), {
-      game: 'minesweeper',
-      day: today() - 1,
-      earned: 20,
-      at: now - 60000,
-    });
-  });
+  await earnedBefore(ANA, 'minesweeper', { day: today() - 1, earned: 20 });
   await assertSucceeds(claim(ANA, { earned: 8, coins: 108 }));
 });
 
@@ -350,16 +368,36 @@ test('no se puede cobrar con un dia que no es hoy', async () => {
   await assertFails(claim(ANA, { earned: 5, coins: 105, day: today() - 1 }));
 });
 
-test('entre dos cobros tienen que pasar 15 segundos', async () => {
+test('entre dos cobros tienen que pasar 15 segundos, aunque sean de juegos distintos', async () => {
   await giveMinesweeper(ANA);
+  await giveGame(ANA, 'tsumiki');
   await assertSucceeds(claim(ANA, { earned: 5, coins: 105 }));
   await assertFails(claim(ANA, { earned: 10, coins: 110 }));
+  await assertFails(claim(ANA, { game: 'tsumiki', earned: 5, coins: 110 }));
 });
 
 test('nadie cobra premios en nombre de otra cuenta', async () => {
   await giveMinesweeper(ANA);
   await assertFails(
     update(ref(db(LUIS), '/'), {
+      [`users/${ANA}/earnings/minesweeper`]: { day: today(), earned: 5, at: serverTimestamp() },
+      [`users/${ANA}/earnings/last`]: { game: 'minesweeper', at: serverTimestamp() },
+      [`users/${ANA}/coins`]: 105,
+    }),
+  );
+});
+
+test('lo cobrado no se puede borrar', async () => {
+  await giveMinesweeper(ANA);
+  await earnedBefore(ANA, 'minesweeper', { earned: 20 });
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/earnings/minesweeper`), null));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/earnings/last`), null));
+});
+
+test('el nodo de premios de la 0.5.0 ya no se escribe', async () => {
+  await giveMinesweeper(ANA);
+  await assertFails(
+    update(ref(db(ANA), '/'), {
       [`users/${ANA}/rewards`]: { game: 'minesweeper', day: today(), earned: 5, at: serverTimestamp() },
       [`users/${ANA}/coins`]: 105,
     }),
@@ -376,4 +414,107 @@ test('una compra sigue funcionando despues de cobrar un premio', async () => {
       [`users/${ANA}/pantry/cookie`]: 6,
     }),
   );
+});
+
+// --- Bono diario (0.5.1) -----------------------------------------------------
+
+// La misma cuenta que `loginBonusFor` en lib/state/login_bonus.dart.
+// La semana del 21 al 24 de septiembre de 2026, de lunes a jueves.
+const WEEK_OF_2026_09_21 = [7, 5, 3, 6];
+
+function bonusFor(day) {
+  const weekday = (day + 3) % 7; // 0 = lunes
+  if (weekday === 4) return 10;
+  if (weekday >= 5) return 15;
+  const x = (day * 2654435761) % 4294967296;
+  return 3 + Math.floor((x * 5) / 4294967296);
+}
+
+const collect = (uid, { coins, day = today(), key = String(day) }) =>
+  update(ref(db(uid), '/'), {
+    [`users/${uid}/login/last`]: { day, at: serverTimestamp() },
+    [`users/${uid}/login/days/${key}`]: true,
+    [`users/${uid}/coins`]: coins,
+  });
+
+test('la cuenta del bono: viernes 10, fin de semana 15 y entre 3 y 7 el resto', () => {
+  // 2026-09-18 fue viernes; 19 y 20, fin de semana; 21, lunes.
+  const fri = Date.UTC(2026, 8, 18) / DAY;
+  assert.equal(bonusFor(fri), 10);
+  assert.equal(bonusFor(fri + 1), 15);
+  assert.equal(bonusFor(fri + 2), 15);
+  const weekdays = [3, 4, 5, 6].map((d) => bonusFor(fri + d));
+  for (const v of weekdays) assert.ok(v >= 3 && v <= 7);
+  // Los mismos valores que da la app para esa semana (test/login_bonus_test.dart).
+  assert.deepEqual(weekdays, WEEK_OF_2026_09_21);
+});
+
+test('el bono de hoy se cobra una vez y suma lo que toca', async () => {
+  const d = today();
+  await assertSucceeds(collect(ANA, { coins: 100 + bonusFor(d) }));
+  let back;
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    back = (await get(ref(context.database(), `/users/${ANA}/login`))).val();
+  });
+  assert.equal(back.days[String(d)], true);
+  // Otra vez el mismo dia, no.
+  await assertFails(collect(ANA, { coins: 100 + 2 * bonusFor(d) }));
+});
+
+test('el bono tiene que sumar justo lo del dia', async () => {
+  const d = today();
+  await assertFails(collect(ANA, { coins: 100 + bonusFor(d) + 1 }));
+  await assertFails(collect(ANA, { coins: 100 + bonusFor(d) - 1 }));
+});
+
+test('no se cobra el bono de otro dia', async () => {
+  const d = today();
+  await assertFails(collect(ANA, { day: d - 1, coins: 100 + bonusFor(d - 1) }));
+  await assertFails(collect(ANA, { day: d + 1, coins: 100 + bonusFor(d + 1) }));
+});
+
+test('el historial solo se apunta con el cobro de ese mismo dia', async () => {
+  const d = today();
+  await assertFails(collect(ANA, { key: String(d - 1), coins: 100 + bonusFor(d) }));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/login/days/${d}`), true));
+});
+
+test('ayer cobrado no impide cobrar hoy', async () => {
+  const d = today();
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/login`), {
+      last: { day: d - 1, at: now - DAY },
+      days: { [String(d - 1)]: true },
+    });
+  });
+  await assertSucceeds(collect(ANA, { coins: 100 + bonusFor(d) }));
+});
+
+test('nadie cobra el bono de otra cuenta, y el bono no se borra', async () => {
+  const d = today();
+  await assertFails(
+    update(ref(db(LUIS), '/'), {
+      [`users/${ANA}/login/last`]: { day: d, at: serverTimestamp() },
+      [`users/${ANA}/login/days/${d}`]: true,
+      [`users/${ANA}/coins`]: 100 + bonusFor(d),
+    }),
+  );
+  await assertSucceeds(collect(ANA, { coins: 100 + bonusFor(d) }));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/login`), null));
+});
+
+test('un admin puede borrar su propio bono para probarlo otra vez, y solo el suyo', async () => {
+  const d = today();
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ADMIN}/login`), {
+      last: { day: d, at: now - 1000 },
+      days: { [String(d)]: true },
+    });
+    await set(ref(context.database(), `/users/${ANA}/login`), {
+      last: { day: d, at: now - 1000 },
+      days: { [String(d)]: true },
+    });
+  });
+  await assertSucceeds(set(ref(db(ADMIN), `/users/${ADMIN}/login`), null));
+  await assertFails(set(ref(db(ADMIN), `/users/${ANA}/login`), null));
 });

@@ -374,6 +374,8 @@ class TsumikiReadyCard extends StatelessWidget {
               Text(l.tsumikiReadyHint, textAlign: TextAlign.center, style: Ty.caption),
               const SizedBox(height: 12),
               _RewardLadder(),
+              const SizedBox(height: 8),
+              const DailyCoinsMeter(game: 'tsumiki', height: 40),
               const SizedBox(height: 12),
               Text(l.tsumikiStartLevel, style: Ty.micro.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),

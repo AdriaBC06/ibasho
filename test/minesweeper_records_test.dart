@@ -157,36 +157,46 @@ void main() {
       expect(out.status, RewardStatus.granted);
       expect(out.coins, 5);
       expect(await backend.read('/users/${backend.uid}/coins', idToken: ''), 15);
-      final node = await backend.read('/users/${backend.uid}/rewards', idToken: '') as Map;
-      expect(node['earned'], 5);
-      expect(node['day'], RewardsState.today());
+      final node = await backend.read('/users/${backend.uid}/earnings', idToken: '') as Map;
+      expect(node['minesweeper']['earned'], 5);
+      expect(node['minesweeper']['day'], RewardsState.today());
+      expect(node['last']['game'], 'minesweeper');
     });
 
     test('con el tope cerca cobra lo que falta, y luego nada', () async {
       final backend = FakeIbashoBackend();
       backend
         ..seed('/users/${backend.uid}/coins', 0)
-        ..seed('/users/${backend.uid}/rewards', {
-          'game': 'minesweeper',
-          'day': RewardsState.today(),
-          'earned': dailyRewardCap - 2,
-          'at': DateTime.now().subtract(const Duration(minutes: 5)).millisecondsSinceEpoch,
+        ..seed('/users/${backend.uid}/earnings', {
+          'minesweeper': {
+            'day': RewardsState.today(),
+            'earned': dailyRewardCap - 2,
+            'at': DateTime.now().subtract(const Duration(minutes: 5)).millisecondsSinceEpoch,
+          },
+          'last': {
+            'game': 'minesweeper',
+            'at': DateTime.now().subtract(const Duration(minutes: 5)).millisecondsSinceEpoch,
+          },
         });
       final container = await _account(backend);
       addTearDown(container.dispose);
       container.read(rewardsProvider);
-      await _until(() => container.read(rewardsProvider).earned > 0);
+      await _until(() => container.read(rewardsProvider).earnedToday('minesweeper') > 0);
 
       final out = await container.read(rewardsProvider.notifier).claim(game: 'minesweeper', amount: 8);
       expect(out.status, RewardStatus.granted);
       expect(out.coins, 2);
       final again = await container.read(rewardsProvider.notifier).claim(game: 'minesweeper', amount: 3);
       expect(again.status, RewardStatus.capped);
+      // El tope es de cada juego: Tsumiki sigue teniendo sus 20.
+      expect(container.read(rewardsProvider).leftToday('tsumiki'), dailyRewardCap);
     });
 
     test('lo cobrado otro dia no cuenta para hoy', () {
-      final yesterday = RewardsState(day: RewardsState.today() - 1, earned: dailyRewardCap);
-      expect(yesterday.leftToday(), dailyRewardCap);
+      final yesterday = RewardsState(
+        games: {'minesweeper': GameEarning(day: RewardsState.today() - 1, earned: dailyRewardCap)},
+      );
+      expect(yesterday.leftToday('minesweeper'), dailyRewardCap);
     });
   });
 }

@@ -5,6 +5,48 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.5.1 — El bono diario
+
+### Añadido
+
+- **Bono diario.** Al entrar, una vez al día, se abre un calendario del mes con
+  lo que da cada día, el mismo para todo el mundo: de lunes a jueves entre 3 y
+  7 monedas, los viernes 10 y el sábado y el domingo 15. Los días cobrados
+  llevan el sello rojo, y hoy late hasta que lo cobras: entonces el sello cae
+  sobre la casilla, las monedas saltan hasta la cabecera y la cifra sube.
+  El día cambia a medianoche UTC, como los premios de los juegos.
+- **En el canal de depuración**, el bono se puede probar sin cobrar, abrir de
+  verdad u olvidar (solo el de la cuenta propia) para cobrarlo otra vez.
+- **Cada juego enseña lo cobrado hoy**: «8/20» con una barrita dorada en su
+  menú (el panel y el selector del buscaminas, la tarjeta de salida de Tsumiki
+  y el menú de Nihongo), que se pone en verde al llegar al tope.
+
+### Cambiado
+
+- **El tope diario es de 20 monedas en cada juego**, en vez de 20 entre todos.
+  Siguen los 15 s entre dos cobros, sean del juego que sean.
+- **Nihongo cuesta 50 monedas** en vez de 150 (el precio vive en
+  `/shop/prices`: se carga con `tool/seed_shop.dart`).
+- **El tablero del día del buscaminas se cierra al ganarlo**, hasta el día
+  siguiente: su tarjeta enseña el tiempo y un candado, y «otra ronda» pasa a
+  fácil.
+
+### Seguridad
+
+- Los premios pasan a `earnings/{juego}` con un puntero `earnings/last`, y el
+  bono a `login`. Las reglas calculan lo que da cada día a partir del número
+  de día, con la misma cuenta que la app, así que no hace falta cargar ningún
+  calendario. `rewards` (el tope común de la 0.5.0) ya no se puede escribir.
+- `test/rules/rules_05.test.mjs` cubre el tope por juego, que un juego no gaste
+  el de otro, la espera común, el puntero, y el bono: la cantidad de cada día,
+  cobrarlo una vez, el historial, otra cuenta y el borrado del admin.
+
+### Nota para desplegar
+
+Una 0.5.0 escribe en `rewards`, que las reglas nuevas ya no aceptan: con las
+reglas de la 0.5.1 desplegadas, **exige la 0.5.1**. Y vuelve a cargar los
+precios (`dart run tool/seed_shop.dart`) para el nuevo precio de Nihongo.
+
 ## 0.5.0 — La tienda (checkpoint 5)
 
 Las monedas por fin sirven para algo. Llega **Yatai** (屋台), el puesto de

@@ -471,6 +471,7 @@ class _NihongoChannelState extends ConsumerState<NihongoChannel> {
   );
 
   Widget _setup(L l, {required bool tall}) {
+    final small = tall && Layout.of(context).height < 700;
     String count(KanaGroup g) => '${kanaOf(_script, {g}).length}';
     final label = Ty.micro.copyWith(fontWeight: FontWeight.w600);
     final h = tall ? 48.0 : 50.0;
@@ -498,7 +499,7 @@ class _NihongoChannelState extends ConsumerState<NihongoChannel> {
               ),
           ],
         ),
-        SizedBox(height: tall ? 10 : 14),
+        SizedBox(height: small ? 8 : (tall ? 10 : 14)),
         Text(l.nihongoMode, style: label),
         const SizedBox(height: 6),
         SegmentRail(
@@ -520,18 +521,15 @@ class _NihongoChannelState extends ConsumerState<NihongoChannel> {
             ),
           ],
         ),
-        SizedBox(height: tall ? 10 : 14),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const ArtIconView(ArtIcon.coin, size: 20),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(l.nihongoRewardHint, textAlign: TextAlign.center, style: Ty.caption),
-            ),
-          ],
-        ),
-        SizedBox(height: tall ? 10 : 14),
+        SizedBox(height: small ? 8 : (tall ? 10 : 14)),
+        DailyCoinsMeter(game: 'nihongo', height: small ? 38 : 44),
+        // En un movil bajo no cabe todo con los botones a la vista: lo que se
+        // gana se queda para los resultados.
+        if (!small) ...[
+          const SizedBox(height: 6),
+          Text(l.nihongoRewardHint, textAlign: TextAlign.center, style: Ty.caption),
+        ],
+        SizedBox(height: small ? 8 : (tall ? 10 : 14)),
         Row(
           children: [
             Expanded(

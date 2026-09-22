@@ -18,12 +18,12 @@ import 'dart:convert';
 import 'dart:io';
 
 /// Precios de partida: el buscaminas es gratis, Tsumiki cuesta 10 y Nihongo
-/// 150, y las dos comidas de serie cuestan lo mismo. Ampliar el catalogo (mas juegos, mas comida desbloqueada)
+/// 50 (150 hasta la 0.5.1), y las dos comidas de serie cuestan lo mismo. Ampliar el catalogo (mas juegos, mas comida desbloqueada)
 /// es anadir aqui su precio, nada mas.
 const Map<String, int> _prices = <String, int>{
   'game_minesweeper': 0,
   'game_tsumiki': 10,
-  'game_nihongo': 150,
+  'game_nihongo': 50,
   'food_cookie': 3,
   'food_candy': 3,
 };

@@ -118,7 +118,7 @@ Future<int> main() async {
     tree['shop/prices'] = {
       'game_minesweeper': 0,
       'game_tsumiki': 10,
-      'game_nihongo': 150,
+      'game_nihongo': 50,
       'food_cookie': 3,
       'food_candy': 3,
     };

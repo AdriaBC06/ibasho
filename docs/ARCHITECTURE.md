@@ -946,11 +946,15 @@ coincide con su uid).
 | `/system/update` | cualquiera, sin sesión | (vía `/system`) |
 | `…/keys/pub` | cualquier miembro (es pública: sin ella nadie te escribe) | la dueña |
 | `…/keys/backup` | **solo la dueña**, ni un admin | la dueña |
-| `…/coins` | sus amigos y cualquier admin | un admin, siempre; la dueña, restando precio × cantidad con un recibo fresco o sumando un premio con `rewards` fresco, en la misma escritura |
+| `…/coins` | sus amigos y cualquier admin | un admin, siempre; la dueña, restando precio × cantidad con un recibo fresco, o sumando un premio con `earnings/last` fresco o el bono diario con `login/last` fresco, en la misma escritura |
 | `…/shop/last` | la dueña | la dueña: `at === now`, el artículo tiene precio y, si no es gratis, el saldo baja exactamente lo que cuesta |
 | `…/pantry/$food` | la dueña | la dueña, sin borrar: el stock inicial (5, una vez, solo galleta y caramelo), −1 al comer, o + `qty` con un recibo fresco de esa comida |
 | `…/games/$gameId` | la dueña | la dueña, sin borrar: crear en `gift` con un recibo fresco de ese juego y `qty` 1; después solo `gift` → `open`. Un admin, en su propia cuenta, sin recibo y pudiendo borrar (canal de depuración) |
-| `…/rewards` | la dueña | la dueña, sin borrar: `at === now`, tener el juego, `day` de hoy, subir `earned` en 3, 5 u 8 (o hasta 20 justo), 15 s desde el anterior, y `coins` sube lo mismo en la misma escritura |
+| `…/earnings/$game` | la dueña | la dueña, sin borrar: `at === now`, tener el juego, `day` de hoy, `earnings/last` apuntando a este juego en la misma escritura, subir `earned` en 3, 5 u 8 (o hasta 20 justo), y `coins` sube lo mismo |
+| `…/earnings/last` | la dueña | la dueña, sin borrar: `at === now`, el juego que nombra se escribe a la vez, y 15 s desde el anterior cobro |
+| `…/login/last` | la dueña | la dueña: `at === now`, `day` de hoy y posterior al último, su `days/{day}` a la vez, y `coins` sube justo `loginBonusFor(day)`. Un admin puede borrar todo su `login` (depuración) |
+| `…/login/days/$day` | (vía `…/login`) | la dueña, una vez: `true`, el mismo día que `login/last`, en la misma escritura |
+| `…/rewards` | la dueña | nadie desde la 0.5.1 (era el tope de 20 entre todos los juegos) |
 | `/shop/prices` | miembro habilitado | admin |
 | `…/inbox/$fromId` | la dueña | crear: `$fromId`, si es amigo suyo; borrar: la dueña |
 | `…/reads`, `…/votes` | solo la dueña | la dueña |

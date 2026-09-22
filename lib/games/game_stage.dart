@@ -1,13 +1,16 @@
 // Ibasho — piezas comunes de los juegos: el foco y el bocadillo del Tama, la
-// cara de reserva, los marcadores y las chapas de los resultados.
+// cara de reserva, los marcadores, las monedas del dia y las chapas de los
+// resultados.
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/gen/app_localizations.dart';
+import '../state/providers.dart';
 import '../state/rewards.dart';
 import '../theme/skin.dart';
 import '../theme/tokens.dart';
@@ -279,6 +282,96 @@ class Readout extends StatelessWidget {
                     child: Text(value, style: Ty.numeral(height * .4, color: skin.accentDeep, weight: FontWeight.w700)),
                   ),
                   Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Ty.micro.copyWith(height: 1.1)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Las monedas que quedan hoy en este juego: la moneda, «8/20 hoy» y una
+/// barrita dorada que se llena. Cada juego tiene su tope de
+/// [dailyRewardCap] al dia, y esto es lo que lo deja a la vista en su menu.
+/// Lleno, lo dice y se queda en verde.
+class DailyCoinsMeter extends ConsumerWidget {
+  const DailyCoinsMeter({super.key, required this.game, this.height = 44});
+
+  final String game;
+  final double height;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
+    final skin = IbashoSkin.of(context);
+    final earned = ref.watch(rewardsProvider.select((r) => r.earnedToday(game)));
+    final full = earned >= dailyRewardCap;
+    final t = (earned / dailyRewardCap).clamp(0.0, 1.0);
+    return SizedBox(
+      key: ValueKey<String>('game.coins.$game'),
+      height: height,
+      child: GlossSurface(
+        radius: height / 2,
+        recessed: true,
+        padding: EdgeInsets.symmetric(horizontal: height * .28),
+        child: Row(
+          children: [
+            ArtIconView(ArtIcon.coin, size: height * .52),
+            SizedBox(width: height * .18),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '$earned/$dailyRewardCap',
+                        style: Ty.numeral(height * .34, color: full ? T.correct : Art.goldDark, weight: FontWeight.w700),
+                      ),
+                      SizedBox(width: height * .14),
+                      Expanded(
+                        child: Text(
+                          full ? l.gameCoinsTodayFull : l.gameCoinsToday,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Ty.micro,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: height * .08),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(height),
+                    child: SizedBox(
+                      height: math.max(4, height * .14),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ColoredBox(color: T.hairline),
+                          // Crece hasta lo cobrado al abrir el menu.
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0, end: t),
+                            duration: skin.motion(const Duration(milliseconds: 700)),
+                            curve: skin.curve(Curves.easeOutCubic),
+                            builder: (context, v, _) => FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: v,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: full ? [T.correct, T.correct] : [Art.gold, Art.goldDark],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
