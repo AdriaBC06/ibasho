@@ -173,10 +173,12 @@ Future<void> main() async {
         await shoot(tester, 'g1-regalo');
         await tester.tap(gift);
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 380));
-        await shoot(tester, 'g2-desenvolviendo');
-        await tester.pump(const Duration(milliseconds: 320));
+        await tester.pump(const Duration(milliseconds: 600));
+        await shoot(tester, 'g2-revolviendose');
+        await tester.pump(const Duration(milliseconds: 700));
         await shoot(tester, 'g2b-desenvolviendo');
+        await tester.pump(const Duration(milliseconds: 600));
+        await shoot(tester, 'g2c-asomando');
         await settle(tester, 40);
         await shoot(tester, 'g3-desenvuelto');
       });

@@ -68,7 +68,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
   /// El desenvuelto: de 0 (regalo cerrado) a 1 (icono del juego a la vista).
   late final AnimationController _unwrap = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
+    duration: const Duration(milliseconds: 2600),
   );
 
   /// Se pone a `true` en cuanto termina la animacion, para que el tile se
@@ -114,7 +114,9 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final anchor = _anchor;
-    final showingGift = spec.gift && !_revealed;
+    // Mientras se desenvuelve sigue siendo un regalo aunque el servidor ya
+    // haya confirmado el `open`: si no, la confirmacion corta la animacion.
+    final showingGift = (spec.gift && !_revealed) || _unwrap.isAnimating;
     // El regalo y los iconos ilustrados van sobre plastico blanco, sin el
     // acento del entorno: sus colores propios son los que mandan.
     final art = spec.art;
@@ -179,16 +181,21 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
         }
 
         Widget face(double unwrapT) {
-          if (!spec.gift || (_revealed && !_unwrap.isAnimating)) {
+          if (!showingGift) {
             return content();
           }
-          // El regalo se abre (lazo, tapa, destellos) y el icono del juego
-          // sube desde dentro de la caja con un rebote.
-          final rise = Curves.easeOutBack.transform(((unwrapT - .45) / .55).clamp(0.0, 1.0));
+          // Primero el regalo se revuelve, cada vez con mas ganas, como si
+          // hubiera algo dentro; luego se abre (lazo, tapa, destellos) y el
+          // icono del juego sube desde dentro de la caja con un rebote.
+          final shake = (unwrapT / .32).clamp(0.0, 1.0);
+          final openT = ((unwrapT - .32) / .68).clamp(0.0, 1.0);
+          final wobble = math.sin(shake * math.pi * 7) * .13 * shake * (1 - openT);
+          final swell = 1 + .08 * Curves.easeIn.transform(shake) * (1 - openT);
+          final rise = Curves.easeOutBack.transform(((openT - .45) / .55).clamp(0.0, 1.0));
           return Stack(
             fit: StackFit.expand,
             children: [
-              if (unwrapT > .45)
+              if (openT > .45)
                 Opacity(
                   opacity: rise.clamp(0.0, 1.0),
                   child: Transform.translate(
@@ -199,7 +206,14 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
               if (unwrapT < 1)
                 Padding(
                   padding: EdgeInsets.all(height * .06),
-                  child: GiftFace(open: unwrapT),
+                  child: Transform.rotate(
+                    angle: wobble,
+                    alignment: Alignment.bottomCenter,
+                    child: Transform.scale(
+                      scale: swell,
+                      child: GiftFace(open: openT),
+                    ),
+                  ),
                 ),
             ],
           );
@@ -241,7 +255,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            spec.gift && !_revealed
+            showingGift
                 ? AnimatedBuilder(
                     animation: _unwrap,
                     builder: (context, _) => tile(_unwrap.value),
