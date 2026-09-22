@@ -44,6 +44,8 @@ enum MusicTrack {
   // Con ritmo. Se desbloquean al escucharlas en las apps que las usan.
   plaza('plaza', 'audio/bgm/plaza.ogg', 'Adrià Bonnin Catalán', 'CC0'),
   bossa('bossa', 'audio/bgm/bossa.ogg', 'Joth', 'CC0'),
+  hanami('hanami', 'audio/bgm/hanami.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+  sumi('sumi', 'audio/bgm/sumi.ogg', 'Adrià Bonnin Catalán', 'CC0'),
 
   // De ambiente. Las de la casa: disponibles desde el principio.
   calma('calma', 'audio/bgm/calma.ogg', 'Adrià Bonnin Catalán', 'CC0',

@@ -18,7 +18,7 @@ import '../../theme/tokens.dart';
 /// Todas se dibujan sobre una caja de 100x100 y se escalan. Los colores son
 /// los suyos, no el acento: un icono ilustrado se ve igual con cualquier
 /// acento, como el regalo.
-enum ArtIcon { yatai, minesweeper, gacha, coin, medalBronze, medalSilver, medalGold, calendar }
+enum ArtIcon { yatai, minesweeper, tsumiki, nihongo, gacha, coin, medalBronze, medalSilver, medalGold, calendar }
 
 class ArtIconView extends StatelessWidget {
   const ArtIconView(this.icon, {super.key, this.size = 64});
@@ -50,6 +50,10 @@ class ArtPainter extends CustomPainter {
         paintYatai(canvas);
       case ArtIcon.minesweeper:
         paintMinesweeper(canvas);
+      case ArtIcon.tsumiki:
+        paintTsumiki(canvas);
+      case ArtIcon.nihongo:
+        paintNihongo(canvas);
       case ArtIcon.gacha:
         paintGacha(canvas);
       case ArtIcon.coin:
@@ -108,6 +112,22 @@ abstract final class Art {
   static const Color bronzeDark = Color(0xFFA85F25);
   static const Color ribbonBlue = Color(0xFF5BC8F5);
   static const Color ribbonBlueDark = Color(0xFF2A8FC4);
+
+  // Las piezas de Tsumiki, de caramelo.
+  static const Color blockI = Color(0xFF5BC8F5);
+  static const Color blockO = Color(0xFFFFCF4A);
+  static const Color blockT = Color(0xFFB08BE0);
+  static const Color blockS = Color(0xFF74DDA2);
+  static const Color blockZ = Color(0xFFF2636E);
+  static const Color blockJ = Color(0xFF6A94F0);
+  static const Color blockL = Color(0xFFF79A68);
+
+  // La tarjeta de Nihongo: papel, tinta de pincel y el sello.
+  static const Color paper = Color(0xFFFFF8EA);
+  static const Color paperBlue = Color(0xFFD8F0FF);
+  static const Color brush = Color(0xFF2B3A4C);
+  static const Color hanko = Color(0xFFE5484D);
+  static const Color sakura = Color(0xFFFFB3C8);
 
   static const List<Color> capsules = <Color>[
     Color(0xFF5BC8F5),
@@ -331,6 +351,117 @@ void paintMinesweeper(Canvas canvas) {
   final tile = Path()..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(62, 68, 28, 22), const Radius.circular(6)));
   paintPlastic(canvas, tile, T.shellBottom, edge: 1.8);
   paintFlag(canvas, const Offset(73, 80), 26, wave: 0);
+}
+
+// --- Tsumiki -------------------------------------------------------------------
+
+/// Un bloque de juguete: plastico lacado con un botoncito en el centro.
+void paintToyBlock(Canvas canvas, Rect r, Color color) {
+  final path = Path()..addRRect(RRect.fromRectAndRadius(r, Radius.circular(r.width * .22)));
+  paintPlastic(canvas, path, color, edge: r.width * .07);
+  canvas.drawCircle(r.center, r.width * .17, Paint()..color = Art.light(color, .2));
+  canvas.drawCircle(r.center.translate(-r.width * .04, -r.width * .05), r.width * .06, Paint()..color = const Color(0x99FFFFFF));
+}
+
+/// Una torre de bloques con un hueco, y la pieza T con carita a punto de
+/// encajar en el: el instante justo antes de completar la fila.
+void paintTsumiki(Canvas canvas) {
+  paintGroundShadow(canvas, const Offset(50, 92), 80);
+  const s = 23.0;
+  Rect at(double x, double y) => Rect.fromLTWH(x, y, s, s);
+  // La base: una L naranja y un palo azul con el hueco en medio.
+  for (final r in [at(15, 66), at(39, 66), at(15, 42)]) {
+    paintToyBlock(canvas, r, Art.blockL);
+  }
+  for (final r in [at(63, 66), at(63, 42)]) {
+    paintToyBlock(canvas, r, Art.blockI);
+  }
+  // La T que baja, un pelin por encima de su sitio.
+  const drop = -5.0;
+  for (final r in [at(15, 10 + drop), at(63, 10 + drop), at(39, 34 + drop), at(39, 10 + drop)]) {
+    paintToyBlock(canvas, r, Art.blockT);
+  }
+  // Carita en la casilla de arriba del centro.
+  final c = at(39, 10 + drop).center;
+  final ink = Paint()..color = Art.brush;
+  for (final dx in [-5.0, 5.0]) {
+    canvas.drawOval(Rect.fromCenter(center: c.translate(dx, 1), width: 3.6, height: 5), ink);
+    canvas.drawCircle(c.translate(dx - .7, 0), 1, Paint()..color = T.shellTop);
+  }
+  canvas.drawPath(
+    Path()
+      ..moveTo(c.dx - 2.6, c.dy + 5.4)
+      ..quadraticBezierTo(c.dx, c.dy + 8, c.dx + 2.6, c.dy + 5.4),
+    _edge(Art.brush, 1.4),
+  );
+  final blush = Paint()..color = T.tamaBlush.withValues(alpha: .6);
+  canvas.drawOval(Rect.fromCenter(center: c.translate(-8.5, 5), width: 4.4, height: 2.4), blush);
+  canvas.drawOval(Rect.fromCenter(center: c.translate(8.5, 5), width: 4.4, height: 2.4), blush);
+  // Destellos: esta a punto de hacer fila.
+  paintTwinkle(canvas, const Offset(91, 50), 6, Art.spark);
+  paintTwinkle(canvas, const Offset(8, 36), 4, Art.spark);
+}
+
+// --- Nihongo -------------------------------------------------------------------
+
+/// Dos tarjetas de estudiar: la de delante con «あ» a pincel y el sello rojo
+/// de «bien hecho»; la de detras, azul, asomando. Y un petalo de sakura.
+void paintNihongo(Canvas canvas) {
+  paintGroundShadow(canvas, const Offset(50, 91), 76);
+  void card(double angle, Offset c, Color color) {
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(angle);
+    final path = Path()..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: 58, height: 70), const Radius.circular(10)));
+    paintPlastic(canvas, path, color, edge: 2, shine: .8);
+    canvas.restore();
+  }
+
+  card(.22, const Offset(60, 50), Art.paperBlue);
+  card(-.1, const Offset(44, 52), Art.paper);
+
+  // «あ», trazo a trazo, sobre la tarjeta de delante.
+  canvas.save();
+  canvas.translate(44, 52);
+  canvas.rotate(-.1);
+  canvas.translate(-50, -50);
+  final brush = _edge(Art.brush, 5.2);
+  canvas.drawPath(Path()..moveTo(33, 33)..quadraticBezierTo(47, 33.5, 62, 30), brush);
+  canvas.drawPath(Path()..moveTo(45, 22)..quadraticBezierTo(43.5, 48, 50, 70), brush);
+  canvas.drawPath(
+    Path()
+      ..moveTo(58, 42)
+      ..quadraticBezierTo(51, 62, 38, 68)
+      ..quadraticBezierTo(29, 71, 31, 61)
+      ..quadraticBezierTo(35, 49, 55, 49)
+      ..quadraticBezierTo(70, 50, 69, 62)
+      ..quadraticBezierTo(67, 71, 56, 75),
+    brush,
+  );
+  canvas.restore();
+
+  // El sello: un circulo rojo con un visto blanco.
+  const h = Offset(74, 74);
+  paintPlastic(canvas, Path()..addOval(Rect.fromCircle(center: h, radius: 12)), Art.hanko, edge: 1.8);
+  canvas.drawPath(
+    Path()
+      ..moveTo(h.dx - 5.5, h.dy + .5)
+      ..lineTo(h.dx - 1.5, h.dy + 4.5)
+      ..lineTo(h.dx + 6, h.dy - 4),
+    _edge(T.shellTop, 3),
+  );
+
+  // Un petalo cayendo.
+  canvas.save();
+  canvas.translate(84, 20);
+  canvas.rotate(.6);
+  final petal = Path()
+    ..moveTo(0, -7)
+    ..quadraticBezierTo(7, -3, 0, 7)
+    ..quadraticBezierTo(-7, -3, 0, -7)
+    ..close();
+  paintPlastic(canvas, petal, Art.sakura, edge: 1.2);
+  canvas.restore();
 }
 
 /// La mina: se usa en el icono y en el tablero. [spark] enciende la chispa.

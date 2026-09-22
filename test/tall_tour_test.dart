@@ -234,12 +234,7 @@ Future<void> main() async {
           // Sin clave publica del otro lado no se puede escribir, y esta
           // pantalla ensena justamente eso: la conversacion con el compositor
           // activo. La clave es de verdad, generada aqui.
-          ..seed('/users/$kMireiaUid/keys/pub', IdentityKeys.generate().public.encoded)
-          ..seed('/groups/global/meta', {
-            'name': 'Global',
-            'open': true,
-            'createdAt': DateTime.now().millisecondsSinceEpoch,
-          });
+          ..seed('/users/$kMireiaUid/keys/pub', IdentityKeys.generate().public.encoded);
         await boot(tester, backend: backend);
         await settle(tester, 100);
         await tester.tap(find.byKey(const ValueKey<String>('channel.messages')));

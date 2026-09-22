@@ -9,8 +9,9 @@ versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dar
 
 Las monedas por fin sirven para algo. Llega **Yatai** (屋台), el puesto de
 feria de Ibasho: una tienda al estilo del Canal Tienda de la Wii o la eShop de
-la 3DS. Y con ella, el primer juego: un buscaminas con tu Tama al lado, que
-además da monedas.
+la 3DS. Y con ella, tres juegos con tu Tama al lado que además dan monedas:
+un buscaminas, **Tsumiki** (bloques que caen) y **Nihongo**, para aprender
+japonés.
 
 ### Añadido
 
@@ -51,8 +52,46 @@ además da monedas.
     interruptor destapar / bandera. Tocar un número con sus banderas puestas
     destapa los vecinos. El primer toque nunca es una mina. En un móvil
     pequeño, los tableros grandes se amplían y se desplazan con el dedo.
-- **Ganar da monedas**: 3 en fácil, 5 en media y en el tablero del día, y 8 en
-  difícil, con un **tope de 20 al día** (día UTC) entre todos los juegos.
+- **Tsumiki** (積み木, «bloques de juguete»), a 10 monedas: bloques que caen,
+  de plástico lacado con un botoncito, como las piezas de un juguete. Tu Tama
+  (otro en cada partida) celebra las filas, salta con cuatro de golpe, se
+  agobia cuando la torre llega arriba y respira cuando baja.
+  - Giros con empujes contra la pared, pieza fantasma, **guardar** una pieza,
+    las tres siguientes, combos, «tsumiki doble» y niveles cada 10 filas;
+    cuenta atrás 3, 2, 1 antes de empezar y nivel de salida 1, 5, 10 o 15.
+  - Se juega con una **cruceta y botones A y B** como los de una DS, con
+    gestos sobre el pozo (deslizar para mover, tocar para girar, bajar rápido
+    para soltar y subir para guardar) o con el teclado.
+  - Las filas completas destellan y se encogen con chispas, lo que se suelta
+    de golpe deja estela y sacude el pozo, y al acabar la torre se apaga de
+    abajo arriba. La pausa tapa el pozo. Resultados con la puntuación que sube
+    contando, filas, nivel, récords y lo cobrado.
+- **Nihongo** (日本語), a 150 monedas: aprender japonés con tu Tama de sensei.
+  Cuatro categorías: **hiragana** y **katakana**, y **kanji** y **palabras**,
+  que llegan más adelante.
+  - Eliges qué grupos entran (los 46 básicos, los de ten-ten y maru y los
+    combinados como きゃ o しょ) y si respondes **eligiendo entre cuatro** o
+    **escribiendo** la lectura en romaji (vale Hepburn y también si, ti, tu,
+    hu…).
+  - Rondas de diez tarjetas de papel que entran dándose la vuelta. Al acertar
+    cae el **maru** rojo de los maestros japoneses; al fallar la tarjeta
+    tiembla, enseña la lectura buena y espera a que la mires. Las opciones
+    falsas se parecen a la buena, para que haya que fijarse.
+  - Cada kana lleva su cuenta: salen más los que aún no dominas (tres aciertos
+    seguidos), y el menú enseña cuántos dominas de cada escritura. Al acabar,
+    los fallos para **repasar**, la mejor racha y, con un pleno, un
+    **hanamaru**.
+  - Una **tabla** para leer: los kana de cada grupo en su cuadrícula, como en
+    los libros (una fila por consonante, una columna por vocal), con la
+    lectura debajo y el maru en los que ya dominas. Al tocar uno, el Tama te
+    dice cómo se lee.
+- **Ganar da monedas**, con un **tope de 20 al día** (día UTC) entre todos los
+  juegos:
+  - Buscaminas: 3 en fácil, 5 en media y en el tablero del día, y 8 en
+    difícil.
+  - Tsumiki: al acabar, 3 con 10 filas, 5 con 25 y 8 con 50.
+  - Nihongo: solo con un pleno (10 de 10), 3 eligiendo y 5 escribiendo. Los
+    repasos no dan monedas.
 - **Formato de hora 12 h / 24 h** en Ajustes, junto al idioma. Lo siguen el
   reloj del panel de arriba, la hora local de un amigo en su perfil y la hora
   de los mensajes. Por defecto, 24 h, como siempre.
@@ -60,6 +99,13 @@ además da monedas.
   o abierto, o quitárselo, sin pasar por el Yatai. Solo en su propia cuenta.
 - **`tool/seed_shop.dart`** carga los precios del Yatai (`/shop/prices`). Un
   artículo sin precio sale como «no disponible».
+
+- **Cada juego con su canción.** Plaza en el buscaminas, Bossa en Tsumiki y,
+  en Nihongo, dos nuevas y originales: **Sumi** (piano eléctrico y koto) en el
+  menú y la tabla, y **Hanami** (koto, marimba y bajo con swing) mientras se
+  juega. Suena en lugar de la de ambiente mientras el juego está abierto, con
+  el mismo fundido que la música de un perfil, y **la primera vez que se oye se
+  desbloquea**: desde ese momento se puede elegir para el menú o el perfil.
 
 ### Cambiado
 
@@ -70,6 +116,13 @@ además da monedas.
 - **Las monedas se pueden gastar y ganar.** Los administradores las siguen
   dando; la dueña puede restarse las suyas al comprar y sumárselas al cobrar
   un premio, y nada más.
+
+### Quitado
+
+- **El chat general («Global»).** Los mensajes son solo entre amigos: fuera la
+  tarjeta del grupo del canal de mensajes y la sección para crearlo del panel
+  de administración. Las reglas ya no dejan leer ni escribir en `/groups`, así
+  que tampoco lo usa una versión vieja, y lo que había guardado se borra.
 
 ### Seguridad
 

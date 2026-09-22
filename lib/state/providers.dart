@@ -277,7 +277,6 @@ final messagesProvider =
   return MessagesController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
-    identity: ref.watch(identityProvider),
   );
 });
 
@@ -289,11 +288,9 @@ final conversationProvider = StateNotifierProvider.family<ConversationController
   return ConversationController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
-    // Solo las claves y el controlador del canal, nunca sus estados enteros:
-    // con ellos, la conversacion se rehacia —y se volvia a descifrar— cada vez
-    // que llegaba un aviso al buzon.
+    // Solo las claves, nunca el estado entero de la identidad: con el, la
+    // conversacion se rehacia —y se volvia a descifrar— a cada cambio.
     keys: ref.watch(identityProvider.select((i) => i.keys)),
-    channel: ref.watch(messagesProvider.notifier),
     target: target,
   );
 });

@@ -201,8 +201,6 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
                 const SizedBox(height: 22),
                 const _VersionLock(),
                 const SizedBox(height: 22),
-                const _GlobalGroupSection(),
-                const SizedBox(height: 22),
                 SectionCard(
                   title: l.adminListSection,
                   padding: const EdgeInsets.fromLTRB(26, 6, 26, 10),
@@ -239,59 +237,6 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// El grupo Global. No se pueden crear grupos desde la app: este lo crea el
-/// admin una sola vez y a partir de ahi cada cual se une si quiere.
-class _GlobalGroupSection extends ConsumerStatefulWidget {
-  const _GlobalGroupSection();
-
-  @override
-  ConsumerState<_GlobalGroupSection> createState() => _GlobalGroupSectionState();
-}
-
-class _GlobalGroupSectionState extends ConsumerState<_GlobalGroupSection> {
-  bool _working = false;
-
-  Future<void> _create() async {
-    final l = L.of(context)!;
-    setState(() => _working = true);
-    final ok = await ref.read(adminProvider.notifier).createGlobalGroup();
-    if (!mounted) return;
-    setState(() => _working = false);
-    AudioService.instance.play(ok ? Sfx.open : Sfx.error);
-    showIbashoToast(
-      context,
-      ok ? l.adminGroupCreated : l.adminGroupError,
-      isError: !ok,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    final group = ref.watch(messagesProvider.select((m) => m.global));
-
-    return SectionCard(
-      title: l.adminGroupSection,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 4),
-          Text(
-            group == null ? l.groupMissing : l.adminGroupExists,
-            style: Ty.caption,
-          ),
-          const SizedBox(height: 14),
-          IbashoButton(
-            label: l.adminGroupCreate,
-            glyph: Glyph.friends,
-            onPressed: group != null || _working ? null : () => unawaited(_create()),
-          ),
-        ],
       ),
     );
   }

@@ -32,9 +32,6 @@ enum SendBlock {
   /// La otra persona no ha entrado nunca desde que hay cifrado, asi que no
   /// tiene clave publica y no hay a quien cifrarle.
   otherHasNoKeys,
-
-  /// No se esta dentro del grupo.
-  notMember,
 }
 
 @immutable
@@ -98,12 +95,10 @@ class ConversationController extends StateNotifier<ConversationState> {
     required IbashoBackend backend,
     required SessionController session,
     required IdentityKeys? keys,
-    required MessagesController channel,
     required this.target,
   })  : _backend = backend,
         _session = session,
         _keys = keys,
-        _channel = channel,
         super(const ConversationState()) {
     if (_me.isNotEmpty && session.state.phase == SessionPhase.active) {
       unawaited(_start());
@@ -115,13 +110,6 @@ class ConversationController extends StateNotifier<ConversationState> {
 
   /// Las claves de esta cuenta, o `null` si aun no estan.
   final IdentityKeys? _keys;
-
-  /// El controlador del canal, no su estado.
-  ///
-  /// A proposito: con el estado, esta conversacion se destruia y se volvia a
-  /// montar —releyendo y redescifrando entera— cada vez que se movia el buzon
-  /// o una marca de lectura, que es constantemente.
-  final MessagesController _channel;
 
   final ConversationTarget target;
 
@@ -156,7 +144,6 @@ class ConversationController extends StateNotifier<ConversationState> {
 
   String get _root => switch (target) {
         DirectTarget(:final accountId) => '/dm/${directPairId(_me, accountId)}',
-        GroupTarget(:final groupId) => '/groups/$groupId',
       };
 
   @override
@@ -168,10 +155,6 @@ class ConversationController extends StateNotifier<ConversationState> {
   Future<void> _start() async {
     final block = await _checkBlock();
     if (!mounted) return;
-    if (block == SendBlock.notMember) {
-      state = const ConversationState(loading: false, block: SendBlock.notMember);
-      return;
-    }
     state = state.copyWith(block: block, clearBlock: block == null);
 
     try {
@@ -286,8 +269,6 @@ class ConversationController extends StateNotifier<ConversationState> {
   Future<SendBlock?> _checkBlock() async {
     if (_keys == null) return SendBlock.noKeys;
     switch (target) {
-      case GroupTarget():
-        return _channel.state.inGlobal ? null : SendBlock.notMember;
       case DirectTarget(:final accountId):
         try {
           final token = await _session.freshToken();
@@ -314,7 +295,6 @@ class ConversationController extends StateNotifier<ConversationState> {
 
     final recipients = _recipients();
     if (recipients.isEmpty) return false;
-    if (recipients.length > maxGroupMembers) return false;
 
     state = state.copyWith(sending: true, failed: false);
     try {
@@ -383,11 +363,6 @@ class ConversationController extends StateNotifier<ConversationState> {
           _me: keys.public.encoded,
           accountId: other,
         };
-      case GroupTarget():
-        return <String, String>{
-          for (final m in _channel.state.globalMembers) m.accountId: m.pub,
-          _me: keys.public.encoded,
-        };
     }
   }
 
@@ -416,11 +391,6 @@ class ConversationController extends StateNotifier<ConversationState> {
           'dm/$pair/msgs/$id': node,
           'users/$accountId/inbox/$_me': <String, Object?>{'at': serverTimestamp},
         };
-      case GroupTarget(:final groupId):
-        return <String, Object?>{
-          'groups/$groupId/msgs/$id': node,
-          'groups/$groupId/lastAt': serverTimestamp,
-        };
     }
   }
 
@@ -441,7 +411,6 @@ class ConversationController extends StateNotifier<ConversationState> {
     }
     final prefijo = switch (target) {
       DirectTarget(:final accountId) => 'dm/${directPairId(_me, accountId)}',
-      GroupTarget(:final groupId) => 'groups/$groupId',
     };
     return <String, Object?>{for (final id in sobran) '$prefijo/msgs/$id': null};
   }

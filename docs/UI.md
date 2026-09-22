@@ -45,7 +45,7 @@ amigos). No es la plantilla de todo.
 | Tipo de pantalla | Composición | Ejemplos |
 |---|---|---|
 | Colección | Dos paneles `ScreenPanel`: escaparate arriba y rejilla paginada abajo | tus Tamas, amigos |
-| Juego o experiencia | **Una escena**: el protagonista (tablero, habitación) grande, y a un lado un escenario con el Tama y los controles | buscaminas, habitación del Tama |
+| Juego o experiencia | **Una escena**: el protagonista (tablero, habitación) grande, y a un lado un escenario con el Tama y los controles | buscaminas, Tsumiki, Nihongo, habitación del Tama |
 | Tienda o catálogo | **Una escena** en franjas: escaparate con peana y foco, secciones en medio y mostrador paginado abajo, sin marcos alrededor | Yatai |
 | Formulario o ajustes | Columna con `SectionCard` y `SettingRow` | ajustes, perfil |
 
@@ -179,6 +179,13 @@ envolver durante una compra.
   elegida es una pastilla de plástico tintada.
 - **Dos modos** (destapar o bandera): raíl hundido con un pomo que se desliza
   con `easeOutBack` (`ModeSwitch`).
+- **Elegir entre pocas opciones** (nivel de salida, grupos de kana, modo de
+  respuesta): `SegmentRail` con `SegmentPill` (`lib/games/game_stage.dart`).
+  La elegida va en `accentWash` con filo; nunca en acento lleno.
+- **Mandos de juego** (Tsumiki): cruceta (`DPad`) y botones redondos
+  (`PadButton`) que avisan al bajar y al subir el dedo, para repetir mientras
+  se mantiene. Son plástico blanco, no acento: el acento sigue siendo del
+  botón que continúa la tarea.
 - **Precios**: pastilla hundida con la moneda ilustrada y la cifra, o una
   cinta verde de «gratis». Nunca texto suelto.
 
@@ -222,7 +229,9 @@ envolver durante una compra.
 Los Tamas son mascotas, no avatares (ver `tama_vision`). Cuando una pantalla
 tiene hueco para un personaje, que sea **uno de los Tamas de la cuenta**:
 
-- En el buscaminas sale uno **al azar en cada ronda** (distinto del anterior
+- Las piezas de escenario de todos los juegos (`StageLight`, `SpeechBubble`,
+  `GlossyFace`, `Readout`) viven en `lib/games/game_stage.dart`.
+- En el buscaminas, Tsumiki y Nihongo sale uno **al azar en cada ronda** (distinto del anterior
   si hay donde elegir). Sin Tamas hay una cara de reserva (`GlossyFace`),
   también lacada, nunca un círculo plano.
 - `TamaOnStand` con un `TamaViewController`: `hop()` para saltar, `cuddle()`
@@ -260,8 +269,8 @@ El entorno habla con sus propias metáforas, no con las de un ordenador:
 2. Recorridos de capturas (salen en `build/screenshots/`):
    - `flutter test test/visual_tour_test.dart` (horizontal)
    - `flutter test test/tall_tour_test.dart` (360×640 y 411×914)
-   - `flutter test test/games_tour_test.dart` (Yatai y buscaminas en las tres
-     medidas, con compra, regalo y partidas perdida y ganada)
+   - `flutter test test/games_tour_test.dart` (Yatai, buscaminas, Tsumiki y
+     Nihongo en las tres medidas, con compra, regalo, partidas y rondas)
    - `flutter test test/art_gallery_test.dart` (ilustraciones y regalo)
 3. **Mira las capturas** con esta guía al lado. Busca:
    - ¿Se parece a la Wii o la 3DS, o a una app?

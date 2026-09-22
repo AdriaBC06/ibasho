@@ -29,11 +29,14 @@ Los textos de licencia están en `assets/fonts/LICENSES/`.
 ### Música propia
 
 Original, sintetizada por `tool/gen_audio.py` y publicada bajo **CC0 1.0**
-(dominio público). Se puede regenerar con `python3 tool/gen_audio.py`.
+(dominio público). Se puede regenerar con `python3 tool/gen_audio.py`; la de
+Nihongo, con `python3 tool/gen_nihongo_music.py`.
 
 | Título | Archivo | Autor | Licencia |
 |---|---|---|---|
 | plaza (con ritmo, 120 bpm, bucle de 32 s) | `assets/audio/bgm/plaza.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| hanami (con ritmo, 112 bpm, bucle de 34 s; suena jugando a Nihongo) | `assets/audio/bgm/hanami.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| sumi (con ritmo, 78 bpm, bucle de 49 s; suena en el menú de Nihongo) | `assets/audio/bgm/sumi.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | calma (ambiente, bucle de 64 s, pista por defecto) | `assets/audio/bgm/calma.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | aurora (ambiente, bucle de 80 s) | `assets/audio/bgm/aurora.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | brisa (ambiente, bucle de 64 s) | `assets/audio/bgm/brisa.ogg` | Adrià Bonnin Catalán | CC0 1.0 |

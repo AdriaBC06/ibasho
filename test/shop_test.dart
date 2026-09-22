@@ -34,7 +34,10 @@ Future<void> _until(bool Function() ready) async {
 void main() {
   group('catalogo', () {
     test('un articulo por juego y uno por cada comida', () {
-      expect(shopCatalog.where((i) => i.section == ShopSection.games).length, 1);
+      expect(
+        shopCatalog.where((i) => i.section == ShopSection.games).map((i) => i.gameId),
+        ['minesweeper', 'tsumiki', 'nihongo'],
+      );
       final foods = shopCatalog.where((i) => i.section == ShopSection.tamas).toList();
       expect(foods.length, TamaFood.values.length);
       expect(foods.map((i) => i.food).toSet(), TamaFood.values.toSet());

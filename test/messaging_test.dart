@@ -14,7 +14,6 @@ import 'package:ibasho/backend/news.dart';
 import 'package:ibasho/backend/suggestions.dart';
 import 'package:ibasho/crypto/envelope.dart';
 import 'package:ibasho/crypto/keys.dart';
-import 'package:ibasho/state/conversation.dart';
 import 'package:ibasho/state/identity.dart';
 import 'package:ibasho/state/messages.dart';
 import 'package:ibasho/state/news.dart';
@@ -383,43 +382,6 @@ Future<void> main() async {
     });
   });
 
-  group('grupo', () {
-    test('sin unirse no se lee, y al unirse se deja la clave publica', () async {
-      final backend = FakeIbashoBackend()
-        ..seed('/groups/global/meta', {
-          'name': 'Global',
-          'open': true,
-          'createdAt': DateTime.now().millisecondsSinceEpoch,
-        });
-      final container = await signedIn(backend);
-      container.listen(identityProvider, (_, _) {}, fireImmediately: true);
-      container.listen(messagesProvider, (_, _) {}, fireImmediately: true);
-      await settle();
-      container.read(identityProvider.notifier).confirmPhraseSeen();
-
-      expect(container.read(messagesProvider).inGlobal, isFalse);
-      const target = GroupTarget(globalGroupId);
-      container.listen(conversationProvider(target), (_, _) {}, fireImmediately: true);
-      await settle(20);
-      expect(
-        container.read(conversationProvider(target)).block,
-        SendBlock.notMember,
-        reason: 'hasta que no se une, ni una lectura',
-      );
-
-      final failure = await container.read(messagesProvider.notifier).joinGlobal();
-      await settle(20);
-      expect(failure, isNull);
-      expect(container.read(messagesProvider).inGlobal, isTrue);
-
-      // La publica se copia en la entrada de miembro: es lo que deja cifrar
-      // para los treinta y dos con una sola lectura.
-      final entry = backend.peek('/groups/global/members/${backend.uid}')! as Map;
-      expect(entry['pub'], container.read(identityProvider).keys!.public.encoded);
-      expect(backend.peek('/users/${backend.uid}/groups/global'), isNotNull);
-    });
-  });
-
   group('noticias', () {
     test('votar mueve el recuento y deja el voto fuera de la encuesta', () async {
       final backend = FakeIbashoBackend()
@@ -565,15 +527,11 @@ Future<void> main() async {
       final state = MessagesState(
         inbox: {kLuis: hoy, kPau: ayer},
         readDirect: {kPau: hoy},
-        inGlobal: true,
-        globalLastAt: hoy,
-        globalRead: ayer,
       );
       expect(state.unreadFrom(kLuis), isTrue);
       expect(state.unreadFrom(kPau), isFalse);
-      expect(state.unreadInGlobal, isTrue);
-      // Dos conversaciones, no los mensajes que haya dentro.
-      expect(state.unreadCount, 2);
+      // Una conversacion, no los mensajes que haya dentro.
+      expect(state.unreadCount, 1);
     });
 
     test('las conversaciones se ordenan por la mas reciente', () {

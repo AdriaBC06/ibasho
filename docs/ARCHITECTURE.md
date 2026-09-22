@@ -32,7 +32,7 @@ lib/
     models.dart              AuthTokens, AllowlistEntry, UserProfile, DatabaseEvent, DatabaseQuery, serverTimestamp…
     tama.dart                modelo de los Tamas (Tama, TamaLook, TamaWear, TamaVoice, TamaCare, TamaFood, humor)
     social.dart              UserCard, PresenceMode, PresenceState, Presence, Friendship, FriendRequest, WallMessage
-    messaging.dart           mensajes y grupos (Message, MessageBody, TextBody, StickerBody, StoredMessage, GroupInfo, GroupMember, InboxEntry)
+    messaging.dart           mensajes (Message, MessageBody, TextBody, StickerBody, StoredMessage, InboxEntry)
     news.dart                NewsItem y NewsKind: el tablón y sus encuestas
     suggestions.dart         Suggestion, SuggestionStatus y AcceptedSuggestion
     shop.dart                el catálogo del Yatai (ShopItem, ShopSection), Receipt y GameInstall
@@ -72,7 +72,7 @@ lib/
     pantry.dart        unlockedFoodsProvider y PantryController: unidades de comida y stock inicial
     music_library.dart MusicLibraryController
     identity.dart      IdentityController: trae las claves a este aparato, o las crea
-    messages.dart      MessagesController: avisos de sin leer, grupo y lecturas
+    messages.dart      MessagesController: avisos de sin leer y lecturas
     conversation.dart  ConversationController: una conversación abierta (descifrar, mandar, podar)
     news.dart          NewsController: tablón, voto anónimo y publicación (admin)
     suggestions.dart   SuggestionsController: buzón, veredicto y apertura (admin)
@@ -83,6 +83,10 @@ lib/
     system_status.dart Clock y SystemStatusController (batería y conexión)
     debug.dart         DebugController
   games/               los juegos que activa el Yatai: lógica pura y su canal
+    game_stage.dart    piezas comunes de los juegos: foco, bocadillo, cara de reserva, marcadores, chapas, selector de raíl, entrada con rebote y línea de monedas
+    game_store.dart    récords locales de un juego en `<nombre>.json`
+    tsumiki/           Tsumiki: tsumiki.dart (pozo, piezas, giros SRS, bolsa de 7, puntos), tsumiki_channel.dart (la escena, mandos, gestos y teclado), tsumiki_board.dart (bloques y efectos), tsumiki_widgets.dart (cruceta, botones A/B, huecos, carteles, salida, pausa y resultados), tsumiki_store.dart (récords)
+    nihongo/           Nihongo: kana.dart (tablas de kana, lecturas aceptadas, rondas y opciones), nihongo_channel.dart (menú, ronda y resultados), nihongo_widgets.dart (tarjeta, maru, puntos, respuestas, categorías), nihongo_store.dart (dominio por kana y rondas)
     minesweeper/       buscaminas: minesweeper.dart (tablero, reglas y tablero del día), minesweeper_channel.dart (la escena), minesweeper_board.dart (casillas y efectos), minesweeper_widgets.dart (escenario, marcadores, niveles, resultados), minesweeper_store.dart (récords y medallas locales)
   storage/
     secure_store.dart  sesión cifrada (libsecret o archivo AES-256-GCM)
@@ -324,7 +328,7 @@ Material.
 | `TrackTile` | `track_tile.dart` | `title`, `subtitle`, `selected`, `onPressed`, `trailing`, `dimmed` | Fila de pista de música. |
 | `SlotTile` | `slot_tile.dart` | `width`, `height`, `child`, `onPressed`, `selected`, `tint`, `semanticLabel` | Baldosa de rejilla paginada: se inclina 2° y sube 4 px con `easeOutBack`; la elegida lleva `accentWash` y filo `accentDeep`. La usan Tamas y amigos. |
 | `EmptySlot` | `slot_tile.dart` | `width`, `height` | Ranura libre hundida. |
-| `ArtIconView` | `channel_art.dart` | `icon` (`ArtIcon`), `size` (64) | Ilustración a color sobre una caja de 100×100: `yatai`, `minesweeper`, `gacha`, `coin`, `medalBronze/Silver/Gold`, `calendar`. Colores propios en `Art` (no el acento). Las funciones `paintPlastic`, `paintBomb`, `paintFlag`, `paintCapsule`, `paintCoin`, `paintTwinkle` y `paintGroundShadow` se reutilizan en el tablero y en el Yatai. |
+| `ArtIconView` | `channel_art.dart` | `icon` (`ArtIcon`), `size` (64) | Ilustración a color sobre una caja de 100×100: `yatai`, `minesweeper`, `tsumiki`, `nihongo`, `gacha`, `coin`, `medalBronze/Silver/Gold`, `calendar`. Colores propios en `Art` (no el acento). Las funciones `paintPlastic`, `paintBomb`, `paintFlag`, `paintCapsule`, `paintCoin`, `paintTwinkle` y `paintGroundShadow` se reutilizan en el tablero y en el Yatai. |
 | `GiftFace` | `gift_face.dart` | `open` (0–1) | Regalo envuelto que llena su caja. `open` lo anima entero: se deshace el lazo, salta la tapa, salen destellos y se desvanece. Al revés (1→0) es el envoltorio de la compra. |
 
 **Glifos** (`enum Glyph`): `gear`, `person`, `keycard`, `slot`, `arrowLeft`,
@@ -867,7 +871,7 @@ coincide con su uid).
 /system/friendCodeCounter  number entero: el siguiente contador (ausente = 1), sube de 1 en 1
 /system/suggestionsOpen    boolean (ausente = abierto)
 
-/shop/prices/$itemId       number entero 0–999999999 (game_minesweeper, food_cookie…)
+/shop/prices/$itemId       number entero 0–999999999 (game_minesweeper, game_tsumiki, game_nihongo, food_cookie…)
 
 /dm/$pairId                los dos accountId ordenados, unidos por '_'
     a                    string: el menor de los dos
@@ -880,12 +884,6 @@ coincide con su uid).
         c                  string 1–8192: nonce || texto cifrado || MAC, en base64
         k/$recipient       string ≤ 256: la clave del mensaje envuelta para esa cuenta
                            (obligatorio: una entrada para `a` y otra para `b`)
-
-/groups/$groupId           ($groupId ^[a-z0-9_]{1,32}$; hoy solo existe `global`)
-    meta                 { name 1–24, open boolean, createdAt } — lo escribe un admin
-    members/$memberId    { at, pub } — `pub` tiene que ser la de esa cuenta
-    msgs/$msgId          igual que en /dm, con `k` conteniendo al menos a quien escribe
-    lastAt               number > 0 y ≤ now: para la chapa sin leer la conversación
 
 /news/$newsId              ($newsId push id)
     kind                 'update' | 'note' | 'poll'
@@ -956,14 +954,9 @@ coincide con su uid).
 | `/shop/prices` | miembro habilitado | admin |
 | `…/inbox/$fromId` | la dueña | crear: `$fromId`, si es amigo suyo; borrar: la dueña |
 | `…/reads`, `…/votes` | solo la dueña | la dueña |
-| `…/groups/$groupId` | solo la dueña | la dueña, con la entrada de miembro en la misma escritura |
 | `/dm/$pairId` | `a` y `b`, nadie más (tampoco un admin) | — (cada hijo) |
 | `…/a`, `…/b` | — | crear, una sola vez: uno de los dos, si el otro es amigo suyo y `$pairId` cuadra |
 | `…/msgs/$msgId` | (vía `/dm/$pairId`) | crear: `a` o `b`, con `from` propio y `k` para los dos; borrar: cualquiera de los dos (la poda); **editar, nadie** |
-| `/groups/$groupId/meta` | miembro habilitado (para ver a qué te unes) | admin |
-| `…/members` | los miembros del grupo | cada cual la suya: entrar si `open`, con su propia `pub`; salir siempre |
-| `…/msgs/$msgId` | los miembros | crear: un miembro, con `from` propio; borrar: un miembro |
-| `…/lastAt` | miembro habilitado | los miembros del grupo |
 | `/news` | miembro habilitado | admin |
 | `…/tally/$option` | (vía `/news`) | cualquier miembro, ±1 y solo apuntándose en `voters` con la encuesta abierta |
 | `…/voters/$voterId` | (vía `/news`) | `$voterId`, con la encuesta abierta |
@@ -1022,8 +1015,8 @@ reparte los que falten al abrir el panel.
 | `TamasController` | multi-ruta de creación y borrado (con `card` si cambia el Tama de perfil); `PATCH /tamas/$id` (name, personality, voice, look, updatedAt); `/tamas/$id/care/lastPetted` y `/lastFed` (`serverTimestamp`, como mucho una vez cada 30 s y 5 s por Tama; dar de comer gasta antes una unidad de la despensa y, sin ninguna, no hace nada); `PATCH /users/$acc` con `tama` y `card` |
 | `AdminController` (versión) | `/system/update` (`requireVersion(appVersion, url:)`) y su borrado |
 | `IdentityController` | `/users/$acc/keys` (pub, backup y at) la primera vez, y nunca más |
-| `MessagesController` | multi-ruta de entrada y salida del grupo (`groups/$gid/members/$acc` + `users/$acc/groups/$gid`); `/users/$acc/reads/dm/$otro`, `/reads/group/$gid` |
-| `ConversationController` | multi-ruta de envío: el mensaje, `a` y `b` la primera vez, `users/$otro/inbox/$yo` (o `groups/$gid/lastAt`) y los `null` de la poda, todo en una operación; `DELETE` de un mensaje suelto |
+| `MessagesController` | `/users/$acc/reads/dm/$otro` |
+| `ConversationController` | multi-ruta de envío: el mensaje, `a` y `b` la primera vez, `users/$otro/inbox/$yo` y los `null` de la poda, todo en una operación; `DELETE` de un mensaje suelto |
 | `NewsController` | multi-ruta de voto (`news/$id/tally/$opción` ±1, `news/$id/voters/$yo`, `users/$yo/votes/$id`); `/users/$acc/reads/news`; solo admin: `/news/$id`, `/news/$id/closed`, y su borrado |
 | `SuggestionsController` | `/suggestions/$acc` entero; solo admin: multi-ruta del veredicto (`status`, `note`, `decidedAt`, `decidedBy` y `acceptedSuggestions/$id`) y `/system/suggestionsOpen` |
 | `CoinsController` | solo admin: `/users/$otro/coins` |
@@ -1031,7 +1024,6 @@ reparte los que falten al abrir el panel.
 | `RewardsController` | multi-ruta de premio desde la raíz: `users/$acc/rewards` (con `serverTimestamp`) y `users/$acc/coins` |
 | `PantryController` | `/users/$acc/pantry/$food`: 5 la primera vez, y −1 cada vez que se da de comer |
 | `tool/seed_shop.dart` | `/shop/prices` entero, con la CLI |
-| `AdminController` (grupo) | `/groups/global/meta` |
 | `tool/bootstrap_admin.dart` | `/allowlist/$uid`, `/admins/$uid`, `/usernames/$username`, `/friendCodes/$code`, `/users/$uid/friendCode`, `/system/friendCodeCounter` con la CLI de Firebase |
 | `tool/post_news.dart` | `/news/$id`, `/news/$id/closed` y su borrado, también con la CLI |
 
@@ -1114,8 +1106,7 @@ costaba más de lo que valía: P-256 está en la misma familia de seguridad.
 
 Quien envía se incluye siempre entre los destinatarios, o no podría releer lo
 que acaba de mandar: la efímera se tira en cuanto sale de ahí, que es lo que da
-el secreto hacia adelante. Tope de 32 destinatarios, que es también el de
-miembros de un grupo.
+el secreto hacia adelante. Tope de 32 destinatarios.
 
 ### La frase de respaldo (`mnemonic.dart`, `wordlist.dart`, `backup.dart`)
 
@@ -1181,7 +1172,7 @@ lo validan). Taparlo pediría otra arquitectura entera.
 | `flutter test test/visual_tour_test.dart` | capturas de pantallas `01-…` a `34b-…` (amigos desde `24-…`; `34-tarjeta.png` es la tarjeta exportada) |
 | `flutter test test/tama_gallery_test.dart` | hojas `g1-piezas` a `g7b-comida-sola` |
 | `flutter test test/crypto_test.dart test/wordlist_test.dart` | claves, sobres, frase de respaldo y las propiedades de la lista de 512 palabras |
-| `flutter test test/messaging_test.dart` | lo que hace la app con el cifrado: crear y recuperar claves, mandar y leer, podar, unirse al grupo, votar y el buzón |
+| `flutter test test/messaging_test.dart` | lo que hace la app con el cifrado: crear y recuperar claves, mandar y leer, podar, votar y el buzón |
 | `./tool/test_rules.sh` | instala `test/rules/node_modules` si falta y ejecuta `firebase emulators:exec --project demo-ibasho --only database "npm --prefix test/rules test"` (`node --test --test-concurrency=1 rules.test.mjs rules_04.test.mjs`, con `@firebase/rules-unit-testing`) |
 | `./tool/test_e2e.sh` | `firebase emulators:exec --project demo-ibasho --only auth,database` con `flutter test test/e2e` y los defines del emulador |
 

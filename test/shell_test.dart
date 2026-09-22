@@ -146,14 +146,14 @@ Future<void> main() async {
   test('la musica del menu empieza con las de serie y crece al escuchar', () {
     const fresh = MusicLibraryState(loaded: true);
     expect(fresh.available.map((t) => t.id), ['calma', 'aurora', 'brisa', 'noche']);
-    expect(fresh.pending, 2);
+    expect(fresh.pending, 4);
     expect(fresh.isUnlocked(MusicTrack.plaza), isFalse);
 
     const later = MusicLibraryState(unlocked: {'bossa'}, loaded: true);
     // Se respeta el orden de la casa, no el de desbloqueo.
     expect(later.available.map((t) => t.id),
         ['bossa', 'calma', 'aurora', 'brisa', 'noche']);
-    expect(later.pending, 1);
+    expect(later.pending, 3);
     expect(MusicTrack.fallback, MusicTrack.calma);
   });
 

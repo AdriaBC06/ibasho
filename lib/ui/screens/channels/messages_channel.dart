@@ -8,12 +8,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
-import '../../../backend/messaging.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/identity.dart';
 import '../../../state/messages.dart';
 import '../../../state/providers.dart';
-import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
 import '../../layout.dart';
@@ -21,7 +19,6 @@ import '../../social/social_widgets.dart';
 import '../../../state/people.dart';
 import '../../widgets/controls.dart';
 import '../../widgets/glyphs.dart';
-import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/pressable.dart';
 import '../channel_route.dart';
@@ -99,7 +96,7 @@ class _Unavailable extends ConsumerWidget {
   }
 }
 
-/// La lista: primero el grupo, luego los amigos.
+/// La lista de amigos, de la conversacion mas reciente a la mas antigua.
 class _Conversations extends ConsumerWidget {
   const _Conversations();
 
@@ -116,8 +113,6 @@ class _Conversations extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _GlobalGroup(),
-        const SizedBox(height: 22),
         if (friends.friends.isEmpty)
           SectionCard(
             title: l.messagesTitle,
@@ -157,147 +152,6 @@ class _Conversations extends ConsumerWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-/// El grupo Global: se ve siempre, se lee solo desde dentro.
-class _GlobalGroup extends ConsumerStatefulWidget {
-  const _GlobalGroup();
-
-  @override
-  ConsumerState<_GlobalGroup> createState() => _GlobalGroupState();
-}
-
-class _GlobalGroupState extends ConsumerState<_GlobalGroup> {
-  bool _working = false;
-  String? _error;
-
-  Future<void> _join() async {
-    final l = L.of(context)!;
-    setState(() {
-      _working = true;
-      _error = null;
-    });
-    final failure = await ref.read(messagesProvider.notifier).joinGlobal();
-    if (!mounted) return;
-    setState(() {
-      _working = false;
-      _error = switch (failure) {
-        JoinFailure.full => l.groupFull,
-        JoinFailure.closed => l.groupClosed,
-        JoinFailure.noKeys => l.groupNoKeys,
-        JoinFailure.network => l.messagesFailed,
-        null => null,
-      };
-    });
-    AudioService.instance.play(failure == null ? Sfx.open : Sfx.error);
-  }
-
-  Future<void> _leave() async {
-    final l = L.of(context)!;
-    final confirmed = await askConfirmation(
-      context,
-      title: l.groupLeaveConfirmTitle,
-      body: l.groupLeaveConfirmBody,
-      confirmLabel: l.groupLeave,
-      cancelLabel: l.actionCancel,
-    );
-    if (!confirmed || !mounted) return;
-    final ok = await ref.read(messagesProvider.notifier).leaveGlobal();
-    if (mounted) AudioService.instance.play(ok ? Sfx.back : Sfx.error);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    final skin = IbashoSkin.of(context);
-    final channel = ref.watch(messagesProvider);
-    final group = channel.global;
-
-    if (group == null) {
-      return SectionCard(
-        title: l.groupGlobalName,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          child: Text(
-            channel.loaded ? l.groupMissing : l.keysPreparing,
-            textAlign: TextAlign.center,
-            style: Ty.body.copyWith(color: T.inkSoft),
-          ),
-        ),
-      );
-    }
-
-    return SectionCard(
-      title: group.name,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 4),
-          Text(
-            channel.inGlobal
-                ? l.groupMembers(channel.globalMembers.length)
-                : l.groupLockedBody,
-            style: Ty.body.copyWith(color: T.inkSoft),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            Text(_error!, style: Ty.caption.copyWith(color: T.warn)),
-          ],
-          const SizedBox(height: 16),
-          if (channel.inGlobal)
-            Row(
-              children: [
-                Expanded(
-                  child: IbashoButton(
-                    label: group.name,
-                    glyph: Glyph.chat,
-                    tone: ButtonTone.accent,
-                    expand: true,
-                    onPressed: () => _open(context),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                IconPill(
-                  glyph: Glyph.power,
-                  semanticLabel: l.groupLeave,
-                  onPressed: () => unawaited(_leave()),
-                ),
-                if (channel.unreadInGlobal) ...[
-                  const SizedBox(width: 10),
-                  const CountBadge(count: 1, size: 14),
-                ],
-              ],
-            )
-          else ...[
-            IbashoButton(
-              label: _working ? l.groupJoining : l.groupJoin,
-              glyph: Glyph.personPlus,
-              tone: ButtonTone.accent,
-              onPressed: _working ? null : () => unawaited(_join()),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              l.groupJoinedNote,
-              style: Ty.caption.copyWith(color: skin.accentDeep),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _open(BuildContext context) {
-    final l = L.of(context)!;
-    final channel = ref.read(messagesProvider);
-    pushChannelPage<void>(
-      context,
-      (_) => ConversationScreen(
-        target: const GroupTarget(globalGroupId),
-        title: channel.global?.name ?? l.groupGlobalName,
-        subtitle: l.groupMembers(channel.globalMembers.length),
-      ),
     );
   }
 }

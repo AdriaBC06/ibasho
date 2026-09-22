@@ -16,7 +16,7 @@ import 'package:ibasho/ui/widgets/gift_face.dart';
 
 void main() {
   testWidgets('ilustraciones', (tester) async {
-    tester.view.physicalSize = const Size(1280, 520);
+    tester.view.physicalSize = const Size(1600, 520);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -39,8 +39,8 @@ void main() {
                     cell(ColoredBox(color: T.shellTop, child: GiftFace(open: t))),
                 ]),
                 Row(children: [
-                  for (final s in [24.0, 32.0, 48.0, 64.0])
-                    for (final a in [ArtIcon.yatai, ArtIcon.minesweeper, ArtIcon.gacha])
+                  for (final s in [24.0, 32.0, 48.0])
+                    for (final a in [ArtIcon.yatai, ArtIcon.minesweeper, ArtIcon.tsumiki, ArtIcon.nihongo])
                       Padding(padding: const EdgeInsets.all(6), child: ArtIconView(a, size: s)),
                 ]),
               ],

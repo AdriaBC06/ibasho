@@ -107,12 +107,6 @@ async function seed() {
         },
         [PAU]: { keys: keys(PAU), coins: 0 },
       },
-      groups: {
-        global: {
-          meta: { name: 'Global', open: true, createdAt: now },
-          members: { [ANA]: { at: now, pub: pub(ANA) } },
-        },
-      },
       news: {
         [NEWS]: {
           kind: 'poll',
@@ -309,84 +303,25 @@ test('el aviso de mensaje nuevo lo deja un amigo y no lleva nada dentro', async 
 
 // --- Grupo ----------------------------------------------------------------
 
-test('el grupo lo crea el admin: aqui no se crean grupos', async () => {
-  await assertSucceeds(
-    set(ref(db(ADMIN), '/groups/otro/meta'), {
-      name: 'Otro',
+test('el chat general ya no existe: ni se lee ni se escribe', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), '/groups/global/meta'), {
+      name: 'Global',
       open: true,
       createdAt: now,
-    }),
-  );
+    });
+  });
+  for (const path of ['/groups/global/meta', '/groups/global/lastAt', '/groups/global/msgs']) {
+    await assertFails(get(ref(db(ANA), path)));
+  }
+  await assertFails(set(ref(db(ADMIN), '/groups/otro/meta'), { name: 'Otro', open: true, createdAt: now }));
   await assertFails(
-    set(ref(db(ANA), '/groups/mio/meta'), {
-      name: 'Mio',
-      open: true,
-      createdAt: now,
-    }),
-  );
-});
-
-test('unirse es cosa de cada cual, y solo si el grupo esta abierto', async () => {
-  await assertSucceeds(
     update(ref(db(LUIS), '/'), {
       [`groups/global/members/${LUIS}`]: { at: now, pub: pub(LUIS) },
       [`users/${LUIS}/groups/global`]: now,
     }),
   );
-
-  await seed();
-  // Con la clave publica de otro, no: el mensaje iria cifrado a quien no es.
-  await assertFails(
-    set(ref(db(LUIS), `/groups/global/members/${LUIS}`), {
-      at: now,
-      pub: pub(PAU),
-    }),
-  );
-
-  await seed();
-  // Meter a otro tampoco.
-  await assertFails(
-    set(ref(db(LUIS), `/groups/global/members/${PAU}`), {
-      at: now,
-      pub: pub(PAU),
-    }),
-  );
-
-  await seed();
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    await set(ref(context.database(), '/groups/global/meta/open'), false);
-  });
-  await assertFails(
-    set(ref(db(LUIS), `/groups/global/members/${LUIS}`), {
-      at: now,
-      pub: pub(LUIS),
-    }),
-  );
-});
-
-test('sin estar dentro del grupo no se lee ni se escribe', async () => {
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    await set(ref(context.database(), '/groups/global/msgs'), {
-      [MSG]: envelope(ANA, [ANA]),
-    });
-  });
-
-  // Ana esta dentro desde el seed; Luis no.
-  await assertSucceeds(get(ref(db(ANA), '/groups/global/msgs')));
-  await assertFails(get(ref(db(LUIS), '/groups/global/msgs')));
-  await assertFails(get(ref(db(LUIS), '/groups/global/members')));
-  // La ficha si se ve desde fuera: hay que poder saber a que te unes.
-  await assertSucceeds(get(ref(db(LUIS), '/groups/global/meta')));
-
-  await assertFails(
-    set(ref(db(LUIS), `/groups/global/msgs/${MSG2}`), envelope(LUIS, [LUIS])),
-  );
-  await assertSucceeds(
-    update(ref(db(ANA), '/'), {
-      [`groups/global/msgs/${MSG2}`]: envelope(ANA, [ANA]),
-      'groups/global/lastAt': now,
-    }),
-  );
+  await assertFails(set(ref(db(LUIS), `/users/${LUIS}/reads/group/global`), now));
 });
 
 // --- Noticias -------------------------------------------------------------

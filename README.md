@@ -15,7 +15,7 @@ créditos, panel de administración, el canal de Tamas con su creador y la
 habitación de cada uno, el canal de amigos —códigos al estilo 3DS, solicitudes,
 presencia, perfiles con la hora local y la música de cada cual, tarjeta de
 visita exportable y muro de cumpleaños—, **mensajes** cifrados de punta a punta
-con stickers de tus Tamas y un grupo abierto, **noticias** con encuestas
+con stickers de tus Tamas, **noticias** con encuestas
 anónimas, **sugerencias** con respuesta y **Yatai** (屋台), el puesto donde se
 gastan las monedas: juegos que se activan —el primero, un buscaminas con tu
 Tama al lado, medallas, tablero del día y premios en monedas— y comida para los
@@ -391,8 +391,6 @@ local), cargan `database.rules.json` y comprueban, entre otras cosas, que:
   cerrado para los dos;
 - un mensaje no se puede editar una vez dicho, y cualquiera de los dos puede
   borrar para podar;
-- sin estar dentro del grupo no se lee ni se escribe nada, y unirse exige la
-  clave pública propia y que el grupo esté abierto;
 - el voto de una encuesta sube un recuento **de uno en uno** y sólo apuntándose
   como votante, y **lo que uno vota no lo lee nadie más**, tampoco el admin;
 - una sugerencia viva por cuenta, nadie manda en nombre de otro ni se firma su
@@ -551,15 +549,12 @@ nada más. Ni el administrador ni el dueño del proyecto pueden leerlos.
   `/users/{accountId}/keys/pub`, porque sin ella nadie podría escribirte.
 - **Cada mensaje lleva su propia clave** AES-256-GCM y un par efímero. La clave
   se envuelve una vez por destinatario (ECDH efímero → HKDF-SHA256 → AES-GCM),
-  así que un mensaje de grupo se cifra una sola vez y no N veces.
+  así que el texto se cifra una sola vez aunque lo lean los dos.
 - **Stickers**: uno de tus Tamas con una de ocho caras. El aspecto viaja dentro
   del sobre, no por referencia: se sigue viendo igual aunque luego edites o
   borres ese Tama, y lo ve quien lo recibe aunque no tenga permiso para leerlo.
-- **El grupo «Global»** lo crea un administrador desde su panel. Cualquiera se
-  une, nadie invita, y **hasta que no entras no se descarga ni un mensaje**. Al
-  entrar ves lo que se escriba a partir de ese momento, nunca lo anterior:
-  es lo que se paga por que no haga falta que nadie esté conectado para
-  repartir claves. Tope de 32 miembros, que es el del sobre.
+- **Solo hay conversaciones privadas.** El chat general («Global») se quitó en
+  la 0.5.0: las reglas ya no dejan leer ni escribir en `/groups`.
 - **El historial se poda solo**: 300 mensajes por conversación y nada de más de
   90 días. Lo borra el mismo cliente que escribe, en la misma operación.
 

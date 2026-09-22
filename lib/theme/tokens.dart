@@ -45,6 +45,12 @@ abstract final class T {
   /// Avisos, cumpleanos, insignias.
   static const Color warn = Color(0xFFE8A33D);
 
+  /// Respuesta acertada en un juego (Nihongo): verde menta lacado.
+  static const Color correct = Color(0xFF4CC38A);
+
+  /// Respuesta fallada: rojo suave, que avisa sin regañar.
+  static const Color wrong = Color(0xFFEF6B73);
+
   // --- Derivados ---------------------------------------------------------
   // Valores calculados a partir de los anteriores. Viven aqui para que no
   // aparezca ni un hex suelto en el resto del codigo.

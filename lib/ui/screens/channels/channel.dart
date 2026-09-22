@@ -5,8 +5,12 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../audio/audio_service.dart';
 import '../../../backend/shop.dart';
+import '../../../games/game_music.dart';
 import '../../../games/minesweeper/minesweeper_channel.dart';
+import '../../../games/nihongo/nihongo_channel.dart';
+import '../../../games/tsumiki/tsumiki_channel.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
 import '../../widgets/channel_art.dart';
@@ -85,7 +89,20 @@ final Map<String, GameChannelEntry> gameChannelRegistry = <String, GameChannelEn
     glyph: Glyph.mine,
     art: ArtIcon.minesweeper,
     label: (l) => l.channelMinesweeper,
-    builder: (_) => const MinesweeperChannel(),
+    builder: (_) => const GameMusic(track: MusicTrack.plaza, child: MinesweeperChannel()),
+  ),
+  'tsumiki': GameChannelEntry(
+    glyph: Glyph.blocks,
+    art: ArtIcon.tsumiki,
+    label: (l) => l.channelTsumiki,
+    builder: (_) => const GameMusic(track: MusicTrack.bossa, child: TsumikiChannel()),
+  ),
+  'nihongo': GameChannelEntry(
+    glyph: Glyph.kana,
+    art: ArtIcon.nihongo,
+    label: (l) => l.channelNihongo,
+    // Nihongo cambia de cancion segun este en el menu o jugando: la pone el.
+    builder: (_) => const NihongoChannel(),
   ),
 };
 

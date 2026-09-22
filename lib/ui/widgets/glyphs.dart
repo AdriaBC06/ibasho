@@ -68,6 +68,9 @@ enum Glyph {
   bulb,
   coin,
   mine,
+  blocks,
+  kana,
+  pause,
   yatai,
   gift,
 }
@@ -737,6 +740,42 @@ class _GlyphPainter extends CustomPainter {
         );
         canvas.drawLine(spark + const Offset(-1.3, -1.3), spark + const Offset(1.3, 1.3), stroke);
         canvas.drawLine(spark + const Offset(-1.3, 1.3), spark + const Offset(1.3, -1.3), stroke);
+      case Glyph.blocks:
+        // Una pieza T de Tsumiki: tres bloques arriba y uno debajo, en un
+        // solo contorno redondeado.
+        canvas.drawPath(
+          Path()
+            ..moveTo(3.4, 6.6)
+            ..lineTo(20.6, 6.6)
+            ..lineTo(20.6, 12.4)
+            ..lineTo(14.9, 12.4)
+            ..lineTo(14.9, 18.2)
+            ..lineTo(9.1, 18.2)
+            ..lineTo(9.1, 12.4)
+            ..lineTo(3.4, 12.4)
+            ..close(),
+          stroke,
+        );
+      case Glyph.pause:
+        // Dos barras con aire entre medias.
+        canvas.drawLine(const Offset(8.6, 6), const Offset(8.6, 18), stroke);
+        canvas.drawLine(const Offset(15.4, 6), const Offset(15.4, 18), stroke);
+      case Glyph.kana:
+        // La «ア» de katakana: el trazo de arriba con su gancho y, con aire
+        // de por medio, la caida hacia la izquierda.
+        canvas.drawPath(
+          Path()
+            ..moveTo(4.4, 5.6)
+            ..lineTo(19.4, 5.6)
+            ..quadraticBezierTo(18, 9.6, 14.2, 11.6),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(10.6, 10.4)
+            ..quadraticBezierTo(10.8, 16.4, 5.6, 19.6),
+          stroke,
+        );
       case Glyph.yatai:
         // El puesto del Yatai: dos postes y un toldo a rayas en un solo
         // trazo, y el farolillo colgando por separado, con aire de por medio.

@@ -40,12 +40,10 @@ class ConversationScreen extends ConsumerStatefulWidget {
     super.key,
     required this.target,
     required this.title,
-    this.subtitle,
   });
 
   final ConversationTarget target;
   final String title;
-  final String? subtitle;
 
   @override
   ConsumerState<ConversationScreen> createState() => _ConversationScreenState();
@@ -144,20 +142,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     return ChannelScaffold(
       title: widget.title,
       glyph: Glyph.chat,
-      trailing: widget.subtitle == null
-          ? null
-          : Text(
-              widget.subtitle!,
-              style: Ty.caption.copyWith(color: T.inkSoft),
-            ),
       child: Column(
         children: [
           Expanded(
             child: switch (state) {
-              ConversationState(block: SendBlock.notMember) => _Notice(
-                text: l.groupLockedBody,
-                glyph: Glyph.lock,
-              ),
               ConversationState(loading: true) => _Notice(
                 text: l.keysPreparing,
                 glyph: Glyph.lock,
@@ -174,16 +162,15 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               ),
             },
           ),
-          if (state.block != SendBlock.notMember)
-            _Composer(
-              controller: _typed,
-              focus: _composer,
-              state: state,
-              gutter: layout.gutter,
-              onChanged: () => setState(() {}),
-              onSend: _sendText,
-              onSticker: _sendSticker,
-            ),
+          _Composer(
+            controller: _typed,
+            focus: _composer,
+            state: state,
+            gutter: layout.gutter,
+            onChanged: () => setState(() {}),
+            onSend: _sendText,
+            onSticker: _sendSticker,
+          ),
         ],
       ),
     );
@@ -390,7 +377,6 @@ class _Composer extends StatelessWidget {
           switch (state.block!) {
             SendBlock.noKeys => l.keysPreparing,
             SendBlock.otherHasNoKeys => l.messagesOtherNoKeys,
-            SendBlock.notMember => l.groupLockedTitle,
           },
           textAlign: TextAlign.center,
           style: Ty.caption.copyWith(color: T.inkSoft),

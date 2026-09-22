@@ -481,25 +481,11 @@
               ".validate": "newData.isNumber() && newData.val() > 0 && $withId.matches(/^[-0-9A-Za-z_]{1,128}$/)"
             }
           },
-          "group": {
-            "$groupId": {
-              ".validate": "newData.isNumber() && newData.val() > 0 && $groupId.matches(/^[a-z0-9_]{1,32}$/)"
-            }
-          },
           "news": {
             ".validate": "newData.isNumber() && newData.val() > 0"
           },
           "$other": {
             ".validate": false
-          }
-        },
-        // Espejo de los grupos a los que pertenece, para no recorrer /groups
-        // entero al arrancar. Se escribe en la misma operacion que la entrada
-        // de miembro, y por eso se comprueba sobre el arbol resultante.
-        "groups": {
-          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId",
-          "$groupId": {
-            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now && newData.parent().parent().parent().parent().child('groups').child($groupId).child('members').child($accountId).exists()"
           }
         },
         // Que ha votado en cada encuesta. Vive aqui, en el arbol de quien vota
@@ -571,91 +557,6 @@
               ".validate": false
             }
           }
-        },
-        "$other": {
-          ".validate": false
-        }
-      }
-    },
-    // Grupos. De momento solo hay uno, "Global", y lo crea el admin: aqui no
-    // se pueden crear grupos, solo unirse a los que estan abiertos. Sin estar
-    // dentro no se lee ni se escribe nada, que era justo lo que se pedia.
-    //
-    // La clave publica de cada miembro se copia en su entrada (`pub`) y la
-    // regla la obliga a coincidir con la de su cuenta. No es un capricho: para
-    // cifrar un mensaje hay que envolverlo para los 32 miembros, y leer 32
-    // arboles ajenos seria imposible y lento. Asi es una sola lectura.
-    "groups": {
-      "$groupId": {
-        "meta": {
-          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
-          ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
-          ".validate": "newData.hasChildren(['name', 'open', 'createdAt']) && $groupId.matches(/^[a-z0-9_]{1,32}$/)",
-          "name": {
-            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
-          },
-          "open": {
-            ".validate": "newData.isBoolean()"
-          },
-          "createdAt": {
-            ".validate": "newData.isNumber() && newData.val() > 0"
-          },
-          "$other": {
-            ".validate": false
-          }
-        },
-        "members": {
-          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && data.child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
-          "$memberId": {
-            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $memberId === root.child('allowlist').child(auth.uid).child('accountId').val() && ((!data.exists() && newData.exists() && root.child('groups').child($groupId).child('meta').child('open').val() === true) || (data.exists() && !newData.exists()))",
-            ".validate": "newData.hasChildren(['at', 'pub']) && $memberId.matches(/^[-0-9A-Za-z_]{1,128}$/) && newData.child('pub').val() === root.child('users').child($memberId).child('keys').child('pub').val()",
-            "at": {
-              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
-            },
-            "pub": {
-              ".validate": "newData.isString() && newData.val().length >= 80 && newData.val().length <= 128"
-            },
-            "$other": {
-              ".validate": false
-            }
-          }
-        },
-        "msgs": {
-          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('groups').child($groupId).child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
-          "$msgId": {
-            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $msgId.matches(/^[-0-9A-Za-z_]{20}$/) && root.child('groups').child($groupId).child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() && ((!data.exists() && newData.exists() && newData.child('from').val() === root.child('allowlist').child(auth.uid).child('accountId').val()) || (data.exists() && !newData.exists()))",
-            ".validate": "newData.hasChildren(['at', 'from', 'kind', 'e', 'c', 'k']) && newData.child('k').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
-            "at": {
-              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
-            },
-            "from": {
-              ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,128}$/)"
-            },
-            "kind": {
-              ".validate": "newData.isString() && (newData.val() === 'text' || newData.val() === 'sticker')"
-            },
-            "e": {
-              ".validate": "newData.isString() && newData.val().length >= 80 && newData.val().length <= 128"
-            },
-            "c": {
-              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 8192"
-            },
-            "k": {
-              "$recipient": {
-                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 256 && $recipient.matches(/^[-0-9A-Za-z_]{1,128}$/)"
-              }
-            },
-            "$other": {
-              ".validate": false
-            }
-          }
-        },
-        // Marca del ultimo mensaje, para encender la chapa del canal sin tener
-        // que leerse la conversacion entera.
-        "lastAt": {
-          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
-          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('groups').child($groupId).child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
-          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
         },
         "$other": {
           ".validate": false

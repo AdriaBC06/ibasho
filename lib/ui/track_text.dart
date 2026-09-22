@@ -8,6 +8,8 @@ import '../l10n/gen/app_localizations.dart';
 String describeTrack(L l, MusicTrack track) => switch (track) {
       MusicTrack.plaza => l.trackPlaza,
       MusicTrack.bossa => l.trackBossa,
+      MusicTrack.hanami => l.trackHanami,
+      MusicTrack.sumi => l.trackSumi,
       MusicTrack.calma => l.trackCalma,
       MusicTrack.aurora => l.trackAurora,
       MusicTrack.brisa => l.trackBrisa,

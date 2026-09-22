@@ -1,10 +1,11 @@
-// Ibasho — recorrido visual del Yatai y del buscaminas.
+// Ibasho — recorrido visual del Yatai y de sus juegos.
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Deja en `build/screenshots/juegos/<lienzo>/` cada estado de la tienda y del
 // juego: escaparate de cada pestaña, la compra a medias, el regalo en la
-// rejilla y una partida empezada, perdida y ganada. La partida usa una
+// rejilla, una partida de buscaminas empezada, perdida y ganada, una de
+// Tsumiki de principio a fin y una ronda de Nihongo con aciertos y fallos. La partida usa una
 // semilla fija y una copia de la logica para saber donde tocar.
 //
 //   flutter test test/games_tour_test.dart
@@ -21,6 +22,9 @@ import 'package:ibasho/app.dart';
 import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/games/minesweeper/minesweeper.dart';
 import 'package:ibasho/games/minesweeper/minesweeper_channel.dart';
+import 'package:ibasho/games/nihongo/nihongo_channel.dart';
+import 'package:ibasho/games/nihongo/nihongo_widgets.dart';
+import 'package:ibasho/games/tsumiki/tsumiki_channel.dart';
 import 'package:ibasho/state/providers.dart';
 import 'package:ibasho/storage/settings_store.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -52,6 +56,8 @@ Future<void> main() async {
           ..addFont(bytes('MPLUSRounded1c-Bold.ttf')))
         .load();
     debugMinesweeperSeed = _seed;
+    debugTsumikiSeed = _seed;
+    debugNihongoSeed = _seed;
   });
 
   for (final MapEntry(key: folder, value: size) in _canvases.entries) {
@@ -100,18 +106,20 @@ Future<void> main() async {
       });
     }
 
-    FakeIbashoBackend shopBackend({String? game, int coins = 40}) {
+    FakeIbashoBackend shopBackend({String? game, String gameId = 'minesweeper', int coins = 40}) {
       final backend = FakeIbashoBackend(
         tamas: [sampleTama()],
         profileTamaId: sampleTama().id,
       )
         ..seed('/shop/prices', {
           'game_minesweeper': 0,
+          'game_tsumiki': 10,
+          'game_nihongo': 150,
           for (final food in TamaFood.values) 'food_${food.name}': 3,
         })
         ..seed('/users/${FakeIbashoBackend().uid}/coins', coins);
       if (game != null) {
-        backend.seed('/users/${backend.uid}/games/minesweeper', {
+        backend.seed('/users/${backend.uid}/games/$gameId', {
           'state': game,
           'at': DateTime.now().millisecondsSinceEpoch,
         });
@@ -280,6 +288,118 @@ Future<void> main() async {
         await settle(tester, 60);
         await shoot(tester, 'm4b-ganada');
         expect(mirror.status, MinesweeperStatus.won);
+      });
+      testWidgets('tsumiki: salida, cuenta, partida, pausa y final', (tester) async {
+        await boot(tester, backend: shopBackend(game: 'open', gameId: 'tsumiki'));
+        await settle(tester, 100);
+        await openChannel(tester, 'game-tsumiki');
+        await shoot(tester, 't1-salida');
+        await tester.tap(find.byKey(const ValueKey<String>('tsumiki.level.5')));
+        await settle(tester, 10);
+        await tester.tap(find.byKey(const ValueKey<String>('tsumiki.start')));
+        await settle(tester, 20);
+        await shoot(tester, 't2-cuenta');
+        await settle(tester, 40);
+
+        // Unas piezas repartidas a izquierda y derecha.
+        for (var i = 0; i < 9; i++) {
+          final key = i.isEven ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight;
+          for (var k = 0; k < i % 4 + 1; k++) {
+            await tester.sendKeyEvent(key);
+          }
+          if (i % 3 == 0) await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+          await tester.sendKeyEvent(LogicalKeyboardKey.space);
+          await settle(tester, 4);
+        }
+        await tester.pump(const Duration(milliseconds: 90));
+        await shoot(tester, 't3-jugando');
+
+        await tester.tap(find.byKey(const ValueKey<String>('tsumiki.pause')));
+        await settle(tester, 20);
+        await shoot(tester, 't4-pausa');
+        await tester.tap(find.byKey(const ValueKey<String>('tsumiki.resume')));
+        await settle(tester, 6);
+
+        for (var i = 0; i < 60 && find.byKey(const ValueKey<String>('tsumiki.results')).evaluate().isEmpty; i++) {
+          await tester.sendKeyEvent(LogicalKeyboardKey.space);
+          await settle(tester, 3);
+          if (i == 14) await shoot(tester, 't5-alta');
+        }
+        await settle(tester, 14);
+        await shoot(tester, 't6-fin');
+        await settle(tester, 40);
+        await shoot(tester, 't7-resultados');
+        expect(find.byKey(const ValueKey<String>('tsumiki.results')), findsOneWidget);
+      });
+
+      testWidgets('nihongo: menu, aciertos, fallo, resultados y escribir', (tester) async {
+        await boot(tester, backend: shopBackend(game: 'open', gameId: 'nihongo'));
+        await settle(tester, 100);
+        await openChannel(tester, 'game-nihongo');
+        await shoot(tester, 'n1-menu');
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.category.kanji')));
+        await settle(tester, 20);
+        await shoot(tester, 'n1b-proximamente');
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.chart')));
+        await settle(tester, 20);
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.chart.か')));
+        await settle(tester, 10);
+        await shoot(tester, 'n1c-tabla');
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.chart.script.katakana')));
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.chart.group.combo')));
+        await settle(tester, 10);
+        await shoot(tester, 'n1d-tabla-combinados');
+        expect(find.byKey(const ValueKey<String>('nihongo.chart.キャ')), findsOneWidget);
+        await tester.tap(find.text('menú').last);
+        await settle(tester, 20);
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.category.hiragana')));
+        await settle(tester, 10);
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.group.dakuten')));
+        await settle(tester, 10);
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.start')));
+        await settle(tester, 30);
+        await shoot(tester, 'n2-tarjeta');
+
+        String reading() => tester.widget<KanaCard>(find.byType(KanaCard).last).reading;
+        Finder choice({required bool right}) {
+          final r = reading();
+          for (var i = 0; i < 4; i++) {
+            final f = find.byKey(ValueKey<String>('nihongo.choice.$i'));
+            final label = tester.widget<AnswerTile>(f).label;
+            if ((label == r) == right) return f;
+          }
+          throw StateError('sin opcion');
+        }
+
+        await tester.tap(choice(right: true));
+        await settle(tester, 8);
+        await shoot(tester, 'n3-acierto');
+        await settle(tester, 30);
+        await tester.tap(choice(right: false));
+        await settle(tester, 14);
+        await shoot(tester, 'n4-fallo');
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.next')));
+        await settle(tester, 20);
+        for (var i = 0; i < 8; i++) {
+          await tester.tap(choice(right: true));
+          await settle(tester, 30);
+        }
+        await settle(tester, 20);
+        await shoot(tester, 'n5-resultados');
+
+        // Modo escribir.
+        await tester.tap(find.text('menú').last);
+        await settle(tester, 20);
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.category.katakana')));
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.mode.write')));
+        await settle(tester, 10);
+        await shoot(tester, 'n6-menu-katakana');
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.start')));
+        await settle(tester, 30);
+        await tester.enterText(find.byType(EditableText), 'xx');
+        await tester.tap(find.byKey(const ValueKey<String>('nihongo.check')));
+        await settle(tester, 20);
+        await shoot(tester, 'n7-escribir-fallo');
       });
     });
   }

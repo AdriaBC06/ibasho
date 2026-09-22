@@ -37,15 +37,25 @@ import '../channel_route.dart';
 /// Las tres secciones, en el mismo orden que en el catalogo.
 enum _Tab { games, tamas, gacha }
 
-/// La ilustracion de un juego. Cuando haya mas juegos, esto crece con ellos
-/// igual que `gameChannelRegistry` en `channel.dart`.
+/// La ilustracion, el nombre y la descripcion de un juego. Crecen con
+/// `gameChannelRegistry` en `channel.dart`.
 ArtIcon _gameArt(String gameId) => switch (gameId) {
+      'tsumiki' => ArtIcon.tsumiki,
+      'nihongo' => ArtIcon.nihongo,
       _ => ArtIcon.minesweeper,
     };
 
 String _gameTitle(L l, String gameId) => switch (gameId) {
       'minesweeper' => l.minesweeperTitle,
+      'tsumiki' => l.tsumikiTitle,
+      'nihongo' => l.nihongoTitle,
       _ => gameId,
+    };
+
+String _gameDesc(L l, String gameId) => switch (gameId) {
+      'tsumiki' => l.yataiDescTsumiki,
+      'nihongo' => l.yataiDescNihongo,
+      _ => l.yataiDescGame,
     };
 
 String _coins(BuildContext context, int n) =>
@@ -535,7 +545,7 @@ class _Showcase extends StatelessWidget {
     final owned = it.gameId != null && shop.games.containsKey(it.gameId);
     final price = shop.prices[it.id];
     final name = it.food != null ? foodLabel(l, it.food!) : _gameTitle(l, it.gameId!);
-    final description = it.food != null ? l.yataiDescFood : l.yataiDescGame;
+    final description = it.food != null ? l.yataiDescFood : _gameDesc(l, it.gameId!);
 
     final String actionLabel;
     final bool actionEnabled;

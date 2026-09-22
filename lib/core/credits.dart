@@ -55,7 +55,7 @@ const List<CreditEntry> fontCredits = <CreditEntry>[
 
 const List<CreditEntry> audioCredits = <CreditEntry>[
   CreditEntry(
-    title: 'plaza · calma · aurora · brisa · noche',
+    title: 'plaza · hanami · sumi · calma · aurora · brisa · noche',
     author: _me,
     license: 'CC0 1.0',
     url: 'tool/gen_audio.py',

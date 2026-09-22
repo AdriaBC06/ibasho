@@ -117,6 +117,8 @@ Future<int> main() async {
     // Precios del Yatai, los mismos que carga tool/seed_shop.dart en produccion.
     tree['shop/prices'] = {
       'game_minesweeper': 0,
+      'game_tsumiki': 10,
+      'game_nihongo': 150,
       'food_cookie': 3,
       'food_candy': 3,
     };
