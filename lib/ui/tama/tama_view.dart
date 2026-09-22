@@ -62,6 +62,9 @@ class TamaViewController {
 
   /// Que diga algo.
   void speak([ChirpKind kind = ChirpKind.hello]) => _state?._speak(kind);
+
+  /// Un saltito, sin decir nada: para reaccionar a lo que pasa en un juego.
+  void hop() => _state?._animator.poke();
 }
 
 /// Un Tama vivo: respira, parpadea, mira y reacciona.

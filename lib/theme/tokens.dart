@@ -212,6 +212,24 @@ abstract final class T {
   /// Sombra del rebaje del bisel alrededor de cada pantalla.
   static const Color bezelRecess = Color(0x2E3A4750);
 
+  // --- Buscaminas --------------------------------------------------------
+
+  /// Colores de los numeros del tablero, del 1 al 8. Cada uno se distingue
+  /// de sus vecinos a primera vista y todos se leen sobre el hueco claro.
+  static const List<Color> mineNumbers = <Color>[
+    Color(0xFF2F8FDB),
+    Color(0xFF2FA86B),
+    Color(0xFFE5484D),
+    Color(0xFF7A55D1),
+    Color(0xFFD9811A),
+    Color(0xFF14999B),
+    Color(0xFF3A4750),
+    Color(0xFF7C8B97),
+  ];
+
+  /// La casilla que exploto.
+  static const Color mineBoom = Color(0xFFFFB3A8);
+
   // --- Geometria ---------------------------------------------------------
   /// El entorno entero se dibuja sobre este lienzo y se escala con FittedBox.
   static const Size canvas = Size(1280, 800);

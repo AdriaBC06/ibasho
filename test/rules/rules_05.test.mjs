@@ -239,3 +239,116 @@ test('un desconocido no puede firmarse el recibo de otra cuenta', async () => {
   );
   assert.ok(true);
 });
+
+// --- Premios de los juegos -------------------------------------------------
+
+const DAY = 86400000;
+const today = () => Math.floor(Date.now() / DAY);
+
+async function giveMinesweeper(uid) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${uid}/games/minesweeper`), {
+      state: 'open',
+      at: now - 1000,
+    });
+  });
+}
+
+const claim = (uid, { earned, coins, day = today(), game = 'minesweeper' }) =>
+  update(ref(db(uid), '/'), {
+    [`users/${uid}/rewards`]: { game, day, earned, at: serverTimestamp() },
+    [`users/${uid}/coins`]: coins,
+  });
+
+test('ganar al buscaminas cobra el premio y sube las monedas lo mismo', async () => {
+  await giveMinesweeper(ANA);
+  await assertSucceeds(claim(ANA, { earned: 5, coins: 105 }));
+});
+
+test('sin el juego no hay premio', async () => {
+  await assertFails(claim(ANA, { earned: 5, coins: 105 }));
+});
+
+test('el premio solo vale 3, 5 u 8, y las monedas tienen que cuadrar', async () => {
+  await giveMinesweeper(ANA);
+  await assertFails(claim(ANA, { earned: 20, coins: 120 }));
+  await assertFails(claim(ANA, { earned: 4, coins: 104 }));
+  await assertFails(claim(ANA, { earned: 5, coins: 110 }));
+  // Tocar el premio sin mover las monedas tampoco.
+  await assertFails(
+    set(ref(db(ANA), `/users/${ANA}/rewards`), {
+      game: 'minesweeper',
+      day: today(),
+      earned: 5,
+      at: serverTimestamp(),
+    }),
+  );
+});
+
+test('las monedas no suben sin un premio fresco', async () => {
+  await giveMinesweeper(ANA);
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/coins`), 105));
+});
+
+test('el tope diario es de 20, y se puede llegar justo a el', async () => {
+  await giveMinesweeper(ANA);
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/rewards`), {
+      game: 'minesweeper',
+      day: today(),
+      earned: 16,
+      at: now - 60000,
+    });
+  });
+  // 16 + 8 pasaria de 20.
+  await assertFails(claim(ANA, { earned: 24, coins: 108 }));
+  // Completar hasta 20 si que vale.
+  await assertSucceeds(claim(ANA, { earned: 20, coins: 104 }));
+});
+
+test('un dia nuevo empieza de cero', async () => {
+  await giveMinesweeper(ANA);
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/rewards`), {
+      game: 'minesweeper',
+      day: today() - 1,
+      earned: 20,
+      at: now - 60000,
+    });
+  });
+  await assertSucceeds(claim(ANA, { earned: 8, coins: 108 }));
+});
+
+test('no se puede cobrar con un dia que no es hoy', async () => {
+  await giveMinesweeper(ANA);
+  await assertFails(claim(ANA, { earned: 5, coins: 105, day: today() + 1 }));
+  await assertFails(claim(ANA, { earned: 5, coins: 105, day: today() - 1 }));
+});
+
+test('entre dos cobros tienen que pasar 15 segundos', async () => {
+  await giveMinesweeper(ANA);
+  await assertSucceeds(claim(ANA, { earned: 5, coins: 105 }));
+  await assertFails(claim(ANA, { earned: 10, coins: 110 }));
+});
+
+test('nadie cobra premios en nombre de otra cuenta', async () => {
+  await giveMinesweeper(ANA);
+  await assertFails(
+    update(ref(db(LUIS), '/'), {
+      [`users/${ANA}/rewards`]: { game: 'minesweeper', day: today(), earned: 5, at: serverTimestamp() },
+      [`users/${ANA}/coins`]: 105,
+    }),
+  );
+});
+
+test('una compra sigue funcionando despues de cobrar un premio', async () => {
+  await giveMinesweeper(ANA);
+  await assertSucceeds(claim(ANA, { earned: 5, coins: 105 }));
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/shop/last`]: { item: 'food_cookie', qty: 1, at: serverTimestamp() },
+      [`users/${ANA}/coins`]: 102,
+      [`users/${ANA}/pantry/cookie`]: 6,
+    }),
+  );
+});

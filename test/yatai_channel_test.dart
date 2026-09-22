@@ -110,7 +110,8 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey<String>('yatai.item.food_cookie')));
     await tester.pumpAndSettle();
-    expect(find.text('5'), findsWidgets); // unidades actuales, en el escaparate y la baldosa
+    expect(find.text('×5'), findsWidgets); // unidades actuales, en las baldosas
+    expect(find.text('tienes 5'), findsOneWidget); // y en el escaparate
 
     await tester.tap(find.byKey(const ValueKey<String>('yatai.buy')));
     await tester.pumpAndSettle();

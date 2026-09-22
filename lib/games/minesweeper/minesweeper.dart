@@ -46,8 +46,13 @@ class MinesweeperCell {
 /// nunca en esa casilla ni en sus vecinas, asi que el primer click siempre es
 /// seguro. A partir de ahi todo es determinista salvo la semilla del azar, que
 /// se puede fijar para que un test reproduzca la misma partida.
+///
+/// Con [start] las minas se colocan ya al crear la partida, dejando libre esa
+/// casilla y sus vecinas: asi el tablero del dia es el mismo para todo el
+/// mundo, empiece donde empiece cada cual, y [start] es la casilla que se
+/// ofrece como salida segura.
 class MinesweeperGame {
-  MinesweeperGame(this.level, {int? seed})
+  MinesweeperGame(this.level, {int? seed, this.start})
       : width = level.width,
         height = level.height,
         mines = level.mines,
@@ -55,7 +60,36 @@ class MinesweeperGame {
         cells = List.generate(
           level.height,
           (_) => List.generate(level.width, (_) => MinesweeperCell()),
-        );
+        ) {
+    final s = start;
+    if (s != null) {
+      _placeMines(s.$1, s.$2);
+      _minesPlaced = true;
+    }
+  }
+
+  /// El tablero del dia: nivel medio, misma semilla y misma salida para toda
+  /// la gente el mismo dia (en su calendario local).
+  factory MinesweeperGame.daily(DateTime day) {
+    final seed = dailySeed(day);
+    final pick = Random(seed ^ 0x5eed);
+    const level = MinesweeperLevel.medium;
+    final start = (1 + pick.nextInt(level.width - 2), 1 + pick.nextInt(level.height - 2));
+    return MinesweeperGame(level, seed: seed, start: start);
+  }
+
+  /// La semilla de un dia: aaaammdd, que no depende de la zona horaria de
+  /// nadie mas.
+  static int dailySeed(DateTime day) => day.year * 10000 + day.month * 100 + day.day;
+
+  /// Casilla de salida segura, si la partida se creo con una.
+  final (int, int)? start;
+
+  bool _minesPlaced = false;
+
+  /// Si en algun momento de la partida se puso una bandera (las que se
+  /// ponen solas al ganar no cuentan).
+  bool usedFlags = false;
 
   final MinesweeperLevel level;
   final int width;
@@ -81,6 +115,9 @@ class MinesweeperGame {
   bool get isOver => status == MinesweeperStatus.won || status == MinesweeperStatus.lost;
 
   int get minesLeft => mines - flagsPlaced;
+
+  /// Casillas seguras que quedan por destapar.
+  int get safeLeft => width * height - mines - _revealedSafe;
 
   MinesweeperCell cellAt(int x, int y) => cells[y][x];
 
@@ -131,7 +168,8 @@ class MinesweeperGame {
     if (cell.flagged) return;
 
     if (status == MinesweeperStatus.ready) {
-      _placeMines(x, y);
+      if (!_minesPlaced) _placeMines(x, y);
+      _minesPlaced = true;
       status = MinesweeperStatus.playing;
     }
 
@@ -187,6 +225,7 @@ class MinesweeperGame {
     if (cell.revealed) return;
     cell.flagged = !cell.flagged;
     flagsPlaced += cell.flagged ? 1 : -1;
+    if (cell.flagged) usedFlags = true;
   }
 
   void _lose(int x, int y) {

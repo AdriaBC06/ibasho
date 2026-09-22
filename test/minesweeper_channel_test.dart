@@ -85,6 +85,9 @@ void main() {
     await _boot(tester, const Size(360, 780));
     await tester.pumpAndSettle();
 
+    // En vertical los tableros se eligen en un dialogo.
+    await tester.tap(find.byKey(const ValueKey<String>('minesweeper.levels')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey<String>('minesweeper.level.hard')));
     await tester.pumpAndSettle();
 

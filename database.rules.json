@@ -351,13 +351,43 @@
         // bajarlas ella misma, pero solo dentro de la misma escritura que dan
         // el recibo de una compra: `shop/last` tiene que quedar con `at ===
         // now` en esa misma operacion, y el descuento tiene que cuadrar con
-        // exactitud (vieja - precio*cantidad). Nunca se puede subir sola: la
-        // unica forma de que suban sin un admin de por medio no existe. Las
-        // leen la dueña y sus amigos.
+        // exactitud (vieja - precio*cantidad). Desde la 0.5.0 tambien puede
+        // subirlas, pero solo cobrando un premio de un juego: `rewards` tiene
+        // que quedar con `at === now` en la misma escritura y la subida tiene
+        // que ser justo lo que `rewards.earned` crece ese dia (ver `rewards`).
+        // Las leen la dueña y sus amigos.
         "coins": {
           ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (root.child('admins').child(auth.uid).exists() || root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists())",
-          ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.parent().child('shop').child('last').child('at').val() === now))",
-          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999 && (root.child('admins').child(auth.uid).exists() || newData.val() === (data.exists() ? data.val() : 0) - root.child('shop').child('prices').child(newData.parent().child('shop').child('last').child('item').val()).val() * newData.parent().child('shop').child('last').child('qty').val())"
+          ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (newData.parent().child('shop').child('last').child('at').val() === now || newData.parent().child('rewards').child('at').val() === now)))",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999 && (root.child('admins').child(auth.uid).exists() || (newData.parent().child('shop').child('last').child('at').val() === now && newData.val() === (data.exists() ? data.val() : 0) - root.child('shop').child('prices').child(newData.parent().child('shop').child('last').child('item').val()).val() * newData.parent().child('shop').child('last').child('qty').val()) || (newData.parent().child('rewards').child('at').val() === now && newData.val() === (data.exists() ? data.val() : 0) + newData.parent().child('rewards').child('earned').val() - (data.parent().child('rewards').child('day').val() === newData.parent().child('rewards').child('day').val() ? data.parent().child('rewards').child('earned').val() : 0)))"
+        },
+        // Premios de los juegos: `{game, day, earned, at}`. `day` es el dia
+        // UTC (`floor(now / 86400000)`) y `earned` las monedas cobradas ese
+        // dia. Cada cobro sube `earned` en 3, 5 u 8 (lo que da cada nivel), o
+        // en menos si con eso se llega justo al tope de 20; un dia nuevo
+        // empieza de cero. Hace falta tener el juego, dejar 15 s desde el
+        // cobro anterior, y que `coins` suba exactamente lo mismo en la misma
+        // escritura. No se puede comprobar que la partida se gano de verdad:
+        // lo que protege es el techo diario, que es bajo.
+        "rewards": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+          ".validate": "newData.hasChildren(['game', 'day', 'earned', 'at']) && newData.child('at').val() === now && root.child('users').child($accountId).child('games').child(newData.child('game').val()).exists() && newData.child('day').val() * 86400000 <= now && (newData.child('day').val() + 1) * 86400000 > now && (!data.exists() || now - data.child('at').val() >= 15000) && ((newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) === 3 || newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) === 5 || newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) === 8) || (newData.child('earned').val() === 20 && newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) > 0 && newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0) < 8)) && newData.parent().child('coins').val() === (data.parent().child('coins').exists() ? data.parent().child('coins').val() : 0) + newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)",
+          "game": {
+            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,32}$/)"
+          },
+          "day": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+          },
+          "earned": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 20"
+          },
+          "at": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         // El recibo de la ultima compra: `{item, qty, at}`. Es la dueña quien
         // lo escribe, siempre dentro de la misma operacion multi-ruta que

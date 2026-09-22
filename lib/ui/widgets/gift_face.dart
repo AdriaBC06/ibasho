@@ -1,4 +1,4 @@
-// Ibasho — la cara de un regalo envuelto.
+// Ibasho — la cara de un regalo envuelto, y como se abre.
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -6,122 +6,161 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
-/// Un regalo envuelto que llena todo su espacio: un caramelo grande de papel
-/// azul con lunares, las dos puntas retorcidas y una estrella dorada de
-/// pegatina. Colores propios: un regalo se ve igual con cualquier acento.
+import 'channel_art.dart';
+
+/// Un regalo envuelto que llena todo su espacio, como los de la 3DS: una caja
+/// de papel cielo con lunares, cinta rosa en cruz y un lazo grande encima.
+///
+/// [open] va de 0 (cerrado) a 1 (abierto del todo): el lazo se deshace, la
+/// tapa salta girando, salen destellos de la boca de la caja y la caja se
+/// desvanece para dejar ver lo que habia dentro. Colores propios: un regalo
+/// se ve igual con cualquier acento.
 class GiftFace extends StatelessWidget {
-  const GiftFace({super.key});
+  const GiftFace({super.key, this.open = 0});
+
+  final double open;
 
   @override
-  Widget build(BuildContext context) {
-    return const SizedBox.expand(child: CustomPaint(painter: _GiftPainter()));
-  }
+  Widget build(BuildContext context) =>
+      SizedBox.expand(child: CustomPaint(painter: _GiftPainter(open)));
 }
 
 class _GiftPainter extends CustomPainter {
-  const _GiftPainter();
+  const _GiftPainter(this.open);
 
-  static const Color _paperTop = Color(0xFF7FD6F7);
-  static const Color _paperBottom = Color(0xFF3BA9E0);
-  static const Color _twist = Color(0xFF2E8FC6);
-  static const Color _edge = Color(0xFF1F6F9E);
-  static const Color _dot = Color(0xB3FFFFFF);
-  static const Color _star = Color(0xFFFFD25A);
-  static const Color _starEdge = Color(0xFFE0A21F);
+  final double open;
+
+  static const Color _paper = Color(0xFF7FD3F7);
+  static const Color _ribbon = Color(0xFFF4739E);
+  static const Color _dot = Color(0xCCFFFFFF);
+
+  static double _seg(double t, double a, double b) =>
+      ((t - a) / (b - a)).clamp(0.0, 1.0);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final cy = h * .5;
+    // El regalo vive en un cuadrado centrado; en una baldosa apaisada se
+    // queda en el centro con aire a los lados.
+    final side = math.min(size.width, size.height * 1.08);
+    final s = side / 100;
+    canvas.save();
+    canvas.translate((size.width - 100 * s) / 2, (size.height - 100 * s) / 2 + 2 * s);
+    canvas.scale(s);
 
-    final edge = Paint()
-      ..color = _edge
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * .02
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
+    final bowT = _seg(open, 0, .35);
+    final lidT = Curves.easeOutCubic.transform(_seg(open, .18, .7));
+    final boxT = _seg(open, .55, 1);
+    final burstT = _seg(open, .3, 1);
 
-    // Las puntas retorcidas: un abanico plegado a cada lado del cuerpo.
-    void twist(double side) {
-      final root = w * (side < 0 ? .27 : .73);
-      final tip = w * (side < 0 ? .04 : .96);
-      final mid = w * (side < 0 ? .11 : .89);
-      final path = Path()
-        ..moveTo(root, cy - h * .11)
-        ..lineTo(tip, cy - h * .27)
-        ..quadraticBezierTo(mid, cy, tip, cy + h * .27)
-        ..lineTo(root, cy + h * .11)
-        ..close();
-      canvas.drawPath(path, Paint()..color = _twist);
-      canvas.drawPath(path, edge);
-      for (final k in [-.14, 0.0, .14]) {
-        canvas.drawLine(
-          Offset(root, cy + h * k * .5),
-          Offset(mid, cy + h * k),
-          edge..strokeWidth = w * .012,
-        );
+    canvas.saveLayer(const Rect.fromLTWH(-40, -60, 180, 200),
+        Paint()..color = Color.fromRGBO(0, 0, 0, 1 - boxT));
+
+    paintGroundShadow(canvas, const Offset(50, 91), 72 * (1 - boxT * .3));
+
+    // Caja: cara frontal.
+    const body = Rect.fromLTWH(20, 42, 60, 46);
+    final bodyPath = Path()..addRRect(RRect.fromRectAndRadius(body, const Radius.circular(8)));
+    paintPlastic(canvas, bodyPath, _paper, edge: 2.2, shine: .5);
+    _dots(canvas, bodyPath, body);
+    // Cinta vertical de la caja.
+    final band = Path()..addRect(const Rect.fromLTWH(44, 42, 12, 46));
+    canvas.save();
+    canvas.clipPath(bodyPath);
+    paintPlastic(canvas, band, _ribbon, edge: 1.4, shine: .7);
+    canvas.restore();
+
+    // Destellos saliendo de la caja abierta.
+    if (burstT > 0 && burstT < 1) {
+      final rnd = math.Random(3);
+      for (var i = 0; i < 9; i++) {
+        final a = -math.pi / 2 + (rnd.nextDouble() - .5) * 2.1;
+        final d = 12 + 46 * Curves.easeOut.transform(burstT) * (.6 + rnd.nextDouble() * .5);
+        final c = const Offset(50, 42) + Offset(math.cos(a), math.sin(a)) * d;
+        final fade = 1 - burstT;
+        paintTwinkle(canvas, c, (3 + rnd.nextDouble() * 4) * (.4 + fade),
+            Art.capsules[i % Art.capsules.length].withValues(alpha: fade));
       }
-      edge.strokeWidth = w * .02;
     }
 
-    twist(-1);
-    twist(1);
-
-    final body = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * .24, h * .17, w * .52, h * .66),
-      Radius.circular(w * .2),
-    );
-    canvas.drawRRect(
-      body,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [_paperTop, _paperBottom],
-        ).createShader(body.outerRect),
-    );
-
-    // Lunares, recortados por el cuerpo.
+    // La tapa: salta hacia arriba y a la izquierda girando.
     canvas.save();
-    canvas.clipRRect(body);
-    final dots = Paint()..color = _dot;
-    for (final d in const [
-      Offset(.32, .28),
-      Offset(.62, .25),
-      Offset(.7, .5),
-      Offset(.3, .62),
-      Offset(.55, .76),
-      Offset(.42, .44),
-    ]) {
-      canvas.drawCircle(Offset(w * d.dx, h * d.dy), w * .028, dots);
+    const pivot = Offset(50, 38);
+    canvas.translate(pivot.dx - lidT * 16, pivot.dy - lidT * 34);
+    canvas.rotate(-lidT * .55);
+    canvas.translate(-pivot.dx, -pivot.dy);
+    if (lidT > 0) {
+      canvas.saveLayer(const Rect.fromLTWH(-20, -40, 140, 120),
+          Paint()..color = Color.fromRGBO(0, 0, 0, 1 - _seg(open, .5, .8)));
+    }
+    const lid = Rect.fromLTWH(15, 32, 70, 14);
+    final lidPath = Path()..addRRect(RRect.fromRectAndRadius(lid, const Radius.circular(6)));
+    paintPlastic(canvas, lidPath, _paper, edge: 2.2);
+    _dots(canvas, lidPath, lid);
+    canvas.save();
+    canvas.clipPath(lidPath);
+    paintPlastic(canvas, Path()..addRect(const Rect.fromLTWH(44, 32, 12, 14)), _ribbon, edge: 1.4, shine: .8);
+    canvas.restore();
+    _bow(canvas, const Offset(50, 31), 1 - bowT);
+    if (lidT > 0) canvas.restore();
+    canvas.restore();
+
+    canvas.restore();
+    canvas.restore();
+  }
+
+  void _dots(Canvas canvas, Path clip, Rect r) {
+    canvas.save();
+    canvas.clipPath(clip);
+    final dot = Paint()..color = _dot;
+    for (var y = r.top + 6; y < r.bottom; y += 11) {
+      final row = ((y - r.top) / 11).round();
+      for (var x = r.left + (row.isOdd ? 11.0 : 5.5); x < r.right; x += 11) {
+        canvas.drawCircle(Offset(x, y), 1.9, dot);
+      }
     }
     canvas.restore();
-    canvas.drawRRect(body, edge);
+  }
 
-    // Pegatina: una estrella de cinco puntas en el centro.
-    final star = Path();
-    final centre = Offset(w * .5, cy);
-    final outer = w * .12;
-    final inner = outer * .46;
-    for (var i = 0; i < 10; i++) {
-      final r = i.isEven ? outer : inner;
-      final a = -math.pi / 2 + i * math.pi / 5;
-      final p = centre + Offset(math.cos(a), math.sin(a)) * r;
-      i == 0 ? star.moveTo(p.dx, p.dy) : star.lineTo(p.dx, p.dy);
+  /// El lazo: dos lazadas, dos colas y el nudo. [tied] a 0 lo deshace: las
+  /// lazadas encogen y las colas se abren.
+  void _bow(Canvas canvas, Offset c, double tied) {
+    if (tied <= 0) return;
+    final spread = 1 - tied;
+    for (final side in [-1.0, 1.0]) {
+      // Cola.
+      final tail = Path()
+        ..moveTo(c.dx + side * 2, c.dy + 2)
+        ..lineTo(c.dx + side * (9 + spread * 8), c.dy + 16 + spread * 6)
+        ..lineTo(c.dx + side * (5 + spread * 8), c.dy + 18 + spread * 6)
+        ..lineTo(c.dx + side * (1 + spread * 3), c.dy + 13)
+        ..close();
+      paintPlastic(canvas, tail, Art.deep(_ribbon, .08), edge: 1.3, shine: .3);
     }
-    star.close();
-    canvas.drawPath(star, Paint()..color = _star);
-    canvas.drawPath(
-      star,
-      Paint()
-        ..color = _starEdge
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = w * .016
-        ..strokeJoin = StrokeJoin.round,
-    );
+    for (final side in [-1.0, 1.0]) {
+      final w = 17 * tied;
+      final loop = Path()
+        ..moveTo(c.dx, c.dy)
+        ..cubicTo(c.dx + side * w * .6, c.dy - 17 * tied, c.dx + side * w * 1.3, c.dy - 10 * tied,
+            c.dx + side * w, c.dy + 1)
+        ..cubicTo(c.dx + side * w * .8, c.dy + 6 * tied, c.dx + side * w * .3, c.dy + 4 * tied, c.dx, c.dy)
+        ..close();
+      paintPlastic(canvas, loop, _ribbon, edge: 1.5, shine: .8);
+      // Pliegue interior.
+      canvas.drawPath(
+        Path()
+          ..moveTo(c.dx + side * 3, c.dy - 1)
+          ..quadraticBezierTo(c.dx + side * w * .55, c.dy - 7 * tied, c.dx + side * w * .8, c.dy - 1),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..strokeCap = StrokeCap.round
+          ..color = Art.deep(_ribbon, .3),
+      );
+    }
+    paintPlastic(canvas, Path()..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: c, width: 9 * tied + 2, height: 8 * tied + 2), const Radius.circular(3))),
+        _ribbon, edge: 1.4);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(_GiftPainter old) => old.open != open;
 }

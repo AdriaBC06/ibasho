@@ -15,6 +15,7 @@ import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../social/social_widgets.dart';
+import '../widgets/channel_art.dart';
 import '../widgets/glyphs.dart';
 import '../widgets/gift_face.dart';
 import '../widgets/gloss.dart';
@@ -67,7 +68,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
   /// El desenvuelto: de 0 (regalo cerrado) a 1 (icono del juego a la vista).
   late final AnimationController _unwrap = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 620),
+    duration: const Duration(milliseconds: 1100),
   );
 
   /// Se pone a `true` en cuanto termina la animacion, para que el tile se
@@ -114,9 +115,11 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
     final skin = IbashoSkin.of(context);
     final anchor = _anchor;
     final showingGift = spec.gift && !_revealed;
-    // El regalo cerrado es una baldosa clara, sin el acento del entorno.
-    final wrapped = showingGift && _unwrap.value < .5;
-    final tint = spec.empty || wrapped ? null : skin.accent;
+    // El regalo y los iconos ilustrados van sobre plastico blanco, sin el
+    // acento del entorno: sus colores propios son los que mandan.
+    final art = spec.art;
+    final plain = spec.empty || showingGift || art != null;
+    final tint = plain ? null : skin.accent;
     final badge = spec.badge == null ? 0 : ref.watch(spec.badge!);
 
     return Pressable(
@@ -131,6 +134,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
               glyph: spec.glyph,
               label: spec.label(l),
               builder: spec.builder,
+              art: art,
             ),
       builder: (context, state) {
         // Curva elastica en la elevacion: es lo que hace que el icono parezca
@@ -143,19 +147,21 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
 
         Widget content() {
           final size = height * (compact || widget.glyphOnly ? .5 : .38);
-          final glyph = GlyphIcon(
-            spec.glyph,
-            size: size,
-            color: spec.empty ? T.inkSoft : T.onAccent,
-          );
+          final Widget glyph = art != null
+              ? ArtIconView(art, size: height * (compact || widget.glyphOnly ? .7 : .54))
+              : GlyphIcon(
+                  spec.glyph,
+                  size: size,
+                  color: spec.empty ? T.inkSoft : T.onAccent,
+                );
           if (compact || widget.glyphOnly) return Center(child: glyph);
           return Padding(
-            padding: EdgeInsets.all(height * .12),
+            padding: EdgeInsets.all(height * (art != null ? .07 : .12)),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                glyph,
-                SizedBox(height: height * .09),
+                art != null ? Flexible(child: FittedBox(child: glyph)) : glyph,
+                SizedBox(height: art != null ? height * .03 : height * .09),
                 Text(
                   spec.label(l),
                   maxLines: 1,
@@ -163,7 +169,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
                   style: Ty.body.copyWith(
                     fontSize: math.max(11, height * .115),
                     fontWeight: FontWeight.w500,
-                    color: spec.empty ? T.inkSoft : T.onAccent,
+                    color: spec.empty ? T.inkSoft : (art != null ? T.ink : T.onAccent),
                     height: 1.1,
                   ),
                 ),
@@ -176,22 +182,24 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
           if (!spec.gift || (_revealed && !_unwrap.isAnimating)) {
             return content();
           }
-          // El icono del juego asoma a medida que el regalo se abre: el
-          // regalo crece un poco y se desvanece.
+          // El regalo se abre (lazo, tapa, destellos) y el icono del juego
+          // sube desde dentro de la caja con un rebote.
+          final rise = Curves.easeOutBack.transform(((unwrapT - .45) / .55).clamp(0.0, 1.0));
           return Stack(
             fit: StackFit.expand,
             children: [
-              Opacity(
-                opacity: ((unwrapT - .3) / .7).clamp(0.0, 1.0),
-                child: content(),
-              ),
-              if (unwrapT < 1)
+              if (unwrapT > .45)
                 Opacity(
-                  opacity: (1 - unwrapT * 1.4).clamp(0.0, 1.0),
-                  child: Transform.scale(
-                    scale: 1 + unwrapT * .35,
-                    child: const GiftFace(),
+                  opacity: rise.clamp(0.0, 1.0),
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - rise) * height * .3),
+                    child: Transform.scale(scale: .6 + .4 * rise, child: content()),
                   ),
+                ),
+              if (unwrapT < 1)
+                Padding(
+                  padding: EdgeInsets.all(height * .06),
+                  child: GiftFace(open: unwrapT),
                 ),
             ],
           );
@@ -218,7 +226,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
                     recessed: spec.empty,
                     elevation: spec.empty ? 0 : 1 + ease * 1.1,
                     specular: spec.empty ? 0 : 1 - state.press * .35,
-                    borderColor: spec.empty || wrapped
+                    borderColor: plain
                         ? T.hairline
                         : Color.lerp(skin.accent, T.dusk, .36)!,
                     sink: state.press * 1.5,

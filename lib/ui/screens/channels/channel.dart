@@ -9,6 +9,7 @@ import '../../../backend/shop.dart';
 import '../../../games/minesweeper/minesweeper_channel.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
+import '../../widgets/channel_art.dart';
 import '../../widgets/glyphs.dart';
 import 'admin_channel.dart';
 import 'coming_soon_channel.dart';
@@ -34,10 +35,15 @@ class ChannelSpec {
     this.badge,
     this.gift = false,
     this.gameId,
+    this.art,
   });
 
   final String id;
   final Glyph glyph;
+
+  /// Icono ilustrado a color. Lo llevan lo que se compra o se juega (el
+  /// Yatai y los juegos); los canales del sistema se quedan con [glyph].
+  final ArtIcon? art;
   final String Function(L) label;
   final WidgetBuilder builder;
 
@@ -61,11 +67,13 @@ class ChannelSpec {
 class GameChannelEntry {
   const GameChannelEntry({
     required this.glyph,
+    required this.art,
     required this.label,
     required this.builder,
   });
 
   final Glyph glyph;
+  final ArtIcon art;
   final String Function(L) label;
   final WidgetBuilder builder;
 }
@@ -75,6 +83,7 @@ class GameChannelEntry {
 final Map<String, GameChannelEntry> gameChannelRegistry = <String, GameChannelEntry>{
   'minesweeper': GameChannelEntry(
     glyph: Glyph.mine,
+    art: ArtIcon.minesweeper,
     label: (l) => l.channelMinesweeper,
     builder: (_) => const MinesweeperChannel(),
   ),
@@ -154,6 +163,7 @@ List<ChannelSpec> channelsFor({
       ChannelSpec(
         id: 'yatai',
         glyph: Glyph.yatai,
+        art: ArtIcon.yatai,
         label: (l) => l.channelYatai,
         builder: (_) => const YataiChannel(),
       ),
@@ -161,6 +171,7 @@ List<ChannelSpec> channelsFor({
         ChannelSpec(
           id: 'game-${entry.key}',
           glyph: gameChannelRegistry[entry.key]!.glyph,
+          art: gameChannelRegistry[entry.key]!.art,
           label: gameChannelRegistry[entry.key]!.label,
           builder: gameChannelRegistry[entry.key]!.builder,
           gift: entry.value.isGift,

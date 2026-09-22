@@ -76,13 +76,14 @@ lib/
     conversation.dart  ConversationController: una conversación abierta (descifrar, mandar, podar)
     news.dart          NewsController: tablón, voto anónimo y publicación (admin)
     suggestions.dart   SuggestionsController: buzón, veredicto y apertura (admin)
-    coins.dart         CoinsController: el monedero (lo da solo un admin)
+    coins.dart         CoinsController: el monedero (lo da un admin; la dueña gasta y cobra premios)
     shop.dart          ShopController: precios, juegos comprados, compra y desenvolver
+    rewards.dart       RewardsController: premios de los juegos, con tope diario
     preferences.dart   PreferencesController
     system_status.dart Clock y SystemStatusController (batería y conexión)
     debug.dart         DebugController
   games/               los juegos que activa el Yatai: lógica pura y su canal
-    minesweeper/       buscaminas: minesweeper.dart (tablero y reglas), minesweeper_channel.dart (las dos pantallas), minesweeper_store.dart (récords locales)
+    minesweeper/       buscaminas: minesweeper.dart (tablero, reglas y tablero del día), minesweeper_channel.dart (la escena), minesweeper_board.dart (casillas y efectos), minesweeper_widgets.dart (escenario, marcadores, niveles, resultados), minesweeper_store.dart (récords y medallas locales)
   storage/
     secure_store.dart  sesión cifrada (libsecret o archivo AES-256-GCM)
     settings_store.dart preferencias locales en JSON
@@ -192,6 +193,7 @@ abierto al pasar a bloqueado); si no, la pantalla de la fase de sesión.
 | `unlockedFoodsProvider` | `Provider<Set<TamaFood>>` | chuches con `unlockedByDefault` (galleta y caramelo) |
 | `pantryProvider` | `StateNotifierProvider<PantryController, Map<TamaFood, int>>` | unidades de cada comida (`/users/$acc/pantry`); pide el stock inicial de las de serie que falten |
 | `shopProvider` | `StateNotifierProvider<ShopController, ShopState>` | precios (`/shop/prices`) y juegos comprados (`/users/$acc/games`) |
+| `rewardsProvider` | `StateNotifierProvider<RewardsController, RewardsState>` | lo cobrado hoy (`/users/$acc/rewards`) y el cobro de un premio |
 | `installedGamesProvider` | `Provider<Map<String, GameInstall>>` | juegos comprados, envueltos o abiertos: la rejilla los pinta tras el Yatai |
 | `debugProvider` | `StateNotifierProvider` | cámara lenta y gráfica de rendimiento (no se persiste) |
 | `updateRequirementProvider` | `StreamProvider<UpdateRequirement?>` | `/system/update` leído sin sesión y seguido por SSE; `null` sin red o sin nodo |
@@ -322,6 +324,8 @@ Material.
 | `TrackTile` | `track_tile.dart` | `title`, `subtitle`, `selected`, `onPressed`, `trailing`, `dimmed` | Fila de pista de música. |
 | `SlotTile` | `slot_tile.dart` | `width`, `height`, `child`, `onPressed`, `selected`, `tint`, `semanticLabel` | Baldosa de rejilla paginada: se inclina 2° y sube 4 px con `easeOutBack`; la elegida lleva `accentWash` y filo `accentDeep`. La usan Tamas y amigos. |
 | `EmptySlot` | `slot_tile.dart` | `width`, `height` | Ranura libre hundida. |
+| `ArtIconView` | `channel_art.dart` | `icon` (`ArtIcon`), `size` (64) | Ilustración a color sobre una caja de 100×100: `yatai`, `minesweeper`, `gacha`, `coin`, `medalBronze/Silver/Gold`, `calendar`. Colores propios en `Art` (no el acento). Las funciones `paintPlastic`, `paintBomb`, `paintFlag`, `paintCapsule`, `paintCoin`, `paintTwinkle` y `paintGroundShadow` se reutilizan en el tablero y en el Yatai. |
+| `GiftFace` | `gift_face.dart` | `open` (0–1) | Regalo envuelto que llena su caja. `open` lo anima entero: se deshace el lazo, salta la tapa, salen destellos y se desvanece. Al revés (1→0) es el envoltorio de la compra. |
 
 **Glifos** (`enum Glyph`): `gear`, `person`, `keycard`, `slot`, `arrowLeft`,
 `arrowRight`, `magnify`, `check`, `cross`, `copy`, `refresh`, `power`, `note`,
@@ -329,6 +333,9 @@ Material.
 `eyeOff`, `cake`, `clock`, `chevronDown`, `tama`, `undo`, `heart`, `treat`,
 `pencil`, `portrait`, `trash`, `wave`, `friends`, `personPlus`, `speakerOff`,
 `download`, `paste`, `star`, `send`.
+
+La guía de cuándo usar glifo y cuándo ilustración, y del resto del lenguaje
+visual, está en [`docs/UI.md`](UI.md).
 
 Normas de dibujo aplicadas en `glyphs.dart`: el trazo cabe en la caja; las
 piezas se unen por sus extremos o se separan, sin cruzarse; cada icono se pinta
@@ -366,7 +373,9 @@ la caja ni supera el 50 % de alfa.
 - `ChannelTile`: al pasar el ratón se inclina 2° y sube 4 px con
   `easeOutBack`; al pulsar se hunde 2 px. Con el dedo no hay paso por encima:
   el hundimiento es inmediato y lo vistoso se guarda para la apertura.
-- `ChannelSpec(id, glyph, label, builder, empty, badge, gift, gameId)`;
+- `ChannelSpec(id, glyph, label, builder, empty, badge, gift, gameId, art)`; `art`
+  (un `ArtIcon`) lo llevan el Yatai y los juegos: icono ilustrado sobre baldosa
+  blanca en vez del glifo blanco sobre acento;
   `channelsFor(...)` devuelve ajustes, perfil, Tamas, amigos, mensajes,
   noticias, sugerencias, **Yatai**, los juegos comprados (en el orden de
   `gameChannelRegistry`, que da glifo, nombre y canal de cada `gameId`),
@@ -808,6 +817,7 @@ coincide con su uid).
         last               { item: id del catálogo, qty: 1–99, at: === now }: el recibo de la última compra
     pantry/$food         number entero 0–9999 ($food: uno de los diez TamaFood)
     games/$gameId        { state: 'gift' | 'open', at }  ($gameId ^[a-z0-9_]{1,32}$)
+    rewards              { game, day, earned, at }  (day = floor(now / 86400000); earned ≤ 20)
     inbox/$fromId        { at: number > 0 y ≤ now }  ← lo escribe quien manda
     reads
         dm/$withId         number > 0
@@ -938,10 +948,11 @@ coincide con su uid).
 | `/system/update` | cualquiera, sin sesión | (vía `/system`) |
 | `…/keys/pub` | cualquier miembro (es pública: sin ella nadie te escribe) | la dueña |
 | `…/keys/backup` | **solo la dueña**, ni un admin | la dueña |
-| `…/coins` | sus amigos y cualquier admin | un admin, siempre; la dueña, solo restando precio × cantidad con un recibo fresco en la misma escritura |
+| `…/coins` | sus amigos y cualquier admin | un admin, siempre; la dueña, restando precio × cantidad con un recibo fresco o sumando un premio con `rewards` fresco, en la misma escritura |
 | `…/shop/last` | la dueña | la dueña: `at === now`, el artículo tiene precio y, si no es gratis, el saldo baja exactamente lo que cuesta |
 | `…/pantry/$food` | la dueña | la dueña, sin borrar: el stock inicial (5, una vez, solo galleta y caramelo), −1 al comer, o + `qty` con un recibo fresco de esa comida |
 | `…/games/$gameId` | la dueña | la dueña, sin borrar: crear en `gift` con un recibo fresco de ese juego y `qty` 1; después solo `gift` → `open` |
+| `…/rewards` | la dueña | la dueña, sin borrar: `at === now`, tener el juego, `day` de hoy, subir `earned` en 3, 5 u 8 (o hasta 20 justo), 15 s desde el anterior, y `coins` sube lo mismo en la misma escritura |
 | `/shop/prices` | miembro habilitado | admin |
 | `…/inbox/$fromId` | la dueña | crear: `$fromId`, si es amigo suyo; borrar: la dueña |
 | `…/reads`, `…/votes` | solo la dueña | la dueña |
@@ -1017,6 +1028,7 @@ reparte los que falten al abrir el panel.
 | `SuggestionsController` | `/suggestions/$acc` entero; solo admin: multi-ruta del veredicto (`status`, `note`, `decidedAt`, `decidedBy` y `acceptedSuggestions/$id`) y `/system/suggestionsOpen` |
 | `CoinsController` | solo admin: `/users/$otro/coins` |
 | `ShopController` | multi-ruta de compra desde la raíz: `users/$acc/shop/last` (con `serverTimestamp`), `users/$acc/coins` si no es gratis, y `users/$acc/pantry/$food` o `users/$acc/games/$id`; `/users/$acc/games/$id/state` al desenvolver |
+| `RewardsController` | multi-ruta de premio desde la raíz: `users/$acc/rewards` (con `serverTimestamp`) y `users/$acc/coins` |
 | `PantryController` | `/users/$acc/pantry/$food`: 5 la primera vez, y −1 cada vez que se da de comer |
 | `tool/seed_shop.dart` | `/shop/prices` entero, con la CLI |
 | `AdminController` (grupo) | `/groups/global/meta` |

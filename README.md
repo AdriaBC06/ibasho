@@ -17,8 +17,9 @@ presencia, perfiles con la hora local y la música de cada cual, tarjeta de
 visita exportable y muro de cumpleaños—, **mensajes** cifrados de punta a punta
 con stickers de tus Tamas y un grupo abierto, **noticias** con encuestas
 anónimas, **sugerencias** con respuesta y **Yatai** (屋台), el puesto donde se
-gastan las monedas: juegos que se activan —el primero, un buscaminas a dos
-pantallas— y comida para los Tamas, que ahora se gasta al dársela.
+gastan las monedas: juegos que se activan —el primero, un buscaminas con tu
+Tama al lado, medallas, tablero del día y premios en monedas— y comida para los
+Tamas, que ahora se gasta al dársela.
 
 Plataformas: **Linux desktop**, **Android** (móvil y tableta) y **Windows 10 o
 posterior**, de 64 bits. Ni la 0.3.1 ni la 0.3.3 añaden funcionalidades: llevan
@@ -616,18 +617,26 @@ atrás.
 ## Monedas y Yatai
 
 Un contador por cuenta en la barra de estado, junto a la batería y la señal.
-Las monedas **solo las da un administrador**, desde su panel: nadie puede
-ponérselas a sí mismo. Lo único que puede hacer la dueña con las suyas es
-gastarlas en el **Yatai** (屋台, el puesto de feria), el canal de la tienda:
+Las monedas las da un administrador desde su panel, y se ganan jugando: cada
+victoria en un juego del Yatai da unas pocas, con un **tope de 20 al día**.
+Nadie puede ponérselas a sí mismo de otra forma. Se gastan en el **Yatai**
+(屋台, el puesto de feria), el canal de la tienda:
 
 - **Juegos.** Vienen dentro de la app; comprarlos solo los activa. Un juego
   recién comprado aparece en la rejilla **envuelto como un regalo**, y al
   tocarlo se desenvuelve y queda como un canal más. El primero es un
-  buscaminas que usa las dos pantallas: arriba tu Tama reacciona a cada jugada,
-  con el contador, el tiempo, el récord y un minimapa del tablero; abajo, el
-  tablero.
+  buscaminas en una sola escena: uno de tus Tamas, distinto en cada ronda,
+  reacciona a cada jugada y habla en un bocadillo junto al tablero. Tres
+  niveles y un tablero del día, medallas por tiempo, el sello «sin banderas» y
+  una pantalla de resultados con las monedas ganadas (3, 5 u 8).
 - **Tamas.** Unidades de comida, solo de las que la cuenta tiene desbloqueadas.
 - **Gacha.** Próximamente.
+
+Cobrar un premio también es una escritura multi-ruta: `/users/{cuenta}/rewards`
+(`{game, day, earned, at}`, con `day` el día UTC) y el saldo nuevo. Las reglas
+exigen tener el juego, que el cobro sea de hoy, de 3, 5 u 8 (o lo justo para
+llegar al tope), que no pase de 20 al día, que haya 15 s desde el anterior y
+que el saldo suba exactamente lo cobrado.
 
 Cada compra es **una sola escritura multi-ruta**: un recibo en
 `/users/{cuenta}/shop/last` (`{item, qty, at}` con `at` del servidor), el saldo
@@ -686,8 +695,8 @@ modificado podría ignorarlo.
   mensajería cifrada de punta a punta con stickers de Tama y grupo abierto,
   buzón de sugerencias con veredicto, y contador de monedas. Hecho.
 - **0.5.0 · checkpoint 5** — la tienda: canal Yatai con juegos que se activan y
-  llegan envueltos como regalo, el buscaminas a dos pantallas, y comida por
-  unidades para los Tamas. Hecho.
+  llegan envueltos como regalo, el buscaminas con medallas, tablero del día y
+  premios en monedas, y comida por unidades para los Tamas. Hecho.
 - **Más adelante** — el **gacha** del Yatai; **traspasar un Tama** a un amigo
   para que lo cuide y juegue con él (quien lo creó sigue siendo quien edita su
   aspecto, y el cuidador ve los cambios al momento); más juegos, jugar con los

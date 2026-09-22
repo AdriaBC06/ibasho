@@ -9,30 +9,53 @@ versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dar
 
 Las monedas por fin sirven para algo. Llega **Yatai** (屋台), el puesto de
 feria de Ibasho: una tienda al estilo del Canal Tienda de la Wii o la eShop de
-la 3DS, con su escaparate arriba y el mostrador abajo.
+la 3DS. Y con ella, el primer juego: un buscaminas con tu Tama al lado, que
+además da monedas.
 
 ### Añadido
 
-- **El canal Yatai**, con tres secciones:
+- **El canal Yatai**, montado como una sola escena: arriba el **escaparate**,
+  con el artículo elegido flotando sobre una peana de cristal bajo un foco, su
+  nombre, el precio en una etiqueta con moneda y el botón de comprar; en medio
+  las tres secciones con su icono; abajo el **mostrador**, con los artículos en
+  baldosas por páginas (flechas, puntos y deslizar). Tu saldo va en la
+  cabecera, con la moneda.
   - **Juegos.** Vienen dentro de la app; comprarlos solo los activa. Tras
-    confirmar, una **descarga** de bloques al estilo Wii rellena la barra y
-    avisa de que el regalo espera en el menú.
+    confirmar, el juego **se envuelve delante de ti** —entra en la caja, cae
+    la tapa y se ata el lazo— mientras una barra de cristal se llena.
   - **Tamas.** Comida por unidades —×1, ×5 o ×10—, solo de la que la cuenta
     tiene desbloqueada: hoy, galleta y caramelo. Las demás se ven con candado.
-  - **Gacha.** Una máquina de cápsulas apagada: **próximamente**.
+    Al comprar, las chuches caen una a una en una bolsa.
+  - **Gacha.** Una máquina de cápsulas con su cartel de **próximamente**.
 - **Los juegos llegan envueltos.** Un juego recién comprado aparece en la
-  rejilla como un **regalo** que se balancea; al tocarlo se desenvuelve, sale
-  su icono y desde entonces es un canal más. Como los regalos de la 3DS.
-- **Buscaminas**, el primer juego, a 0 monedas. Usa las dos pantallas: arriba
-  tu Tama de perfil hace de carita y reacciona a cada jugada —se asusta al
-  destapar, celebra al ganar, cae KO al perder—, con las minas que quedan, el
-  tiempo, el mejor tiempo de cada nivel y un **minimapa** del tablero entero;
-  abajo, el tablero. Tres niveles (9×9, 12×12 y 16×16). Tocar destapa;
-  mantener pulsado o clic derecho pone bandera, y hay un interruptor pico /
-  bandera para quien no quiera mantener. Tocar un número con sus banderas
-  puestas destapa los vecinos. El primer toque nunca es una mina. En un móvil,
-  el nivel difícil se puede ampliar y desplazar, y el minimapa marca qué parte
-  se está viendo.
+  rejilla como un **regalo**: una caja con lunares, cinta y lazo. Al tocarlo
+  el lazo se deshace, la tapa salta, salen destellos y el icono del juego sube
+  desde dentro. Desde entonces es un canal más. Como los regalos de la 3DS.
+- **Iconos ilustrados.** El Yatai y los juegos llevan un icono pintado a color
+  —el puesto con su toldo y su farolillo, la mina simpática con su bandera—
+  sobre una baldosa blanca, y así se distinguen de los canales del sistema.
+- **Buscaminas**, el primer juego, a 0 monedas. Una sola escena: a un lado tu
+  Tama en su escenario, **uno distinto al azar en cada ronda**, que habla en un
+  bocadillo y reacciona a todo —salta con una buena racha o un hueco grande,
+  tiembla cuando quedan tres casillas, cae KO si explota una mina y lo celebra
+  si ganas—; al otro, el tablero de plástico.
+  - Las casillas se destapan **en ola** desde el toque, las banderas se clavan
+    con rebote, una mina explota con onda y chispas y sacude el tablero, y al
+    ganar cae confeti y ondean las banderas.
+  - Tres niveles (9×9, 12×12 y 16×16) y el **tablero del día**: el mismo para
+    todo el mundo cada día, con una casilla de salida que brilla.
+  - **Medallas** de bronce, plata y oro por tiempo en cada nivel, el sello
+    **sin banderas** y una **pantalla de resultados** con el tiempo, el mejor
+    tiempo, la medalla y lo cobrado.
+  - Tocar destapa; mantener pulsado o clic derecho pone bandera, y hay un
+    interruptor destapar / bandera. Tocar un número con sus banderas puestas
+    destapa los vecinos. El primer toque nunca es una mina. En un móvil
+    pequeño, los tableros grandes se amplían y se desplazan con el dedo.
+- **Ganar da monedas**: 3 en fácil, 5 en media y en el tablero del día, y 8 en
+  difícil, con un **tope de 20 al día** (día UTC) entre todos los juegos.
+- **Formato de hora 12 h / 24 h** en Ajustes, junto al idioma. Lo siguen el
+  reloj del panel de arriba, la hora local de un amigo en su perfil y la hora
+  de los mensajes. Por defecto, 24 h, como siempre.
 - **`tool/seed_shop.dart`** carga los precios del Yatai (`/shop/prices`). Un
   artículo sin precio sale como «no disponible».
 
@@ -42,8 +65,9 @@ la 3DS, con su escaparate arriba y el mostrador abajo.
   cuenta recibe **5 de cada comida de serie** la primera vez que abre la 0.5.0,
   y la tira de la habitación enseña cuántas quedan; una agotada se hunde con un
   0 y avisa de que se repone en el Yatai.
-- **Las monedas se pueden gastar.** Siguen dándolas solo los administradores,
-  pero la dueña puede restarse las suyas, y solo al comprar.
+- **Las monedas se pueden gastar y ganar.** Los administradores las siguen
+  dando; la dueña puede restarse las suyas al comprar y sumárselas al cobrar
+  un premio, y nada más.
 
 ### Seguridad
 
@@ -52,11 +76,17 @@ la 3DS, con su escaparate arriba y el mostrador abajo.
   recibo sea de ese mismo instante, que el saldo baje **exactamente** precio ×
   cantidad, y que la despensa o el juego solo cambien si ese recibo lo
   justifica. Un recibo viejo no sirve para una segunda compra.
+- Cobrar un premio es otra escritura multi-ruta: `rewards` (`{game, day,
+  earned, at}`) y el saldo. Las reglas exigen tener el juego, que el día sea
+  el de hoy en el servidor, que cada cobro sea de 3, 5 u 8 (o lo justo para
+  llegar a 20), que no pase de **20 al día**, que pasen **15 s** entre cobros
+  y que el saldo suba exactamente lo cobrado. No se puede demostrar que una
+  partida se ganó de verdad: lo que acota las trampas es ese techo bajo.
 - La despensa y los juegos **no se pueden borrar**, el stock inicial solo se
   da una vez, y al comer solo se puede restar de una en una.
 - `test/rules/rules_05.test.mjs` cubre compras con y sin saldo, restas que no
-  cuadran, recibos reutilizados, comida bloqueada, el stock inicial repetido y
-  los regalos.
+  cuadran, recibos reutilizados, comida bloqueada, el stock inicial repetido,
+  los regalos y los premios (cantidades, tope, día, espera y cuenta ajena).
 
 ### Nota para desplegar
 

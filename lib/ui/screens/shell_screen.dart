@@ -388,6 +388,7 @@ class _BottomBar extends StatelessWidget {
           glyph: spec.glyph,
           label: spec.label(label),
           builder: spec.builder,
+          art: spec.art,
         );
 
     final settings = _spec('settings');

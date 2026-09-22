@@ -1,36 +1,62 @@
-// Ibasho — canal del buscaminas: dos pantallas, estilo DS.
+// Ibasho — canal del buscaminas: una sola escena, con tu Tama al lado.
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
+import '../../audio/tama_voice.dart';
 import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
-import '../../state/tamas.dart';
+import '../../state/rewards.dart';
 import '../../theme/skin.dart';
-import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../../ui/layout.dart';
 import '../../ui/screens/channel_route.dart';
+import '../../ui/tama/tama_view.dart';
 import '../../ui/tama/tama_widgets.dart';
+import '../../ui/widgets/channel_art.dart';
 import '../../ui/widgets/controls.dart';
 import '../../ui/widgets/glyphs.dart';
 import '../../ui/widgets/gloss.dart';
-import '../../ui/widgets/panel.dart';
+import '../../ui/widgets/overlays.dart';
 import 'minesweeper.dart';
+import 'minesweeper_board.dart';
 import 'minesweeper_store.dart';
+import 'minesweeper_widgets.dart';
 
-/// El canal del buscaminas, montado como el propio entorno: dos pantallas.
+/// Semilla fija para los recorridos visuales: con ella cada captura enseña
+/// la misma partida. En la app es siempre `null`.
+@visibleForTesting
+int? debugMinesweeperSeed;
+
+/// Monedas de una victoria, por tablero. Las reglas solo aceptan estas
+/// cantidades (o lo que falte para llegar al tope del dia).
+int rewardFor(BoardChoice choice) => choice.daily
+    ? 5
+    : switch (choice.level!) {
+        MinesweeperLevel.easy => 3,
+        MinesweeperLevel.medium => 5,
+        MinesweeperLevel.hard => 8,
+      };
+
+/// El canal del buscaminas.
 ///
-/// Arriba, tu Tama hace de carita del juego —nervioso al destapar, contento
-/// al ganar, KO al perder— junto al contador de minas, el cronometro, el
-/// mejor tiempo y un minimapa en vivo del tablero. Abajo, el tablero tactil.
+/// Una sola escena en vez de dos pantallas: a un lado el escenario, con uno
+/// de tus Tamas (otro al azar en cada ronda) que reacciona a cada jugada y
+/// habla en un bocadillo, los marcadores y los tableros; al otro, el tablero
+/// sobre su bandeja de plastico. En vertical el escenario se queda arriba en
+/// una franja y los controles abajo, al alcance del pulgar.
+///
+/// El tablero anima cada casilla que se destapa (en ola desde el toque), cada
+/// bandera que se clava, la explosion y el confeti de la victoria. Ganar abre
+/// la pantalla de resultados: tiempo, medalla, sellos y las monedas cobradas.
 class MinesweeperChannel extends ConsumerStatefulWidget {
   const MinesweeperChannel({super.key});
 
@@ -38,76 +64,187 @@ class MinesweeperChannel extends ConsumerStatefulWidget {
   ConsumerState<MinesweeperChannel> createState() => _MinesweeperChannelState();
 }
 
-class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel> {
-  MinesweeperLevel _level = MinesweeperLevel.easy;
-  late MinesweeperGame _game = MinesweeperGame(_level);
+class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
+    with SingleTickerProviderStateMixin {
+  BoardChoice _choice = const BoardChoice.level(MinesweeperLevel.easy);
+  late MinesweeperGame _game = _newGame(_choice);
 
-  /// -1 (KO) a 1 (encantado). En reposo se queda un poco por encima de
-  /// neutro: el Tama esta a gusto viendo jugar.
-  double _joy = .1;
-  Timer? _joyReset;
+  final math.Random _random = math.Random();
+
+  /// El Tama de esta ronda: uno de los tuyos, al azar.
+  String? _tamaId;
+  final TamaViewController _tama = TamaViewController();
+
+  /// -1 (KO) a 1 (encantado).
+  double _joy = .2;
+
+  String? _bubble;
+  Timer? _bubbleTimer;
+  bool _greeted = false;
+
+  /// Destapes seguidos sin fallar, para cantar las rachas.
+  int _streak = 0;
 
   Stopwatch? _stopwatch;
   Timer? _ticker;
 
   MinesweeperStore? _store;
-  Map<MinesweeperLevel, Duration> _bestTimes = const <MinesweeperLevel, Duration>{};
+  MinesweeperRecords _records = const MinesweeperRecords();
+
+  WinReport? _report;
+  bool _showResults = false;
+  RewardOutcome? _reward;
+  bool _rewardPending = false;
+  Timer? _resultsTimer;
 
   bool _flagMode = false;
 
-  /// Solo se usa en dificil sobre un lienzo vertical: el tablero no cabe
-  /// entero y se desplaza y amplia con el dedo.
+  // --- Efectos ---
+  final BoardFx _fx = BoardFx();
+  /// El reloj de efectos solo avanza mientras corre el ticker: parado no
+  /// hay nada que mover, y al arrancar sigue desde donde se quedo.
+  double _fxTime = 0;
+  double _fxBase = 0;
+  final ValueNotifier<double> _clock = ValueNotifier<double>(0);
+  final ValueNotifier<int?> _hover = ValueNotifier<int?>(null);
+  late final Ticker _fxTicker;
+
+  /// Solo en dificil sobre un lienzo vertical: el tablero no cabe entero y
+  /// se desplaza y amplia con el dedo.
   final TransformationController _viewController = TransformationController();
-  Size? _viewportSize;
+
+  double get _now => _fxTime;
+
+  MinesweeperGame _newGame(BoardChoice choice) => choice.daily
+      ? MinesweeperGame.daily(DateTime.now())
+      : MinesweeperGame(choice.level!, seed: debugMinesweeperSeed);
 
   @override
   void initState() {
     super.initState();
-    _viewController.addListener(_onViewChanged);
+    _fxTicker = createTicker(_onFxTick);
     unawaited(_loadStore());
   }
 
   Future<void> _loadStore() async {
     final store = await MinesweeperStore.open();
-    final best = await store.loadBestTimes();
+    final records = await store.load();
     if (!mounted) return;
     setState(() {
       _store = store;
-      _bestTimes = best;
+      _records = records;
     });
   }
 
   @override
   void dispose() {
-    _joyReset?.cancel();
+    _bubbleTimer?.cancel();
     _ticker?.cancel();
-    _viewController.removeListener(_onViewChanged);
+    _resultsTimer?.cancel();
+    _fxTicker.dispose();
+    _clock.dispose();
+    _hover.dispose();
     _viewController.dispose();
     super.dispose();
   }
 
-  void _onViewChanged() {
-    if (mounted) setState(() {});
+  // --- Reloj de efectos -----------------------------------------------------
+
+  bool get _reduced => IbashoSkin.of(context).reducedMotion;
+
+  /// Mientras haga falta: un efecto en curso, la salida del dia latiendo o el
+  /// Tama temblando con las ultimas casillas.
+  bool get _wantsTicks =>
+      _now < _fx.busyUntil ||
+      (_game.start != null && _game.status == MinesweeperStatus.ready) ||
+      _nervous;
+
+  bool get _nervous =>
+      _game.status == MinesweeperStatus.playing && _game.safeLeft > 0 && _game.safeLeft <= 3;
+
+  void _onFxTick(Duration elapsed) {
+    _fxTime = _fxBase + elapsed.inMicroseconds / 1e6;
+    _clock.value = _fxTime;
+    if (!_wantsTicks) {
+      _fxTicker.stop();
+      _fxBase = _fxTime;
+    }
   }
 
-  void _restart([MinesweeperLevel? level]) {
-    _joyReset?.cancel();
+  void _kickFx() {
+    if (_reduced) {
+      _clock.value = _now + 60;
+      return;
+    }
+    _clock.value = _now;
+    if (!_fxTicker.isActive && _wantsTicks) {
+      _fxBase = _fxTime;
+      _fxTicker.start();
+    }
+  }
+
+  // --- Tama y bocadillo -----------------------------------------------------
+
+  void _pickTama() {
+    final tamas = ref.read(tamasProvider).tamas;
+    if (tamas.isEmpty) {
+      _tamaId = null;
+      return;
+    }
+    // Otro distinto al de la ronda anterior, si hay donde elegir.
+    final pool = tamas.length > 1 ? tamas.where((t) => t.id != _tamaId).toList() : tamas;
+    _tamaId = pool[_random.nextInt(pool.length)].id;
+  }
+
+  Tama? _currentTama() {
+    final tamas = ref.watch(tamasProvider).tamas;
+    if (tamas.isEmpty) return null;
+    if (_tamaId == null || !tamas.any((t) => t.id == _tamaId)) {
+      _tamaId = tamas[_random.nextInt(tamas.length)].id;
+    }
+    return tamas.firstWhere((t) => t.id == _tamaId);
+  }
+
+  void _say(String? text, {Duration hold = const Duration(milliseconds: 1800)}) {
+    _bubbleTimer?.cancel();
+    _bubble = text;
+    if (text == null) return;
+    _bubbleTimer = Timer(hold, () {
+      if (mounted) setState(() => _bubble = null);
+    });
+  }
+
+  // --- Partida ----------------------------------------------------------------
+
+  void _restart([BoardChoice? choice]) {
+    final l = L.of(context)!;
     _ticker?.cancel();
+    _resultsTimer?.cancel();
     _stopwatch = null;
     _viewController.value = Matrix4.identity();
+    _fx.clear();
     AudioService.instance.play(Sfx.tick);
     setState(() {
-      _level = level ?? _level;
-      _game = MinesweeperGame(_level);
-      _joy = .1;
+      _choice = choice ?? _choice;
+      _game = _newGame(_choice);
+      _joy = .2;
+      _streak = 0;
       _flagMode = false;
+      _report = null;
+      _showResults = false;
+      _reward = null;
+      _rewardPending = false;
+      _pickTama();
+      _say(_choice.daily ? l.minesweeperBubbleDaily : l.minesweeperBubbleStart);
     });
+    _kickFx();
+    _tama.hop();
   }
 
   void _startTimerIfNeeded() {
     if (_stopwatch != null) return;
     _stopwatch = Stopwatch()..start();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+    _ticker = Timer.periodic(const Duration(milliseconds: 250), (_) {
       if (mounted) setState(() {});
     });
   }
@@ -118,845 +255,515 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel> {
     _stopwatch?.stop();
   }
 
-  void _bumpJoy(double value, {required bool sticky}) {
-    _joyReset?.cancel();
-    _joy = value;
-    if (sticky) return;
-    _joyReset = Timer(const Duration(milliseconds: 480), () {
-      if (mounted) setState(() => _joy = .1);
-    });
-  }
+  Set<int> _revealedNow() => {
+        for (var y = 0; y < _game.height; y++)
+          for (var x = 0; x < _game.width; x++)
+            if (_game.cellAt(x, y).revealed) y * _game.width + x,
+      };
 
-  Future<void> _recordBestIfNeeded() async {
-    final store = _store;
-    final elapsed = _stopwatch?.elapsed;
-    if (store == null || elapsed == null) return;
-    final next = await store.recordTime(_bestTimes, _level, elapsed);
-    if (mounted) setState(() => _bestTimes = next);
-  }
+  void _reveal(int x, int y) {
+    if (_game.isOver) return;
+    if (_game.cellAt(x, y).flagged) return;
+    final l = L.of(context)!;
+    final wasReady = _game.status == MinesweeperStatus.ready;
+    final before = _revealedNow();
+    _game.reveal(x, y);
+    final fresh = _revealedNow().difference(before);
+    if (wasReady && _game.status != MinesweeperStatus.ready) _startTimerIfNeeded();
 
-  void _afterMove({required bool wasReady}) {
-    if (wasReady && _game.status == MinesweeperStatus.playing) _startTimerIfNeeded();
+    final now = _now;
+    for (final i in fresh) {
+      final cx = i % _game.width;
+      final cy = i ~/ _game.width;
+      final dist = math.sqrt(((cx - x) * (cx - x) + (cy - y) * (cy - y)).toDouble());
+      final mine = _game.cellAt(cx, cy).mine;
+      final start = now + (mine && _game.status == MinesweeperStatus.lost
+          ? (cx == x && cy == y ? 0 : .35 + dist * .06)
+          : math.min(.9, dist * .028));
+      _fx.reveal[i] = start;
+      _fx.touch(start + BoardFx.revealTime);
+    }
+
     switch (_game.status) {
       case MinesweeperStatus.won:
-        _stopTimer();
-        AudioService.instance.play(Sfx.chime);
-        _bumpJoy(1, sticky: true);
-        unawaited(_recordBestIfNeeded());
+        _onWin();
       case MinesweeperStatus.lost:
         _stopTimer();
+        _streak = 0;
+        _fx
+          ..boomAt = now
+          ..boomCell = y * _game.width + x
+          ..touch(now + BoardFx.boomTime);
         AudioService.instance.play(Sfx.error);
-        _bumpJoy(-1, sticky: true);
+        _joy = -1;
+        _say(l.minesweeperBubbleBoom, hold: const Duration(seconds: 4));
+        _tama.hop();
+        unawaited(Future<void>.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _tama.speak(ChirpKind.sigh);
+        }));
       case MinesweeperStatus.playing:
+        if (fresh.isEmpty) break;
         AudioService.instance.play(Sfx.tick);
-        _bumpJoy(-.35, sticky: false);
+        _streak++;
+        if (fresh.length >= 12) {
+          _joy = .8;
+          _say(l.minesweeperBubbleBig);
+          _tama.hop();
+        } else if (_streak % 10 == 0) {
+          _joy = .7;
+          _say(l.minesweeperBubbleStreak(_streak));
+          _tama.hop();
+        } else if (_nervous) {
+          _joy = -.2;
+          _say(l.minesweeperBubbleAlmost, hold: const Duration(seconds: 3));
+        } else {
+          _joy = .35;
+        }
       case MinesweeperStatus.ready:
         break;
     }
     setState(() {});
-  }
-
-  void _reveal(int x, int y) {
-    if (_game.isOver) return;
-    final wasReady = _game.status == MinesweeperStatus.ready;
-    _game.reveal(x, y);
-    _afterMove(wasReady: wasReady);
+    _kickFx();
   }
 
   void _toggleFlag(int x, int y) {
     if (_game.isOver) return;
+    final cell = _game.cellAt(x, y);
+    if (cell.revealed) return;
+    final l = L.of(context)!;
     final wasReady = _game.status == MinesweeperStatus.ready;
     _game.toggleFlag(x, y);
     if (wasReady && _game.status != MinesweeperStatus.ready) _startTimerIfNeeded();
+    final i = y * _game.width + x;
+    if (cell.flagged) {
+      _fx.flags[i] = _now;
+      _fx.touch(_now + BoardFx.flagTime);
+      // Solo de vez en cuando: si lo dijera siempre, cansaria.
+      if (_random.nextDouble() < .3) _say(l.minesweeperBubbleFlag);
+    } else {
+      _fx.flags.remove(i);
+    }
     AudioService.instance.play(Sfx.tick);
     setState(() {});
+    _kickFx();
   }
 
   void _cellTap(int x, int y) => _flagMode ? _toggleFlag(x, y) : _reveal(x, y);
 
-  Tama? _favouriteTama(TamasState state) =>
-      state.profileTama ?? (state.tamas.isEmpty ? null : state.tamas.first);
+  void _onWin() {
+    final l = L.of(context)!;
+    _stopTimer();
+    final now = _now;
+    _fx
+      ..winAt = now + .25
+      ..touch(now + .25 + BoardFx.winTime);
+    // Las minas sin bandera se marcan solas al ganar: que caigan en ola.
+    for (var y = 0; y < _game.height; y++) {
+      for (var x = 0; x < _game.width; x++) {
+        final i = y * _game.width + x;
+        if (_game.cellAt(x, y).flagged && !_fx.flags.containsKey(i)) {
+          _fx.flags[i] = now + .1 + (x + y) * .03;
+        }
+      }
+    }
+    AudioService.instance.play(Sfx.chime);
+    _joy = 1;
+    _say(l.minesweeperBubbleWin, hold: const Duration(seconds: 5));
+    _tama
+      ..cuddle()
+      ..hop();
+
+    final time = _stopwatch?.elapsed ?? Duration.zero;
+    final (records, report) = _records.recordWin(
+      level: _choice.effectiveLevel,
+      time: time,
+      usedFlags: _game.usedFlags,
+      day: _choice.daily ? DateTime.now() : null,
+    );
+    _records = records;
+    _report = report;
+    unawaited(_store?.save(records));
+    unawaited(_claimReward());
+    _resultsTimer = Timer(Duration(milliseconds: _reduced ? 150 : 1300), () {
+      if (mounted) setState(() => _showResults = true);
+    });
+  }
+
+  Future<void> _claimReward() async {
+    setState(() => _rewardPending = true);
+    final outcome = await ref
+        .read(rewardsProvider.notifier)
+        .claim(game: 'minesweeper', amount: rewardFor(_choice));
+    if (!mounted) return;
+    setState(() {
+      _reward = outcome;
+      _rewardPending = false;
+    });
+  }
+
+  Future<void> _pickBoard() async {
+    final picked = await showIbashoModal<BoardChoice>(
+      context,
+      (context) => _LevelDialog(current: _choice, records: _records),
+    );
+    if (picked != null && mounted) _restart(picked);
+  }
+
+  // --- Composicion ------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     final l = L.of(context)!;
     final layout = Layout.of(context);
-    final tamas = ref.watch(tamasProvider);
-    final tama = _favouriteTama(tamas);
+    final tama = _currentTama();
+    if (!_greeted) {
+      _greeted = true;
+      _say(l.minesweeperBubbleStart);
+    }
+    if (_game.start != null && _game.status == MinesweeperStatus.ready && !_fxTicker.isActive && !_reduced) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _kickFx();
+      });
+    }
 
     return ChannelScaffold(
       title: l.minesweeperTitle,
       glyph: Glyph.mine,
+      art: ArtIcon.minesweeper,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: layout.gutter),
-        child: LayoutBuilder(builder: (context, box) {
-          final showcase = layout.tall
-              ? math.max(200.0, math.min(300.0, box.maxHeight * .38))
-              : 280.0;
-          return Column(
-            children: [
-              const SizedBox(height: 14),
-              SizedBox(
-                height: showcase,
-                child: ScreenPanel(
-                  child: _TopPanel(
-                    tama: tama,
-                    joy: _joy,
-                    level: _level,
-                    status: _game.status,
-                    minesLeft: _game.minesLeft,
-                    elapsed: _stopwatch?.elapsed ?? Duration.zero,
-                    best: _bestTimes[_level],
-                    onSelectLevel: _restart,
-                    minimap: _MinimapData(
-                      game: _game,
-                      visible: _visibleBoardRect(),
+        child: layout.tall ? _tallLayout(context, tama) : _wideLayout(context, tama),
+      ),
+    );
+  }
+
+  Widget _stage(Tama? tama, double size) {
+    final face = tama == null
+        ? GlossyFace(joy: _joy, size: size)
+        : TamaOnStand(tama: tama, size: size, joy: _joy, controller: _tama);
+    return AnimatedBuilder(
+      animation: _clock,
+      builder: (context, child) {
+        final t = _clock.value;
+        // Con las ultimas casillas tiembla un poco; al perder se agacha.
+        final tremble = _nervous && !_reduced ? math.sin(t * 38) * 1.6 : 0.0;
+        return Transform.translate(offset: Offset(tremble, 0), child: child);
+      },
+      child: KeyedSubtree(key: ValueKey<String>('minesweeper.tama.${tama?.id}'), child: face),
+    );
+  }
+
+  Widget _readouts(L l, {required double height, bool row = true}) {
+    final elapsed = _stopwatch?.elapsed ?? Duration.zero;
+    final mines = Readout(
+      key: const ValueKey<String>('minesweeper.mines'),
+      icon: const BombIcon(),
+      value: '${_game.minesLeft}',
+      label: l.minesweeperMinesLeft,
+      height: height,
+    );
+    final time = Readout(
+      icon: GlyphIcon(Glyph.clock, size: height * .5, color: IbashoSkin.of(context).accentDeep, strokeWidth: 2.2),
+      value: formatDuration(elapsed),
+      label: l.minesweeperTime,
+      height: height,
+    );
+    return Row(
+      children: [
+        Expanded(child: mines),
+        SizedBox(width: row ? 10 : 8),
+        Expanded(child: time),
+      ],
+    );
+  }
+
+  Widget _newRoundButton(L l, {double height = 52, bool expand = false}) {
+    final over = _game.isOver;
+    return IbashoButton(
+      key: const ValueKey<String>('minesweeper.restart'),
+      label: l.minesweeperNewRound,
+      glyph: Glyph.refresh,
+      tone: over ? ButtonTone.accent : ButtonTone.plain,
+      height: height,
+      expand: expand,
+      onPressed: () => _restart(),
+    );
+  }
+
+  Widget _boardArea(BuildContext context, {required bool tall}) {
+    final layout = Layout.of(context);
+    final skin = IbashoSkin.of(context);
+    final l = L.of(context)!;
+    final report = _report;
+    return LayoutBuilder(builder: (context, box) {
+      final pad = tall ? 10.0 : 16.0;
+      final avail = Size(box.maxWidth - pad * 2, box.maxHeight - pad * 2);
+      final natural = math.min(avail.width / _game.width, avail.height / _game.height).clamp(18.0, 68.0);
+      // Solo si las casillas quedarian diminutas (el dificil en un movil) se
+      // fija un tamaño que se pueda tocar y se deja desplazar y ampliar.
+      final needsViewer = tall && natural < 27;
+      final cell = needsViewer ? math.max(40.0, layout.touch * .85) : natural.floorToDouble();
+
+      final board = MinesweeperBoard(
+        game: _game,
+        cellSize: cell,
+        fx: _fx,
+        clock: _clock,
+        hover: _hover,
+        accent: skin.accent,
+        onCellTap: _cellTap,
+        onCellFlag: _toggleFlag,
+      );
+
+      final boardW = needsViewer ? avail.width : _game.width * cell;
+      final boardH = needsViewer ? avail.height : _game.height * cell;
+
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: boardW + pad * 2,
+            height: boardH + pad * 2,
+            child: GlossSurface(
+              radius: tall ? 22 : 30,
+              tint: skin.accentWash,
+              elevation: 2,
+              padding: EdgeInsets.all(pad),
+              child: needsViewer
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: InteractiveViewer(
+                        transformationController: _viewController,
+                        minScale: 1,
+                        maxScale: 3,
+                        constrained: false,
+                        boundaryMargin: const EdgeInsets.all(24),
+                        child: board,
+                      ),
+                    )
+                  : board,
+            ),
+          ),
+          if (report != null && _showResults)
+            Positioned.fill(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: SingleChildScrollView(
+                    child: ResultsCard(
+                      report: report,
+                      daily: _choice.daily,
+                      reward: _reward,
+                      rewardPending: _rewardPending,
+                      level: _choice.effectiveLevel,
+                      onAgain: () => _restart(),
+                      onDismiss: () => setState(() => _showResults = false),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ScreenPanel(
-                  child: _BottomPanel(
-                    game: _game,
-                    flagMode: _flagMode,
-                    onFlagModeChanged: (v) => setState(() => _flagMode = v),
-                    onRestart: () => _restart(),
-                    onCellTap: _cellTap,
-                    onCellFlag: _toggleFlag,
-                    viewController: _viewController,
-                    onViewportSize: (size) {
-                      if (_viewportSize == size) return;
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) setState(() => _viewportSize = size);
-                      });
-                    },
+            ),
+          if (_game.start != null && _game.status == MinesweeperStatus.ready && !tall)
+            Positioned(
+              bottom: 0,
+              child: Text(l.minesweeperDailyStart, style: Ty.caption),
+            ),
+        ],
+      );
+    });
+  }
+
+  Widget _wideLayout(BuildContext context, Tama? tama) {
+    final l = L.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 18, 0, 22),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 352,
+            child: Column(
+              children: [
+                Expanded(
+                  child: StageLight(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        SpeechBubble(text: _bubble, maxWidth: 260),
+                        const SizedBox(height: 6),
+                        _stage(tama, 176),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
-          );
-        }),
-      ),
-    );
-  }
-
-  Rect? _visibleBoardRect() {
-    final viewportSize = _viewportSize;
-    if (viewportSize == null) return null;
-    final inverse = _tryInvert(_viewController.value);
-    if (inverse == null) return null;
-    final topLeft = MatrixUtils.transformPoint(inverse, Offset.zero);
-    final bottomRight =
-        MatrixUtils.transformPoint(inverse, Offset(viewportSize.width, viewportSize.height));
-    return Rect.fromPoints(topLeft, bottomRight);
-  }
-}
-
-/// La matriz inversa de la transformacion en curso, o `null` si no se puede
-/// invertir (por ejemplo, con escala cero en un primer frame).
-Matrix4? _tryInvert(Matrix4 m) {
-  final copy = m.clone();
-  final det = copy.invert();
-  if (det == 0) return null;
-  return copy;
-}
-
-// --- Pantalla de arriba -------------------------------------------------------
-
-/// Lo que necesita el minimapa: el tablero y, si el de abajo esta ampliado,
-/// la zona que se ve.
-class _MinimapData {
-  const _MinimapData({required this.game, required this.visible});
-
-  final MinesweeperGame game;
-
-  /// En coordenadas del tablero (unidad = una casilla). `null` cuando se ve
-  /// entero.
-  final Rect? visible;
-}
-
-class _TopPanel extends StatelessWidget {
-  const _TopPanel({
-    required this.tama,
-    required this.joy,
-    required this.level,
-    required this.status,
-    required this.minesLeft,
-    required this.elapsed,
-    required this.best,
-    required this.onSelectLevel,
-    required this.minimap,
-  });
-
-  final Tama? tama;
-  final double joy;
-  final MinesweeperLevel level;
-  final MinesweeperStatus status;
-  final int minesLeft;
-  final Duration elapsed;
-  final Duration? best;
-  final ValueChanged<MinesweeperLevel> onSelectLevel;
-  final _MinimapData minimap;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    final layout = Layout.of(context);
-    final tall = layout.tall;
-    final skin = IbashoSkin.of(context);
-
-    final face = SizedBox(
-      width: tall ? 120 : 170,
-      height: tall ? 120 : 170,
-      child: Center(
-        child: tama == null
-            ? _SimpleFace(joy: joy, size: tall ? 96 : 140)
-            : TamaOnStand(tama: tama!, size: tall ? 96 : 140, joy: joy),
-      ),
-    );
-
-    final stats = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Expanded(child: _StatChip(glyph: Glyph.mine, value: '$minesLeft')),
-            const SizedBox(width: 10),
-            Expanded(child: _StatChip(glyph: Glyph.clock, value: _formatDuration(elapsed))),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Text(l.minesweeperBest, style: Ty.caption),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                best == null ? '--:--' : _formatDuration(best!),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Ty.numeral(16, color: skin.accentDeep),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _DifficultyRow(level: level, onSelect: onSelectLevel),
-        if (status == MinesweeperStatus.won || status == MinesweeperStatus.lost) ...[
-          const SizedBox(height: 10),
-          Text(
-            status == MinesweeperStatus.won ? l.minesweeperWin : l.minesweeperLose,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Ty.lead.copyWith(
-              color: status == MinesweeperStatus.won ? skin.accentDeep : T.warn,
-            ),
-          ),
-        ],
-      ],
-    );
-
-    final map = SizedBox(
-      width: tall ? double.infinity : 150,
-      height: tall ? 84 : 150,
-      child: _Minimap(data: minimap),
-    );
-
-    if (tall) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                face,
-                const SizedBox(width: 12),
-                Expanded(child: stats),
-              ],
-            ),
-            const SizedBox(height: 10),
-            map,
-          ],
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 20, 30, 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          face,
-          const SizedBox(width: 24),
-          Expanded(child: stats),
-          const SizedBox(width: 24),
-          map,
-        ],
-      ),
-    );
-  }
-}
-
-String _formatDuration(Duration d) {
-  final seconds = d.inSeconds;
-  final mm = (seconds ~/ 60).toString().padLeft(2, '0');
-  final ss = (seconds % 60).toString().padLeft(2, '0');
-  return '$mm:$ss';
-}
-
-class _StatChip extends StatelessWidget {
-  const _StatChip({required this.glyph, required this.value});
-
-  final Glyph glyph;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final skin = IbashoSkin.of(context);
-    return GlossSurface(
-      radius: 14,
-      recessed: true,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GlyphIcon(glyph, size: 16, color: skin.accentDeep),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Ty.numeral(16),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DifficultyRow extends StatelessWidget {
-  const _DifficultyRow({required this.level, required this.onSelect});
-
-  final MinesweeperLevel level;
-  final ValueChanged<MinesweeperLevel> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    String label(MinesweeperLevel lvl) => switch (lvl) {
-          MinesweeperLevel.easy => l.minesweeperEasy,
-          MinesweeperLevel.medium => l.minesweeperMedium,
-          MinesweeperLevel.hard => l.minesweeperHard,
-        };
-    return Row(
-      children: [
-        for (final lvl in MinesweeperLevel.values) ...[
-          if (lvl != MinesweeperLevel.easy) const SizedBox(width: 8),
-          Expanded(
-            child: IbashoButton(
-              key: ValueKey<String>('minesweeper.level.${lvl.name}'),
-              label: label(lvl),
-              tone: lvl == level ? ButtonTone.accent : ButtonTone.plain,
-              height: 40,
-              expand: true,
-              cue: null,
-              onPressed: lvl == level ? null : () => onSelect(lvl),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Cara sencilla dibujada a mano, para cuando la cuenta no tiene ningun Tama.
-class _SimpleFace extends StatelessWidget {
-  const _SimpleFace({required this.joy, required this.size});
-
-  final double joy;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final skin = IbashoSkin.of(context);
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(painter: _SimpleFacePainter(joy: joy, accent: skin.accent)),
-    );
-  }
-}
-
-class _SimpleFacePainter extends CustomPainter {
-  _SimpleFacePainter({required this.joy, required this.accent});
-
-  final double joy;
-  final Color accent;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centre = size.center(Offset.zero);
-    final radius = size.shortestSide / 2;
-
-    canvas.drawCircle(
-      centre,
-      radius,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color.lerp(accent, T.shellTop, .5)!, accent],
-        ).createShader(Offset.zero & size),
-    );
-
-    final eyeY = centre.dy - radius * .12;
-    final eyeDx = radius * .34;
-    final eyeR = radius * (joy < -.5 ? .05 : .09);
-    final eyePaint = Paint()..color = T.tamaInk;
-    if (joy < -.5) {
-      // Ojos en X: fuera de combate.
-      for (final dx in [-eyeDx, eyeDx]) {
-        final c = Offset(centre.dx + dx, eyeY);
-        canvas.drawLine(c + const Offset(-3, -3), c + const Offset(3, 3),
-            Paint()..color = T.tamaInk..strokeWidth = 2);
-        canvas.drawLine(c + const Offset(-3, 3), c + const Offset(3, -3),
-            Paint()..color = T.tamaInk..strokeWidth = 2);
-      }
-    } else {
-      canvas.drawCircle(Offset(centre.dx - eyeDx, eyeY), eyeR, eyePaint);
-      canvas.drawCircle(Offset(centre.dx + eyeDx, eyeY), eyeR, eyePaint);
-    }
-
-    final mouthY = centre.dy + radius * .32;
-    final mouthWidth = radius * .5;
-    final curve = (joy.clamp(-1.0, 1.0)) * radius * .22;
-    final path = Path()
-      ..moveTo(centre.dx - mouthWidth, mouthY)
-      ..quadraticBezierTo(centre.dx, mouthY + curve, centre.dx + mouthWidth, mouthY);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round
-        ..color = T.tamaInk,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_SimpleFacePainter old) => old.joy != joy || old.accent != accent;
-}
-
-class _Minimap extends StatelessWidget {
-  const _Minimap({required this.data});
-
-  final _MinimapData data;
-
-  @override
-  Widget build(BuildContext context) {
-    final skin = IbashoSkin.of(context);
-    return GlossSurface(
-      radius: 14,
-      recessed: true,
-      padding: const EdgeInsets.all(6),
-      child: CustomPaint(
-        painter: _MinimapPainter(game: data.game, visible: data.visible, accent: skin.accent),
-        size: Size.infinite,
-      ),
-    );
-  }
-}
-
-class _MinimapPainter extends CustomPainter {
-  _MinimapPainter({required this.game, required this.visible, required this.accent});
-
-  final MinesweeperGame game;
-  final Rect? visible;
-  final Color accent;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
-    final cellW = size.width / game.width;
-    final cellH = size.height / game.height;
-
-    for (var y = 0; y < game.height; y++) {
-      for (var x = 0; x < game.width; x++) {
-        final cell = game.cellAt(x, y);
-        final rect = Rect.fromLTWH(x * cellW, y * cellH, cellW, cellH);
-        final Color color;
-        if (cell.mine && cell.revealed) {
-          color = T.warn;
-        } else if (cell.flagged) {
-          color = accent;
-        } else if (cell.revealed) {
-          color = T.wellBottom;
-        } else {
-          color = T.shellBottom;
-        }
-        canvas.drawRect(rect, Paint()..color = color);
-      }
-    }
-
-    final rect = visible;
-    if (rect != null) {
-      final scaled = Rect.fromLTRB(
-        rect.left / game.width * size.width,
-        rect.top / game.height * size.height,
-        rect.right / game.width * size.width,
-        rect.bottom / game.height * size.height,
-      ).intersect(Offset.zero & size);
-      canvas.drawRect(
-        scaled,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.6
-          ..color = accent,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MinimapPainter old) => true;
-}
-
-// --- Pantalla de abajo ---------------------------------------------------------
-
-class _BottomPanel extends StatelessWidget {
-  const _BottomPanel({
-    required this.game,
-    required this.flagMode,
-    required this.onFlagModeChanged,
-    required this.onRestart,
-    required this.onCellTap,
-    required this.onCellFlag,
-    required this.viewController,
-    required this.onViewportSize,
-  });
-
-  final MinesweeperGame game;
-  final bool flagMode;
-  final ValueChanged<bool> onFlagModeChanged;
-  final VoidCallback onRestart;
-  final void Function(int x, int y) onCellTap;
-  final void Function(int x, int y) onCellFlag;
-  final TransformationController viewController;
-  final ValueChanged<Size> onViewportSize;
-
-  @override
-  Widget build(BuildContext context) {
-    final layout = Layout.of(context);
-    final l = L.of(context)!;
-
-    return Column(
-      children: [
-        SizedBox(
-          height: layout.pick(52, 58),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: layout.pick(16, 12), vertical: 8),
-            child: Row(
-              children: [
-                _ModeToggle(
-                  flagMode: flagMode,
-                  onChanged: onFlagModeChanged,
+                _readouts(l, height: 58),
+                const SizedBox(height: 16),
+                LayoutBuilder(builder: (context, box) {
+                  const gap = 10.0;
+                  final w = (box.maxWidth - gap) / 2;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final c in BoardChoice.all)
+                        LevelCard(
+                          choice: c,
+                          selected: c == _choice,
+                          records: _records,
+                          width: w,
+                          height: 64,
+                          onPressed: () {
+                            if (c != _choice) _restart(c);
+                          },
+                        ),
+                    ],
+                  );
+                }),
+                const SizedBox(height: 16),
+                ModeSwitch(
+                  flagMode: _flagMode,
+                  onChanged: (v) => setState(() => _flagMode = v),
                   digLabel: l.minesweeperDig,
                   flagLabel: l.minesweeperFlag,
+                  height: 50,
+                  width: 352,
                 ),
-                const Spacer(),
-                IconPill(
-                  key: const ValueKey<String>('minesweeper.restart'),
-                  glyph: Glyph.refresh,
-                  semanticLabel: l.minesweeperRestart,
-                  diameter: layout.pill,
-                  onPressed: onRestart,
-                ),
+                const SizedBox(height: 12),
+                SizedBox(width: double.infinity, child: _newRoundButton(l, expand: true)),
               ],
             ),
           ),
-        ),
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.all(layout.pick(10, 8)),
-            child: LayoutBuilder(builder: (context, box) {
-              final available = box.biggest;
-              final cellFromWidth = available.width / game.width;
-              final cellFromHeight = available.height / game.height;
-              final naturalCell =
-                  math.min(cellFromWidth, cellFromHeight).clamp(20.0, 56.0);
-
-              // Solo en vertical, y solo si el tablero no cabria comodo: se
-              // fija un tamaño tactil de verdad y se deja que se desplace y
-              // amplie.
-              final needsViewer = layout.tall && naturalCell < layout.touch;
-              final cellSize = needsViewer ? layout.touch : naturalCell;
-
-              final board = _Board(
-                game: game,
-                cellSize: cellSize,
-                onCellTap: onCellTap,
-                onCellFlag: onCellFlag,
-              );
-
-              if (!needsViewer) {
-                return Center(child: board);
-              }
-
-              return LayoutBuilder(builder: (context, viewerBox) {
-                onViewportSize(viewerBox.biggest);
-                return InteractiveViewer(
-                  transformationController: viewController,
-                  minScale: 1,
-                  maxScale: 3,
-                  boundaryMargin: const EdgeInsets.all(24),
-                  child: board,
-                );
-              });
-            }),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({
-    required this.flagMode,
-    required this.onChanged,
-    required this.digLabel,
-    required this.flagLabel,
-  });
-
-  final bool flagMode;
-  final ValueChanged<bool> onChanged;
-  final String digLabel;
-  final String flagLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final tall = Layout.of(context).tall;
-    // En vertical el carril es estrecho: el modo se reduce a dos pastillas
-    // de icono, sin etiqueta.
-    if (tall) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconPill(
-            key: const ValueKey<String>('minesweeper.mode.dig'),
-            glyph: Glyph.magnify,
-            tone: flagMode ? ButtonTone.plain : ButtonTone.accent,
-            semanticLabel: digLabel,
-            cue: null,
-            onPressed: flagMode ? () => onChanged(false) : null,
-          ),
-          const SizedBox(width: 8),
-          IconPill(
-            key: const ValueKey<String>('minesweeper.mode.flag'),
-            glyph: Glyph.mine,
-            tone: flagMode ? ButtonTone.accent : ButtonTone.plain,
-            semanticLabel: flagLabel,
-            cue: null,
-            onPressed: flagMode ? null : () => onChanged(true),
-          ),
+          const SizedBox(width: 28),
+          Expanded(child: _boardArea(context, tall: false)),
         ],
-      );
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IbashoButton(
-          key: const ValueKey<String>('minesweeper.mode.dig'),
-          label: digLabel,
-          glyph: Glyph.magnify,
-          tone: flagMode ? ButtonTone.plain : ButtonTone.accent,
-          height: 40,
-          cue: null,
-          onPressed: flagMode ? () => onChanged(false) : null,
-        ),
-        const SizedBox(width: 8),
-        IbashoButton(
-          key: const ValueKey<String>('minesweeper.mode.flag'),
-          label: flagLabel,
-          glyph: Glyph.mine,
-          tone: flagMode ? ButtonTone.accent : ButtonTone.plain,
-          height: 40,
-          cue: null,
-          onPressed: flagMode ? null : () => onChanged(true),
-        ),
-      ],
-    );
-  }
-}
-
-class _Board extends StatelessWidget {
-  const _Board({
-    required this.game,
-    required this.cellSize,
-    required this.onCellTap,
-    required this.onCellFlag,
-  });
-
-  final MinesweeperGame game;
-  final double cellSize;
-  final void Function(int x, int y) onCellTap;
-  final void Function(int x, int y) onCellFlag;
-
-  (int, int)? _cellAt(Offset local) {
-    final x = (local.dx / cellSize).floor();
-    final y = (local.dy / cellSize).floor();
-    if (x < 0 || y < 0 || x >= game.width || y >= game.height) return null;
-    return (x, y);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final size = Size(game.width * cellSize, game.height * cellSize);
-    return GestureDetector(
-      key: const ValueKey<String>('minesweeper.board'),
-      behavior: HitTestBehavior.opaque,
-      onTapUp: (details) {
-        final cell = _cellAt(details.localPosition);
-        if (cell != null) onCellTap(cell.$1, cell.$2);
-      },
-      onLongPressStart: (details) {
-        final cell = _cellAt(details.localPosition);
-        if (cell != null) onCellFlag(cell.$1, cell.$2);
-      },
-      onSecondaryTapUp: (details) {
-        final cell = _cellAt(details.localPosition);
-        if (cell != null) onCellFlag(cell.$1, cell.$2);
-      },
-      child: SizedBox(
-        width: size.width,
-        height: size.height,
-        child: CustomPaint(painter: _BoardPainter(game: game)),
       ),
     );
   }
+
+  Widget _tallLayout(BuildContext context, Tama? tama) {
+    final l = L.of(context)!;
+    final layout = Layout.of(context);
+    final small = layout.height < 700;
+    // En un movil alto el tablero se queda con el ancho y sobra alto: se lo
+    // lleva el escenario del Tama.
+    final roomy = layout.height > 840;
+    final stageSize = small ? 74.0 : (roomy ? 128.0 : 96.0);
+    return Column(
+      children: [
+        SizedBox(height: small ? 6 : 12),
+        SizedBox(
+          height: small ? 112 : (roomy ? 196 : 150),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              SizedBox(
+                width: stageSize + 34,
+                child: StageLight(
+                  child: Align(alignment: Alignment.bottomCenter, child: _stage(tama, stageSize)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: SpeechBubble(text: _bubble, maxWidth: 200),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _readouts(l, height: small ? 46 : 52, row: false),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: small ? 8 : 14),
+        Expanded(child: _boardArea(context, tall: true)),
+        SizedBox(height: small ? 8 : 14),
+        Row(
+          children: [
+            ModeSwitch(
+              flagMode: _flagMode,
+              onChanged: (v) => setState(() => _flagMode = v),
+              digLabel: l.minesweeperDig,
+              flagLabel: l.minesweeperFlag,
+              height: 48,
+              showLabels: false,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: IbashoButton(
+                key: const ValueKey<String>('minesweeper.levels'),
+                label: _choice.daily ? l.minesweeperDaily : levelName(l, _choice.effectiveLevel),
+                glyph: Glyph.chevronDown,
+                height: 48,
+                expand: true,
+                onPressed: () => unawaited(_pickBoard()),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconPill(
+              key: const ValueKey<String>('minesweeper.restart'),
+              glyph: Glyph.refresh,
+              tone: _game.isOver ? ButtonTone.accent : ButtonTone.plain,
+              semanticLabel: l.minesweeperNewRound,
+              diameter: 48,
+              onPressed: () => _restart(),
+            ),
+          ],
+        ),
+        SizedBox(height: small ? 10 : 16),
+      ],
+    );
+  }
 }
 
-class _BoardPainter extends CustomPainter {
-  _BoardPainter({required this.game});
+/// En vertical los tableros se eligen en un dialogo: las mismas tarjetas que
+/// en horizontal, una debajo de otra.
+class _LevelDialog extends StatelessWidget {
+  const _LevelDialog({required this.current, required this.records});
 
-  final MinesweeperGame game;
-
-  static const List<Color> _numberColors = T.accentPalette;
+  final BoardChoice current;
+  final MinesweeperRecords records;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    if (game.width == 0 || game.height == 0) return;
-    final cellW = size.width / game.width;
-    final cellH = size.height / game.height;
-
-    canvas.drawRect(Offset.zero & size, Paint()..color = T.hairline);
-
-    for (var y = 0; y < game.height; y++) {
-      for (var x = 0; x < game.width; x++) {
-        final cell = game.cellAt(x, y);
-        final rect = Rect.fromLTWH(x * cellW + .5, y * cellH + .5, cellW - 1, cellH - 1);
-        final exploded = game.losingX == x && game.losingY == y;
-        _paintCell(canvas, rect, cell, exploded, math.min(cellW, cellH));
-      }
-    }
-  }
-
-  void _paintCell(Canvas canvas, Rect rect, MinesweeperCell cell, bool exploded, double unit) {
-    if (!cell.revealed) {
-      canvas.drawRect(
-        rect,
-        Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: const [T.shellTop, T.shellBottom],
-          ).createShader(rect),
-      );
-      canvas.drawRect(
-        rect,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1
-          ..color = T.hairline,
-      );
-      if (cell.flagged) _paintFlag(canvas, rect, unit, wrong: cell.wrongFlag);
-      return;
-    }
-
-    canvas.drawRect(
-      rect,
-      Paint()..color = exploded ? const Color(0xFFF3B7B7) : T.wellBottom,
-    );
-
-    if (cell.mine) {
-      _paintMine(canvas, rect, unit);
-      return;
-    }
-
-    if (cell.adjacent > 0) {
-      final color = _numberColors[(cell.adjacent - 1).clamp(0, _numberColors.length - 1)];
-      final painter = TextPainter(
-        text: TextSpan(
-          text: '${cell.adjacent}',
-          style: Ty.numeral(unit * .52, color: color, weight: FontWeight.w700),
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    return IbashoDialog(
+      title: l.minesweeperChooseLevel,
+      width: 360,
+      body: LayoutBuilder(
+        builder: (context, box) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final c in BoardChoice.all) ...[
+              LevelCard(
+                choice: c,
+                selected: c == current,
+                records: records,
+                width: box.maxWidth,
+                height: 62,
+                onPressed: () => Navigator.of(context).pop(c),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
         ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      painter.paint(
-        canvas,
-        rect.center - Offset(painter.width / 2, painter.height / 2),
-      );
-    }
-  }
-
-  void _paintFlag(Canvas canvas, Rect rect, double unit, {required bool wrong}) {
-    final base = rect.center;
-    final pole = Offset(base.dx - unit * .08, base.dy - unit * .26);
-    canvas.drawLine(
-      pole,
-      Offset(pole.dx, base.dy + unit * .26),
-      Paint()
-        ..color = T.ink
-        ..strokeWidth = math.max(1, unit * .06),
+      ),
+      actions: [
+        IbashoButton(
+          label: l.actionCancel,
+          tone: ButtonTone.quiet,
+          cue: Sfx.back,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
-    final flag = Path()
-      ..moveTo(pole.dx, pole.dy)
-      ..lineTo(pole.dx + unit * .32, pole.dy + unit * .1)
-      ..lineTo(pole.dx, pole.dy + unit * .2)
-      ..close();
-    canvas.drawPath(flag, Paint()..color = T.warn);
-    if (wrong) {
-      final centre = base;
-      final r = unit * .3;
-      canvas.drawLine(centre + Offset(-r, -r), centre + Offset(r, r),
-          Paint()..color = T.foodCherry..strokeWidth = math.max(1, unit * .08));
-      canvas.drawLine(centre + Offset(-r, r), centre + Offset(r, -r),
-          Paint()..color = T.foodCherry..strokeWidth = math.max(1, unit * .08));
-    }
   }
-
-  void _paintMine(Canvas canvas, Rect rect, double unit) {
-    final centre = rect.center;
-    final radius = unit * .24;
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1, unit * .07)
-      ..strokeCap = StrokeCap.round
-      ..color = T.ink;
-    canvas.drawCircle(centre, radius, Paint()..color = T.ink);
-    for (var i = 0; i < 8; i++) {
-      final angle = i * math.pi / 4;
-      final dir = Offset(math.cos(angle), math.sin(angle));
-      canvas.drawLine(centre + dir * radius, centre + dir * (radius + unit * .12), stroke);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_BoardPainter old) => true;
 }

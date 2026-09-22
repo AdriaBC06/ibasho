@@ -16,6 +16,7 @@ import 'accent_sync.dart';
 import 'admin.dart';
 import 'card.dart';
 import 'coins.dart';
+import 'rewards.dart';
 import 'conversation.dart';
 import 'friends.dart';
 import 'identity.dart';
@@ -339,6 +340,17 @@ final shopProvider = StateNotifierProvider<ShopController, ShopState>((ref) {
     coinsOf: () => ref.read(coinsProvider),
     pantryQtyOf: (food) => ref.read(pantryProvider)[food] ?? 0,
     unlockedFoodsOf: () => ref.read(unlockedFoodsProvider),
+  );
+});
+
+/// Los premios de los juegos: monedas por ganar, con tope diario.
+final rewardsProvider = StateNotifierProvider<RewardsController, RewardsState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return RewardsController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    coinsOf: () => ref.read(coinsProvider),
   );
 });
 

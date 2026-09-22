@@ -11,6 +11,7 @@ import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../canvas.dart';
 import '../layout.dart';
+import '../widgets/channel_art.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import 'channel_grid.dart';
@@ -28,10 +29,15 @@ class ChannelRoute extends PageRoute<void> {
     required this.label,
     required this.builder,
     required this.reducedMotion,
+    this.art,
   });
 
   /// Rectangulo del icono en coordenadas del lienzo.
   final Rect origin;
+
+  /// Icono ilustrado del canal, si lo tiene: la baldosa que se abre lo
+  /// ensena en vez del glifo.
+  final ArtIcon? art;
 
   final Color tint;
   final Glyph glyph;
@@ -139,7 +145,7 @@ class ChannelRoute extends PageRoute<void> {
                       if (t < .45)
                         Opacity(
                           opacity: (1 - t / .45).clamp(0.0, 1.0),
-                          child: _TileFace(tint: tint, glyph: glyph, label: label),
+                          child: _TileFace(tint: tint, glyph: glyph, label: label, art: art),
                         ),
                       // El canal se maqueta una sola vez, a pantalla completa,
                       // y solo se escala. Icono y lienzo comparten proporcion
@@ -171,11 +177,12 @@ class ChannelRoute extends PageRoute<void> {
 
 /// Lo que se ve dentro del rectangulo mientras crece: el icono de partida.
 class _TileFace extends StatelessWidget {
-  const _TileFace({required this.tint, required this.glyph, required this.label});
+  const _TileFace({required this.tint, required this.glyph, required this.label, this.art});
 
   final Color tint;
   final Glyph glyph;
   final String label;
+  final ArtIcon? art;
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
@@ -183,14 +190,18 @@ class _TileFace extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color.lerp(tint, T.shellTop, .30)!,
-              Color.lerp(tint, T.dusk, .14)!,
-            ],
+            colors: art != null
+                ? const [T.shellTop, T.shellBottom]
+                : [
+                    Color.lerp(tint, T.shellTop, .30)!,
+                    Color.lerp(tint, T.dusk, .14)!,
+                  ],
           ),
         ),
         child: Center(
-          child: GlyphIcon(glyph, size: 46, color: T.onAccent),
+          child: art != null
+              ? ArtIconView(art!, size: 84)
+              : GlyphIcon(glyph, size: 46, color: T.onAccent),
         ),
       );
 }
@@ -203,6 +214,7 @@ Future<void> openChannel(
   required Glyph glyph,
   required String label,
   required WidgetBuilder builder,
+  ArtIcon? art,
 }) {
   final origin = rectInNavigator(context, anchor) ??
       Rect.fromCenter(
@@ -219,6 +231,7 @@ Future<void> openChannel(
       label: label,
       builder: builder,
       reducedMotion: IbashoSkin.of(context).reducedMotion,
+      art: art,
     ),
   );
 }
@@ -304,10 +317,14 @@ class ChannelScaffold extends StatelessWidget {
     required this.child,
     this.trailing,
     this.onClose,
+    this.art,
   });
 
   final String title;
   final Glyph glyph;
+
+  /// Icono ilustrado: sustituye a la pastilla de acento con el glifo.
+  final ArtIcon? art;
   final Widget child;
   final Widget? trailing;
 
@@ -351,6 +368,9 @@ class ChannelScaffold extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: layout.gutter),
                   child: Row(
                     children: [
+                      if (art != null)
+                        ArtIconView(art!, size: tall ? 44 : 56)
+                      else
                       SizedBox(
                         width: tall ? 40 : 50,
                         height: tall ? 40 : 50,
