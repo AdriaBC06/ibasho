@@ -56,6 +56,8 @@ además da monedas.
 - **Formato de hora 12 h / 24 h** en Ajustes, junto al idioma. Lo siguen el
   reloj del panel de arriba, la hora local de un amigo en su perfil y la hora
   de los mensajes. Por defecto, 24 h, como siempre.
+- **Apps en el canal de depuración**: un admin puede darse un juego envuelto
+  o abierto, o quitárselo, sin pasar por el Yatai. Solo en su propia cuenta.
 - **`tool/seed_shop.dart`** carga los precios del Yatai (`/shop/prices`). Un
   artículo sin precio sale como «no disponible».
 

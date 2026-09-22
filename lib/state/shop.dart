@@ -233,6 +233,33 @@ class ShopController extends StateNotifier<ShopState> {
     }
   }
 
+  /// Depuracion (solo admin, y solo en su cuenta): pone un juego en el
+  /// estado que se pida sin pasar por el Yatai, o lo quita con `null`. Las
+  /// reglas rechazan esto a cualquier otra cuenta.
+  Future<bool> debugSetGame(String gameId, GameState? to) async {
+    if (!_session.state.isAdmin) return false;
+    state = state.copyWith(busy: true);
+    try {
+      final path = '/users/$_me/games/$gameId';
+      final token = await _session.freshToken();
+      if (to == null) {
+        await _backend.remove(path, idToken: token);
+      } else {
+        await _backend.write(
+          path,
+          {'state': to.name, 'at': serverTimestamp},
+          idToken: token,
+        );
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido cambiar el juego ($e)');
+      return false;
+    } finally {
+      if (mounted) state = state.copyWith(busy: false);
+    }
+  }
+
   /// Desenvuelve un regalo: pasa un juego de `gift` a `open`. No toca `at`.
   Future<bool> unwrap(String gameId) async {
     final install = state.games[gameId];

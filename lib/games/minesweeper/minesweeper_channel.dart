@@ -16,7 +16,6 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../state/rewards.dart';
 import '../../theme/skin.dart';
-import '../../theme/type.dart';
 import '../../ui/layout.dart';
 import '../../ui/screens/channel_route.dart';
 import '../../ui/tama/tama_view.dart';
@@ -493,7 +492,6 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
   Widget _boardArea(BuildContext context, {required bool tall}) {
     final layout = Layout.of(context);
     final skin = IbashoSkin.of(context);
-    final l = L.of(context)!;
     final report = _report;
     return LayoutBuilder(builder: (context, box) {
       final pad = tall ? 10.0 : 16.0;
@@ -562,11 +560,6 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
                   ),
                 ),
               ),
-            ),
-          if (_game.start != null && _game.status == MinesweeperStatus.ready && !tall)
-            Positioned(
-              bottom: 0,
-              child: Text(l.minesweeperDailyStart, style: Ty.caption),
             ),
         ],
       );

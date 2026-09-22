@@ -190,6 +190,41 @@ void main() {
     });
   });
 
+  group('ShopController.debugSetGame', () {
+    test('un admin se da un juego envuelto, lo abre y lo quita', () async {
+      final backend = FakeIbashoBackend();
+      final container = await _account(backend);
+      addTearDown(container.dispose);
+      await _until(() => container.read(shopProvider).loaded);
+      final shop = container.read(shopProvider.notifier);
+
+      expect(await shop.debugSetGame('minesweeper', GameState.gift), isTrue);
+      await _until(() => container.read(shopProvider).games.isNotEmpty);
+      expect(container.read(shopProvider).games['minesweeper']?.state, GameState.gift);
+
+      expect(await shop.debugSetGame('minesweeper', GameState.open), isTrue);
+      await _until(() =>
+          container.read(shopProvider).games['minesweeper']?.state == GameState.open);
+      expect(container.read(shopProvider).games['minesweeper']?.state, GameState.open);
+
+      expect(await shop.debugSetGame('minesweeper', null), isTrue);
+      await _until(() => container.read(shopProvider).games.isEmpty);
+      expect(container.read(shopProvider).games, isEmpty);
+    });
+
+    test('una cuenta normal no puede', () async {
+      final backend = FakeIbashoBackend(uid: 'uid-ana', username: 'ana', isAdmin: false);
+      final container = await _account(backend);
+      addTearDown(container.dispose);
+      await _until(() => container.read(shopProvider).loaded);
+
+      expect(
+        await container.read(shopProvider.notifier).debugSetGame('minesweeper', GameState.open),
+        isFalse,
+      );
+    });
+  });
+
   group('PantryController', () {
     test('pide el stock inicial de las comidas de serie', () async {
       final backend = FakeIbashoBackend();

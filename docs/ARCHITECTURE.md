@@ -951,7 +951,7 @@ coincide con su uid).
 | `…/coins` | sus amigos y cualquier admin | un admin, siempre; la dueña, restando precio × cantidad con un recibo fresco o sumando un premio con `rewards` fresco, en la misma escritura |
 | `…/shop/last` | la dueña | la dueña: `at === now`, el artículo tiene precio y, si no es gratis, el saldo baja exactamente lo que cuesta |
 | `…/pantry/$food` | la dueña | la dueña, sin borrar: el stock inicial (5, una vez, solo galleta y caramelo), −1 al comer, o + `qty` con un recibo fresco de esa comida |
-| `…/games/$gameId` | la dueña | la dueña, sin borrar: crear en `gift` con un recibo fresco de ese juego y `qty` 1; después solo `gift` → `open` |
+| `…/games/$gameId` | la dueña | la dueña, sin borrar: crear en `gift` con un recibo fresco de ese juego y `qty` 1; después solo `gift` → `open`. Un admin, en su propia cuenta, sin recibo y pudiendo borrar (canal de depuración) |
 | `…/rewards` | la dueña | la dueña, sin borrar: `at === now`, tener el juego, `day` de hoy, subir `earned` en 3, 5 u 8 (o hasta 20 justo), 15 s desde el anterior, y `coins` sube lo mismo en la misma escritura |
 | `/shop/prices` | miembro habilitado | admin |
 | `…/inbox/$fromId` | la dueña | crear: `$fromId`, si es amigo suyo; borrar: la dueña |
@@ -1027,7 +1027,7 @@ reparte los que falten al abrir el panel.
 | `NewsController` | multi-ruta de voto (`news/$id/tally/$opción` ±1, `news/$id/voters/$yo`, `users/$yo/votes/$id`); `/users/$acc/reads/news`; solo admin: `/news/$id`, `/news/$id/closed`, y su borrado |
 | `SuggestionsController` | `/suggestions/$acc` entero; solo admin: multi-ruta del veredicto (`status`, `note`, `decidedAt`, `decidedBy` y `acceptedSuggestions/$id`) y `/system/suggestionsOpen` |
 | `CoinsController` | solo admin: `/users/$otro/coins` |
-| `ShopController` | multi-ruta de compra desde la raíz: `users/$acc/shop/last` (con `serverTimestamp`), `users/$acc/coins` si no es gratis, y `users/$acc/pantry/$food` o `users/$acc/games/$id`; `/users/$acc/games/$id/state` al desenvolver |
+| `ShopController` | multi-ruta de compra desde la raíz: `users/$acc/shop/last` (con `serverTimestamp`), `users/$acc/coins` si no es gratis, y `users/$acc/pantry/$food` o `users/$acc/games/$id`; `/users/$acc/games/$id/state` al desenvolver; `debugSetGame` escribe o borra `/users/$acc/games/$id` entero (solo admin) |
 | `RewardsController` | multi-ruta de premio desde la raíz: `users/$acc/rewards` (con `serverTimestamp`) y `users/$acc/coins` |
 | `PantryController` | `/users/$acc/pantry/$food`: 5 la primera vez, y −1 cada vez que se da de comer |
 | `tool/seed_shop.dart` | `/shop/prices` entero, con la CLI |

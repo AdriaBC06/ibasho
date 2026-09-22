@@ -437,10 +437,13 @@
         // `qty === 1`; a partir de ahi el unico cambio que se acepta es pasar
         // de envuelto a abierto (desenvolverlo), y `at` no se toca: es la
         // fecha en que se compro, no la de abrirlo.
+        // Excepcion de depuracion: un admin puede darse, cambiar o quitarse
+        // juegos en SU cuenta sin recibo (canal de depuracion). En la de
+        // otra, nada: la condicion de dueña de `.write` sigue aplicando.
         "games": {
           "$gameId": {
-            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
-            ".validate": "$gameId.matches(/^[a-z0-9_]{1,32}$/) && newData.exists() && newData.hasChildren(['state', 'at']) && ((!data.exists() && newData.child('state').val() === 'gift' && newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'game_' + $gameId && newData.parent().parent().child('shop').child('last').child('qty').val() === 1) || (data.exists() && data.child('state').val() === 'gift' && newData.child('state').val() === 'open' && newData.child('at').val() === data.child('at').val()))",
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (newData.exists() || root.child('admins').child(auth.uid).exists())",
+            ".validate": "$gameId.matches(/^[a-z0-9_]{1,32}$/) && newData.exists() && newData.hasChildren(['state', 'at']) && (root.child('admins').child(auth.uid).exists() || (!data.exists() && newData.child('state').val() === 'gift' && newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'game_' + $gameId && newData.parent().parent().child('shop').child('last').child('qty').val() === 1) || (data.exists() && data.child('state').val() === 'gift' && newData.child('state').val() === 'open' && newData.child('at').val() === data.child('at').val()))",
             "state": {
               ".validate": "newData.isString() && (newData.val() === 'gift' || newData.val() === 'open')"
             },

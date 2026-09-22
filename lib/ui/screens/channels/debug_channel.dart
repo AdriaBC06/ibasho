@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
 import '../../../backend/models.dart';
+import '../../../backend/shop.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/debug.dart';
 import '../../../state/providers.dart';
@@ -20,6 +21,7 @@ import '../../widgets/panel.dart';
 import '../../widgets/track_tile.dart';
 import '../../layout.dart';
 import '../channel_route.dart';
+import 'channel.dart';
 
 class DebugChannel extends ConsumerWidget {
   const DebugChannel({super.key});
@@ -193,6 +195,8 @@ class DebugChannel extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
+                const _AppsSection(),
+                const SizedBox(height: 22),
                 SectionCard(
                   title: l.debugSession,
                   padding: const EdgeInsets.fromLTRB(26, 6, 26, 6),
@@ -242,4 +246,91 @@ class _InfoRow extends StatelessWidget {
         label: label,
         control: Text(value, style: Ty.numeral(14, color: T.inkSoft)),
       );
+}
+
+/// Dar o quitar juegos a la cuenta propia sin pasar por el Yatai. Las reglas
+/// solo lo aceptan de un admin y en su propia cuenta.
+class _AppsSection extends ConsumerStatefulWidget {
+  const _AppsSection();
+
+  @override
+  ConsumerState<_AppsSection> createState() => _AppsSectionState();
+}
+
+class _AppsSectionState extends ConsumerState<_AppsSection> {
+  String? _failed;
+
+  Future<void> _set(String gameId, GameState? to) async {
+    setState(() => _failed = null);
+    final ok = await ref.read(shopProvider.notifier).debugSetGame(gameId, to);
+    if (!ok && mounted) setState(() => _failed = gameId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final games = ref.watch(installedGamesProvider);
+    final busy = ref.watch(shopProvider.select((s) => s.busy));
+    final entries = gameChannelRegistry.entries.toList();
+
+    return SectionCard(
+      title: l.debugApps,
+      padding: const EdgeInsets.fromLTRB(26, 6, 26, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(l.debugAppsHint, style: Ty.caption),
+          ),
+          for (final (i, entry) in entries.indexed)
+            SettingRow(
+              label: entry.value.label(l),
+              hint: _failed == entry.key
+                  ? l.debugAppFailed
+                  : switch (games[entry.key]?.state) {
+                      null => l.debugAppMissing,
+                      GameState.gift => l.debugAppGift,
+                      GameState.open => l.debugAppOpen,
+                    },
+              divider: i < entries.length - 1,
+              control: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  IbashoButton(
+                    key: Key('debug.app.${entry.key}.gift'),
+                    label: l.debugAppGiveGift,
+                    glyph: Glyph.gift,
+                    height: 38,
+                    onPressed: busy || games[entry.key]?.state == GameState.gift
+                        ? null
+                        : () => _set(entry.key, GameState.gift),
+                  ),
+                  IbashoButton(
+                    key: Key('debug.app.${entry.key}.open'),
+                    label: l.debugAppGiveOpen,
+                    glyph: Glyph.check,
+                    height: 38,
+                    onPressed: busy || games[entry.key]?.state == GameState.open
+                        ? null
+                        : () => _set(entry.key, GameState.open),
+                  ),
+                  IbashoButton(
+                    key: Key('debug.app.${entry.key}.remove'),
+                    label: l.debugAppRemove,
+                    glyph: Glyph.trash,
+                    tone: ButtonTone.quiet,
+                    height: 38,
+                    onPressed: busy || !games.containsKey(entry.key)
+                        ? null
+                        : () => _set(entry.key, null),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

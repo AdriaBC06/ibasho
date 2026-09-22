@@ -216,6 +216,31 @@ test('los juegos comprados no se pueden borrar', async () => {
   await assertFails(set(ref(db(ANA), `/users/${ANA}/games/minesweeper`), null));
 });
 
+// --- Depuracion: el admin gestiona sus juegos --------------------------------
+
+test('el admin se da un juego sin recibo y se lo quita', async () => {
+  const game = ref(db(ADMIN), `/users/${ADMIN}/games/minesweeper`);
+  await assertSucceeds(set(game, { state: 'open', at: serverTimestamp() }));
+  await assertSucceeds(set(game, { state: 'gift', at: serverTimestamp() }));
+  await assertSucceeds(set(game, null));
+});
+
+test('el admin no toca los juegos de otra cuenta', async () => {
+  await assertFails(
+    set(ref(db(ADMIN), `/users/${ANA}/games/minesweeper`), { state: 'open', at: serverTimestamp() }),
+  );
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/games/minesweeper`), { state: 'open', at: now });
+  });
+  await assertFails(set(ref(db(ADMIN), `/users/${ANA}/games/minesweeper`), null));
+});
+
+test('una cuenta normal sigue sin darse juegos sin recibo', async () => {
+  await assertFails(
+    set(ref(db(ANA), `/users/${ANA}/games/minesweeper`), { state: 'open', at: serverTimestamp() }),
+  );
+});
+
 // --- Lo que no cambia ------------------------------------------------------
 
 test('el admin sigue pudiendo dar monedas sin recibo', async () => {
