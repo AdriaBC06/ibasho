@@ -1719,6 +1719,30 @@
   "@debugGachaFailed": {
     "description": "Error al darse tickets en depuracion."
   },
+  "debugPrizes": "contenido del gacha",
+  "@debugPrizes": {
+    "description": "Titulo de la seccion de depuracion para darse o quitarse todo el contenido."
+  },
+  "debugPrizesHint": "todos los gorros, accesorios, fondos y músicas del gacha, y todas las canciones de los juegos. solo funciona en tu cuenta de admin.",
+  "@debugPrizesHint": {
+    "description": "Explicacion de la seccion de contenido de depuracion."
+  },
+  "debugPrizesOwned": "premios",
+  "@debugPrizesOwned": {
+    "description": "Etiqueta de la fila que cuenta los premios que se tienen."
+  },
+  "debugPrizesGive": "dármelo todo",
+  "@debugPrizesGive": {
+    "description": "Boton que da todo el contenido del gacha y todas las canciones."
+  },
+  "debugPrizesRemove": "quitármelo todo",
+  "@debugPrizesRemove": {
+    "description": "Boton que quita todo el contenido del gacha y las canciones no de serie."
+  },
+  "debugPrizesFailed": "las reglas no han dejado cambiar la colección.",
+  "@debugPrizesFailed": {
+    "description": "Error al darse o quitarse el contenido en depuracion."
+  },
   "channelPinball": "pinball",
   "@channelPinball": {
     "description": "Nombre del canal del pinball del gacha."
@@ -1782,10 +1806,6 @@
   "pinballPrizeTitle": "¡premio!",
   "@pinballPrizeTitle": {
     "description": "Cabecera del premio de una bola."
-  },
-  "pinballPrizePlaceholder": "premio de prueba: los fondos y las músicas llegarán más adelante.",
-  "@pinballPrizePlaceholder": {
-    "description": "Aviso de que el premio es provisional."
   },
   "pinballPrizeNew": "¡nuevo!",
   "@pinballPrizeNew": {

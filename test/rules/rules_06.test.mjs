@@ -423,6 +423,74 @@ test('la bola dirigida da un premio de su categoria', async () => {
   );
 });
 
+// 0.6.1: en la 0.6.0 las reglas solo conocian gorros y accesorios, y la bola
+// que entraba en el agujero de fondos o de musica no podia guardar premio.
+test('los agujeros de fondos y musica dan premio', async () => {
+  await midGame();
+  await assertSucceeds(
+    update(
+      ref(db(ANA), '/'),
+      turn({ rarity: 'n', prize: 'bg_sky' }, { [`users/${ANA}/gacha/play/balls/n`]: null }, { [`users/${ANA}/prizes/bg_sky`]: 1 }),
+    ),
+  );
+  await midGame();
+  await assertSucceeds(
+    update(
+      ref(db(ANA), '/'),
+      turn({ rarity: 'ur', prize: 'mu_abrigo' }, { [`users/${ANA}/gacha/play/balls/ur`]: null }, { [`users/${ANA}/prizes/mu_abrigo`]: 1 }),
+    ),
+  );
+  // Un fondo de otra rareza, no.
+  await midGame();
+  await assertFails(
+    update(
+      ref(db(ANA), '/'),
+      turn({ rarity: 'n', prize: 'bg_starfield' }, { [`users/${ANA}/gacha/play/balls/n`]: null }, { [`users/${ANA}/prizes/bg_starfield`]: 1 }),
+    ),
+  );
+});
+
+test('sin musica SSR, la dirigida SSR de musica da la SR', async () => {
+  await midGame({ play: { at: 1, count: 4, done: 1, marked: { music: { ssr: 1 } } } });
+  await assertSucceeds(
+    update(
+      ref(db(ANA), '/'),
+      turn(
+        { rarity: 'ssr', category: 'music', prize: 'mu_feria' },
+        { [`users/${ANA}/gacha/play/marked/music/ssr`]: null },
+        { [`users/${ANA}/prizes/mu_feria`]: 1 },
+      ),
+    ),
+  );
+  // Y un fondo no sale de la dirigida de musica.
+  await midGame({ play: { at: 1, count: 4, done: 1, marked: { music: { ssr: 1 } } } });
+  await assertFails(
+    update(
+      ref(db(ANA), '/'),
+      turn(
+        { rarity: 'ssr', category: 'music', prize: 'bg_sunset' },
+        { [`users/${ANA}/gacha/play/marked/music/ssr`]: null },
+        { [`users/${ANA}/prizes/bg_sunset`]: 1 },
+      ),
+    ),
+  );
+});
+
+test('un admin se da y se quita premios en su cuenta', async () => {
+  await assertSucceeds(
+    update(ref(db(ADMIN), '/'), {
+      [`users/${ADMIN}/prizes/bg_starfield`]: 1,
+      [`users/${ADMIN}/prizes/mu_cenit`]: 1,
+      [`users/${ADMIN}/prizes/crown_rgb_rainbow`]: 1,
+    }),
+  );
+  await assertSucceeds(set(ref(db(ADMIN), `/users/${ADMIN}/prizes`), null));
+  // En la de otra, no.
+  await assertFails(set(ref(db(ADMIN), `/users/${ANA}/prizes/bg_sky`), 1));
+  // Y quien no es admin, tampoco en la suya.
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/prizes/bg_sky`), 1));
+});
+
 test('una jugada tiene que gastar una bola de la partida', async () => {
   await midGame();
   // No baja nada.

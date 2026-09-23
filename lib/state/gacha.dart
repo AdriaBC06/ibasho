@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../backend/errors.dart';
 import '../backend/gacha.dart';
+import '../backend/gacha_prizes.dart';
 import '../backend/ibasho_backend.dart';
 import '../backend/live_tree.dart';
 import '../backend/models.dart';
@@ -614,6 +615,41 @@ class GachaController extends StateNotifier<GachaState> {
       return false;
     }
     if (mounted) state = state.copyWith(wish: wish);
+    return true;
+  }
+
+  /// Depuracion (solo admin, y solo en su cuenta): se da una copia de cada
+  /// premio que aun no tenga, de las cuatro categorias. Las reglas solo lo
+  /// aceptan de un admin en su cuenta.
+  Future<bool> debugGiveAllPrizes() async {
+    if (!_session.state.isAdmin) return false;
+    final missing = [for (final key in allGachaPrizeKeys) if (!state.owns(key)) key];
+    if (missing.isEmpty) return true;
+    try {
+      await _backend.merge(
+        '/users/$_me/prizes',
+        {for (final key in missing) key: 1},
+        idToken: await _session.freshToken(),
+      );
+    } catch (e) {
+      debugPrint('Ibasho: no se han podido dar los premios ($e)');
+      return false;
+    }
+    if (mounted) state = state.copyWith(prizes: {...state.prizes, for (final key in missing) key: 1});
+    return true;
+  }
+
+  /// Depuracion (solo admin, y solo en su cuenta): vacia la coleccion entera.
+  /// Lo que lleven puesto sus Tamas se queda puesto.
+  Future<bool> debugRemoveAllPrizes() async {
+    if (!_session.state.isAdmin) return false;
+    try {
+      await _backend.remove('/users/$_me/prizes', idToken: await _session.freshToken());
+    } catch (e) {
+      debugPrint('Ibasho: no se han podido quitar los premios ($e)');
+      return false;
+    }
+    if (mounted) state = state.copyWith(prizes: const <String, int>{});
     return true;
   }
 

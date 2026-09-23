@@ -2,8 +2,6 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 
 import 'gacha.dart';
@@ -174,25 +172,3 @@ List<PrizeItem> prizeItemsOf(GachaCategory category, Rarity rarity) => [
       for (final p in wearablePrizes)
         if (p.category == category && p.rarity == rarity) ...p.items,
     ];
-
-/// Si [category] ya tiene premios de verdad (los fondos y las musicas aun
-/// no: su bola da una carta de prueba).
-bool hasPrizes(GachaCategory category) => wearablePrizes.any((p) => p.category == category);
-
-/// El premio de una bola de [rarity] que entra en [category]. Cada variante
-/// de color pesa lo mismo. Si [fresh] (la bola dirigida del Catalogo), sale
-/// una que no este en [owned] mientras quede alguna; si ya estan todas,
-/// cualquiera. `null` si la categoria aun no tiene premios.
-PrizeItem? rollPrize(
-  GachaCategory category,
-  Rarity rarity,
-  math.Random random, {
-  Set<String> owned = const <String>{},
-  bool fresh = false,
-}) {
-  final all = prizeItemsOf(category, rarity);
-  if (all.isEmpty) return null;
-  final missing = fresh ? all.where((i) => !owned.contains(i.key)).toList() : const <PrizeItem>[];
-  final pool = missing.isNotEmpty ? missing : all;
-  return pool[random.nextInt(pool.length)];
-}

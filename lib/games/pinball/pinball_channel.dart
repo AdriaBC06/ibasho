@@ -13,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../audio/audio_service.dart';
 import '../../audio/tama_voice.dart';
 import '../../backend/gacha.dart';
-import '../../backend/prizes.dart';
+import '../../backend/gacha_prizes.dart';
 import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/gacha.dart';
@@ -189,14 +189,14 @@ class _PinballChannelState extends ConsumerState<PinballChannel>
   void _rollPrize(PinballGame game) {
     final i = game.outcomes.length - 1;
     final o = game.outcomes[i];
-    final item = rollPrize(
+    final key = rollGachaPrize(
       o.category!,
       o.ball.rarity,
       _random,
       owned: ref.read(gachaProvider).prizes.keys.toSet(),
       fresh: o.ball.isWish,
     );
-    game.outcomes[i] = o.withPrize(item?.key);
+    game.outcomes[i] = o.withPrize(key);
   }
 
   @override

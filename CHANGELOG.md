@@ -5,6 +5,46 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.6.1 — Que el pinball dé lo que promete
+
+### Arreglado
+
+- **Los agujeros de fondos y música del pinball no daban nada.** En la 0.6.0
+  el sorteo de premios solo conocía gorros y accesorios: una bola que entraba
+  en esos dos agujeros enseñaba una «carta de prueba» y se gastaba sin premio.
+  Ahora dan un fondo o una música de la rareza de la bola. Como no hay
+  música SSR, una bola SSR en ese agujero da la de la rareza de debajo (la
+  SR). Todo el sorteo pasa por `lib/backend/gacha_prizes.dart`, que ve juntas
+  las cuatro categorías.
+- **El Catálogo ya deja pedir fondos y músicas**, y enseña su colección con
+  miniaturas de los fondos.
+- **Una música ganada ya entra en la biblioteca**: sale en la música del
+  menú y en la del perfil, en vez de solo en la lista de Ajustes, y vale
+  también para las que ya se tenían.
+- **El Catálogo se sale de la pantalla en un móvil pequeño**: ahora se
+  desplaza y los botones quedan a la vista.
+
+### Añadido
+
+- **En el canal de depuración**, un admin puede darse de golpe todo el
+  contenido (gorros, accesorios, fondos y músicas del gacha y todas las
+  canciones) y quitárselo todo con otro botón. Al quitarlo, el fondo y las
+  músicas vuelven a los de serie.
+
+### Seguridad
+
+- Las reglas de `gacha/turn` aceptan ahora las claves `bg_*` y `mu_*`, con la
+  misma lista por rareza y categoría que sortea la app (la comprueba
+  `test/prize_rules_test.dart`). En `prizes/{clave}`, un admin puede escribir
+  en su propia cuenta sin jugada del pinball. Tests nuevos en
+  `test/rules/rules_06.test.mjs`.
+
+### Nota para desplegar
+
+Una 0.6.0 no puede guardar los premios nuevos. Hay que desplegar las reglas y
+exigir la 0.6.1. Las bolas perdidas en la 0.6.0 no se pueden devolver una a
+una: `gacha/turn` se sobrescribe en cada bola y no apuntaba el agujero.
+
 ## 0.6.0 — El gacha del Yatai
 
 ### Añadido

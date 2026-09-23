@@ -14,7 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
 import '../../backend/gacha.dart';
-import '../../backend/prizes.dart';
+import '../../backend/gacha_prizes.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
@@ -162,13 +162,19 @@ class _PinballCatalogDialogState extends ConsumerState<PinballCatalogDialog> {
     final gacha = ref.watch(gachaProvider);
     final category = _category;
     final rarity = _rarity;
-    final items = category == null || rarity == null ? const <PrizeItem>[] : prizeItemsOf(category, rarity);
-    final owned = items.where((i) => gacha.owns(i.key)).length;
+    // Lo que puede dar la bola dirigida: los de esa rareza, o los de la mas
+    // cercana si la categoria no tiene (la musica no tiene SSR).
+    final items = category == null || rarity == null ? const <String>[] : gachaPrizePool(category, rarity);
+    final owned = items.where(gacha.owns).length;
 
     return IbashoDialog(
       title: l.gachaCatalog,
       width: tall ? 360 : 540,
-      body: Column(
+      // Con las cuatro categorias (0.6.1) no cabe entero en un movil pequeno:
+      // se desplaza y los botones quedan siempre a la vista.
+      body: Flexible(
+        child: SingleChildScrollView(
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -181,7 +187,6 @@ class _PinballCatalogDialogState extends ConsumerState<PinballCatalogDialog> {
             runSpacing: 8,
             children: [
               for (final c in GachaCategory.values)
-                if (hasPrizes(c))
                   _Tap(
                     key: ValueKey<String>('gacha.wish.${c.name}'),
                     onPressed: () => setState(() => _category = c),
@@ -236,16 +241,18 @@ class _PinballCatalogDialogState extends ConsumerState<PinballCatalogDialog> {
                 spacing: 4,
                 runSpacing: 4,
                 children: [
-                  for (final item in items)
+                  for (final key in items)
                     Semantics(
-                      label: gacha.owns(item.key) ? l.prizeName(item.key) : '???',
-                      child: PrizeView(item, size: tall ? 38 : 44, locked: !gacha.owns(item.key)),
+                      label: gacha.owns(key) ? gachaPrizeName(l, key) : '???',
+                      child: GachaPrizeView(key, size: tall ? 38 : 44, locked: !gacha.owns(key)),
                     ),
                 ],
               ),
             ),
           ],
         ],
+          ),
+        ),
       ),
       actions: [
         IbashoButton(

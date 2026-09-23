@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -222,11 +224,19 @@ Future<void> changeLanguage(WidgetRef ref, String code) async {
 final musicLibraryProvider =
     StateNotifierProvider<MusicLibraryController, MusicLibraryState>((ref) {
   ref.watch(sessionProvider.select((s) => s.accountId));
-  return MusicLibraryController(
+  final controller = MusicLibraryController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
     preferences: ref.watch(preferencesProvider.notifier),
   );
+  // Las musicas ganadas en el gacha (`mu_<id>` en la coleccion) pasan a la
+  // biblioteca. En la 0.6.0 solo las veia la lista de Ajustes.
+  ref.listen<Map<String, int>>(
+    gachaProvider.select((g) => g.prizes),
+    (_, prizes) => unawaited(controller.adoptPrizes(prizes.keys)),
+    fireImmediately: true,
+  );
+  return controller;
 });
 
 /// Presencia propia. Vive mientras dure la sesion activa de una cuenta; al

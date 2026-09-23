@@ -7,7 +7,6 @@ import 'package:flutter/widgets.dart';
 
 import '../../audio/audio_service.dart';
 import '../../backend/gacha.dart';
-import '../../backend/prizes.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/gacha.dart';
 import '../../theme/skin.dart';
@@ -232,8 +231,8 @@ class _StockBall extends StatelessWidget {
 }
 
 /// El premio de una bola: la pieza que ha tocado, con su nombre, su rareza
-/// y si es nueva o cuantas hay ya. Las categorias que aun no tienen premios
-/// (fondos, musicas) ensenan una carta de prueba.
+/// y si es nueva o cuantas hay ya. Vale para las cuatro categorias: gorros,
+/// accesorios, fondos y musicas.
 class PinballPrizeCard extends StatelessWidget {
   const PinballPrizeCard({
     super.key,
@@ -255,7 +254,7 @@ class PinballPrizeCard extends StatelessWidget {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final category = outcome.category!;
-    final item = prizeItem(outcome.prize);
+    final key = outcome.prize;
     final rarity = outcome.ball.rarity;
     return PopIn(
       child: ConstrainedBox(
@@ -270,13 +269,13 @@ class PinballPrizeCard extends StatelessWidget {
             children: [
               Text(l.pinballPrizeTitle, style: Ty.title.copyWith(color: skin.accentDeep)),
               const SizedBox(height: 8),
-              if (item != null)
+              if (key != null)
                 GlossSurface(
                   radius: 24,
                   recessed: true,
                   tint: RarityArt.of(rarity),
                   padding: const EdgeInsets.all(10),
-                  child: PrizeView(item, size: 96),
+                  child: GachaPrizeView(key, size: 96),
                 )
               else
                 CategoryArtView(category, size: 96),
@@ -286,7 +285,7 @@ class PinballPrizeCard extends StatelessWidget {
                 children: [
                   Flexible(
                     child: Text(
-                      item != null ? l.prizeName(item.key) : categoryName(l, category),
+                      key != null ? gachaPrizeName(l, key) : categoryName(l, category),
                       key: const ValueKey<String>('pinball.prize.name'),
                       style: Ty.body.copyWith(fontWeight: FontWeight.w700),
                       overflow: TextOverflow.ellipsis,
@@ -297,8 +296,8 @@ class PinballPrizeCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              if (item == null)
-                Text(l.pinballPrizePlaceholder, textAlign: TextAlign.center, style: Ty.micro)
+              if (key == null)
+                const SizedBox.shrink()
               else if (copies <= 1)
                 ResultChip(text: l.pinballPrizeNew, accent: true)
               else
@@ -499,16 +498,14 @@ class PinballResultsCard extends StatelessWidget {
                             QueueBall(o.ball, size: 30),
                             const SizedBox(width: 10),
                             if (o.won) ...[
-                              if (prizeItem(o.prize) case final item?)
-                                PrizeView(item, size: 30)
+                              if (o.prize case final key?)
+                                GachaPrizeView(key, size: 30)
                               else
                                 CategoryArtView(o.category!, size: 30),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  o.prize != null && prizeItem(o.prize) != null
-                                      ? l.prizeName(o.prize!)
-                                      : categoryName(l, o.category!),
+                                  o.prize != null ? gachaPrizeName(l, o.prize!) : categoryName(l, o.category!),
                                   style: Ty.body,
                                   overflow: TextOverflow.ellipsis,
                                 ),

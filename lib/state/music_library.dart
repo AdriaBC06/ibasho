@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../audio/audio_service.dart';
+import '../backend/gacha_music.dart';
 import '../backend/ibasho_backend.dart';
 import 'preferences.dart';
 import 'session.dart';
@@ -85,6 +86,10 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
 
   String get _path => '/users/${_session.state.accountId}/music';
 
+  /// Las pistas del gacha que tiene la coleccion (`mu_<id>`), a la espera de
+  /// que la biblioteca acabe de cargar.
+  Set<String> _owned = const <String>{};
+
   Future<void> _load() async {
     if (_session.state.accountId.isEmpty) return;
     try {
@@ -109,6 +114,9 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
         profileTrack: profileTrack,
         loaded: true,
       );
+      // Las del gacha que aun no estaban: se apuntan ya (el estado cambia
+      // antes de esperar a la red) para que la pista elegida no se pierda.
+      unawaited(_adopt());
 
       // La eleccion de la cuenta manda sobre la cache local, siempre que siga
       // desbloqueada.
@@ -121,6 +129,34 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     } catch (e) {
       debugPrint('Ibasho: no se ha podido leer la musica de la cuenta ($e)');
       if (mounted) state = state.copyWith(loaded: true);
+    }
+  }
+
+  /// Las musicas ganadas en el gacha entran en la biblioteca como si se
+  /// hubieran escuchado: asi salen en el menu, en el perfil y en las reglas
+  /// de `menuTrack`, que solo miran `unlocked`. [prizes] son las claves de la
+  /// coleccion; se puede llamar antes de que la biblioteca cargue.
+  Future<void> adoptPrizes(Iterable<String> prizes) async {
+    _owned = {
+      for (final key in prizes)
+        if (gachaMusicByKey(key) case final track?) track.id,
+    };
+    await _adopt();
+  }
+
+  Future<void> _adopt() async {
+    if (!state.loaded || _session.state.accountId.isEmpty) return;
+    final missing = _owned.where((id) => !state.unlocked.contains(id)).toList();
+    if (missing.isEmpty) return;
+    state = state.copyWith(unlocked: {...state.unlocked, ...missing});
+    try {
+      await _backend.merge(
+        '$_path/unlocked',
+        {for (final id in missing) id: true},
+        idToken: await _session.freshToken(),
+      );
+    } catch (e) {
+      debugPrint('Ibasho: no se han podido guardar las musicas del gacha ($e)');
     }
   }
 
@@ -167,6 +203,22 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     }
   }
 
+  /// Solo para depuracion: desbloquea todas las canciones de golpe.
+  Future<void> unlockAll() async {
+    final missing = [for (final t in MusicTrack.values) if (!state.isUnlocked(t)) t.id];
+    if (missing.isEmpty) return;
+    state = state.copyWith(unlocked: {...state.unlocked, ...missing});
+    try {
+      await _backend.merge(
+        '$_path/unlocked',
+        {for (final id in missing) id: true},
+        idToken: await _session.freshToken(),
+      );
+    } catch (e) {
+      debugPrint('Ibasho: no se han podido desbloquear las canciones ($e)');
+    }
+  }
+
   /// Solo para depuracion: vuelve a dejar unicamente las canciones de serie.
   Future<void> resetUnlocks() async {
     final current = MusicTrack.byId(state.menuTrack ?? MusicTrack.fallback.id);
@@ -181,5 +233,9 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
       debugPrint('Ibasho: no se han podido olvidar los desbloqueos ($e)');
     }
     if (!current.unlockedByDefault) await select(MusicTrack.fallback);
+    final profile = state.profileTrack;
+    if (profile != null && !MusicTrack.byId(profile).unlockedByDefault) {
+      await selectProfileTrack(null);
+    }
   }
 }

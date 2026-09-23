@@ -248,10 +248,15 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
       ref.watch(adminProvider.select((a) => a.loading));
     }
     // El fondo puesto en Ajustes: detras de los paneles, se ve por el aire
-    // que dejan (el carril, la barra y los margenes). Vacio no pinta nada.
-    final backdropId = ref.watch(
+    // que dejan (el carril, la barra y los margenes). Vacio no pinta nada, y
+    // uno que la coleccion ya no tiene (un admin que se lo ha quitado) tampoco.
+    final chosenBackdrop = ref.watch(
       preferencesProvider.select((p) => p.backdropId),
     );
+    final backdropGone = ref.watch(
+      gachaProvider.select((g) => g.loaded && chosenBackdrop.isNotEmpty && !g.owns('bg_$chosenBackdrop')),
+    );
+    final backdropId = backdropGone ? '' : chosenBackdrop;
 
     return Bezel(
       child: FocusScope(

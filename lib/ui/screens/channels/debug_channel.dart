@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
 import '../../../backend/gacha.dart';
+import '../../../backend/gacha_prizes.dart';
 import '../../../backend/models.dart';
 import '../../../backend/shop.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -141,6 +142,8 @@ class DebugChannel extends ConsumerWidget {
                 const SizedBox(height: 22),
                 const _BonusSection(),
                 const _GachaSection(),
+                const SizedBox(height: 22),
+                const _PrizesSection(),
                 const SizedBox(height: 22),
                 SectionCard(
                   title: l.debugEffects,
@@ -363,6 +366,86 @@ class _GachaSection extends ConsumerWidget {
                 glyph: Glyph.star,
                 height: 40,
                 onPressed: () => unawaited(give(TicketKind.kinken, 1)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Darse o quitarse de golpe todo el contenido: los premios del gacha de las
+/// cuatro categorias y todas las canciones. Las reglas solo lo aceptan de un
+/// admin y en su propia cuenta.
+class _PrizesSection extends ConsumerStatefulWidget {
+  const _PrizesSection();
+
+  @override
+  ConsumerState<_PrizesSection> createState() => _PrizesSectionState();
+}
+
+class _PrizesSectionState extends ConsumerState<_PrizesSection> {
+  bool _busy = false;
+
+  Future<void> _run(Future<bool> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final ok = await action();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!ok) showIbashoToast(context, L.of(context)!.debugPrizesFailed, isError: true);
+  }
+
+  Future<bool> _give() async {
+    final ok = await ref.read(gachaProvider.notifier).debugGiveAllPrizes();
+    if (ok) await ref.read(musicLibraryProvider.notifier).unlockAll();
+    return ok;
+  }
+
+  Future<bool> _remove() async {
+    final ok = await ref.read(gachaProvider.notifier).debugRemoveAllPrizes();
+    if (!ok) return false;
+    await ref.read(musicLibraryProvider.notifier).resetUnlocks();
+    await ref.read(preferencesProvider.notifier).setBackdrop('');
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final gacha = ref.watch(gachaProvider);
+    final all = allGachaPrizeKeys;
+    return SectionCard(
+      title: l.debugPrizes,
+      padding: const EdgeInsets.fromLTRB(26, 12, 26, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l.debugPrizesHint, style: Ty.caption),
+          const SizedBox(height: 12),
+          _InfoRow(
+            label: l.debugPrizesOwned,
+            value: '${all.where(gacha.owns).length}/${all.length}',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              IbashoButton(
+                key: const Key('debug.prizes.give'),
+                label: l.debugPrizesGive,
+                glyph: Glyph.gift,
+                height: 40,
+                onPressed: _busy ? null : () => unawaited(_run(_give)),
+              ),
+              IbashoButton(
+                key: const Key('debug.prizes.remove'),
+                label: l.debugPrizesRemove,
+                glyph: Glyph.cross,
+                height: 40,
+                onPressed: _busy ? null : () => unawaited(_run(_remove)),
               ),
             ],
           ),
