@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 64">
+  <!-- Bolsita de feria con un pez, en la mano izquierda: el asa se coge por
+       (38, 5), pegado al costado, y la bolsa cuelga. -->
+  <defs>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#BFE9FF" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#5BC8F5" stop-opacity=".75"/>
+    </linearGradient>
+  </defs>
+  <!-- Asa de cordel -->
+  <path d="M22 18 Q24 4 38 5 Q30 10 24 19" fill="none" stroke="{main}" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Bolsa -->
+  <path d="M18 20 L26 20 C28 26 38 32 38 46 C38 56 31 62 22 62 C13 62 6 56 6 46 C6 32 16 26 18 20 Z"
+        fill="#FFFFFF" fill-opacity=".25" stroke="#8FA3B5" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M8.5 38 Q22 35 35.5 38 C37 41 37.6 43 37.6 46 C37.6 56 31 61.6 22 61.6 C13 61.6 6.4 56 6.4 46 C6.4 43 7 41 8.5 38 Z" fill="url(#water)"/>
+  <!-- Pez -->
+  <path d="M13 47 Q18 41 25 45 L30 41 Q29 46 30 51 L25 48 Q18 53 13 47 Z" fill="{fish}" stroke="{fish.edge}" stroke-width="1.2" stroke-linejoin="round"/>
+  <circle cx="16.5" cy="46" r="1" fill="{fish.edge}"/>
+  <circle cx="12" cy="40.5" r="1.2" fill="none" stroke="#FFFFFF" stroke-width=".8"/><circle cx="10" cy="36" r=".8" fill="none" stroke="#FFFFFF" stroke-width=".7"/>
+  <!-- Lazo -->
+  <path d="M16.5 20 L27.5 20" stroke="{main}" stroke-width="3" stroke-linecap="round"/>
+  <path d="M10 44 Q10 53 15 58" fill="none" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

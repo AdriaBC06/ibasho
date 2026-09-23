@@ -442,6 +442,45 @@
             ".validate": false
           }
         },
+        // Las misiones (0.6.0): hacer algo que ya deja su señal (dar de
+        // comer, jugar una partida, tirar del gacha o comprar en el Yatai)
+        // cobra un ticket. Las reglas no pueden calcular "el dia de hoy" con
+        // un `floor` (`$day`/`$week` son siempre texto), asi que cada cobro
+        // escribe un unico recibo fresco (`claim`, como `shop/last`) del que
+        // cuelgan el sello de "ya cobrada" (que remite al recibo para saber
+        // que vale, igual que `login/days`) y la subida de `tickets`.
+        "missions": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          "signal": {
+            "$event": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+              ".validate": "$event.matches(/^(feed|play|pull|buy)$/) && newData.hasChildren(['at']) && newData.child('at').val() === now"
+            }
+          },
+          "claim": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+            ".validate": "newData.hasChildren(['kind', 'event', 'amount', 'ticketKind', 'at']) && newData.child('at').val() === now && newData.child('ticketKind').val().matches(/^(gachaken|kinken)$/) && newData.child('amount').isNumber() && newData.child('amount').val() > 0 && ((newData.child('kind').val() === 'daily' && newData.child('event').val().matches(/^(feed|play|pull|buy)$/) && newData.hasChildren(['day']) && newData.child('day').isNumber() && newData.child('day').val() % 1 === 0 && newData.child('day').val() * 86400000 <= now && (newData.child('day').val() + 1) * 86400000 > now && newData.child('amount').val() === 1 && newData.child('ticketKind').val() === 'gachaken' && newData.parent().child('signal').child(newData.child('event').val()).child('at').val() >= newData.child('day').val() * 86400000 && newData.parent().child('daily').child(newData.child('day').val() + '').child(newData.child('event').val()).val() === true) || (newData.child('kind').val() === 'weekly' && newData.hasChildren(['week']) && newData.child('week').isNumber() && newData.child('week').val() % 1 === 0 && newData.child('week').val() * 604800000 <= now && (newData.child('week').val() + 1) * 604800000 > now && ((newData.child('event').val() === 'pull' && newData.child('ticketKind').val() === 'kinken' && newData.child('amount').val() === 1) || (newData.child('event').val() === 'buy' && newData.child('ticketKind').val() === 'gachaken' && newData.child('amount').val() === 3)) && newData.parent().child('signal').child(newData.child('event').val()).child('at').val() >= newData.child('week').val() * 604800000 && newData.parent().child('weekly').child(newData.child('week').val() + '').child(newData.child('event').val()).val() === true))"
+          },
+          "daily": {
+            "$day": {
+              "$event": {
+                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists() && !data.exists()",
+                ".validate": "$event.matches(/^(feed|play|pull|buy)$/) && newData.val() === true && newData.parent().parent().parent().child('claim').child('at').val() === now && newData.parent().parent().parent().child('claim').child('kind').val() === 'daily' && newData.parent().parent().parent().child('claim').child('event').val() === $event && newData.parent().parent().parent().child('claim').child('day').val() + '' === $day"
+              }
+            }
+          },
+          "weekly": {
+            "$week": {
+              "$event": {
+                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists() && !data.exists()",
+                ".validate": "$event.matches(/^(pull|buy)$/) && newData.val() === true && newData.parent().parent().parent().child('claim').child('at').val() === now && newData.parent().parent().parent().child('claim').child('kind').val() === 'weekly' && newData.parent().parent().parent().child('claim').child('event').val() === $event && newData.parent().parent().parent().child('claim').child('week').val() + '' === $week"
+              }
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         // El recibo de la ultima compra: `{item, qty, at}`. Es la dueña quien
         // lo escribe, siempre dentro de la misma operacion multi-ruta que
         // toca `coins`, `pantry` o `games`. `at === now` es lo que evita que
@@ -466,23 +505,309 @@
               ".validate": false
             }
           },
+          // Lo comprado de cada ticket esta semana (0.6.0): `{n, gachaken,
+          // kinken}`, con `n = floor(now / 604800000)` (las semanas UTC
+          // empiezan el jueves). Solo se puede escribir con un recibo fresco
+          // de un ticket, el contador sube justo en la cantidad comprada y
+          // una semana nueva empieza de cero. El tope (10 y 1) es el
+          // `.validate` de cada contador.
+          "week": {
+            ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+            ".validate": "newData.hasChildren(['n', 'gachaken', 'kinken']) && newData.child('n').val() * 604800000 <= now && (newData.child('n').val() + 1) * 604800000 > now && newData.parent().child('last').child('at').val() === now && newData.parent().child('last').child('item').val().matches(/^ticket_(gachaken|kinken)$/) && newData.child('gachaken').val() === (root.child('users').child($accountId).child('shop/week').child('n').val() === newData.child('n').val() ? root.child('users').child($accountId).child('shop/week').child('gachaken').val() : 0) + (newData.parent().child('last').child('item').val() === 'ticket_gachaken' ? newData.parent().child('last').child('qty').val() : 0) && newData.child('kinken').val() === (root.child('users').child($accountId).child('shop/week').child('n').val() === newData.child('n').val() ? root.child('users').child($accountId).child('shop/week').child('kinken').val() : 0) + (newData.parent().child('last').child('item').val() === 'ticket_kinken' ? newData.parent().child('last').child('qty').val() : 0)",
+            "n": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+            },
+            "gachaken": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 10"
+            },
+            "kinken": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 1"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
           "$other": {
             ".validate": false
+          }
+        },
+        // Los tickets del gacha (0.6.0), la moneda «premium»: `gachaken` y
+        // `kinken`. Solo suben comprandolos en el Yatai (recibo fresco de
+        // `ticket_$kind`, y el contador semanal de `shop/week` tiene que
+        // subir en la misma escritura) y solo bajan tirando del gacha (un
+        // `gacha/last` fresco, que cuesta 1 ticket la tirada suelta y 10 la
+        // de 11 bolas). Un admin puede darselos en su cuenta (depuracion).
+        "tickets": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          "$kind": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists() && (root.child('admins').child(auth.uid).exists() || newData.parent().parent().child('shop').child('last').child('at').val() === now || newData.parent().parent().child('gacha').child('last').child('at').val() === now || newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now || newData.parent().parent().child('missions').child('claim').child('at').val() === now)",
+            ".validate": "$kind.matches(/^(gachaken|kinken)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999 && (root.child('admins').child(auth.uid).exists() || (newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'ticket_' + $kind && newData.val() === (data.exists() ? data.val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val() && newData.parent().parent().child('shop').child('week').child('n').val() * 604800000 <= now && (newData.parent().parent().child('shop').child('week').child('n').val() + 1) * 604800000 > now && newData.parent().parent().child('shop').child('week').child($kind).val() === (root.child('users').child($accountId).child('shop/week').child('n').val() === newData.parent().parent().child('shop').child('week').child('n').val() ? root.child('users').child($accountId).child('shop/week').child($kind).val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val()) || (newData.parent().parent().child('gacha').child('last').child('at').val() === now && newData.parent().parent().child('gacha').child('last').child('kind').val() === $kind && data.exists() && newData.val() === data.val() - (newData.parent().parent().child('gacha').child('last').child('count').val() === 1 ? 1 : 10)) || (newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now && newData.parent().parent().child('leaderboardClaims').child('last').child('kind').val() === $kind && newData.val() > (data.exists() ? data.val() : 0) && newData.val() <= (data.exists() ? data.val() : 0) + 3) || (newData.parent().parent().child('missions').child('claim').child('at').val() === now && newData.parent().parent().child('missions').child('claim').child('ticketKind').val() === $kind && newData.val() === (data.exists() ? data.val() : 0) + newData.parent().parent().child('missions').child('claim').child('amount').val()))"
+          }
+        },
+        // El gacha (0.6.0). El sorteo lo hace la app: las reglas no pueden
+        // echar nada a suertes, asi que lo que protegen es la economia, no la
+        // rareza. `gacha/last` es `{kind, count, at}`, el recibo de la tirada,
+        // y exige que los tickets bajen lo que cuesta. `balls` es el deposito
+        // por rareza: su suma sube exactamente en las bolas tiradas.
+        // `play` es `{at, count, balls: {rareza: n}, marked: {categoria:
+        // {rareza: n}}, done}`: las bolas cargadas en el pinball (hasta 5).
+        // Con `play` fresco, cada rareza del deposito y cada dirigida baja
+        // justo lo cargado. `turn` es `{at, rarity, category?, prize?}`, cada
+        // bola que se juega: baja esa bola de `play` (la dirigida, de su
+        // categoria), sube `play/done` en uno y, si da premio, tiene que ser
+        // de esa rareza (y de esa categoria si va dirigida) y sube
+        // `/users/{cuenta}/prizes/{clave}` en uno. `wish` es el deseo del
+        // Catalogo, `{category, rarity, count}`: se puede cambiar cuando se
+        // quiera sin tocar el contador, y cada jugada lo sube en uno; en la
+        // numero 70 baja a cero y nace una bola dirigida en
+        // `marked/{categoria}/{rareza}` que tiene que coincidir con el deseo.
+        // `back` es `{at}`, cancelar la partida: borra `play` y devuelve al
+        // deposito como mucho lo que queda sin jugar de cada rareza.
+        // `pachinko` es `{at, count, balls: {rareza: n}}`: la tanda cargada en
+        // el pachinko (hasta 50, solo N a SSR); con `pachinko` fresco cada
+        // rareza del deposito baja justo lo cargado. `settle` es `{at}`,
+        // cerrar la tanda: borra `pachinko` y devuelve como mucho lo que
+        // podria haber salido, rareza a rareza (una bola se queda igual o
+        // sube uno o dos, con techo en UR; ∞ nunca), y en total no mas de
+        // las cargadas.
+        // Un admin puede borrar su propio `gacha` para probar.
+        "gacha": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".write": "auth != null && root.child('admins').child(auth.uid).exists() && (auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && !newData.exists()",
+          "last": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
+            ".validate": "newData.hasChildren(['kind', 'count', 'at']) && newData.child('at').val() === now && (newData.child('count').val() === 1 || newData.child('count').val() === 11) && newData.parent().parent().child('tickets').child(newData.child('kind').val()).val()    === root.child('users').child($accountId).child('tickets').child(newData.child('kind').val()).val() - (newData.child('count').val() === 1 ? 1 : 10)",
+            "kind": {
+              ".validate": "newData.isString() && newData.val().matches(/^(gachaken|kinken)$/)"
+            },
+            "count": {
+              ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 11)"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "balls": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
+            ".validate": "newData.hasChildren(['n', 'r', 'sr', 'ssr', 'ur', 'mu']) && ((newData.parent().child('last').child('at').val() === now && (newData.child('n').val() + newData.child('r').val() + newData.child('sr').val() + newData.child('ssr').val() + newData.child('ur').val() + newData.child('mu').val()) === ((data.child('n').exists() ? data.child('n').val() : 0) + (data.child('r').exists() ? data.child('r').val() : 0) + (data.child('sr').exists() ? data.child('sr').val() : 0) + (data.child('ssr').exists() ? data.child('ssr').val() : 0) + (data.child('ur').exists() ? data.child('ur').val() : 0) + (data.child('mu').exists() ? data.child('mu').val() : 0)) + newData.parent().child('last').child('count').val()) || newData.parent().child('play').child('at').val() === now || newData.parent().child('back').child('at').val() === now || newData.parent().child('pachinko').child('at').val() === now || (newData.parent().child('settle').child('at').val() === now && (newData.child('n').val() + newData.child('r').val() + newData.child('sr').val() + newData.child('ssr').val() + newData.child('ur').val() + newData.child('mu').val()) - ((data.child('n').exists() ? data.child('n').val() : 0) + (data.child('r').exists() ? data.child('r').val() : 0) + (data.child('sr').exists() ? data.child('sr').val() : 0) + (data.child('ssr').exists() ? data.child('ssr').val() : 0) + (data.child('ur').exists() ? data.child('ur').val() : 0) + (data.child('mu').exists() ? data.child('mu').val() : 0)) <= root.child('users').child($accountId).child('gacha/pachinko/count').val()))",
+            "n": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999 && (newData.parent().parent().child('play').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('play').child('balls').child('n').exists() ? newData.parent().parent().child('play').child('balls').child('n').val() : 0) : newData.parent().parent().child('back').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && !newData.parent().parent().child('play').exists() && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/play/balls/n').exists() ? root.child('users').child($accountId).child('gacha/play/balls/n').val() : 0)) : newData.parent().parent().child('pachinko').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('pachinko').child('balls').child('n').exists() ? newData.parent().parent().child('pachinko').child('balls').child('n').val() : 0) : newData.parent().parent().child('settle').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/pachinko/balls/n').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/n').val() : 0)) : newData.val() >= (data.exists() ? data.val() : 0))"
+            },
+            "r": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999 && (newData.parent().parent().child('play').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('play').child('balls').child('r').exists() ? newData.parent().parent().child('play').child('balls').child('r').val() : 0) : newData.parent().parent().child('back').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && !newData.parent().parent().child('play').exists() && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/play/balls/r').exists() ? root.child('users').child($accountId).child('gacha/play/balls/r').val() : 0)) : newData.parent().parent().child('pachinko').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('pachinko').child('balls').child('r').exists() ? newData.parent().parent().child('pachinko').child('balls').child('r').val() : 0) : newData.parent().parent().child('settle').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/pachinko/balls/r').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/r').val() : 0) + (root.child('users').child($accountId).child('gacha/pachinko/balls/n').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/n').val() : 0)) : newData.val() >= (data.exists() ? data.val() : 0))"
+            },
+            "sr": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999 && (newData.parent().parent().child('play').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('play').child('balls').child('sr').exists() ? newData.parent().parent().child('play').child('balls').child('sr').val() : 0) : newData.parent().parent().child('back').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && !newData.parent().parent().child('play').exists() && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/play/balls/sr').exists() ? root.child('users').child($accountId).child('gacha/play/balls/sr').val() : 0)) : newData.parent().parent().child('pachinko').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('pachinko').child('balls').child('sr').exists() ? newData.parent().parent().child('pachinko').child('balls').child('sr').val() : 0) : newData.parent().parent().child('settle').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/pachinko/balls/sr').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/sr').val() : 0) + (root.child('users').child($accountId).child('gacha/pachinko/balls/r').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/r').val() : 0) + (root.child('users').child($accountId).child('gacha/pachinko/balls/n').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/n').val() : 0)) : newData.val() >= (data.exists() ? data.val() : 0))"
+            },
+            "ssr": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999 && (newData.parent().parent().child('play').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('play').child('balls').child('ssr').exists() ? newData.parent().parent().child('play').child('balls').child('ssr').val() : 0) : newData.parent().parent().child('back').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && !newData.parent().parent().child('play').exists() && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/play/balls/ssr').exists() ? root.child('users').child($accountId).child('gacha/play/balls/ssr').val() : 0)) : newData.parent().parent().child('pachinko').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('pachinko').child('balls').child('ssr').exists() ? newData.parent().parent().child('pachinko').child('balls').child('ssr').val() : 0) : newData.parent().parent().child('settle').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/pachinko/balls/ssr').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/ssr').val() : 0) + (root.child('users').child($accountId).child('gacha/pachinko/balls/sr').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/sr').val() : 0) + (root.child('users').child($accountId).child('gacha/pachinko/balls/r').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/r').val() : 0)) : newData.val() >= (data.exists() ? data.val() : 0))"
+            },
+            "ur": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999 && (newData.parent().parent().child('play').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('play').child('balls').child('ur').exists() ? newData.parent().parent().child('play').child('balls').child('ur').val() : 0) : newData.parent().parent().child('back').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && !newData.parent().parent().child('play').exists() && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/play/balls/ur').exists() ? root.child('users').child($accountId).child('gacha/play/balls/ur').val() : 0)) : newData.parent().parent().child('pachinko').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('pachinko').child('balls').child('ur').exists() ? newData.parent().parent().child('pachinko').child('balls').child('ur').val() : 0) : newData.parent().parent().child('settle').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/pachinko/balls/ssr').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/ssr').val() : 0) + (root.child('users').child($accountId).child('gacha/pachinko/balls/sr').exists() ? root.child('users').child($accountId).child('gacha/pachinko/balls/sr').val() : 0)) : newData.val() >= (data.exists() ? data.val() : 0))"
+            },
+            "mu": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999 && (newData.parent().parent().child('play').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('play').child('balls').child('mu').exists() ? newData.parent().parent().child('play').child('balls').child('mu').val() : 0) : newData.parent().parent().child('back').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && !newData.parent().parent().child('play').exists() && newData.val() - (data.exists() ? data.val() : 0) <= (root.child('users').child($accountId).child('gacha/play/balls/mu').exists() ? root.child('users').child($accountId).child('gacha/play/balls/mu').val() : 0)) : newData.parent().parent().child('pachinko').child('at').val() === now ? newData.val() === (data.exists() ? data.val() : 0) - (newData.parent().parent().child('pachinko').child('balls').child('mu').exists() ? newData.parent().parent().child('pachinko').child('balls').child('mu').val() : 0) : newData.parent().parent().child('settle').child('at').val() === now ? (newData.val() >= (data.exists() ? data.val() : 0) && newData.val() - (data.exists() ? data.val() : 0) <= 0) : newData.val() >= (data.exists() ? data.val() : 0))"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "play": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && (newData.exists() || newData.parent().child('back').child('at').val() === now)",
+            ".validate": "newData.hasChildren(['at', 'count']) && (newData.child('at').val() === now ? !newData.child('done').exists() : (newData.parent().child('turn').child('at').val() === now && newData.child('at').val() === data.child('at').val() && newData.child('count').val() === data.child('count').val()))",
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "count": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 5"
+            },
+            "balls": {
+              "$rarity": {
+                ".validate": "$rarity.matches(/^(n|r|sr|ssr|ur|mu)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 5 && (newData.parent().parent().parent().child('turn').child('at').val() !== now || (data.exists() && newData.val() <= data.val()))"
+              }
+            },
+            "marked": {
+              "$category": {
+                "$rarity": {
+                  ".validate": "$category.matches(/^[a-z]{1,16}$/) && $rarity.matches(/^(n|r|sr|ssr|ur)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 5 && (newData.parent().parent().parent().parent().child('turn').child('at').val() !== now || (data.exists() && newData.val() <= data.val()))"
+                }
+              }
+            },
+            "done": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 5"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "back": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
+            ".validate": "newData.hasChildren(['at']) && newData.child('at').val() === now && root.child('users').child($accountId).child('gacha/play').exists() && !newData.parent().child('play').exists()",
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "pachinko": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && (newData.exists() || newData.parent().child('settle').child('at').val() === now)",
+            ".validate": "newData.hasChildren(['at', 'count', 'balls']) && newData.child('at').val() === now && (newData.child('balls').child('n').exists() ? newData.child('balls').child('n').val() : 0) + (newData.child('balls').child('r').exists() ? newData.child('balls').child('r').val() : 0) + (newData.child('balls').child('sr').exists() ? newData.child('balls').child('sr').val() : 0) + (newData.child('balls').child('ssr').exists() ? newData.child('balls').child('ssr').val() : 0) === newData.child('count').val()",
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "count": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 50"
+            },
+            "balls": {
+              "$rarity": {
+                ".validate": "$rarity.matches(/^(n|r|sr|ssr)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 50"
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "settle": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
+            ".validate": "newData.hasChildren(['at']) && newData.child('at').val() === now && root.child('users').child($accountId).child('gacha/pachinko').exists() && !newData.parent().child('pachinko').exists()",
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "turn": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
+            ".validate": "newData.hasChildren(['at', 'rarity']) && newData.child('at').val() === now && root.child('users').child($accountId).child('gacha/play').exists() && newData.parent().child('play').child('done').val() === (root.child('users').child($accountId).child('gacha/play').child('done').exists() ? root.child('users').child($accountId).child('gacha/play').child('done').val() : 0) + 1 && newData.parent().child('play').child('done').val() <= root.child('users').child($accountId).child('gacha/play').child('count').val() && (newData.child('category').exists() ? (root.child('users').child($accountId).child('gacha/play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).exists() && (newData.parent().child('play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).exists() ? newData.parent().child('play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).val() : 0) === root.child('users').child($accountId).child('gacha/play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).val() - 1) : (root.child('users').child($accountId).child('gacha/play').child('balls').child(newData.child('rarity').val()).exists() && (newData.parent().child('play').child('balls').child(newData.child('rarity').val()).exists() ? newData.parent().child('play').child('balls').child(newData.child('rarity').val()).val() : 0) === root.child('users').child($accountId).child('gacha/play').child('balls').child(newData.child('rarity').val()).val() - 1)) && (!newData.child('prize').exists() || (((newData.child('rarity').val() === 'n' && newData.child('prize').val().matches(/^(cap_red|cap_blue|cap_green|cap_yellow|afro_brown|beanie_red|beanie_blue|beanie_cream|hachimaki_white|hachimaki_red|leaf_green|leaf_orange|bow_pink|bow_blue|bow_yellow|glasses_black|glasses_white|glasses_red|glasses_navy|bowtie_black|bowtie_red|sneakers_red|sneakers_blue|sneakers_green|scarf_red|scarf_blue|scarf_cream|randoseru_red|randoseru_black)$/)) || (newData.child('rarity').val() === 'r' && newData.child('prize').val().matches(/^(headphones_white|headphones_skyblue|beret_red|beret_black|beret_green|top_hat_black|top_hat_white|hard_hat_yellow|hard_hat_orange|frog_hat_green|frog_hat_pink|chef_hat_white|groucho_black|clown_nose_red|clown_nose_black|clown_nose_green|bottle_water|bottle_cola|bottle_bluecola|energy_green|energy_white|energy_red|boba_pink|boba_green|boba_brown|taco_classic|balloon_red|balloon_blue|balloon_yellow|balloon_pink|uchiwa_sun|uchiwa_fish)$/)) || (newData.child('rarity').val() === 'sr' && newData.child('prize').val().matches(/^(hood_black|hood_red|hood_green|witch_hat_purple|witch_hat_black|nightcap_navy|nightcap_pink|flower_crown_sakura|flower_crown_sunflower|flower_crown_lavender|kitsune_white|kitsune_red|viking_iron|sombrero_straw|sombrero_charro|mask_a|mask_b|mask_c|mask_d|bandage_stars|pickaxe_diamond|sword_iron|sword_diamond|swim_ring_stripes|lantern_red|fish_bag_gold|cape_red|cape_blue)$/)) || (newData.child('rarity').val() === 'ssr' && newData.child('prize').val().matches(/^(gamer_headset_black|gamer_headset_blue|gamer_headset_pink|crown_gold|crown_silver|kabuto_red|kabuto_black|wizard_hat_blue|wizard_hat_purple|shutter_shades_orange|shutter_shades_blue|shutter_shades_yellow|shutter_shades_red|shutter_shades_lime|dollar_chain_gold|dollar_chain_silver|microphone_silver|kendama_red|kendama_blue)$/)) || (newData.child('rarity').val() === 'ur' && newData.child('prize').val().matches(/^(cat_headset_black|cat_headset_blue|cat_headset_pink|cat_headset_white|halo_gold|devil_horns_red|devil_horns_black|rainbow_cloud_sky|cursor_white|cursor_black|cursor_inverted|controller_blue|fairies_light|angel_wings_white|angel_wings_black)$/)) || (newData.child('rarity').val() === 'mu' && newData.child('prize').val().matches(/^(cat_headset_rgb_black|cat_headset_rgb_blue|cat_headset_rgb_pink|cat_headset_rgb_white|halo_rgb_rainbow|crown_rgb_rainbow|rgb_shades_rainbow|rgb_wings_rainbow)$/))) && (!newData.child('category').exists() || (newData.child('category').val() === 'hats' && newData.child('prize').val().matches(/^(cap_red|cap_blue|cap_green|cap_yellow|afro_brown|beanie_red|beanie_blue|beanie_cream|hachimaki_white|hachimaki_red|leaf_green|leaf_orange|bow_pink|bow_blue|bow_yellow|headphones_white|headphones_skyblue|beret_red|beret_black|beret_green|top_hat_black|top_hat_white|hard_hat_yellow|hard_hat_orange|frog_hat_green|frog_hat_pink|chef_hat_white|hood_black|hood_red|hood_green|witch_hat_purple|witch_hat_black|nightcap_navy|nightcap_pink|flower_crown_sakura|flower_crown_sunflower|flower_crown_lavender|kitsune_white|kitsune_red|viking_iron|sombrero_straw|sombrero_charro|gamer_headset_black|gamer_headset_blue|gamer_headset_pink|crown_gold|crown_silver|kabuto_red|kabuto_black|wizard_hat_blue|wizard_hat_purple|cat_headset_black|cat_headset_blue|cat_headset_pink|cat_headset_white|halo_gold|devil_horns_red|devil_horns_black|rainbow_cloud_sky|cat_headset_rgb_black|cat_headset_rgb_blue|cat_headset_rgb_pink|cat_headset_rgb_white|halo_rgb_rainbow|crown_rgb_rainbow)$/)) || (newData.child('category').val() === 'accessories' && newData.child('prize').val().matches(/^(glasses_black|glasses_white|glasses_red|glasses_navy|bowtie_black|bowtie_red|sneakers_red|sneakers_blue|sneakers_green|scarf_red|scarf_blue|scarf_cream|randoseru_red|randoseru_black|groucho_black|clown_nose_red|clown_nose_black|clown_nose_green|bottle_water|bottle_cola|bottle_bluecola|energy_green|energy_white|energy_red|boba_pink|boba_green|boba_brown|taco_classic|balloon_red|balloon_blue|balloon_yellow|balloon_pink|uchiwa_sun|uchiwa_fish|mask_a|mask_b|mask_c|mask_d|bandage_stars|pickaxe_diamond|sword_iron|sword_diamond|swim_ring_stripes|lantern_red|fish_bag_gold|cape_red|cape_blue|shutter_shades_orange|shutter_shades_blue|shutter_shades_yellow|shutter_shades_red|shutter_shades_lime|dollar_chain_gold|dollar_chain_silver|microphone_silver|kendama_red|kendama_blue|cursor_white|cursor_black|cursor_inverted|controller_blue|fairies_light|angel_wings_white|angel_wings_black|rgb_shades_rainbow|rgb_wings_rainbow)$/))) && newData.parent().parent().child('prizes').child(newData.child('prize').val()).val() === (root.child('users').child($accountId).child('prizes').child(newData.child('prize').val()).exists() ? root.child('users').child($accountId).child('prizes').child(newData.child('prize').val()).val() : 0) + 1))",
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "rarity": {
+              ".validate": "newData.isString() && newData.val().matches(/^(n|r|sr|ssr|ur|mu)$/)"
+            },
+            "category": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-z]{1,16}$/)"
+            },
+            "prize": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,40}$/)"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "marked": {
+            "$category": {
+              "$rarity": {
+                ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
+                ".validate": "$category.matches(/^[a-z]{1,16}$/) && $rarity.matches(/^(n|r|sr|ssr|ur)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999 && ((newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().parent().child('turn').child('at').val() === now && root.child('users').child($accountId).child('gacha/wish').exists() && root.child('users').child($accountId).child('gacha/wish').child('count').val() + 1 >= 70 && newData.parent().parent().parent().child('wish').child('count').val() === root.child('users').child($accountId).child('gacha/wish').child('count').val() + 1 - 70 && root.child('users').child($accountId).child('gacha/wish').child('category').val() === $category && root.child('users').child($accountId).child('gacha/wish').child('rarity').val() === $rarity) || (newData.parent().parent().parent().child('play').child('at').val() === now && data.exists() && newData.parent().parent().parent().child('play').child('marked').child($category).child($rarity).exists() && newData.val() === data.val() - newData.parent().parent().parent().child('play').child('marked').child($category).child($rarity).val()) || (newData.parent().parent().parent().child('back').child('at').val() === now && !newData.parent().parent().parent().child('play').exists() && root.child('users').child($accountId).child('gacha/play/marked').child($category).child($rarity).exists() && newData.val() >= (data.exists() ? data.val() : 0) && newData.val() - (data.exists() ? data.val() : 0) <= root.child('users').child($accountId).child('gacha/play/marked').child($category).child($rarity).val()))"
+              }
+            }
+          },
+          "wish": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
+            ".validate": "newData.hasChildren(['category', 'rarity', 'count']) && (newData.parent().child('turn').child('at').val() !== now ? newData.child('count').val() === (data.exists() ? data.child('count').val() : 0) : (data.exists() && newData.child('category').val() === data.child('category').val() && newData.child('rarity').val() === data.child('rarity').val() && newData.child('count').val() === data.child('count').val() + 1 - (data.child('count').val() + 1 >= 70 ? 70 : 0)))",
+            "category": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-z]{1,16}$/)"
+            },
+            "rarity": {
+              ".validate": "newData.isString() && newData.val().matches(/^(n|r|sr|ssr|ur)$/)"
+            },
+            "count": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() < 70"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        // La coleccion de premios (0.6.0): `prizes/{clave}` es cuantas
+        // copias hay de cada variante (`cap_red`). Solo sube de una en una y
+        // con la jugada del pinball que la da (`gacha/turn` fresco con ese
+        // premio). Un admin puede borrarla entera en su cuenta para probar.
+        "prizes": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".write": "auth != null && root.child('admins').child(auth.uid).exists() && (auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false)) && !newData.exists()",
+          "$key": {
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
+            ".validate": "$key.matches(/^[a-z0-9_]{1,40}$/) && newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().child('gacha').child('turn').child('at').val() === now && newData.parent().parent().child('gacha').child('turn').child('prize').val() === $key"
           }
         },
         // La despensa: unidades de cada comida. No se puede borrar
         // (`newData.exists()`), y cada escritura tiene que ser una de tres:
         // el stock inicial de 5 la primera vez que se lee una comida de serie
-        // (hoy galleta y caramelo; las demas se desbloquearan en un
-        // checkpoint futuro y ampliaran esta lista), comer (resta 1) o
-        // comprar (un recibo fresco de `food_$food` que suma `qty`). La
-        // compra tambien esta restringida a las comidas de serie por ahora:
-        // ampliar esta lista es lo unico que hara falta tocar aqui cuando se
-        // desbloqueen mas.
+        // (galleta y caramelo, las unicas gratis), comer (resta 1) o comprar
+        // (un recibo fresco de `food_$food` que suma `qty`, valido para
+        // cualquier comida de la lista desde la 0.6.0).
         "pantry": {
           "$food": {
             ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
-            ".validate": "$food.matches(/^(cookie|candy|cupcake|apple|dango|mochi|lollipop|iceCream|donut|flan)$/) && newData.exists() && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999 && ((!data.exists() && newData.val() === 5 && ($food === 'cookie' || $food === 'candy')) || (data.exists() && newData.val() === data.val() - 1) || (($food === 'cookie' || $food === 'candy') && newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'food_' + $food && newData.val() === (data.exists() ? data.val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val()))"
+            ".validate": "$food.matches(/^(cookie|candy|cupcake|apple|dango|mochi|lollipop|iceCream|donut|flan)$/) && newData.exists() && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999 && ((!data.exists() && newData.val() === 5 && ($food === 'cookie' || $food === 'candy')) || (data.exists() && newData.val() === data.val() - 1) || (newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'food_' + $food && newData.val() === (data.exists() ? data.val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val()))"
+          }
+        },
+        // Premio de las clasificaciones (0.6.0). Cobrar sube el ticket que
+        // toca (`tickets/{kind}`, ver mas abajo) y crea, en la misma
+        // escritura, `leaderboardClaims/{game}/{daily|weekly}/{day o
+        // semana}/{kind}` = `true` (una vez, no se puede pisar) mas un recibo
+        // fresco en `leaderboardClaims/last` (mismo patron que `shop/last` o
+        // `gacha/last`): sin ese recibo con `at === now`, ni el ticket ni la
+        // marca de cobro cuelan. La marca solo se puede crear si la cuenta
+        // sale de verdad en el puesto que paga ese ticket dentro de
+        // `/leaderboards/{juego}/{periodo}/results`, y el ticket tiene que
+        // subir justo lo que le toca a ese puesto (diaria: 1o 2 gachaken, 2o y
+        // 3o 1 gachaken; semanal: 1o 1 kinken, 2o 3 gachaken, 3o 2 gachaken).
+        "leaderboardClaims": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          "last": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+            ".validate": "newData.hasChildren(['game', 'period', 'key', 'kind', 'at']) && newData.child('at').val() === now && (newData.child('period').val() === 'daily' || newData.child('period').val() === 'weekly') && newData.child('kind').val().matches(/^(gachaken|kinken)$/)",
+            "game": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32"
+            },
+            "period": {
+              ".validate": "newData.isString()"
+            },
+            "key": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "kind": {
+              ".validate": "newData.isString()"
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$game": {
+            "daily": {
+              "$day": {
+                "$kind": {
+                  ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+                  ".validate": "$kind.matches(/^(gachaken|kinken)$/) && newData.val() === true && !data.exists() && newData.parent().parent().parent().parent().child('last').child('at').val() === now && newData.parent().parent().parent().parent().child('last').child('game').val() === $game && newData.parent().parent().parent().parent().child('last').child('period').val() === 'daily' && newData.parent().parent().parent().parent().child('last').child('key').val() + '' === $day && newData.parent().parent().parent().parent().child('last').child('kind').val() === $kind && (($kind === 'gachaken' && root.child('leaderboards').child($game).child('daily').child($day).child('results').child('1').val() === $accountId && newData.parent().parent().parent().parent().parent().child('tickets').child($kind).val() === (root.child('users').child($accountId).child('tickets').child($kind).exists() ? root.child('users').child($accountId).child('tickets').child($kind).val() : 0) + 2) || ($kind === 'gachaken' && root.child('leaderboards').child($game).child('daily').child($day).child('results').child('2').val() === $accountId && newData.parent().parent().parent().parent().parent().child('tickets').child($kind).val() === (root.child('users').child($accountId).child('tickets').child($kind).exists() ? root.child('users').child($accountId).child('tickets').child($kind).val() : 0) + 1) || ($kind === 'gachaken' && root.child('leaderboards').child($game).child('daily').child($day).child('results').child('3').val() === $accountId && newData.parent().parent().parent().parent().parent().child('tickets').child($kind).val() === (root.child('users').child($accountId).child('tickets').child($kind).exists() ? root.child('users').child($accountId).child('tickets').child($kind).val() : 0) + 1))"
+                }
+              }
+            },
+            "weekly": {
+              "$week": {
+                "$kind": {
+                  ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+                  ".validate": "$kind.matches(/^(gachaken|kinken)$/) && newData.val() === true && !data.exists() && newData.parent().parent().parent().parent().child('last').child('at').val() === now && newData.parent().parent().parent().parent().child('last').child('game').val() === $game && newData.parent().parent().parent().parent().child('last').child('period').val() === 'weekly' && newData.parent().parent().parent().parent().child('last').child('key').val() + '' === $week && newData.parent().parent().parent().parent().child('last').child('kind').val() === $kind && (($kind === 'kinken' && root.child('leaderboards').child($game).child('weekly').child($week).child('results').child('1').val() === $accountId && newData.parent().parent().parent().parent().parent().child('tickets').child($kind).val() === (root.child('users').child($accountId).child('tickets').child($kind).exists() ? root.child('users').child($accountId).child('tickets').child($kind).val() : 0) + 1) || ($kind === 'gachaken' && root.child('leaderboards').child($game).child('weekly').child($week).child('results').child('2').val() === $accountId && newData.parent().parent().parent().parent().parent().child('tickets').child($kind).val() === (root.child('users').child($accountId).child('tickets').child($kind).exists() ? root.child('users').child($accountId).child('tickets').child($kind).val() : 0) + 3) || ($kind === 'gachaken' && root.child('leaderboards').child($game).child('weekly').child($week).child('results').child('3').val() === $accountId && newData.parent().parent().parent().parent().parent().child('tickets').child($kind).val() === (root.child('users').child($accountId).child('tickets').child($kind).exists() ? root.child('users').child($accountId).child('tickets').child($kind).val() : 0) + 2))"
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
           }
         },
         // Los juegos comprados: `{state: 'gift'|'open', at}`. No se pueden
@@ -760,6 +1085,88 @@
         }
       }
     },
+    // Clasificaciones de los minijuegos (0.6.0): tablas diaria y semanal por
+    // juego (`$game` es `minesweeper_easy`, `minesweeper_medium`,
+    // `minesweeper_hard`, `tsumiki` o `nihongo`, pero las reglas aceptan
+    // cualquier clave: el catalogo vive en la app). Igual que el gacha, quien
+    // decide quien gana es la app, no las reglas: cada cuenta manda su propia
+    // puntuacion (solo si mejora la que ya habia, solo del periodo en curso) y
+    // cualquier cliente, cuando el periodo ya ha cerrado, calcula el top 3
+    // leyendo las puntuaciones publicas de ese periodo y lo escribe una sola
+    // vez; `results` ya no se puede tocar despues. `day` es `bonusDay()`
+    // (`lib/state/login_bonus.dart`) y `week` es `gachaWeek()`
+    // (`lib/backend/gacha.dart`): el mismo dia y semana UTC que el bono diario
+    // y el gacha, para no inventar un tercer calendario.
+    //
+    // Cada periodo lleva ademas su propio `day` (o `week`) como numero, junto
+    // a `scores`, `at` y `results`: un comodin de ruta ($day, $week) es
+    // siempre texto y las reglas no dejan hacer aritmetica con el (multiplicar
+    // por 86400000 falla al cargar las reglas), asi que para comprobar que el
+    // periodo es el de hoy hace falta un numero de verdad al lado. Lo manda
+    // quien escribe la primera puntuacion o quien cierra el periodo, siempre
+    // igual al numero de la ruta, y no se puede cambiar despues.
+    "leaderboards": {
+      "$game": {
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+        "daily": {
+          "$day": {
+            "day": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() + '' === $day && (!data.exists() || data.val() === newData.val())"
+            },
+            "scores": {
+              "$accountId": {
+                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ($game.matches(/^minesweeper_/) ? (newData.val() >= 1 && newData.val() <= 3600000) : (newData.val() >= 0 && newData.val() <= 999999)) && newData.parent().parent().child('day').val() * 86400000 <= now && newData.parent().parent().child('day').val() * 86400000 + 86400000 > now && newData.parent().parent().child('at').child($accountId).val() === now && ($game.matches(/^minesweeper_/) ? (!data.exists() || newData.val() < data.val()) : (!data.exists() || newData.val() > data.val()))"
+              }
+            },
+            "at": {
+              "$accountId": {
+                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+                ".validate": "newData.isNumber() && newData.val() === now"
+              }
+            },
+            "results": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && !data.exists()",
+              ".validate": "newData.parent().child('day').val() * 86400000 + 86400000 <= now && newData.hasChildren(['1', '2']) && newData.child('1').isString() && newData.child('2').isString() && newData.child('1').val() !== newData.child('2').val() && (!newData.child('3').exists() || (newData.child('3').isString() && newData.child('3').val() !== newData.child('1').val() && newData.child('3').val() !== newData.child('2').val()))"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "weekly": {
+          "$week": {
+            "week": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() + '' === $week && (!data.exists() || data.val() === newData.val())"
+            },
+            "scores": {
+              "$accountId": {
+                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ($game.matches(/^minesweeper_/) ? (newData.val() >= 1 && newData.val() <= 3600000) : (newData.val() >= 0 && newData.val() <= 999999)) && newData.parent().parent().child('week').val() * 604800000 <= now && newData.parent().parent().child('week').val() * 604800000 + 604800000 > now && newData.parent().parent().child('at').child($accountId).val() === now && ($game.matches(/^minesweeper_/) ? (!data.exists() || newData.val() < data.val()) : (!data.exists() || newData.val() > data.val()))"
+              }
+            },
+            "at": {
+              "$accountId": {
+                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+                ".validate": "newData.isNumber() && newData.val() === now"
+              }
+            },
+            "results": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && !data.exists()",
+              ".validate": "newData.parent().child('week').val() * 604800000 + 604800000 <= now && newData.hasChildren(['1', '2']) && newData.child('1').isString() && newData.child('2').isString() && newData.child('1').val() !== newData.child('2').val() && (!newData.child('3').exists() || (newData.child('3').isString() && newData.child('3').val() !== newData.child('1').val() && newData.child('3').val() !== newData.child('2').val()))"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     // Un Tama es un registro propio: lo crea `creator` y lo cuida `keeper`.
     // Traspasarlo a un amigo sera cambiar `keeper` (hoy es inmutable).
     // La lista propia solo se lee con la consulta orderBy=keeper, equalTo=yo.
@@ -879,6 +1286,20 @@
           },
           "colorMode": {
             ".validate": "newData.isString() && (newData.val() === 'palette' || newData.val() === 'hex')"
+          },
+          // Lo que lleva puesto (0.6.0): el gorro y hasta tres accesorios
+          // (`acc/a`, `b` y `c`), como claves de premio (`cap_red`). Solo
+          // estan si lleva algo. Ponerse algo exige tenerlo en la coleccion
+          // del cuidador; lo que ya llevaba puesto (un Tama traspasado) se
+          // puede quedar aunque no sea suyo.
+          "hat": {
+            ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,40}$/) && (newData.val() === data.val() || root.child('users').child(newData.parent().parent().child('keeper').val()).child('prizes').child(newData.val()).exists())"
+          },
+          "acc": {
+            ".validate": "newData.hasChildren()",
+            "$slot": {
+              ".validate": "$slot.matches(/^[abc]$/) && newData.isString() && newData.val().matches(/^[a-z0-9_]{1,40}$/) && (newData.val() === data.parent().child('a').val() || newData.val() === data.parent().child('b').val() || newData.val() === data.parent().child('c').val() || root.child('users').child(newData.parent().parent().parent().child('keeper').val()).child('prizes').child(newData.val()).exists())"
+            }
           },
           "$other": {
             ".validate": false

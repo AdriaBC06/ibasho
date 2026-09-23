@@ -360,6 +360,9 @@ class FakeIbashoBackend implements IbashoBackend {
   void setBackground(bool background) => this.background = background;
 
   @override
+  void setOwnAccount(String? accountId) {}
+
+  @override
   void dispose() {
     for (final (_, _, controller) in _watchers.toList()) {
       unawaited(controller.close());

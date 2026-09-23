@@ -42,6 +42,7 @@ enum Glyph {
   play,
   globe,
   plus,
+  minus,
   lock,
   eye,
   eyeOff,
@@ -73,6 +74,8 @@ enum Glyph {
   pause,
   yatai,
   gift,
+  trophy,
+  flag,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -342,6 +345,8 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawOval(const Rect.fromLTWH(7.4, 3.6, 9.2, 16.8), stroke);
       case Glyph.plus:
         canvas.drawLine(const Offset(12, 5.6), const Offset(12, 18.4), stroke);
+        canvas.drawLine(const Offset(5.6, 12), const Offset(18.4, 12), stroke);
+      case Glyph.minus:
         canvas.drawLine(const Offset(5.6, 12), const Offset(18.4, 12), stroke);
       case Glyph.lock:
         canvas.drawRRect(
@@ -819,6 +824,54 @@ class _GlyphPainter extends CustomPainter {
           stroke,
         );
         canvas.drawCircle(const Offset(12, 7.8), 1, stroke);
+      case Glyph.trophy:
+        // Trofeo: la copa, sus dos asas naciendo del borde y el pie con la
+        // base, todo con aire entre cada pieza salvo donde se tocan.
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.2, 4.6)
+            ..lineTo(16.8, 4.6)
+            ..lineTo(16.2, 11.2)
+            ..cubicTo(16.2, 14.4, 13.9, 16.2, 12, 16.2)
+            ..cubicTo(10.1, 16.2, 7.8, 14.4, 7.8, 11.2)
+            ..close(),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(7.6, 6.6)
+            ..cubicTo(3.6, 6.6, 3.6, 12, 7.8, 11.4),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(16.4, 6.6)
+            ..cubicTo(20.4, 6.6, 20.4, 12, 16.2, 11.4),
+          stroke,
+        );
+        canvas.drawLine(const Offset(12, 16.2), const Offset(12, 18.6), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(8.2, 19.6)
+            ..lineTo(9.2, 18.6)
+            ..lineTo(14.8, 18.6)
+            ..lineTo(15.8, 19.6)
+            ..close(),
+          stroke,
+        );
+      case Glyph.flag:
+        // El mastil de arriba abajo y el banderin, en un solo contorno que
+        // nace y muere en el mismo mastil.
+        canvas.drawLine(const Offset(6.4, 20.4), const Offset(6.4, 4.2), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(6.4, 5)
+            ..lineTo(18, 5)
+            ..lineTo(14, 9.2)
+            ..lineTo(18, 13.4)
+            ..lineTo(6.4, 13.4),
+          stroke,
+        );
     }
 
     canvas.restore();

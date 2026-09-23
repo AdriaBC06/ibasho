@@ -14,15 +14,12 @@ import '../backend/shop.dart';
 import '../backend/tama.dart';
 import 'session.dart';
 
-/// Chuches desbloqueadas.
+/// Chuches que se pueden comprar en el Yatai y ver en la despensa.
 ///
-/// De momento solo las de serie (galleta y caramelo). Las demas se
-/// desbloquearan comprandolas en el Yatai en un checkpoint futuro.
+/// Desde la 0.6.0 son todas: las que no son de serie (galleta y caramelo)
+/// empiezan a 0 unidades y hay que comprarlas, pero ya no llevan candado.
 final unlockedFoodsProvider = Provider<Set<TamaFood>>(
-  (ref) => {
-    for (final food in TamaFood.values)
-      if (food.unlockedByDefault) food,
-  },
+  (ref) => TamaFood.values.toSet(),
 );
 
 /// La despensa de la cuenta: unidades de cada comida.
@@ -35,10 +32,8 @@ class PantryController extends StateNotifier<Map<TamaFood, int>> {
   PantryController({
     required IbashoBackend backend,
     required SessionController session,
-    required Set<TamaFood> unlockedFoods,
   }) : _backend = backend,
        _session = session,
-       _unlockedFoods = unlockedFoods,
        super(const <TamaFood, int>{}) {
     if (_me.isNotEmpty && session.state.phase == SessionPhase.active) {
       unawaited(_start());
@@ -47,7 +42,13 @@ class PantryController extends StateNotifier<Map<TamaFood, int>> {
 
   final IbashoBackend _backend;
   final SessionController _session;
-  final Set<TamaFood> _unlockedFoods;
+
+  /// Las de serie: las unicas que reciben el stock inicial gratis. Las demas
+  /// empiezan a 0 y hay que comprarlas en el Yatai.
+  static final Set<TamaFood> _starterFoods = {
+    for (final food in TamaFood.values)
+      if (food.unlockedByDefault) food,
+  };
 
   StreamSubscription<DatabaseEvent>? _watch;
 
@@ -108,7 +109,7 @@ class PantryController extends StateNotifier<Map<TamaFood, int>> {
 
   /// Pide el stock inicial de las comidas de serie que aun no tengan nodo.
   Future<void> _ensureStarters() async {
-    for (final food in _unlockedFoods) {
+    for (final food in _starterFoods) {
       if (state.containsKey(food) || _starterRequested.contains(food)) continue;
       _starterRequested.add(food);
       try {

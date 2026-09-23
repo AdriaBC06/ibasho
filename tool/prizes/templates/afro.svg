@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Pelo afro: una nube de rizos. El nacimiento del pelo va en (20..80, 74). -->
+  <defs>
+    <linearGradient id="hair" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="80">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".6"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Mas bajo y dentro del lienzo: aplastado hacia el nacimiento del pelo -->
+  <g transform="translate(0 16.3) scale(1 .78)">
+  <g fill="{main.edge}" stroke="{main.edge}" stroke-width="3.6">
+    <circle cx="50" cy="40" r="34"/>
+    <circle cx="15.2" cy="51.3" r="13"/>
+    <circle cx="13.0" cy="38.8" r="13"/>
+    <circle cx="16.2" cy="26.6" r="13"/>
+    <circle cx="24.3" cy="16.3" r="13"/>
+    <circle cx="36.1" cy="9.4" r="13"/>
+    <circle cx="50.0" cy="7.0" r="13"/>
+    <circle cx="63.9" cy="9.4" r="13"/>
+    <circle cx="75.7" cy="16.3" r="13"/>
+    <circle cx="83.8" cy="26.6" r="13"/>
+    <circle cx="87.0" cy="38.8" r="13"/>
+    <circle cx="84.8" cy="51.3" r="13"/>
+    <circle cx="15" cy="63" r="11"/>
+    <circle cx="85" cy="63" r="11"/>
+  </g>
+  <g fill="url(#hair)">
+    <circle cx="50" cy="40" r="34"/>
+    <circle cx="15.2" cy="51.3" r="13"/>
+    <circle cx="13.0" cy="38.8" r="13"/>
+    <circle cx="16.2" cy="26.6" r="13"/>
+    <circle cx="24.3" cy="16.3" r="13"/>
+    <circle cx="36.1" cy="9.4" r="13"/>
+    <circle cx="50.0" cy="7.0" r="13"/>
+    <circle cx="63.9" cy="9.4" r="13"/>
+    <circle cx="75.7" cy="16.3" r="13"/>
+    <circle cx="83.8" cy="26.6" r="13"/>
+    <circle cx="87.0" cy="38.8" r="13"/>
+    <circle cx="84.8" cy="51.3" r="13"/>
+    <circle cx="15" cy="63" r="11"/>
+    <circle cx="85" cy="63" r="11"/>
+  </g>
+  <!-- Rizos -->
+  <g fill="none" stroke="{main.edge}" stroke-opacity=".4" stroke-width="1.4" stroke-linecap="round">
+    <path d="M26 24 a4 4 0 1 1 4 4"/>
+    <path d="M48 14 a4 4 0 1 1 4 4"/>
+    <path d="M68 26 a4 4 0 1 1 4 4"/>
+    <path d="M18 46 a4 4 0 1 1 4 4"/>
+    <path d="M74 48 a4 4 0 1 1 4 4"/>
+    <path d="M36 38 a4 4 0 1 1 4 4"/>
+    <path d="M58 40 a4 4 0 1 1 4 4"/>
+    <path d="M10 64 a4 4 0 1 1 4 4"/>
+    <path d="M82 64 a4 4 0 1 1 4 4"/>
+  </g>
+  <path d="M20 26 C26 14 38 8 50 8 C40 12 30 18 24 30 Z" fill="url(#shine)"/>
+  </g>
+</svg>

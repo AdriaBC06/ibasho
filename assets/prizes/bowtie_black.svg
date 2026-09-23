@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 34">
+  <!-- Pajarita, centrada en (30, 17). -->
+  <defs>
+    <linearGradient id="silk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#757B85"/>
+      <stop offset=".55" stop-color="#2B3444"/>
+      <stop offset="1" stop-color="#253140"/>
+    </linearGradient>
+  </defs>
+  <path d="M26 14 C18 6 8 2 4 5 C1 10 1 24 4 29 C8 32 18 28 26 20 Z
+           M34 14 C42 6 52 2 56 5 C59 10 59 24 56 29 C52 32 42 28 34 20 Z"
+        fill="url(#silk)" stroke="#1D2C3B" stroke-width="1.8" stroke-linejoin="round"/>
+  <!-- Pliegues y lunares -->
+  <path d="M8 10 Q16 14 22 16 M8 25 Q16 21 22 19 M52 10 Q44 14 38 16 M52 25 Q44 21 38 19"
+        fill="none" stroke="#1D2C3B" stroke-opacity=".3" stroke-width="1.1" stroke-linecap="round"/>
+  <g fill="#4A5566">
+    <circle cx="11" cy="17" r="1.8"/><circle cx="17" cy="11" r="1.4"/><circle cx="17" cy="23" r="1.4"/>
+    <circle cx="49" cy="17" r="1.8"/><circle cx="43" cy="11" r="1.4"/><circle cx="43" cy="23" r="1.4"/>
+  </g>
+  <path d="M6 9 Q8 6 12 6" fill="none" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="1.3" stroke-linecap="round"/>
+  <!-- Nudo -->
+  <rect x="24" y="11" width="12" height="12" rx="4" fill="url(#silk)" stroke="#1D2C3B" stroke-width="1.8"/>
+  <path d="M27 14 Q30 13 33 14" fill="none" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.1" stroke-linecap="round"/>
+</svg>

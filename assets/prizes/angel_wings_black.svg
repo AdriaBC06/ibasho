@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">
+  <!-- Alas angelicales, detras del cuerpo. El cuerpo ocupa (30..90) y el
+       anclaje es (60, 50). -->
+  <defs>
+    <linearGradient id="wing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#808792"/>
+      <stop offset=".55" stop-color="#3B4658"/>
+      <stop offset="1" stop-color="#324051"/>
+    </linearGradient>
+    <linearGradient id="under" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4658"/>
+      <stop offset="1" stop-color="#324051"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#B9A6FF" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#B9A6FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Halo suave detras: la UR se nota -->
+  <ellipse cx="60" cy="44" rx="60" ry="36" fill="url(#glow)"/>
+  <g id="left">
+    <!-- Fila de plumas largas, asomando por debajo del ala -->
+    <path d="M46 40 C34 40 20 38 8 34 C7 40 9 44 12 46 C10 50 12 54 16 55 C15 59 18 63 23 63
+             C24 67 29 69 33 67 C36 70 41 69 44 66 L48 58 Z"
+          fill="url(#under)" stroke="#253646" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M12 46 C22 48 34 50 44 52 M16 55 C26 56 36 57 45 57 M23 63 C31 62 38 61 45 60"
+          fill="none" stroke="#253646" stroke-opacity=".4" stroke-width="1.1" stroke-linecap="round"/>
+    <!-- Ala de arriba: un arco con el borde de abajo en festones -->
+    <path d="M48 44 C44 28 28 14 5 12 C3 18 4 24 8 28 C6 32 7 36 11 38 C12 42 17 44 21 43
+             C24 47 30 48 34 46 C38 49 44 49 48 47 Z"
+          fill="url(#wing)" stroke="#253646" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M8 28 C18 30 30 33 40 38 M11 38 C20 39 28 41 34 44"
+          fill="none" stroke="#253646" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round"/>
+    <!-- Brillo -->
+    <path d="M9 16 C22 17 34 24 41 33 C32 27 21 23 10 22 Z" fill="url(#shine)"/>
+  </g>
+  <use href="#left" transform="matrix(-1 0 0 1 120 0)"/>
+  <!-- Destellos de cuatro puntas -->
+  <path d="M10 2 Q10 6 14 6 Q10 6 10 10 Q10 6 6 6 Q10 6 10 2 Z" fill="#D9CCFF"/>
+  <path d="M113 40 Q113 43 116 43 Q113 43 113 46 Q113 43 110 43 Q113 43 113 40 Z" fill="#D9CCFF"/>
+  <path d="M104 2 Q104 4.5 106.5 4.5 Q104 4.5 104 7 Q104 4.5 101.5 4.5 Q104 4.5 104 2 Z" fill="#D9CCFF"/>
+</svg>

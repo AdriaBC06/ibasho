@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 60">
+  <!-- Cursor del raton flotando a su derecha: la punta, en (12, 12), senala
+       al Tama. Con la onda del clic y el brillo de la UR. -->
+  <defs>
+    <radialGradient id="halo" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#B9A6FF" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#B9A6FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7F8590"/>
+      <stop offset="1" stop-color="#3A4455"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="24" cy="30" rx="24" ry="28" fill="url(#halo)"/>
+  <!-- Onda del clic -->
+  <circle cx="12" cy="12" r="8" fill="none" stroke="#B9A6FF" stroke-width="1.6" stroke-opacity=".9"/>
+  <circle cx="12" cy="12" r="11.5" fill="none" stroke="#B9A6FF" stroke-width="1.1" stroke-opacity=".5"/>
+  <path d="M12 12 L12 48 L20.5 40 L26.5 53.5 L32.5 51 L26.5 37.5 L38 37.5 Z"
+        fill="url(#fill)" stroke="#FFFFFF" stroke-width="2.8" stroke-linejoin="round"/>
+  <path d="M15.5 21 L15.5 38" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M42 8 Q42 12 46 12 Q42 12 42 16 Q42 12 38 12 Q42 12 42 8 Z" fill="#B9A6FF"/>
+  <path d="M6 50 Q6 53 9 53 Q6 53 6 56 Q6 53 3 53 Q6 53 6 50 Z" fill="#B9A6FF"/>
+</svg>

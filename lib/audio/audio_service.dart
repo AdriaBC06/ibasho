@@ -13,7 +13,7 @@ import '../core/device.dart';
 import 'android_audio.dart';
 import 'tama_voice.dart';
 
-/// Los cinco efectos del entorno.
+/// Los efectos: los cinco del entorno, los del gachapon y los del pinball.
 enum Sfx {
   /// Al desplazarse entre canales y al pulsar un control.
   tick('audio/sfx/tick.wav'),
@@ -28,7 +28,122 @@ enum Sfx {
   error('audio/sfx/error.wav'),
 
   /// Campanilla de arranque.
-  chime('audio/sfx/chime.wav');
+  chime('audio/sfx/chime.wav'),
+
+  // --- El gachapon (0.6.0) ---------------------------------------------
+  //
+  // La tirada tiene su propia linea de sonido: manivela, capsula y una
+  // fanfarria distinta segun lo que salga. `RarityArt.fanfare` decide cual.
+
+  /// La manivela enganchando, seis dientes cada vez mas rapidos.
+  crank('audio/sfx/crank.wav'),
+
+  /// La capsula bajando por el tobogan y golpeando la bandeja.
+  capsule('audio/sfx/capsule.wav'),
+
+  /// La capsula abriendose.
+  pop('audio/sfx/pop.wav'),
+
+  /// SR: un guiño de tres notas.
+  rare('audio/sfx/rare.wav'),
+
+  /// SSR: arpegio con brillo.
+  epic('audio/sfx/epic.wav'),
+
+  /// UR: fanfarria larga con golpe grave.
+  legend('audio/sfx/legend.wav'),
+
+  /// La rareza oculta: un acorde que sube y no resuelve.
+  infinity('audio/sfx/infinity.wav'),
+
+  // --- El pinball (0.6.0) ------------------------------------------------
+  //
+  // Golpes de mesa propios; ninguno es un sonido de la interfaz.
+
+  /// El muelle del lanzador soltandose.
+  pbLaunch('audio/sfx/pb_launch.wav'),
+
+  /// El solenoide de un flipper.
+  pbFlipper('audio/sfx/pb_flipper.wav'),
+
+  /// El pop de un bumper.
+  pbBumper('audio/sfx/pb_bumper.wav'),
+
+  /// El latigazo de un tirachinas.
+  pbSling('audio/sfx/pb_sling.wav'),
+
+  /// El boing de una pared-muelle.
+  pbSpring('audio/sfx/pb_spring.wav'),
+
+  /// El toque de un poste de goma.
+  pbPost('audio/sfx/pb_post.wav'),
+
+  /// El trinquete del spinner.
+  pbSpinner('audio/sfx/pb_spinner.wav'),
+
+  /// Una diana cayendo.
+  pbTarget('audio/sfx/pb_target.wav'),
+
+  /// Un agujero abriendose.
+  pbHoleOpen('audio/sfx/pb_hole_open.wav'),
+
+  /// La bola cayendo en un agujero.
+  pbCapture('audio/sfx/pb_capture.wav'),
+
+  /// Un kickback encendido.
+  pbKickbackLit('audio/sfx/pb_kickback_lit.wav'),
+
+  /// El golpe del kickback.
+  pbKickback('audio/sfx/pb_kickback.wav'),
+
+  /// El coro de angeles del Tama que salva la bola.
+  pbChoir('audio/sfx/pb_choir.wav'),
+
+  /// El Tama devolviendo la bola al campo.
+  pbThrown('audio/sfx/pb_thrown.wav'),
+
+  /// El meneo de la mesa a una bola parada.
+  pbNudge('audio/sfx/pb_nudge.wav'),
+
+  /// La bola perdida por el desague.
+  pbLost('audio/sfx/pb_lost.wav'),
+
+  /// El premio de una bola (N a SSR).
+  pbPrize('audio/sfx/pb_prize.wav'),
+
+  /// El premio gordo: UR y ∞.
+  pbJackpot('audio/sfx/pb_jackpot.wav'),
+
+  // --- El pachinko (0.6.0) -----------------------------------------------
+  //
+  // Metal y plastico: bolas de acero, clavos de laton y el tulipan.
+
+  /// Una bola que sale del riel.
+  pkDrop('audio/sfx/pk_drop.wav'),
+
+  /// Una bola contra un clavo.
+  pkPin('audio/sfx/pk_pin.wav'),
+
+  /// El molinillo girando.
+  pkWindmill('audio/sfx/pk_windmill.wav'),
+
+  /// Un ala del tulipan.
+  pkTulip('audio/sfx/pk_tulip.wav'),
+
+  /// Una bola en un bolsillo de «igual».
+  pkSame('audio/sfx/pk_same.wav'),
+
+  /// Una bola que sube una rareza.
+  pkUp1('audio/sfx/pk_up1.wav'),
+
+  /// Una bola que sube dos, o que llega a UR.
+  pkUp2('audio/sfx/pk_up2.wav'),
+
+  /// Una bola por la salida.
+  pkOut('audio/sfx/pk_out.wav'),
+
+  /// Cobrar la tanda: la cascada de bolas.
+  pkPayout('audio/sfx/pk_payout.wav');
 
   const Sfx(this.asset);
 
@@ -55,7 +170,16 @@ enum MusicTrack {
   brisa('brisa', 'audio/bgm/brisa.ogg', 'Adrià Bonnin Catalán', 'CC0',
       unlockedByDefault: true),
   noche('noche', 'audio/bgm/noche.ogg', 'Adrià Bonnin Catalán', 'CC0',
-      unlockedByDefault: true);
+      unlockedByDefault: true),
+
+  // El gachapon (0.6.0): se ganan jugando, no van de serie.
+  // `GachaCategory.music`, catalogadas en `lib/backend/gacha_music.dart`.
+  nana('nana', 'audio/bgm/nana.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+  carrillon('carrillon', 'audio/bgm/carrillon.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+  lofi('lofi', 'audio/bgm/lofi.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+  feria('feria', 'audio/bgm/feria.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+  abrigo('abrigo', 'audio/bgm/abrigo.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+  cenit('cenit', 'audio/bgm/cenit.ogg', 'Adrià Bonnin Catalán', 'CC0');
 
   const MusicTrack(
     this.id,
@@ -125,7 +249,30 @@ class AudioService {
     Sfx.back: 1,
     Sfx.error: 1,
     Sfx.chime: 1,
+    // El gacha: la capsula y el chasquido se encadenan en la tirada de once,
+    // asi que aguantan dos voces a la vez.
+    Sfx.crank: 1,
+    Sfx.capsule: 2,
+    Sfx.pop: 2,
+    Sfx.rare: 2,
+    Sfx.epic: 1,
+    Sfx.legend: 1,
+    Sfx.infinity: 1,
+    // El pinball: los golpes de mesa se pisan entre si a menudo (dos
+    // bumpers seguidos, postes en cadena), asi que llevan dos voces.
+    Sfx.pbBumper: 2,
+    Sfx.pbPost: 2,
+    Sfx.pbTarget: 2,
+    Sfx.pbSling: 2,
+    // El pachinko: decenas de bolas a la vez contra los clavos.
+    Sfx.pkPin: 3,
+    Sfx.pkOut: 2,
+    Sfx.pkSame: 2,
+    Sfx.pkUp1: 2,
   };
+
+  /// Lo que vale para un efecto sin entrada propia arriba.
+  static const int _defaultVoices = 1;
 
   /// Separacion minima entre dos disparos del mismo efecto. Por debajo de
   /// esto el oido ya no los separa y solo suman ruido.
@@ -135,7 +282,44 @@ class AudioService {
     Sfx.back: Duration(milliseconds: 90),
     Sfx.error: Duration(milliseconds: 150),
     Sfx.chime: Duration(milliseconds: 500),
+    Sfx.crank: Duration(milliseconds: 300),
+    Sfx.capsule: Duration(milliseconds: 120),
+    Sfx.pop: Duration(milliseconds: 80),
+    Sfx.rare: Duration(milliseconds: 200),
+    Sfx.epic: Duration(milliseconds: 300),
+    Sfx.legend: Duration(milliseconds: 400),
+    Sfx.infinity: Duration(milliseconds: 500),
+    Sfx.pbLaunch: Duration(milliseconds: 200),
+    Sfx.pbFlipper: Duration(milliseconds: 60),
+    Sfx.pbBumper: Duration(milliseconds: 50),
+    Sfx.pbSling: Duration(milliseconds: 60),
+    Sfx.pbSpring: Duration(milliseconds: 120),
+    Sfx.pbPost: Duration(milliseconds: 50),
+    Sfx.pbSpinner: Duration(milliseconds: 250),
+    Sfx.pbTarget: Duration(milliseconds: 60),
+    Sfx.pbHoleOpen: Duration(milliseconds: 300),
+    Sfx.pbCapture: Duration(milliseconds: 500),
+    Sfx.pbKickbackLit: Duration(milliseconds: 300),
+    Sfx.pbKickback: Duration(milliseconds: 200),
+    Sfx.pbChoir: Duration(milliseconds: 800),
+    Sfx.pbThrown: Duration(milliseconds: 300),
+    Sfx.pbNudge: Duration(milliseconds: 300),
+    Sfx.pbLost: Duration(milliseconds: 500),
+    Sfx.pbPrize: Duration(milliseconds: 500),
+    Sfx.pbJackpot: Duration(milliseconds: 800),
+    Sfx.pkDrop: Duration(milliseconds: 60),
+    Sfx.pkPin: Duration(milliseconds: 30),
+    Sfx.pkWindmill: Duration(milliseconds: 200),
+    Sfx.pkTulip: Duration(milliseconds: 90),
+    Sfx.pkSame: Duration(milliseconds: 90),
+    Sfx.pkUp1: Duration(milliseconds: 120),
+    Sfx.pkUp2: Duration(milliseconds: 600),
+    Sfx.pkOut: Duration(milliseconds: 90),
+    Sfx.pkPayout: Duration(milliseconds: 800),
   };
+
+  /// Y la separacion por defecto, por si se anade un efecto y se olvida.
+  static const Duration _defaultGap = Duration(milliseconds: 90);
 
   /// Lo que tarda en desvanecerse la voz sustituida. Suficiente para que no
   /// haga clic y tan corto que no se oye debajo del golpe nuevo.
@@ -459,22 +643,24 @@ class AudioService {
     if (!_sfxReady || _effectsVolume <= 0) return;
     final now = DateTime.now();
     final last = _lastPlayed[sfx];
-    if (last != null && now.difference(last) < _minGap[sfx]!) return;
+    if (last != null && now.difference(last) < (_minGap[sfx] ?? _defaultGap)) return;
     _lastPlayed[sfx] = now;
 
     try {
       final soloud = SoLoud.instance;
-      final live = _liveVoices[sfx]!
+      final source = _sfxSources[sfx];
+      if (source == null) return;
+      final live = (_liveVoices[sfx] ??= <SoundHandle>[])
         ..removeWhere((h) => !soloud.getIsValidVoiceHandle(h));
 
       // La voz anterior se desvanece en vez de cortarse en seco.
-      while (live.length >= _maxVoices[sfx]!) {
+      while (live.length >= (_maxVoices[sfx] ?? _defaultVoices)) {
         final oldest = live.removeAt(0);
         soloud.fadeVolume(oldest, 0, _voiceFade);
         soloud.scheduleStop(oldest, _voiceFade);
       }
 
-      final handle = soloud.play(_sfxSources[sfx]!);
+      final handle = soloud.play(source);
       live.add(handle);
     } catch (e) {
       debugPrint('Ibasho: efecto ${sfx.name} fallido ($e)');

@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../backend/errors.dart';
+import '../backend/gacha.dart';
 import '../backend/ibasho_backend.dart';
 import '../backend/live_tree.dart';
 import '../backend/models.dart';
@@ -25,6 +26,9 @@ enum ShopFailure {
 
   /// Es una comida que la cuenta no tiene desbloqueada.
   foodLocked,
+
+  /// Ya se han comprado todos los tickets de esta semana.
+  weeklyLimit,
 
   /// Ese juego ya esta en la cuenta (regalado o abierto).
   alreadyOwned,
@@ -47,6 +51,7 @@ class ShopState {
   const ShopState({
     this.prices = const <String, int>{},
     this.games = const <String, GameInstall>{},
+    this.week,
     this.loaded = false,
     this.busy = false,
   });
@@ -58,19 +63,29 @@ class ShopState {
   /// `/users/{cuenta}/games`, por id de juego.
   final Map<String, GameInstall> games;
 
+  /// `/users/{cuenta}/shop/week`: los tickets comprados esta semana. Sin
+  /// nodo todavia, nadie ha comprado ninguno.
+  final WeekTickets? week;
+
   final bool loaded;
 
   /// Una compra o un desenvolver en curso.
   final bool busy;
 
+  /// Tickets de [kind] que aun se pueden comprar esta semana.
+  int ticketsLeftThisWeek(TicketKind kind, [DateTime? now]) =>
+      week?.leftOf(kind, now) ?? (weeklyTicketLimit[kind] ?? 0);
+
   ShopState copyWith({
     Map<String, int>? prices,
     Map<String, GameInstall>? games,
+    WeekTickets? week,
     bool? loaded,
     bool? busy,
   }) => ShopState(
     prices: prices ?? this.prices,
     games: games ?? this.games,
+    week: week ?? this.week,
     loaded: loaded ?? this.loaded,
     busy: busy ?? this.busy,
   );
@@ -84,11 +99,13 @@ class ShopController extends StateNotifier<ShopState> {
     required int Function() coinsOf,
     required int Function(TamaFood food) pantryQtyOf,
     required Set<TamaFood> Function() unlockedFoodsOf,
+    required int Function(TicketKind kind) ticketsOf,
   }) : _backend = backend,
        _session = session,
        _coinsOf = coinsOf,
        _pantryQtyOf = pantryQtyOf,
        _unlockedFoodsOf = unlockedFoodsOf,
+       _ticketsOf = ticketsOf,
        super(const ShopState()) {
     if (_me.isNotEmpty && session.state.phase == SessionPhase.active) {
       unawaited(_start());
@@ -100,6 +117,7 @@ class ShopController extends StateNotifier<ShopState> {
   final int Function() _coinsOf;
   final int Function(TamaFood food) _pantryQtyOf;
   final Set<TamaFood> Function() _unlockedFoodsOf;
+  final int Function(TicketKind kind) _ticketsOf;
 
   final List<StreamSubscription<DatabaseEvent>> _watches =
       <StreamSubscription<DatabaseEvent>>[];
@@ -126,6 +144,7 @@ class ShopController extends StateNotifier<ShopState> {
       final results = await Future.wait([
         _backend.read('/shop/prices', idToken: token),
         _backend.read('/users/$_me/games', idToken: token),
+        _backend.read('/users/$_me/shop/week', idToken: token),
       ]);
       _pricesTree = results[0];
       _gamesTree = results[1];
@@ -133,6 +152,7 @@ class ShopController extends StateNotifier<ShopState> {
         state = ShopState(
           prices: _parsePrices(results[0]),
           games: _parseGames(results[1]),
+          week: WeekTickets.fromJson(results[2]),
           loaded: true,
         );
       }
@@ -158,6 +178,15 @@ class ShopController extends StateNotifier<ShopState> {
         _gamesTree = applyDatabaseEvent(_gamesTree, event);
         if (mounted) state = state.copyWith(games: _parseGames(_gamesTree));
       }, onError: (Object e) => debugPrint('Ibasho: stream de juegos ($e)')),
+    );
+
+    _watches.add(
+      _backend.watch('/users/$_me/shop/week', token: _session.freshToken).listen((
+        event,
+      ) {
+        if (event.path != '/') return;
+        if (mounted) state = state.copyWith(week: WeekTickets.fromJson(event.data));
+      }, onError: (Object e) => debugPrint('Ibasho: stream de la semana ($e)')),
     );
   }
 
@@ -196,6 +225,10 @@ class ShopController extends StateNotifier<ShopState> {
     if (gameId != null && state.games.containsKey(gameId)) {
       throw const ShopException(ShopFailure.alreadyOwned);
     }
+    final ticket = item.ticket;
+    if (ticket != null && qty > state.ticketsLeftThisWeek(ticket)) {
+      throw const ShopException(ShopFailure.weeklyLimit);
+    }
     final price = state.prices[item.id];
     if (price == null) throw const ShopException(ShopFailure.noPrice);
     final cost = price * qty;
@@ -217,6 +250,13 @@ class ShopController extends StateNotifier<ShopState> {
           'state': GameState.gift.name,
           'at': serverTimestamp,
         },
+      if (ticket != null) ...<String, Object?>{
+        'users/$_me/tickets/${ticket.name}': _ticketsOf(ticket) + qty,
+        'users/$_me/shop/week':
+            (state.week ?? WeekTickets(week: gachaWeek())).afterBuying(ticket, qty),
+      },
+      // Señal para la mision «compra algo en el Yatai» (`missions.dart`).
+      'users/$_me/missions/signal/buy': {'at': serverTimestamp},
     };
 
     state = state.copyWith(busy: true);

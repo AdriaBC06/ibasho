@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 80">
+  <!-- Farolillo del Yatai colgando de una varita, en la mano izquierda: la
+       varita acaba en (46, 72), pegada al costado. -->
+  <defs>
+    <radialGradient id="halo" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="{glow}" stop-opacity=".7"/>
+      <stop offset="1" stop-color="{glow}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="paper" cx=".4" cy=".45" r=".65">
+      <stop offset="0" stop-color="{glow}"/>
+      <stop offset=".45" stop-color="{main.light}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </radialGradient>
+    <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4A5566"/>
+      <stop offset="1" stop-color="#2B3444"/>
+    </linearGradient>
+  </defs>
+  <!-- Varita -->
+  <path d="M46 72 L18 6" stroke="#7A4E26" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M46 72 L18 6" stroke="#C08A52" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M18 7 L18 16" stroke="#2B3444" stroke-width="1.2"/>
+  <!-- Luz -->
+  <ellipse cx="18" cy="38" rx="18" ry="22" fill="url(#halo)"/>
+  <!-- Farolillo -->
+  <ellipse cx="18" cy="38" rx="13" ry="17" fill="url(#paper)" stroke="{main.edge}" stroke-width="1.6"/>
+  <path d="M5.8 32 Q18 35 30.2 32 M5.3 38 Q18 41 30.7 38 M5.8 44 Q18 47 30.2 44 M8 26 Q18 29 28 26 M8 50 Q18 53 28 50"
+        fill="none" stroke="{main.edge}" stroke-opacity=".35" stroke-width="1"/>
+  <circle cx="18" cy="38.5" r="5" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <rect x="10.5" y="18" width="15" height="5" rx="1.5" fill="url(#cap)" stroke="#1E2733" stroke-width="1"/>
+  <rect x="10.5" y="53" width="15" height="5" rx="1.5" fill="url(#cap)" stroke="#1E2733" stroke-width="1"/>
+  <path d="M18 58 L18 63 M15.5 58 L14.5 62 M20.5 58 L21.5 62" stroke="#F5C542" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M9 30 Q10.5 25.5 14 24.5" fill="none" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

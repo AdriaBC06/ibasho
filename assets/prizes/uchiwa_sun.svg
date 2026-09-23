@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 64">
+  <!-- Abanico uchiwa con sol, en la mano izquierda: el mango acaba en
+       (36, 60), pegado al costado. -->
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E6EDF3"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(-14 22 34)">
+    <path d="M20.5 38 L23.5 38 L23.8 62 Q22 64 20.2 62 Z" fill="#3E7FE0" stroke="#275591" stroke-width="1.2" stroke-linejoin="round"/>
+    <circle cx="22" cy="21" r="18" fill="url(#paper)" stroke="#275591" stroke-width="1.8"/>
+    <circle cx="22" cy="21" r="9" fill="#E8404F" stroke="#853241" stroke-width="1.2"/>
+    <path d="M22 39 L22 5 M22 39 L8 11 M22 39 L36 11 M22 39 L5 21 M22 39 L39 21" stroke="#275591" stroke-opacity=".18" stroke-width="1"/>
+    <circle cx="22" cy="21" r="16.6" fill="none" stroke="#3E7FE0" stroke-width="2.2"/>
+    <path d="M10 12 Q14 7.5 19 6.5" fill="none" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"/>
+  </g>
+</svg>

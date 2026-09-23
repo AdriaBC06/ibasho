@@ -156,23 +156,18 @@ void main() {
       );
     });
 
-    test('una comida bloqueada lanza ShopException.foodLocked', () async {
+    test('una comida que antes salia bloqueada ya se puede comprar', () async {
       final backend = FakeIbashoBackend();
       backend.seed('/shop/prices', {'food_mochi': 3});
       backend.seed('/users/${backend.uid}/coins', 100);
       final container = await _account(backend);
       addTearDown(container.dispose);
       await _until(() => container.read(shopProvider).loaded);
+      await _until(() => container.read(coinsProvider) == 100);
 
       final item = shopCatalog.firstWhere((i) => i.food == TamaFood.mochi);
-      await expectLater(
-        container.read(shopProvider.notifier).buy(item, 1),
-        throwsA(isA<ShopException>().having(
-          (e) => e.failure,
-          'failure',
-          ShopFailure.foodLocked,
-        )),
-      );
+      await container.read(shopProvider.notifier).buy(item, 1);
+      await _until(() => container.read(pantryProvider)[TamaFood.mochi] == 1);
     });
 
     test('sin precio cargado lanza ShopException.noPrice', () async {

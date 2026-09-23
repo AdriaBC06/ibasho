@@ -6,16 +6,24 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../backend/backdrops.dart';
+import '../../../backend/gacha.dart';
+import '../../../backend/gacha_music.dart';
+import '../../../core/device.dart';
 import '../../../core/version.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
 import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
+import '../../widgets/backdrop_art.dart';
 import '../../widgets/controls.dart';
+import '../../widgets/gacha_art.dart';
+import '../../widgets/gloss.dart';
 import '../../widgets/glyphs.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
+import '../../widgets/pressable.dart';
 import '../../layout.dart';
 import '../channel_route.dart';
 import '../messages/backup_key.dart';
@@ -34,12 +42,28 @@ class SettingsChannel extends ConsumerWidget {
     final skin = IbashoSkin.of(context);
     final preferences = ref.watch(preferencesProvider);
     final controller = ref.read(preferencesProvider.notifier);
+    final gacha = ref.watch(gachaProvider);
     final library = ref.watch(musicLibraryProvider);
     final currentTrack = MusicTrack.byId(preferences.musicTrack);
     final layout = Layout.of(context);
 
+    // Una pista tambien esta desbloqueada si es un premio del gacha ya
+    // ganado (`mu_<id>`), ademas de las de serie y las que se escuchan
+    // jugando (ver `MusicLibraryState.isUnlocked`). Igual que los fondos,
+    // la propiedad se mira aqui, no en `MusicLibraryState`.
+    bool trackUnlocked(MusicTrack track) {
+      if (library.isUnlocked(track)) return true;
+      final prize = gachaMusicById(track.id);
+      return prize != null && gacha.owns(prize.key);
+    }
+
+    final availableTracks =
+        MusicTrack.values.where(trackUnlocked).toList(growable: false);
+    final pendingTracks = MusicTrack.values.length - availableTracks.length;
+
     /// Fila de volumen: en vertical el raíl ocupa el ancho entero.
-    Widget volume(Glyph glyph, double value, ValueChanged<double> onChanged) => Row(
+    Widget volume(Glyph glyph, double value, ValueChanged<double> onChanged) =>
+        Row(
           mainAxisSize: layout.pick(MainAxisSize.min, MainAxisSize.max),
           children: [
             GlyphIcon(glyph, size: 20, color: T.inkSoft),
@@ -71,7 +95,12 @@ class SettingsChannel extends ConsumerWidget {
       title: l.settingsTitle,
       glyph: Glyph.gear,
       child: IbashoScroll(
-        padding: EdgeInsets.fromLTRB(layout.gutter, layout.pick(28, 18), layout.gutter, 44),
+        padding: EdgeInsets.fromLTRB(
+          layout.gutter,
+          layout.pick(28, 18),
+          layout.gutter,
+          44,
+        ),
         child: Center(
           child: SizedBox(
             width: layout.pick(820, layout.column),
@@ -114,25 +143,37 @@ class SettingsChannel extends ConsumerWidget {
                         padding: const EdgeInsets.only(left: 6, bottom: 10),
                         child: Text(l.settingsMenuMusicHint, style: Ty.caption),
                       ),
-                      for (final track in library.available)
+                      for (final track in availableTracks)
                         TrackTile(
                           title: track.id,
                           subtitle: describeTrack(l, track),
                           selected: track == currentTrack,
-                          onPressed: () => ref
-                              .read(musicLibraryProvider.notifier)
-                              .select(track),
+                          onPressed: () async {
+                            final notifier =
+                                ref.read(musicLibraryProvider.notifier);
+                            // Una pista ganada en el gacha pero nunca
+                            // "escuchada" aun no cuenta como desbloqueada
+                            // para `select`, que solo mira la biblioteca: se
+                            // marca al elegirla la primera vez.
+                            if (!library.isUnlocked(track)) {
+                              await notifier.markHeard(track);
+                            }
+                            await notifier.select(track);
+                          },
                           trailing: track == currentTrack
-                              ? Text(l.musicPlaying,
+                              ? Text(
+                                  l.musicPlaying,
                                   style: Ty.caption.copyWith(
-                                      color: T.onAccent,
-                                      fontWeight: FontWeight.w500))
+                                    color: T.onAccent,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                )
                               : null,
                         ),
                       Padding(
                         padding: const EdgeInsets.only(left: 6, top: 10),
                         child: Text(
-                          l.settingsMenuMusicPending(library.pending),
+                          l.settingsMenuMusicPending(pendingTracks),
                           style: Ty.micro,
                         ),
                       ),
@@ -166,7 +207,7 @@ class SettingsChannel extends ConsumerWidget {
                       ),
                       SettingRow(
                         label: l.settingsHourFormat,
-                        divider: false,
+                        divider: !Device.isDesktop,
                         control: IbashoSegmented<bool>(
                           options: [
                             (true, l.settingsHourFormat24),
@@ -175,6 +216,61 @@ class SettingsChannel extends ConsumerWidget {
                           value: preferences.hourFormat24,
                           onChanged: controller.setHourFormat24,
                         ),
+                      ),
+                      if (Device.isDesktop)
+                        SettingRow(
+                          label: l.settingsFullscreen,
+                          divider: false,
+                          control: IbashoToggle(
+                            value: preferences.fullscreen,
+                            onChanged: controller.setFullscreen,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SectionCard(
+                  title: l.settingsBackdrop,
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6, bottom: 14),
+                        child: Text(l.settingsBackdropHint, style: Ty.caption),
+                      ),
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 14,
+                        children: [
+                          _BackdropChip(
+                            key: const ValueKey<String>('backdrop.none'),
+                            id: null,
+                            rarity: null,
+                            label: l.backdropNone,
+                            locked: false,
+                            selected: preferences.backdropId.isEmpty,
+                            onPressed: () => controller.setBackdrop(''),
+                          ),
+                          for (final b in backdrops)
+                            Builder(
+                              builder: (context) {
+                                final owned = gacha.owns(b.key);
+                                return _BackdropChip(
+                                  key: ValueKey<String>('backdrop.${b.id}'),
+                                  id: owned ? b.id : null,
+                                  rarity: b.rarity,
+                                  label: owned ? l.backdropName(b.key) : '???',
+                                  locked: !owned,
+                                  selected: preferences.backdropId == b.id,
+                                  onPressed: owned
+                                      ? () => controller.setBackdrop(b.id)
+                                      : null,
+                                );
+                              },
+                            ),
+                        ],
                       ),
                     ],
                   ),
@@ -194,7 +290,10 @@ class SettingsChannel extends ConsumerWidget {
                           height: 44,
                           cue: Sfx.open,
                           onPressed: () => Navigator.of(context).push(
-                            _plainRoute(const CreditsChannel(), skin.reducedMotion),
+                            _plainRoute(
+                              const CreditsChannel(),
+                              skin.reducedMotion,
+                            ),
                           ),
                         ),
                       ),
@@ -215,7 +314,9 @@ class SettingsChannel extends ConsumerWidget {
                           glyph: Glyph.lock,
                           height: 44,
                           onPressed: () async {
-                            final changed = await showChangeOwnPassword(context);
+                            final changed = await showChangeOwnPassword(
+                              context,
+                            );
                             if (changed && context.mounted) {
                               showIbashoToast(context, l.changeOwnPasswordDone);
                             }
@@ -237,19 +338,19 @@ class SettingsChannel extends ConsumerWidget {
                           onPressed: keyPhrase.isEmpty
                               ? null
                               : () => showIbashoModal<void>(
-                                    context,
-                                    (_) => IbashoDialog(
-                                      title: l.keysTitle,
-                                      body: BackupWords(words: keyPhrase),
-                                      actions: [
-                                        IbashoButton(
-                                          label: l.actionClose,
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(),
-                                        ),
-                                      ],
-                                    ),
+                                  context,
+                                  (_) => IbashoDialog(
+                                    title: l.keysTitle,
+                                    body: BackupWords(words: keyPhrase),
+                                    actions: [
+                                      IbashoButton(
+                                        label: l.actionClose,
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(),
+                                      ),
+                                    ],
                                   ),
+                                ),
                         ),
                       ),
                       SettingRow(
@@ -280,10 +381,7 @@ class SettingsChannel extends ConsumerWidget {
                 ),
                 const SizedBox(height: 26),
                 Center(
-                  child: Text(
-                    l.settingsVersion(appVersion),
-                    style: Ty.micro,
-                  ),
+                  child: Text(l.settingsVersion(appVersion), style: Ty.micro),
                 ),
               ],
             ),
@@ -296,28 +394,126 @@ class SettingsChannel extends ConsumerWidget {
 
 /// Ruta interior de un canal: fundido corto, sin el gesto de apertura, que se
 /// reserva para entrar desde la rejilla.
-PageRoute<void> _plainRoute(Widget child, bool reducedMotion) => PageRouteBuilder<void>(
-      pageBuilder: (context, animation, secondary) => ColoredBox(
-        color: T.shellTop,
-        child: child,
-      ),
+PageRoute<void> _plainRoute(Widget child, bool reducedMotion) =>
+    PageRouteBuilder<void>(
+      pageBuilder: (context, animation, secondary) =>
+          ColoredBox(color: T.shellTop, child: child),
       transitionDuration: reducedMotion
           ? T.reduced
           : const Duration(milliseconds: 260),
       reverseTransitionDuration: reducedMotion
           ? T.reduced
           : const Duration(milliseconds: 220),
-      transitionsBuilder: (context, animation, secondary, child) => FadeTransition(
-        opacity: animation,
-        child: reducedMotion
-            ? child
-            : SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, .04),
-                  end: Offset.zero,
-                ).animate(
-                    CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                child: child,
-              ),
-      ),
+      transitionsBuilder: (context, animation, secondary, child) =>
+          FadeTransition(
+            opacity: animation,
+            child: reducedMotion
+                ? child
+                : SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, .04),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
+                    child: child,
+                  ),
+          ),
     );
+
+/// Una ficha del fondo del menu: su miniatura, el nombre y la rareza. Lo que
+/// no se tiene sale en silueta con «???», como los premios que se ponen a un
+/// Tama (`tama_creator_screen.dart`).
+class _BackdropChip extends StatelessWidget {
+  const _BackdropChip({
+    super.key,
+    required this.id,
+    required this.rarity,
+    required this.label,
+    required this.locked,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  /// El `id` del fondo (sin `bg_`), o `null` si esta bloqueado o es «de
+  /// serie».
+  final String? id;
+  final Rarity? rarity;
+  final String label;
+  final bool locked;
+  final bool selected;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final skin = IbashoSkin.of(context);
+    return Pressable(
+      onPressed: onPressed,
+      enabled: onPressed != null,
+      semanticLabel: label,
+      builder: (context, state) {
+        final scale = skin.reducedMotion
+            ? 1.0
+            : 1 + .03 * state.hover - .05 * state.press;
+        return Transform.scale(
+          scale: scale,
+          child: SizedBox(
+            width: 92,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GlossSurface(
+                  radius: 16,
+                  tint: selected ? skin.accent : null,
+                  elevation: selected ? 2 : 1,
+                  padding: EdgeInsets.zero,
+                  child: SizedBox(
+                    width: 72,
+                    height: 72,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (id != null)
+                            BackdropView(id: id)
+                          else
+                            const ColoredBox(color: T.wellTop),
+                          if (locked)
+                            const ColoredBox(color: Color(0x33324A63)),
+                          if (locked)
+                            Center(
+                              child: Text(
+                                '???',
+                                style: Ty.label.copyWith(color: T.inkSoft),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: Ty.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (rarity != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: RarityBadge(rarity!, height: 16, faded: locked),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

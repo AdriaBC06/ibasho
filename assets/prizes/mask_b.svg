@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60">
+  <!-- Antifaz B, «la gata»: con orejas de punta y bigotes. Diseno propio.
+       Los ojos van en (35, 30) y (65, 30). -->
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F5A9D1"/>
+      <stop offset=".55" stop-color="#F07AB8"/>
+      <stop offset="1" stop-color="#C76AA0"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".8"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path fill-rule="evenodd" fill="url(#face)" stroke="#89527B" stroke-width="1.8" stroke-linejoin="round"
+        d="M50 20 C56 16 62 15 68 15 L80 3 L84 18 C92 24 94 34 88 41 C82 47 72 46 64 44 C58 43 54 41 50 40
+           C46 41 42 43 36 44 C28 46 18 47 12 41 C6 34 8 24 16 18 L20 3 L32 15 C38 15 44 16 50 20 Z
+           M44 31 C44 25 38 22 32 23 C26 24 22 27 22 31 C24 36 29 38 35 38 C40 38 44 35 44 31 Z
+           M56 31 C56 25 62 22 68 23 C74 24 78 27 78 31 C76 36 71 38 65 38 C60 38 56 35 56 31 Z"/>
+  <!-- Dentro de las orejas -->
+  <path d="M22 9 L29 16 L20.5 17 Z M78 9 L71 16 L79.5 17 Z" fill="#2B3444" stroke="#1D2C3B" stroke-width=".9" stroke-linejoin="round"/>
+  <!-- Ribete de los ojos y bigotes -->
+  <path d="M22 31 C24 36 29 38 35 38 C40 38 44 35 44 31 M56 31 C56 35 60 38 65 38 C71 38 76 36 78 31"
+        fill="none" stroke="#2B3444" stroke-width="2" stroke-linecap="round"/>
+  <path d="M10 36 L1.5 34 M11 40 L2 41 M90 36 L98.5 34 M89 40 L98 41" stroke="#89527B" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M50 25 L47.5 29 L52.5 29 Z" fill="#2B3444" stroke="#1D2C3B" stroke-width=".8" stroke-linejoin="round"/>
+  <path d="M16 22 C22 18 30 17 40 19 C32 19 24 21 18 25 Z" fill="url(#shine)"/>
+</svg>

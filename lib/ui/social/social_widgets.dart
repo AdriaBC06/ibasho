@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
+import '../../backend/gacha_music.dart';
 import '../../backend/models.dart';
 import '../../backend/social.dart';
 import '../../backend/tama.dart';
@@ -227,8 +228,11 @@ List<ProfileBadge> badgesFor({
       if (friendsSince != null && now.difference(friendsSince).inDays >= 365)
         ProfileBadge.oldFriend,
       if (friendCount >= 5) ProfileBadge.social,
+      // Solo cuenta lo que se desbloquea escuchando en un juego: lo del
+      // gacha (`gacha_music.dart`) es otra coleccion, la de las tiradas, no
+      // la de haber curioseado por todas las apps.
       if (MusicTrack.values
-          .where((t) => !t.unlockedByDefault)
+          .where((t) => !t.unlockedByDefault && gachaMusicById(t.id) == null)
           .every((t) => unlockedTracks.contains(t.id)))
         ProfileBadge.musicLover,
     ];

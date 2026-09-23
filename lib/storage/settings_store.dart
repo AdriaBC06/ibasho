@@ -22,6 +22,12 @@ class Preferences {
     this.musicTrack = '',
     this.profileMusicMuted = false,
     this.hourFormat24 = true,
+    this.gachaOpened = false,
+    this.pinballOpened = false,
+    this.pinballPlayed = false,
+    this.pachinkoOpened = false,
+    this.fullscreen = false,
+    this.backdropId = '',
   });
 
   final double musicVolume;
@@ -54,6 +60,28 @@ class Preferences {
   /// Formato de reloj: `true` es 24 h, `false` es 12 h con AM/PM.
   final bool hourFormat24;
 
+  /// El canal del gachapon ya se ha desenvuelto en esta maquina. El regalo es
+  /// un gesto, no un dato de la cuenta: por eso se recuerda aqui y no en la
+  /// base de datos.
+  final bool gachaOpened;
+
+  /// Lo mismo para el canal del pinball, que llega con la primera bola.
+  final bool pinballOpened;
+
+  /// Ya se ha jugado una bola en el pinball: es lo que trae el pachinko.
+  final bool pinballPlayed;
+
+  /// El canal del pachinko ya se ha desenvuelto.
+  final bool pachinkoOpened;
+
+  /// Solo en escritorio: la ventana estaba en pantalla completa al cerrar.
+  final bool fullscreen;
+
+  /// El fondo del menu de inicio que lleva puesto la cuenta en este
+  /// aparato (el `id` de `Backdrop`, sin el prefijo `bg_`). Vacio es el
+  /// aspecto de siempre, para quien no ha jugado al gacha.
+  final String backdropId;
+
   Preferences copyWith({
     double? musicVolume,
     double? effectsVolume,
@@ -65,33 +93,49 @@ class Preferences {
     String? musicTrack,
     bool? profileMusicMuted,
     bool? hourFormat24,
-  }) =>
-      Preferences(
-        musicVolume: musicVolume ?? this.musicVolume,
-        effectsVolume: effectsVolume ?? this.effectsVolume,
-        localeCode: localeCode ?? this.localeCode,
-        reducedMotion: reducedMotion ?? this.reducedMotion,
-        lastUsername: lastUsername ?? this.lastUsername,
-        credentialGenerations:
-            credentialGenerations ?? this.credentialGenerations,
-        accentHex: accentHex ?? this.accentHex,
-        musicTrack: musicTrack ?? this.musicTrack,
-        profileMusicMuted: profileMusicMuted ?? this.profileMusicMuted,
-        hourFormat24: hourFormat24 ?? this.hourFormat24,
-      );
+    bool? gachaOpened,
+    bool? pinballOpened,
+    bool? pinballPlayed,
+    bool? pachinkoOpened,
+    bool? fullscreen,
+    String? backdropId,
+  }) => Preferences(
+    musicVolume: musicVolume ?? this.musicVolume,
+    effectsVolume: effectsVolume ?? this.effectsVolume,
+    localeCode: localeCode ?? this.localeCode,
+    reducedMotion: reducedMotion ?? this.reducedMotion,
+    lastUsername: lastUsername ?? this.lastUsername,
+    credentialGenerations: credentialGenerations ?? this.credentialGenerations,
+    accentHex: accentHex ?? this.accentHex,
+    musicTrack: musicTrack ?? this.musicTrack,
+    profileMusicMuted: profileMusicMuted ?? this.profileMusicMuted,
+    hourFormat24: hourFormat24 ?? this.hourFormat24,
+    gachaOpened: gachaOpened ?? this.gachaOpened,
+    pinballOpened: pinballOpened ?? this.pinballOpened,
+    pinballPlayed: pinballPlayed ?? this.pinballPlayed,
+    pachinkoOpened: pachinkoOpened ?? this.pachinkoOpened,
+    fullscreen: fullscreen ?? this.fullscreen,
+    backdropId: backdropId ?? this.backdropId,
+  );
 
   Map<String, Object?> toJson() => {
-        'musicVolume': musicVolume,
-        'effectsVolume': effectsVolume,
-        'localeCode': localeCode,
-        'reducedMotion': reducedMotion,
-        'lastUsername': lastUsername,
-        'credentialGenerations': credentialGenerations,
-        'accentHex': accentHex,
-        'musicTrack': musicTrack,
-        'profileMusicMuted': profileMusicMuted,
-        'hourFormat24': hourFormat24,
-      };
+    'musicVolume': musicVolume,
+    'effectsVolume': effectsVolume,
+    'localeCode': localeCode,
+    'reducedMotion': reducedMotion,
+    'lastUsername': lastUsername,
+    'credentialGenerations': credentialGenerations,
+    'accentHex': accentHex,
+    'musicTrack': musicTrack,
+    'profileMusicMuted': profileMusicMuted,
+    'hourFormat24': hourFormat24,
+    'gachaOpened': gachaOpened,
+    'pinballOpened': pinballOpened,
+    'pinballPlayed': pinballPlayed,
+    'pachinkoOpened': pachinkoOpened,
+    'fullscreen': fullscreen,
+    'backdropId': backdropId,
+  };
 
   static Preferences fromJson(Map<String, Object?> json) {
     final generations = json['credentialGenerations'];
@@ -108,6 +152,12 @@ class Preferences {
       musicTrack: (json['musicTrack'] as String?) ?? '',
       profileMusicMuted: (json['profileMusicMuted'] as bool?) ?? false,
       hourFormat24: (json['hourFormat24'] as bool?) ?? true,
+      gachaOpened: (json['gachaOpened'] as bool?) ?? false,
+      pinballOpened: (json['pinballOpened'] as bool?) ?? false,
+      pinballPlayed: (json['pinballPlayed'] as bool?) ?? false,
+      pachinkoOpened: (json['pachinkoOpened'] as bool?) ?? false,
+      fullscreen: (json['fullscreen'] as bool?) ?? false,
+      backdropId: (json['backdropId'] as String?) ?? '',
     );
   }
 }

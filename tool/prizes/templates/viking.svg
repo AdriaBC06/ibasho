@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Casco vikingo con cuernos. El borde apoya en la cabeza en (20..80, 70). -->
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".35" stop-color="{main}"/>
+      <stop offset=".55" stop-color="{main.light}"/>
+      <stop offset=".8" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <linearGradient id="horn" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".5" stop-color="{horn}"/>
+      <stop offset="1" stop-color="{horn.deep}"/>
+    </linearGradient>
+  </defs>
+  <g id="horn-left">
+    <path d="M26 54 C16 52 8 42 6 26 C4 20 6 16 9 20 C12 30 18 38 30 42 Z" fill="url(#horn)" stroke="{horn.edge}" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M10 30 Q12 34 16 37 M14 40 Q18 43 22 44" fill="none" stroke="{horn.edge}" stroke-opacity=".4" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+  <use href="#horn-left" transform="matrix(-1 0 0 1 100 0)"/>
+  <!-- Cupula -->
+  <path d="M20 66 C20 42 32 30 50 30 C68 30 80 42 80 66 Z" fill="url(#metal)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M46 31 L54 31 L54 66 L46 66 Z" fill="{main.deep}" fill-opacity=".35"/>
+  <path d="M28 48 C30 40 36 35 44 33" fill="none" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+  <!-- Aro con remaches -->
+  <path d="M17 62 Q50 57 83 62 L83 72 Q50 67 17 72 Z" fill="url(#metal)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+  <g fill="{main.deep}"><circle cx="24" cy="66" r="1.6"/><circle cx="37" cy="64.5" r="1.6"/><circle cx="50" cy="64" r="1.6"/><circle cx="63" cy="64.5" r="1.6"/><circle cx="76" cy="66" r="1.6"/></g>
+</svg>

@@ -12,6 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
 import '../../audio/tama_voice.dart';
+import '../../backend/leaderboards.dart';
+import '../../backend/missions.dart';
 import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
@@ -463,6 +465,8 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
     unawaited(_store?.save(records.toJson()));
     final coins = tsumikiRewardFor(_game.lines);
     if (coins > 0) unawaited(_claim(coins));
+    unawaited(ref.read(leaderboardsProvider.notifier).submitScore(LeaderboardGame.tsumiki, _game.score));
+    unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.play));
     _resultsTimer = Timer(Duration(milliseconds: _reduced ? 150 : 1400), () {
       if (mounted) setState(() => _showResults = true);
     });

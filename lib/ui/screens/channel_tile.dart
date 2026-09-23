@@ -100,6 +100,11 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
     } else {
       unawaited(_unwrap.forward());
     }
+    final onUnwrap = widget.spec.onUnwrap;
+    if (onUnwrap != null) {
+      onUnwrap(ref);
+      return;
+    }
     final gameId = widget.spec.gameId;
     if (gameId == null) return;
     unawaited(ref.read(shopProvider.notifier).unwrap(gameId));

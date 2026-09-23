@@ -5,6 +5,135 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.6.0 — El gacha del Yatai
+
+### Añadido
+
+- **Tickets de gacha**, la moneda del gachapon: el **gachaken** (ガチャ券, rojo y
+  amarillo de feria) y el **kinken** (金券, dorado, con bolas mucho mejores). Se
+  compran en la pestaña «gacha» del Yatai con monedas, con tope semanal: **10
+  gachaken y 1 kinken por semana** (la semana cambia el jueves a medianoche
+  UTC). Viven en `/users/{cuenta}/tickets`, y el cupo gastado en
+  `/users/{cuenta}/shop/week`.
+- **El gachapon**: 1 ticket, 1 bola; 10 tickets, **11 bolas**. Las bolas tienen
+  rareza —N, R, SR, SSR, UR y la oculta ∞ (*mugen*)— y se guardan en el
+  **depósito** (`/users/{cuenta}/gacha/balls`) esperando al pinball, que llega
+  en la fase siguiente. La tirada de 11 asegura **un SSR** con el gachaken (la
+  bola 11) y **un UR** con el kinken (la bola 10).
+- **Catálogo**: se puede pedir una categoría y una rareza (hasta SSR con el
+  gachaken, hasta UR con el kinken) y, si no ha caído en **70 tiradas**, una
+  bola de esa tanda sale **dirigida** a lo pedido. Hay un deseo y un contador
+  por tipo de ticket; cambiar de deseo no pierde lo acumulado. Las categorías
+  de partida son sombreros, accesorios, fondos y músicas.
+- **Canal del gachapón**: la máquina tiene canal propio, que aparece en la
+  rejilla **envuelto como un regalo** al conseguir el primer ticket. Es una
+  escena entera (máquina grande bajo su foco, con los dos botones debajo) y al
+  lado los tickets con lo que queda del cupo semanal, el Catálogo y el
+  depósito. Los tickets se siguen comprando en el Yatai, en su pestaña, como
+  cualquier otro artículo.
+- **La tirada pasa en la propia máquina**, sin abrir otra pantalla encima: la
+  manivela da vueltas, las cápsulas se remueven dentro de la cúpula, salen por
+  la boca una a una —ya del color que les ha tocado, con su golpe y su
+  fanfarria al caer— hasta la bandeja de abajo, con un estallido de rayos en
+  las raras. Tocar la escena se salta la ceremonia.
+- **Sonidos nuevos** (originales, CC0, `tool/gen_audio.py`): manivela, cápsula,
+  chasquido al abrir y una fanfarria distinta para SR, SSR, UR y la ∞.
+- **Ilustraciones nuevas**: los dos tickets, una bola por rareza, el emblema de
+  cada rareza (la ∞ va en arcoíris), el Catálogo y un icono por categoría.
+- **En el canal de depuración**, un admin puede darse tickets para probar.
+- **El pinball**, donde se abren las bolas. Es un canal propio que llega
+  **envuelto como un regalo** con la primera bola. Se cargan hasta **5 bolas**
+  del depósito, en el orden que se quiera, y salen una tras otra. La vista
+  **sigue a la bola** por la mesa, y **cada partida la mesa es distinta**:
+  se genera al azar dónde van los cuatro agujeros (uno por categoría) y
+  cuántos **bumpers que giran**, **bumpers fijos**, **spinners**, **postes de
+  goma** y **paredes-muelle** hay y dónde, siempre con hueco para que la
+  bola no se encaje. Los agujeros empiezan tapados: se abre cada uno
+  tumbando sus **tres dianas de color**, repartidas por la mesa (algunas se
+  deslizan por un carril, y tumbadas siguen moviéndose). Abajo, siempre
+  igual, tirachinas, flippers y calles de fuera con **kickback**, que se
+  enciende cada 15 golpes de bumper.
+  La bola **rueda** de verdad, y si se queda parada la mesa le da un meneo.
+  La bola que entra en un agujero da un premio de esa categoría con **la
+  rareza de la bola**; la dirigida da siempre la suya. Tras cada bola que
+  entra se tapa todo.
+  - Las bolas normales se pueden perder, pero tienen **10 s de salvabolas** al
+    salir del lanzador. Las UR, las ∞ y las dirigidas **no se pierden nunca**.
+    Cuando se salva una bola, el Tama con el que juegas (uno tuyo, al azar)
+    **aparece en el desagüe con un coro de ángeles** y la coge. Por eso hace
+    falta tener un Tama para jugar.
+  - Mientras la bola de turno no haya salido, la partida se puede **cancelar**
+    desde la pausa y las bolas que quedan vuelven al depósito.
+  - El pinball tiene **sus propios sonidos** (`tool/gen_audio.py --pinball`).
+  - Se juega tocando la mitad izquierda o derecha de la pantalla y arrastrando
+    hacia abajo para lanzar, o con Z/M o las flechas y espacio o flecha abajo.
+    Hay puntos y récord, de adorno.
+  - Salir a mitad **pausa la partida**, que queda guardada en el dispositivo.
+    Los premios son **de prueba** por ahora (una carta con la categoría y la
+    rareza, sin guardarse): serán accesorios para los Tamas.
+- **El pachinko**, donde se arriesgan bolas para subirlas de rareza. Llega
+  envuelto tras jugar la primera bola del pinball. Se llena la bandeja con
+  **hasta 50 bolas de N a SSR**, mezcladas como se quiera, y se sueltan
+  **tocando el tablero** donde se quiera (manteniendo, salen seguidas); o con
+  las flechas, espacio y 1–4 para la rareza. Las bolas caen de verdad entre
+  clavos de latón, dos molinillos y un tulipán que se abre y se cierra, y
+  acaban en un bolsillo: **se queda igual**, **sube una**, **sube dos** (el
+  tulipán) o **se pierde** por abajo, con techo en UR (la ∞ solo sale del
+  gacha). No compensa: se pierden **6 de cada 10** N, y las raras son **más
+  gordas** y caben en menos bolsillos (el color de los remaches dice hasta
+  qué rareza cabe), así que una SSR se pierde casi 9 de cada 10.
+  - El tablero es **el mismo todo el día** y cambia a las 00:00 UTC.
+  - Salir a mitad pausa la tanda, guardada en el dispositivo con las bolas
+    en el aire; desde la pausa se puede **terminar** y las que no se han
+    soltado vuelven tal cual.
+  - Tiene **sus propios sonidos** (`tool/gen_audio.py --pachinko`).
+
+### Cambiado
+
+- **Una sola conexión en tiempo real para toda la cuenta** (`UserNodeMux`).
+  Cada nodo vigilado era una conexión abierta, y el plan gratis de Firebase
+  aguanta cien en todo el proyecto: con una docena por persona, cinco personas
+  conectadas ya rozaban el tope. Ahora se abre una única conexión a
+  `/users/{cuenta}` y de ahí salen monedas, despensa, tickets, gacha, juegos,
+  cupo semanal, amigos y buzón.
+
+### Arreglado
+
+- Cerrar (o saltarse) la pantalla de una tirada ya no avisa de «no te quedan
+  tickets»: la tirada ya estaba hecha y el aviso era mentira. Ahora solo se
+  avisa cuando falla de verdad, y el aviso dice qué ha fallado.
+
+### Notas
+
+- El sorteo lo hace la app: las reglas de la base no pueden echar nada a
+  suertes, así que lo que comprueban es la economía (que los tickets bajen lo
+  que cuesta la tirada, que el depósito suba en tantas bolas como tiradas y que
+  la bola dirigida no nazca antes de las 70). Los tests están en
+  `test/rules/rules_06.test.mjs` y `test/gacha_test.dart`.
+- Cargar el pinball es una escritura con recibo (`gacha/play`, hasta 5
+  bolas, contadas por rareza): las reglas exigen que cada rareza del
+  depósito baje justo lo cargado. Cancelar (`gacha/back`) borra el recibo y
+  devuelve como mucho lo cargado de cada rareza.
+- El pachinko carga con recibo (`gacha/pachinko`, hasta 50 bolas de N a
+  SSR) y cobra con `gacha/settle`, que borra el recibo y solo deja subir cada
+  rareza lo que podría haber salido de lo cargado (igual, +1 o +2, techo en
+  UR, nunca ∞) y en total no más de lo cargado.
+- Al publicar hay que cargar los precios nuevos (`tool/seed_shop.dart`:
+  gachaken 25, kinken 150, más las ocho comidas nuevas) y desplegar las reglas.
+- **Fondos y música del gacha** viven en el catálogo (`gachaCategory.backdrops` y
+  `.music`) pero **aún no salen de verdad del pinball**: el sorteo de premios
+  todavía solo conoce sombreros y accesorios, así que el Catálogo (el deseo)
+  no deja pedirlos —el hueco lo tapa `hasPrizes`— y una bola normal que caiga
+  en esos agujeros da una carta de prueba sin premio real. Conectarlos queda
+  para la próxima versión; mientras tanto solo se pueden llevar los que ya
+  hubiera puestos por un admin en el canal de depuración.
+- Las misiones usan el mismo patrón de recibo que la tienda y el gacha
+  (`missions/claim`, comprobado contra una señal fresca en
+  `missions/signal/$evento`); el día y la semana se fijan sin `floor` con el
+  mismo truco que el bono diario. Las clasificaciones cierran el periodo con
+  un recibo parecido (`leaderboardClaims`). Tests en
+  `test/rules/rules_missions.test.mjs` y `test/rules/rules_leaderboards.test.mjs`.
+
 ## 0.5.1 — El bono diario
 
 ### Añadido

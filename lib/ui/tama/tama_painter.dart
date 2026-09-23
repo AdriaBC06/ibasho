@@ -7,9 +7,11 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../backend/prizes.dart';
 import '../../backend/tama.dart';
 import '../../theme/tokens.dart';
 import 'tama_food.dart';
+import 'tama_outfit.dart';
 
 /// Postura de un instante. La calcula el animador y la consume el pintor.
 ///
@@ -111,7 +113,8 @@ class TamaPainter extends CustomPainter {
     ValueListenable<TamaPose>? live,
   })  : _pose = pose,
         _live = live,
-        super(repaint: live);
+        // Tambien se repinta cuando llega el dibujo de un premio que lleva.
+        super(repaint: Listenable.merge([live, PrizeArt.instance]));
 
   final TamaLook look;
   final TamaPose _pose;
@@ -176,6 +179,10 @@ class TamaPainter extends CustomPainter {
       ).createShader(rect);
     final rim = Color.lerp(color, T.dusk, .36)!;
 
+    // Premios: primero lo que va detras del cuerpo (alas, mochila, la mitad
+    // de detras del flotador).
+    paintOutfit(canvas, look, body, const {PrizeSlot.back, PrizeSlot.waist, PrizeSlot.aura});
+
     _crownBehind(canvas, body, skin, rim, color);
     _arms(canvas, body, skin, rim, color);
     _feetBehind(canvas, body, skin, rim, color);
@@ -197,8 +204,19 @@ class TamaPainter extends CustomPainter {
     _specular(canvas, body);
 
     _feetFront(canvas, body, color, rim);
+    paintOutfit(canvas, look, body, const {PrizeSlot.feet});
+    // Y la parte de delante de lo que va en dos (correas, flotador, hadas).
+    paintOutfit(canvas, look, body, const {PrizeSlot.back, PrizeSlot.waist, PrizeSlot.aura}, front: true);
     _face(canvas, body, skin, color);
-    _wear(canvas, body);
+    // Lo de la cara y el cuello, luego el gorro y al final lo que tiene al
+    // lado. El gorrito del cumpleaños solo sale si no lleva gorro.
+    paintOutfit(canvas, look, body, const {PrizeSlot.eyes, PrizeSlot.nose, PrizeSlot.neck});
+    if (look.outfit.hat == null) {
+      _wear(canvas, body);
+    } else {
+      paintOutfit(canvas, look, body, const {PrizeSlot.head});
+    }
+    paintOutfit(canvas, look, body, const {PrizeSlot.left, PrizeSlot.right});
 
     canvas.restore();
 
@@ -663,7 +681,7 @@ class TamaPainter extends CustomPainter {
       _legs(canvas, body, rim, color);
       return;
     }
-    if (variant != 0) return;
+    if (variant != 0 || hidesFeet(look)) return;
     // Patitas redondas asomando por debajo.
     final r = body.bounds;
     for (final side in const [-1.0, 1.0]) {
@@ -715,7 +733,7 @@ class TamaPainter extends CustomPainter {
   }
 
   void _feetFront(Canvas canvas, TamaBody body, Color color, Color rim) {
-    if (look.part(TamaPart.feet) != 1) return;
+    if (look.part(TamaPart.feet) != 1 || hidesFeet(look)) return;
     // Zarpitas delante, con sus deditos.
     final r = body.bounds;
     final pawColor = Color.lerp(color, T.shellTop, .22)!;

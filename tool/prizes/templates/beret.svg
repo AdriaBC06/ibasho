@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60">
+  <!-- Boina ladeada. El ribete apoya en la cabeza en (22..78, 48). -->
+  <defs>
+    <linearGradient id="felt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".65"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Rabito de arriba -->
+  <path d="M57 15 C57 10 60 7 63 8" fill="none" stroke="{main.edge}" stroke-width="4" stroke-linecap="round"/>
+  <path d="M57 15 C57 10 60 7 63 8" fill="none" stroke="{main}" stroke-width="2" stroke-linecap="round"/>
+  <!-- Plato, caido hacia la izquierda -->
+  <path d="M8 38 C3 27 22 14 54 14 C82 14 98 23 94 33 C91 41 76 44 60 44 L32 44 C20 44 11 43 8 38 Z"
+        fill="url(#felt)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M16 30 C22 22 36 18 50 18 C38 21 28 25 22 32 Z" fill="url(#shine)"/>
+  <!-- Ribete -->
+  <path d="M21 42 Q50 38 79 42 L79 48 Q50 44 21 48 Z" fill="{main.deep}" stroke="{main.edge}" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>

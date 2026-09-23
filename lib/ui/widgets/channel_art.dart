@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../theme/tokens.dart';
+import 'gacha_art.dart';
 
 /// Las ilustraciones a color del entorno.
 ///
@@ -18,7 +19,24 @@ import '../../theme/tokens.dart';
 /// Todas se dibujan sobre una caja de 100x100 y se escalan. Los colores son
 /// los suyos, no el acento: un icono ilustrado se ve igual con cualquier
 /// acento, como el regalo.
-enum ArtIcon { yatai, minesweeper, tsumiki, nihongo, gacha, coin, medalBronze, medalSilver, medalGold, calendar }
+enum ArtIcon {
+  yatai,
+  minesweeper,
+  tsumiki,
+  nihongo,
+  gacha,
+  pinball,
+  pachinko,
+  ticketGachaken,
+  ticketKinken,
+  catalog,
+  coin,
+  medalBronze,
+  medalSilver,
+  medalGold,
+  calendar,
+  leaderboards,
+}
 
 class ArtIconView extends StatelessWidget {
   const ArtIconView(this.icon, {super.key, this.size = 64});
@@ -56,6 +74,16 @@ class ArtPainter extends CustomPainter {
         paintNihongo(canvas);
       case ArtIcon.gacha:
         paintGacha(canvas);
+      case ArtIcon.pinball:
+        paintPinballIcon(canvas);
+      case ArtIcon.pachinko:
+        paintPachinkoIcon(canvas);
+      case ArtIcon.ticketGachaken:
+        paintTicket(canvas, gold: false);
+      case ArtIcon.ticketKinken:
+        paintTicket(canvas, gold: true);
+      case ArtIcon.catalog:
+        paintCatalog(canvas);
       case ArtIcon.coin:
         paintCoin(canvas, const Offset(50, 50), 40);
       case ArtIcon.medalBronze:
@@ -66,6 +94,8 @@ class ArtPainter extends CustomPainter {
         paintMedal(canvas, Art.gold);
       case ArtIcon.calendar:
         paintCalendar(canvas);
+      case ArtIcon.leaderboards:
+        paintLeaderboards(canvas);
     }
     canvas.restore();
   }
@@ -724,4 +754,244 @@ void paintCalendar(Canvas canvas) {
     }
   }
   paintTwinkle(canvas, const Offset(73, 55), 5, Art.gold);
+}
+
+/// El podio de la clasificacion: tres peanas de plastico lacado, la de oro en
+/// medio y mas alta, con una estrella flotando sobre cada una.
+void paintLeaderboards(Canvas canvas) {
+  paintGroundShadow(canvas, const Offset(50, 92), 82);
+
+  final silver = Path()..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(12, 48, 25, 40), const Radius.circular(6)));
+  paintPlastic(canvas, silver, Art.silver, edge: 2);
+  final bronze = Path()..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(63, 60, 25, 28), const Radius.circular(6)));
+  paintPlastic(canvas, bronze, Art.bronze, edge: 2);
+  final gold = Path()..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(37, 34, 26, 54), const Radius.circular(6)));
+  paintPlastic(canvas, gold, Art.gold, edge: 2);
+
+  canvas.drawPath(_star(const Offset(24.5, 42), 4.6, 2.1), Paint()..color = Art.silverDark);
+  canvas.drawPath(_star(const Offset(75.5, 54), 3.9, 1.8), Paint()..color = Art.bronzeDark);
+  canvas.drawPath(_star(const Offset(50, 26), 5.8, 2.6), Paint()..color = Art.goldDark);
+  paintTwinkle(canvas, const Offset(64, 16), 4.4, Art.spark);
+}
+
+// --- El gachapon de tamano grande -----------------------------------------
+
+/// La misma maquina del icono, pero para llenar una escena y moverse: la
+/// manivela gira, las capsulas de dentro se remueven y por la boca sale lo
+/// que toca.
+///
+/// Se dibuja sobre la misma caja de 100x100 que las ilustraciones, asi que
+/// [mouth] devuelve la boca de salida en esas unidades y quien la use solo
+/// tiene que escalarla.
+class GachaMachineView extends StatelessWidget {
+  const GachaMachineView({
+    super.key,
+    required this.size,
+    this.crank = 0,
+    this.stir = 0,
+    this.tremble = 0,
+    this.lit = false,
+  });
+
+  final double size;
+
+  /// Vueltas de la manivela (1 = una vuelta entera).
+  final double crank;
+
+  /// Cuanto se remueven las capsulas, de 0 (quietas) a 1.
+  final double stir;
+
+  /// Temblor del cuerpo entero, de 0 a 1.
+  final double tremble;
+
+  /// Enciende el halo de detras: la maquina esta trabajando.
+  final bool lit;
+
+  /// La boca de salida en la caja de 100x100.
+  static const Offset mouth = Offset(65.5, 78);
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: GachaMachinePainter(
+            crank: crank,
+            stir: stir,
+            tremble: tremble,
+            lit: lit,
+          ),
+        ),
+      );
+}
+
+class GachaMachinePainter extends CustomPainter {
+  const GachaMachinePainter({
+    this.crank = 0,
+    this.stir = 0,
+    this.tremble = 0,
+    this.lit = false,
+  });
+
+  final double crank;
+  final double stir;
+  final double tremble;
+  final bool lit;
+
+  /// Las capsulas de dentro: sitio en reposo, color y a que ritmo se mueven.
+  static const List<(double, double, int, double)> _caps = <(double, double, int, double)>[
+    (36, 39, 0, .4),
+    (50, 41, 1, -.3),
+    (64, 39, 2, .9),
+    (43, 30, 3, 1.4),
+    (58, 29, 4, -.8),
+    (50, 19, 5, .2),
+    (33, 25, 1, -1.2),
+    (67, 24, 0, 2.1),
+    (42, 21, 2, .7),
+    (59, 37, 5, -1.6),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide / 100;
+    canvas.save();
+    canvas.translate((size.width - 100 * s) / 2, (size.height - 100 * s) / 2);
+    canvas.scale(s);
+    if (tremble > 0) {
+      canvas.translate(math.sin(crank * math.pi * 9) * 1.1 * tremble, 0);
+    }
+
+    if (lit) {
+      canvas.drawCircle(
+        const Offset(50, 42),
+        44,
+        Paint()
+          ..color = Art.spark.withValues(alpha: .28)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16),
+      );
+    }
+
+    paintGroundShadow(canvas, const Offset(50, 95), 70);
+
+    // Patas.
+    for (final x in [26.0, 74.0]) {
+      paintPlastic(
+        canvas,
+        Path()..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x - 6, 86, 12, 9), const Radius.circular(3.5))),
+        Art.gachaBodyDark,
+        edge: 1.4,
+        shine: 0,
+      );
+    }
+
+    // Cuerpo.
+    final body = Path()
+      ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(18, 50, 64, 40), const Radius.circular(10)));
+    paintPlastic(canvas, body, Art.gachaBody, edge: 2.2);
+
+    // Anillo de la cupula.
+    paintPlastic(
+      canvas,
+      Path()..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(17, 44, 66, 8), const Radius.circular(4))),
+      Art.chrome,
+      edge: 1.8,
+    );
+
+    // Cupula con las capsulas revolviendose.
+    const domeC = Offset(50, 28);
+    const domeR = 26.0;
+    final dome = Path()
+      ..addArc(Rect.fromCircle(center: domeC, radius: domeR), math.pi * .98, math.pi * 1.04)
+      ..lineTo(domeC.dx + domeR * .98, 45)
+      ..lineTo(domeC.dx - domeR * .98, 45)
+      ..close();
+    canvas.save();
+    canvas.clipPath(dome);
+    canvas.drawPath(dome, Paint()..color = const Color(0xFFE9F7FF));
+    for (var i = 0; i < _caps.length; i++) {
+      final (x, y, ci, rot) = _caps[i];
+      // Con la manivela girando las capsulas se empujan unas a otras: cada
+      // una lleva su propio ritmo para que no parezcan un bloque.
+      final t = crank * math.pi * 2 + i * 1.7;
+      final dx = math.sin(t * 1.3) * 3.4 * stir;
+      final dy = math.cos(t * .9 + i) * 2.6 * stir;
+      paintCapsule(
+        canvas,
+        Offset(x + dx, y + dy),
+        5.6,
+        Art.capsules[ci],
+        rot + math.sin(t) * .6 * stir,
+      );
+    }
+    canvas.drawPath(dome, _vertical(dome.getBounds(), [const Color(0x00FFFFFF), const Color(0x33BFE6FA)]));
+    canvas.drawArc(
+      Rect.fromCircle(center: domeC, radius: domeR - 5),
+      math.pi * 1.12,
+      math.pi * .32,
+      false,
+      _edge(const Color(0xDDFFFFFF), 3.4),
+    );
+    canvas.drawCircle(const Offset(67, 15), 2.2, Paint()..color = const Color(0xCCFFFFFF));
+    canvas.restore();
+    canvas.drawPath(dome, _edge(Art.glassEdge, 2));
+
+    // Tapa.
+    paintPlastic(
+      canvas,
+      Path()..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(42, 0.5, 16, 6), const Radius.circular(3))),
+      Art.gachaBody,
+      edge: 1.4,
+    );
+
+    // Cartel del frente, para que el cuerpo no sea una plancha lisa.
+    final sign = RRect.fromRectAndRadius(const Rect.fromLTWH(24, 55, 30, 12), const Radius.circular(4));
+    canvas.drawRRect(sign, Paint()..color = Art.awningCream);
+    canvas.drawRRect(sign, _edge(Art.gachaBodyDark, 1.2));
+    for (var i = 0; i < 3; i++) {
+      canvas.drawCircle(Offset(31.5 + i * 7.5, 61), 2.6, Paint()..color = Art.capsules[i]);
+    }
+
+    // Rueda: gira con la manivela.
+    const knobC = Offset(34, 76);
+    paintPlastic(canvas, Path()..addOval(Rect.fromCircle(center: knobC, radius: 11.5)), Art.chrome, edge: 1.8);
+    canvas.drawCircle(knobC, 4.2, Paint()..color = Art.chromeDark);
+    final handle = Path()
+      ..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: knobC, width: 19, height: 5.4), const Radius.circular(2.7)));
+    canvas.save();
+    canvas.translate(knobC.dx, knobC.dy);
+    canvas.rotate(-.5 + crank * math.pi * 2);
+    canvas.translate(-knobC.dx, -knobC.dy);
+    paintPlastic(canvas, handle, Art.chromeDark, edge: 1.2);
+    canvas.restore();
+    // El pomo que se agarra, en la punta de la manivela.
+    final grip = Offset(
+      knobC.dx + math.cos(-.5 + crank * math.pi * 2) * 9.5,
+      knobC.dy + math.sin(-.5 + crank * math.pi * 2) * 9.5,
+    );
+    paintPlastic(canvas, Path()..addOval(Rect.fromCircle(center: grip, radius: 3.4)), Art.gachaBody, edge: 1);
+
+    // Ranura del ticket y boca de salida.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(60, 55, 13, 3.4), const Radius.circular(1.7)),
+      Paint()..color = Art.gachaBodyDark,
+    );
+    final chute = RRect.fromRectAndRadius(const Rect.fromLTWH(55, 68, 21, 16), const Radius.circular(5.5));
+    canvas.drawRRect(chute, _vertical(chute.outerRect, [Art.deep(Art.gachaBody, .8), Art.deep(Art.gachaBody, .5)]));
+    canvas.drawRRect(chute, _edge(Art.deep(Art.gachaBody, .65), 1.4));
+    // La tapa de la boca: una lengueta que se levanta mientras sale algo.
+    final lift = 4.5 * stir.clamp(0.0, 1.0);
+    final flap = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(56.5, 68.5 - lift, 18, 4.5),
+        const Radius.circular(2.2),
+      ));
+    paintPlastic(canvas, flap, Art.chrome, edge: .9);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(GachaMachinePainter old) =>
+      old.crank != crank || old.stir != stir || old.tremble != tremble || old.lit != lit;
 }

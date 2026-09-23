@@ -41,6 +41,12 @@ Nihongo, con `python3 tool/gen_nihongo_music.py`.
 | aurora (ambiente, bucle de 80 s) | `assets/audio/bgm/aurora.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | brisa (ambiente, bucle de 64 s) | `assets/audio/bgm/brisa.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | noche (ambiente, bucle de 64 s) | `assets/audio/bgm/noche.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| nana (premio del gacha, N; nana en 3 tiempos, bucle de 72 s) | `assets/audio/bgm/nana.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| carrillon (premio del gacha, N; caja de música, bucle de 48 s) | `assets/audio/bgm/carrillon.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| lofi (premio del gacha, R; groove suave a 76 bpm, bucle de 25,3 s) | `assets/audio/bgm/lofi.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| feria (premio del gacha, SR; con ritmo a 138 bpm, bucle de 27,8 s) | `assets/audio/bgm/feria.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| abrigo (premio del gacha, UR; pad de cuerdas cálido, bucle de 88 s) | `assets/audio/bgm/abrigo.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| cenit (premio del gacha, ∞; contrapunto a dos voces, bucle de 96 s) | `assets/audio/bgm/cenit.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | tick · open · back · error · chime (efectos) | `assets/audio/sfx/*.wav` | Adrià Bonnin Catalán | CC0 1.0 |
 
 Cada pista está además en MP3 (`.mp3`, VBR calidad 2) al lado de su `.ogg`, con

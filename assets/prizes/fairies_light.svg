@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">
+  <!-- Hadas alrededor, la que va detras del cuerpo. El cuerpo ocupa
+       (30..90) con el anclaje en (60, 50), como las alas. -->
+  <defs>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".25" stop-color="#FFE689"/>
+      <stop offset=".55" stop-color="#FFD84A" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#FFD84A" stop-opacity="0"/>
+    </radialGradient>
+    <g id="fairy">
+      <circle r="11" fill="url(#glow)"/>
+      <ellipse cx="-4.5" cy="-3" rx="4.5" ry="2.6" fill="#FFFFFF" fill-opacity=".75" stroke="#91863E" stroke-opacity=".4" stroke-width=".6" transform="rotate(-30 -4.5 -3)"/>
+      <ellipse cx="4.5" cy="-3" rx="4.5" ry="2.6" fill="#FFFFFF" fill-opacity=".75" stroke="#91863E" stroke-opacity=".4" stroke-width=".6" transform="rotate(30 4.5 -3)"/>
+      <circle r="3.2" fill="#FFFFFF" stroke="#D3B745" stroke-width=".8"/>
+    </g>
+  </defs>
+  <use href="#fairy" transform="translate(98 18) scale(1.45)"/>
+  <path d="M84 20 Q88 24 92 20" fill="none" stroke="#FFD84A" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="1.5 2.5"/>
+</svg>

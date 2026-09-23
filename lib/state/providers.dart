@@ -19,9 +19,12 @@ import 'coins.dart';
 import 'rewards.dart';
 import 'conversation.dart';
 import 'friends.dart';
+import 'gacha.dart';
 import 'identity.dart';
+import 'leaderboards.dart';
 import 'login_bonus.dart';
 import 'messages.dart';
+import 'missions.dart';
 import 'news.dart';
 import 'pantry.dart';
 import 'suggestions.dart';
@@ -127,7 +130,6 @@ final pantryProvider =
   return PantryController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
-    unlockedFoods: ref.watch(unlockedFoodsProvider),
   );
 });
 
@@ -338,6 +340,41 @@ final shopProvider = StateNotifierProvider<ShopController, ShopState>((ref) {
     coinsOf: () => ref.read(coinsProvider),
     pantryQtyOf: (food) => ref.read(pantryProvider)[food] ?? 0,
     unlockedFoodsOf: () => ref.read(unlockedFoodsProvider),
+    ticketsOf: (kind) => ref.read(gachaProvider).ticketsOf(kind),
+  );
+});
+
+/// El gacha: tickets, tiradas, el deposito de bolas y el Catalogo.
+final gachaProvider = StateNotifierProvider<GachaController, GachaState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return GachaController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+  );
+});
+
+/// Las misiones diarias y semanales: señales, cobros y lo que dan.
+final missionsProvider = StateNotifierProvider<MissionsController, MissionsState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return MissionsController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    ticketsOf: (kind) => ref.read(gachaProvider).ticketsOf(kind),
+  );
+});
+
+/// Las clasificaciones de los minijuegos: tablas diaria y semanal, con
+/// premio en tickets para el top 3.
+final leaderboardsProvider =
+    StateNotifierProvider<LeaderboardsController, LeaderboardsState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return LeaderboardsController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    ticketsOf: (kind) => ref.read(gachaProvider).ticketsOf(kind),
   );
 });
 

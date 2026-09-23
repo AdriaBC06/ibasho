@@ -11,6 +11,7 @@ import 'identity_toolkit.dart';
 import 'models.dart';
 import 'rtdb_client.dart';
 import 'rtdb_socket.dart';
+import 'user_mux.dart';
 
 /// Implementacion del contrato sobre las APIs REST de Firebase.
 class RestIbashoBackend implements IbashoBackend {
@@ -25,6 +26,10 @@ class RestIbashoBackend implements IbashoBackend {
   final bool _ownsClient;
   late final IdentityToolkit _auth;
   late final RtdbClient _db;
+
+  /// La cuenta propia y el reparto de su unica conexion. Ver `UserNodeMux`.
+  String? _ownAccount;
+  UserNodeMux? _mux;
 
   /// Hasta donde se busca una generacion de credencial al iniciar sesion.
   static const int maxGeneration = 4;
@@ -123,8 +128,29 @@ class RestIbashoBackend implements IbashoBackend {
     String path, {
     required Future<String> Function() token,
     DatabaseQuery? query,
-  }) =>
-      _db.watch(path, token: token, query: query);
+  }) {
+    // Todo lo que cuelga de la cuenta propia sale de una sola conexion; lo
+    // demas (y cualquier consulta) abre la suya.
+    final mine = _ownAccount;
+    if (query == null && mine != null && mine.isNotEmpty) {
+      final prefix = '/users/$mine';
+      if (path == prefix || path.startsWith('$prefix/')) {
+        final mux = _mux ??= UserNodeMux(
+          source: () => _db.watch(prefix, token: token),
+        );
+        return mux.child(path.substring(prefix.length));
+      }
+    }
+    return _db.watch(path, token: token, query: query);
+  }
+
+  @override
+  void setOwnAccount(String? accountId) {
+    if (_ownAccount == accountId) return;
+    _ownAccount = accountId;
+    _mux?.reset();
+    _mux = null;
+  }
 
   @override
   PresenceLink openPresenceLink({required Future<String> Function() token}) =>

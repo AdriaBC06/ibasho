@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+  <!-- Cuernos de diablillo. Nacen en la cabeza en (14..86, 44). -->
+  <defs>
+    <linearGradient id="horn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EC808C"/>
+      <stop offset=".55" stop-color="#E23B4E"/>
+      <stop offset="1" stop-color="#BB3649"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#FF8A6E" stop-opacity=".6"/>
+      <stop offset="1" stop-color="#FF8A6E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <g id="horn-left">
+    <ellipse cx="22" cy="28" rx="16" ry="18" fill="url(#glow)"/>
+    <path d="M14 44 C12 34 12 20 20 8 C21 18 26 30 32 40 Z" fill="url(#horn)" stroke="#813040" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M17 36 C16 28 17 20 19 14" fill="none" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+  <use href="#horn-left" transform="matrix(-1 0 0 1 100 0)"/>
+  <!-- Chispas de la UR -->
+  <path d="M50 6 Q50 10 54 10 Q50 10 50 14 Q50 10 46 10 Q50 10 50 6 Z" fill="#FF8A6E"/>
+  <circle cx="40" cy="18" r="1.4" fill="#FF8A6E"/><circle cx="62" cy="20" r="1.2" fill="#FF8A6E"/>
+</svg>

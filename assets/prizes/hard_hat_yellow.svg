@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Casco de obra. El borde apoya en la cabeza en (14..86, 72). -->
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F9D97F"/>
+      <stop offset=".55" stop-color="#F6C43A"/>
+      <stop offset="1" stop-color="#CCA738"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Cupula -->
+  <path d="M16 66 C16 40 30 28 50 28 C70 28 84 40 84 66 Z" fill="url(#shell)" stroke="#8C7B36" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Cresta del centro -->
+  <path d="M42 30 Q50 26 58 30 L58 66 L42 66 Z" fill="#F9D97F" stroke="#8C7B36" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M24 48 C26 40 32 34 40 32 C36 38 32 44 30 52 Z" fill="url(#shine)"/>
+  <!-- Ala que da toda la vuelta -->
+  <path d="M6 70 Q6 64 16 64 L84 64 Q94 64 94 70 Q94 76 84 76 L16 76 Q6 76 6 70 Z" fill="url(#shell)" stroke="#8C7B36" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M12 68 L88 68" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- Pegatina -->
+  <circle cx="30" cy="54" r="5" fill="#FFFFFF" stroke="#8C7B36" stroke-width="1.2"/>
+  <path d="M28 54 L30 56 L33 52" fill="none" stroke="#43B86F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

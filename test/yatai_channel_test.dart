@@ -145,9 +145,11 @@ void main() {
 
     await tester.tap(find.text('Tamas'));
     await tester.pumpAndSettle();
+    // La pestana del gacha es un mostrador como los demas: solo vende
+    // tickets. La maquina vive en su propio canal.
     await tester.tap(find.text('gacha'));
     await tester.pumpAndSettle();
-    expect(find.text('próximamente'), findsWidgets);
+    expect(find.text('gachaken'), findsWidgets);
 
     expect(tester.takeException(), isNull);
 

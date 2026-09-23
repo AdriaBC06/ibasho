@@ -19,6 +19,7 @@ import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../canvas.dart';
 import '../layout.dart';
+import '../widgets/backdrop_art.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import '../widgets/gloss.dart';
@@ -41,14 +42,13 @@ enum PanelBalance {
   bottomLarge;
 
   double get topHeight => switch (this) {
-        PanelBalance.balanced => T.panelBalanced,
-        PanelBalance.topLarge => T.panelLarge,
-        PanelBalance.bottomLarge => T.panelSmall,
-      };
+    PanelBalance.balanced => T.panelBalanced,
+    PanelBalance.topLarge => T.panelLarge,
+    PanelBalance.bottomLarge => T.panelSmall,
+  };
 
   /// La suma es constante, asi el entorno no se mueve de sitio.
-  double get bottomHeight =>
-      T.panelBalanced * 2 - topHeight;
+  double get bottomHeight => T.panelBalanced * 2 - topHeight;
 
   /// Alto del panel superior con este estado.
   ///
@@ -58,8 +58,10 @@ enum PanelBalance {
   /// de los dos al minimo.
   double topFor({required double available, required double gridNatural}) =>
       switch (this) {
-        PanelBalance.balanced =>
-          math.max(_tallMinTop, available - math.min(gridNatural, available - _tallMinTop)),
+        PanelBalance.balanced => math.max(
+          _tallMinTop,
+          available - math.min(gridNatural, available - _tallMinTop),
+        ),
         PanelBalance.topLarge => available - _tallMinGrid,
         PanelBalance.bottomLarge => _tallMinTop,
       };
@@ -73,10 +75,10 @@ enum PanelBalance {
   static const double _tallMinGrid = 212;
 
   PanelBalance get next => switch (this) {
-        PanelBalance.balanced => PanelBalance.topLarge,
-        PanelBalance.topLarge => PanelBalance.bottomLarge,
-        PanelBalance.bottomLarge => PanelBalance.balanced,
-      };
+    PanelBalance.balanced => PanelBalance.topLarge,
+    PanelBalance.topLarge => PanelBalance.bottomLarge,
+    PanelBalance.bottomLarge => PanelBalance.balanced,
+  };
 }
 
 class ShellScreen extends ConsumerStatefulWidget {
@@ -103,8 +105,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
   // `late final` se crearia por primera vez en dispose(), con el arbol ya
   // desmontado.
   late final AnimationController _magnify;
-  late Animation<double> _topHeight =
-      AlwaysStoppedAnimation<double>(PanelBalance.balanced.topHeight);
+  late Animation<double> _topHeight = AlwaysStoppedAnimation<double>(
+    PanelBalance.balanced.topHeight,
+  );
 
   @override
   void initState() {
@@ -112,13 +115,21 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     _magnify = AnimationController(vsync: this, duration: T.magnify, value: 1);
     // El bono diario se ofrece solo al entrar, una vez por sesion, en cuanto
     // se sabe que el de hoy esta sin cobrar.
-    ref.listenManual(loginBonusProvider, (_, bonus) => _offerBonus(bonus), fireImmediately: true);
+    ref.listenManual(
+      loginBonusProvider,
+      (_, bonus) => _offerBonus(bonus),
+      fireImmediately: true,
+    );
   }
 
   bool _bonusOffered = false;
 
   void _offerBonus(LoginBonusState bonus) {
-    if (_bonusOffered || !loginBonusAutoOpen || !bonus.loaded || bonus.claimedToday) return;
+    if (_bonusOffered ||
+        !loginBonusAutoOpen ||
+        !bonus.loaded ||
+        bonus.claimedToday)
+      return;
     _bonusOffered = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(showLoginBonus(context));
@@ -142,10 +153,32 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     super.dispose();
   }
 
-  List<ChannelSpec> get _channels => channelsFor(
-        isAdmin: ref.read(sessionProvider).isAdmin,
-        installedGames: ref.watch(installedGamesProvider),
-      );
+  List<ChannelSpec> get _channels {
+    // El gachapon se desbloquea con el primer ticket (o con lo que ya haya
+    // caido en el deposito) y llega envuelto hasta que se abre.
+    final gacha = ref.watch(gachaProvider);
+    final unlocked =
+        gacha.tickets.values.any((n) => n > 0) ||
+        gacha.totalBalls > 0 ||
+        gacha.wish != null;
+    // El pinball, con la primera bola. Una cuenta que ya ha tirado alguna
+    // vez lo conserva aunque se quede sin bolas.
+    final pinball = gacha.pulledOnce || gacha.totalBalls > 0;
+    final prefs = ref.watch(preferencesProvider);
+    // El pachinko, tras la primera bola jugada en el pinball (o si ya se ha
+    // jugado alguna tanda, desde otro dispositivo).
+    final pachinko = prefs.pinballPlayed || gacha.pachinkoPlayed;
+    return channelsFor(
+      isAdmin: ref.read(sessionProvider).isAdmin,
+      installedGames: ref.watch(installedGamesProvider),
+      gachaUnlocked: unlocked,
+      gachaGift: unlocked && !prefs.gachaOpened,
+      pinballUnlocked: pinball,
+      pinballGift: pinball && !prefs.pinballOpened,
+      pachinkoUnlocked: pachinko,
+      pachinkoGift: pachinko && !prefs.pachinkoOpened,
+    );
+  }
 
   int _pageCount(bool tall) =>
       math.max(1, (_channels.length / channelsPerPage(tall: tall)).ceil());
@@ -171,7 +204,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
         ? _balance.topFor(available: available, gridNatural: gridNatural)
         : _balance.topHeight;
     _topHeight = Tween<double>(begin: _fromTop, end: target).animate(
-      CurvedAnimation(parent: _magnify, curve: skin.curve(Curves.easeInOutCubic)),
+      CurvedAnimation(
+        parent: _magnify,
+        curve: skin.curve(Curves.easeInOutCubic),
+      ),
     );
   }
 
@@ -186,7 +222,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     if (event is! PointerScrollEvent) return;
     final now = DateTime.now();
     if (now.difference(_lastWheel) < const Duration(milliseconds: 260)) return;
-    if (event.scrollDelta.dy.abs() < 2 && event.scrollDelta.dx.abs() < 2) return;
+    if (event.scrollDelta.dy.abs() < 2 && event.scrollDelta.dx.abs() < 2)
+      return;
     _lastWheel = now;
     final forward = (event.scrollDelta.dy + event.scrollDelta.dx) > 0;
     _goToPage(_page + (forward ? 1 : -1));
@@ -210,14 +247,18 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     if (ref.watch(sessionProvider.select((s) => s.isAdmin))) {
       ref.watch(adminProvider.select((a) => a.loading));
     }
+    // El fondo puesto en Ajustes: detras de los paneles, se ve por el aire
+    // que dejan (el carril, la barra y los margenes). Vacio no pinta nada.
+    final backdropId = ref.watch(
+      preferencesProvider.select((p) => p.backdropId),
+    );
 
     return Bezel(
       child: FocusScope(
         autofocus: true,
         child: Shortcuts(
           shortcuts: const <ShortcutActivator, Intent>{
-            SingleActivator(LogicalKeyboardKey.pageDown):
-                _PageIntent(1),
+            SingleActivator(LogicalKeyboardKey.pageDown): _PageIntent(1),
             SingleActivator(LogicalKeyboardKey.pageUp): _PageIntent(-1),
           },
           child: Actions(
@@ -250,57 +291,71 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
                           ? available - topHeight
                           : T.panelBalanced * 2 - topHeight;
 
-                      return Column(
+                      return Stack(
                         children: [
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: topHeight,
-                            child: ScreenPanel(child: TopPanel(height: topHeight)),
-                          ),
-                          SizedBox(
-                            height: railHeight,
-                            child: _ControlRail(
-                              page: _page,
-                              pageCount: pageCount,
-                              diameter: layout.pill,
-                              onPrevious: () => _goToPage(_page - 1),
-                              onNext: () => _goToPage(_page + 1),
-                              onMagnify: _cycleBalance,
+                          // Detras de todo: solo se ve por el aire que dejan
+                          // los paneles (los margenes, el carril y la barra).
+                          // No ocupa sitio ni cambia ningun tamano.
+                          Positioned.fill(
+                            child: RepaintBoundary(
+                              child: BackdropView(id: backdropId),
                             ),
                           ),
-                          SizedBox(
-                            height: bottomHeight,
-                            child: Listener(
-                              onPointerSignal: _onWheel,
-                              child: PageSwipe(
-                                onPrevious: () => _goToPage(_page - 1),
-                                onNext: () => _goToPage(_page + 1),
+                          Column(
+                            children: [
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: topHeight,
                                 child: ScreenPanel(
-                                  child: ChannelGrid(
-                                    channels: channels,
-                                    page: _page,
-                                    height: bottomHeight,
-                                    width: panelWidth,
+                                  child: TopPanel(height: topHeight),
+                                ),
+                              ),
+                              SizedBox(
+                                height: railHeight,
+                                child: _ControlRail(
+                                  page: _page,
+                                  pageCount: pageCount,
+                                  diameter: layout.pill,
+                                  onPrevious: () => _goToPage(_page - 1),
+                                  onNext: () => _goToPage(_page + 1),
+                                  onMagnify: _cycleBalance,
+                                ),
+                              ),
+                              SizedBox(
+                                height: bottomHeight,
+                                child: Listener(
+                                  onPointerSignal: _onWheel,
+                                  child: PageSwipe(
+                                    onPrevious: () => _goToPage(_page - 1),
+                                    onNext: () => _goToPage(_page + 1),
+                                    child: ScreenPanel(
+                                      child: ChannelGrid(
+                                        channels: channels,
+                                        page: _page,
+                                        height: bottomHeight,
+                                        width: panelWidth,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
+                              SizedBox(height: barGap),
+                              SizedBox(
+                                height: barHeight,
+                                child: _BottomBar(
+                                  page: _page,
+                                  pageCount: pageCount,
+                                  settingsAnchor: _settingsAnchor,
+                                  profileAnchor: _profileAnchor,
+                                  channels: channels,
+                                  label: l,
+                                  height: barHeight,
+                                  width: panelWidth,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
                           ),
-                          SizedBox(height: barGap),
-                          SizedBox(
-                            height: barHeight,
-                            child: _BottomBar(
-                              page: _page,
-                              pageCount: pageCount,
-                              settingsAnchor: _settingsAnchor,
-                              profileAnchor: _profileAnchor,
-                              channels: channels,
-                              label: l,
-                              height: barHeight,
-                              width: panelWidth,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
                         ],
                       );
                     },
@@ -341,32 +396,32 @@ class _ControlRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          // Las flechas en los extremos, simetricas; ampliar al lado de la
-          // derecha, hacia dentro.
-          IconPill(
-            key: const ValueKey<String>('grid.previous'),
-            glyph: Glyph.arrowLeft,
-            diameter: diameter,
-            onPressed: page > 0 ? onPrevious : null,
-          ),
-          const Spacer(),
-          IconPill(
-            key: const ValueKey<String>('magnify'),
-            glyph: Glyph.magnify,
-            diameter: diameter,
-            tone: ButtonTone.accent,
-            onPressed: onMagnify,
-          ),
-          const SizedBox(width: 14),
-          IconPill(
-            key: const ValueKey<String>('grid.next'),
-            glyph: Glyph.arrowRight,
-            diameter: diameter,
-            onPressed: page < pageCount - 1 ? onNext : null,
-          ),
-        ],
-      );
+    children: [
+      // Las flechas en los extremos, simetricas; ampliar al lado de la
+      // derecha, hacia dentro.
+      IconPill(
+        key: const ValueKey<String>('grid.previous'),
+        glyph: Glyph.arrowLeft,
+        diameter: diameter,
+        onPressed: page > 0 ? onPrevious : null,
+      ),
+      const Spacer(),
+      IconPill(
+        key: const ValueKey<String>('magnify'),
+        glyph: Glyph.magnify,
+        diameter: diameter,
+        tone: ButtonTone.accent,
+        onPressed: onMagnify,
+      ),
+      const SizedBox(width: 14),
+      IconPill(
+        key: const ValueKey<String>('grid.next'),
+        glyph: Glyph.arrowRight,
+        diameter: diameter,
+        onPressed: page < pageCount - 1 ? onNext : null,
+      ),
+    ],
+  );
 }
 
 /// Atajos, puntos de pagina y acceso al perfil.
@@ -398,14 +453,14 @@ class _BottomBar extends StatelessWidget {
     final skin = IbashoSkin.of(context);
 
     void open(GlobalKey anchor, ChannelSpec spec) => openChannel(
-          context,
-          anchor: anchor,
-          tint: skin.accent,
-          glyph: spec.glyph,
-          label: spec.label(label),
-          builder: spec.builder,
-          art: spec.art,
-        );
+      context,
+      anchor: anchor,
+      tint: skin.accent,
+      glyph: spec.glyph,
+      label: spec.label(label),
+      builder: spec.builder,
+      art: spec.art,
+    );
 
     final settings = _spec('settings');
     final profile = _spec('profile');
@@ -416,22 +471,23 @@ class _BottomBar extends StatelessWidget {
     final shortcut = Layout.of(context).tall
         ? BoxConstraints.loose(Size(math.max(120, (width - 90) / 2), height))
         : null;
-    Widget fit(Widget child) =>
-        shortcut == null ? child : ConstrainedBox(constraints: shortcut, child: child);
+    Widget fit(Widget child) => shortcut == null
+        ? child
+        : ConstrainedBox(constraints: shortcut, child: child);
 
     return Row(
       children: [
         fit(
           KeyedSubtree(
-          key: settingsAnchor,
-          child: IbashoButton(
-            label: settings.label(label),
-            glyph: settings.glyph,
-            height: height,
-            cue: null,
-            onPressed: () => open(settingsAnchor, settings),
+            key: settingsAnchor,
+            child: IbashoButton(
+              label: settings.label(label),
+              glyph: settings.glyph,
+              height: height,
+              cue: null,
+              onPressed: () => open(settingsAnchor, settings),
+            ),
           ),
-        ),
         ),
         const Spacer(),
         Row(
@@ -446,15 +502,15 @@ class _BottomBar extends StatelessWidget {
         const Spacer(),
         fit(
           KeyedSubtree(
-          key: profileAnchor,
-          child: IbashoButton(
-            label: profile.label(label),
-            glyph: profile.glyph,
-            height: height,
-            cue: null,
-            onPressed: () => open(profileAnchor, profile),
+            key: profileAnchor,
+            child: IbashoButton(
+              label: profile.label(label),
+              glyph: profile.glyph,
+              height: height,
+              cue: null,
+              onPressed: () => open(profileAnchor, profile),
+            ),
           ),
-        ),
         ),
       ],
     );

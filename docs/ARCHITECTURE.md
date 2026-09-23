@@ -28,6 +28,7 @@ lib/
     rtdb_client.dart         Realtime Database por REST y text/event-stream
     rtdb_socket.dart         PresenceLink y RtdbSocket: websocket de la Realtime Database (onDisconnect)
     live_tree.dart           aplica eventos put/patch a una copia local de un nodo
+    user_mux.dart            una sola conexión de `/users/{cuenta}` para todos sus nodos
     push_id.dart             ids cronológicos de 20 caracteres
     models.dart              AuthTokens, AllowlistEntry, UserProfile, DatabaseEvent, DatabaseQuery, serverTimestamp…
     tama.dart                modelo de los Tamas (Tama, TamaLook, TamaWear, TamaVoice, TamaCare, TamaFood, humor)
@@ -35,7 +36,8 @@ lib/
     messaging.dart           mensajes (Message, MessageBody, TextBody, StickerBody, StoredMessage, InboxEntry)
     news.dart                NewsItem y NewsKind: el tablón y sus encuestas
     suggestions.dart         Suggestion, SuggestionStatus y AcceptedSuggestion
-    shop.dart                el catálogo del Yatai (ShopItem, ShopSection), Receipt y GameInstall
+    shop.dart                el catálogo del Yatai (ShopItem, ShopSection), WeekTickets, Receipt y GameInstall
+    gacha.dart               el gacha: TicketKind, Rarity, GachaCategory, tasas, rollPull, GachaWish y canWish
     errors.dart              IbashoFailure e IbashoException
   crypto/                cifrado de punta a punta, todo en Dart puro sobre pointycastle
     keys.dart            IdentityKeys y PublicKey: par ECDH sobre P-256 y secreto compartido
@@ -78,6 +80,7 @@ lib/
     suggestions.dart   SuggestionsController: buzón, veredicto y apertura (admin)
     coins.dart         CoinsController: el monedero (lo da un admin; la dueña gasta y cobra premios)
     shop.dart          ShopController: precios, juegos comprados, compra y desenvolver
+    gacha.dart         GachaController: tickets, tiradas, depósito, colección de premios, turnos del pinball y el Catálogo
     rewards.dart       RewardsController: premios de los juegos, con tope diario
     preferences.dart   PreferencesController
     system_status.dart Clock y SystemStatusController (batería y conexión)
@@ -108,6 +111,7 @@ lib/
     social/            presencia, CardTama, insignias, entrada del código y tarjeta de visita
     screens/           splash, login, cambio de contraseña, versión antigua, entorno, rejilla, rutas
       channels/        ajustes, perfil, Tamas, amigos, administración, depuración, créditos, próximamente
+                       gacha_channel.dart: el canal del gachapón (máquina, tirada animada y depósito)
       tama/            habitación y creador de un Tama
       friends/         añadir amigo, perfil de un amigo y muro de cumpleaños
 android/                   proyecto de Android (manifiesto, Gradle, iconos, MainActivity)
@@ -198,6 +202,7 @@ abierto al pasar a bloqueado); si no, la pantalla de la fase de sesión.
 | `pantryProvider` | `StateNotifierProvider<PantryController, Map<TamaFood, int>>` | unidades de cada comida (`/users/$acc/pantry`); pide el stock inicial de las de serie que falten |
 | `shopProvider` | `StateNotifierProvider<ShopController, ShopState>` | precios (`/shop/prices`) y juegos comprados (`/users/$acc/games`) |
 | `rewardsProvider` | `StateNotifierProvider<RewardsController, RewardsState>` | lo cobrado hoy (`/users/$acc/rewards`) y el cobro de un premio |
+| `gachaProvider` | `StateNotifierProvider<GachaController, GachaState>` | tickets (`/users/$acc/tickets`) y el gacha (`/users/$acc/gacha`): tirar y pedir en el Catálogo |
 | `installedGamesProvider` | `Provider<Map<String, GameInstall>>` | juegos comprados, envueltos o abiertos: la rejilla los pinta tras el Yatai |
 | `debugProvider` | `StateNotifierProvider` | cámara lenta y gráfica de rendimiento (no se persiste) |
 | `updateRequirementProvider` | `StreamProvider<UpdateRequirement?>` | `/system/update` leído sin sesión y seguido por SSE; `null` sin red o sin nodo |
@@ -329,6 +334,7 @@ Material.
 | `SlotTile` | `slot_tile.dart` | `width`, `height`, `child`, `onPressed`, `selected`, `tint`, `semanticLabel` | Baldosa de rejilla paginada: se inclina 2° y sube 4 px con `easeOutBack`; la elegida lleva `accentWash` y filo `accentDeep`. La usan Tamas y amigos. |
 | `EmptySlot` | `slot_tile.dart` | `width`, `height` | Ranura libre hundida. |
 | `ArtIconView` | `channel_art.dart` | `icon` (`ArtIcon`), `size` (64) | Ilustración a color sobre una caja de 100×100: `yatai`, `minesweeper`, `tsumiki`, `nihongo`, `gacha`, `coin`, `medalBronze/Silver/Gold`, `calendar`. Colores propios en `Art` (no el acento). Las funciones `paintPlastic`, `paintBomb`, `paintFlag`, `paintCapsule`, `paintCoin`, `paintTwinkle` y `paintGroundShadow` se reutilizan en el tablero y en el Yatai. |
+| `GachaMachineView` | `channel_art.dart` | `size`, `crank` (vueltas), `stir` (0–1, cuánto se remueven las cápsulas), `tremble`, `lit` | La máquina de cápsulas a tamaño de escena, sobre la misma caja de 100×100. `GachaMachineView.mouth` da la boca de salida en esas unidades, para que la tirada haga salir las bolas justo de ahí. |
 | `GiftFace` | `gift_face.dart` | `open` (0–1) | Regalo envuelto que llena su caja. `open` lo anima entero: se deshace el lazo, salta la tapa, salen destellos y se desvanece. Al revés (1→0) es el envoltorio de la compra. |
 
 **Glifos** (`enum Glyph`): `gear`, `person`, `keycard`, `slot`, `arrowLeft`,
@@ -817,8 +823,18 @@ coincide con su uid).
         backup             { v: 1, s: sal ≤ 64, d: privada envuelta ≤ 256 }
         at                 number > 0 y ≤ now
     coins                number entero 0–999999999
+    tickets              { gachaken, kinken }  enteros 0–9999: los tickets del gacha
     shop
         last               { item: id del catálogo, qty: 1–99, at: === now }: el recibo de la última compra
+        week               { n: floor(now / 604800000), gachaken ≤ 10, kinken ≤ 1 }: el cupo de la semana
+    gacha
+        last               { kind: gachaken|kinken, count: 1 u 11, at: === now }: el recibo de la última tirada
+        balls              { n, r, sr, ssr, ur, mu }  enteros 0–999999: el depósito, por rareza
+        marked/$cat/$rar   number entero ≥ 1: bolas dirigidas del Catálogo ($cat ^[a-z]{1,16}$, $rar n|r|sr|ssr|ur)
+        wish               { category, rarity n|r|sr|ssr|ur, count 0–69 }: el Catálogo; count sube con cada bola del pinball y en la 70 vuelve a 0 y suma una a marked
+        play               { at, balls, marked, done 1–5 }: la partida de pinball cargada; balls y marked solo bajan con un turn
+        turn               { at: === now, rarity, category?, prize? }: el recibo de cada bola jugada; prize tiene que ser de esa rareza (y categoría)
+    prizes/$key          number entero ≥ 1: copias de cada premio; solo sube de 1 en 1 con un gacha/turn que lo nombre
     pantry/$food         number entero 0–9999 ($food: uno de los diez TamaFood)
     games/$gameId        { state: 'gift' | 'open', at }  ($gameId ^[a-z0-9_]{1,32}$)
     rewards              { game, day, earned, at }  (day = floor(now / 86400000); earned ≤ 20)
@@ -854,7 +870,9 @@ coincide con su uid).
                          enteros 0–100
         color            string #RRGGBB
         colorMode        'palette' | 'hex'
-        (todos obligatorios; nada más)
+        hat?             clave de premio: tiene que estar en prizes del keeper, salvo que ya estuviera puesto
+        acc?             { a?, b?, c? } claves de premio, con la misma condición
+        (obligatorios los demás; nada más)
     care
         lastPetted?      number > 0 y ≤ now
         lastFed?         number > 0 y ≤ now
@@ -871,7 +889,7 @@ coincide con su uid).
 /system/friendCodeCounter  number entero: el siguiente contador (ausente = 1), sube de 1 en 1
 /system/suggestionsOpen    boolean (ausente = abierto)
 
-/shop/prices/$itemId       number entero 0–999999999 (game_minesweeper, game_tsumiki, game_nihongo, food_cookie…)
+/shop/prices/$itemId       number entero 0–999999999 (game_minesweeper, game_tsumiki, game_nihongo, food_cookie, ticket_gachaken, ticket_kinken…)
 
 /dm/$pairId                los dos accountId ordenados, unidos por '_'
     a                    string: el menor de los dos
@@ -953,6 +971,12 @@ coincide con su uid).
 | `…/earnings/$game` | la dueña | la dueña, sin borrar: `at === now`, tener el juego, `day` de hoy, `earnings/last` apuntando a este juego en la misma escritura, subir `earned` en 3, 5 u 8 (o hasta 20 justo), y `coins` sube lo mismo |
 | `…/earnings/last` | la dueña | la dueña, sin borrar: `at === now`, el juego que nombra se escribe a la vez, y 15 s desde el anterior cobro |
 | `…/login/last` | la dueña | la dueña: `at === now`, `day` de hoy y posterior al último, su `days/{day}` a la vez, y `coins` sube justo `loginBonusFor(day)`. Un admin puede borrar todo su `login` (depuración) |
+| `…/tickets/$kind` | la dueña | la dueña: comprando (recibo fresco de `ticket_$kind`, y `shop/week` sube en la misma escritura) o tirando (`gacha/last` fresco de ese ticket, bajando 1 u 10). Un admin, en su cuenta, a pelo |
+| `…/shop/week` | la dueña | la dueña: la semana de `now`, con un recibo fresco de un ticket, subiendo solo el contador de ese ticket y sin pasar de 10 / 1 |
+| `…/gacha/last` | la dueña | la dueña: `at === now`, `count` 1 u 11, y los tickets de ese tipo bajan exactamente 1 o 10 |
+| `…/gacha/balls` | la dueña | la dueña: con `gacha/last` fresco, la suma sube justo `count` (menos 1 si esta tirada cumple el deseo) y ningún contador baja |
+| `…/gacha/marked/$cat/$rar` | la dueña | la dueña: con `gacha/last` fresco, solo +1, solo al llegar a 70 tiradas y solo si coincide con el deseo de ese ticket |
+| `…/gacha/wish` | la dueña | la dueña: sin turno del pinball, cambia categoría y rareza sin tocar el contador; con turno, `count` sube 1 o baja 70 al cumplirse. Rareza hasta UR |
 | `…/login/days/$day` | (vía `…/login`) | la dueña, una vez: `true`, el mismo día que `login/last`, en la misma escritura |
 | `…/rewards` | la dueña | nadie desde la 0.5.1 (era el tope de 20 entre todos los juegos) |
 | `/shop/prices` | miembro habilitado | admin |
@@ -1024,9 +1048,10 @@ reparte los que falten al abrir el panel.
 | `NewsController` | multi-ruta de voto (`news/$id/tally/$opción` ±1, `news/$id/voters/$yo`, `users/$yo/votes/$id`); `/users/$acc/reads/news`; solo admin: `/news/$id`, `/news/$id/closed`, y su borrado |
 | `SuggestionsController` | `/suggestions/$acc` entero; solo admin: multi-ruta del veredicto (`status`, `note`, `decidedAt`, `decidedBy` y `acceptedSuggestions/$id`) y `/system/suggestionsOpen` |
 | `CoinsController` | solo admin: `/users/$otro/coins` |
-| `ShopController` | multi-ruta de compra desde la raíz: `users/$acc/shop/last` (con `serverTimestamp`), `users/$acc/coins` si no es gratis, y `users/$acc/pantry/$food` o `users/$acc/games/$id`; `/users/$acc/games/$id/state` al desenvolver; `debugSetGame` escribe o borra `/users/$acc/games/$id` entero (solo admin) |
+| `ShopController` | multi-ruta de compra desde la raíz: `users/$acc/shop/last` (con `serverTimestamp`), `users/$acc/coins` si no es gratis, y `users/$acc/pantry/$food`, `users/$acc/games/$id` o, con un ticket del gacha, `users/$acc/tickets/$kind` y `users/$acc/shop/week`; `/users/$acc/games/$id/state` al desenvolver; `debugSetGame` escribe o borra `/users/$acc/games/$id` entero (solo admin) |
 | `RewardsController` | multi-ruta de premio desde la raíz: `users/$acc/rewards` (con `serverTimestamp`) y `users/$acc/coins` |
 | `PantryController` | `/users/$acc/pantry/$food`: 5 la primera vez, y −1 cada vez que se da de comer |
+| `GachaController` | multi-ruta de tirada desde la raíz: `users/$acc/gacha/last` (con `serverTimestamp`), `users/$acc/gacha/balls` entero, `users/$acc/tickets/$kind`, y si toca `users/$acc/gacha/marked/$cat/$rar` y `users/$acc/gacha/wishes/$kind`; `setWish` escribe solo el deseo; `debugGiveTickets` escribe `users/$acc/tickets/$kind` (solo admin) |
 | `tool/seed_shop.dart` | `/shop/prices` entero, con la CLI |
 | `tool/bootstrap_admin.dart` | `/allowlist/$uid`, `/admins/$uid`, `/usernames/$username`, `/friendCodes/$code`, `/users/$uid/friendCode`, `/system/friendCodeCounter` con la CLI de Firebase |
 | `tool/post_news.dart` | `/news/$id`, `/news/$id/closed` y su borrado, también con la CLI |

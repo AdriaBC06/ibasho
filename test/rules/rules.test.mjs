@@ -536,6 +536,26 @@ test('cada campo del Tama valida tipo, rango y lista cerrada', async () => {
   await ok('look/colorMode', 'hex');
   await bad('look/colorMode', 'rgb');
   await bad('look/sombrero', 1);
+  // Lo que lleva puesto (0.6.0): claves de premio de su coleccion, hasta
+  // tres accesorios.
+  await testEnv.withSecurityRulesDisabled((context) =>
+    set(ref(context.database(), `/users/${MEMBER}/prizes`), {
+      cap_red: 1,
+      glasses_red: 2,
+      bowtie_black: 1,
+      angel_wings_white: 1,
+    }),
+  );
+  await ok('look/hat', 'cap_red');
+  await bad('look/hat', 'crown_gold');
+  await bad('look/hat', 'Cap Red');
+  await bad('look/hat', 3);
+  await ok('look/acc', { a: 'glasses_red' });
+  await ok('look/acc', { a: 'glasses_red', b: 'bowtie_black', c: 'angel_wings_white' });
+  await bad('look/acc', { a: 'glasses_red', d: 'bowtie_black' });
+  await bad('look/acc', { a: 'rgb_wings_rainbow' });
+  await bad('look/acc', 'glasses_red,bowtie_black');
+  await bad('look/acc', '');
   await bad('look', { body: 1 });
 
   await ok('name', 'x'.repeat(16));
@@ -555,6 +575,29 @@ test('cada campo del Tama valida tipo, rango y lista cerrada', async () => {
   await bad('care/lastPetted', now + 3600 * 1000);
   await bad('care/lastPetted', 'ayer');
   await bad('care/humor', 80);
+});
+
+test('lo puesto viaja con el Tama, pero solo se pone lo de la coleccion', async () => {
+  await seedTamas();
+  const member = db(MEMBER);
+  const traveller = `/tamas/${tamaId(1)}`;
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await update(ref(context.database(), '/'), {
+      // Lo cuida other, que no tiene la corona; member tiene la gorra.
+      [`tamas/${tamaId(1)}/look/hat`]: 'crown_gold',
+      [`tamas/${tamaId(1)}/look/acc`]: { a: 'mask_a' },
+      [`users/${MEMBER}/prizes/cap_red`]: 1,
+      [`users/${OTHER}/prizes/glasses_red`]: 1,
+    });
+  });
+  // Lo que ya llevaba se queda, aunque cambie de sitio.
+  await assertSucceeds(set(ref(member, `${traveller}/look/hat`), 'crown_gold'));
+  await assertSucceeds(set(ref(member, `${traveller}/look/acc`), { a: 'glasses_red', b: 'mask_a' }));
+  // Lo nuevo tiene que ser del cuidador, no de quien lo edita.
+  await assertFails(set(ref(member, `${traveller}/look/hat`), 'cap_red'));
+  // Quitado, ya no vuelve.
+  await assertSucceeds(set(ref(member, `${traveller}/look/acc`), { a: 'glasses_red' }));
+  await assertFails(set(ref(member, `${traveller}/look/acc`), { a: 'glasses_red', b: 'mask_a' }));
 });
 
 test('la lista de Tamas solo se lee con la consulta de cuidador propio', async () => {

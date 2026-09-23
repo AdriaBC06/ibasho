@@ -22,6 +22,13 @@ abstract final class Device {
   /// Escritorio Windows: cambia el formato de audio que admite el sistema.
   static bool get isWindows => debugWindows ?? (!kIsWeb && Platform.isWindows);
 
+  /// Escritorio Linux.
+  static bool get isLinux => debugLinux ?? (!kIsWeb && Platform.isLinux);
+
+  /// Cualquier escritorio: aqui es donde tiene sentido una ventana (y por
+  /// tanto la pantalla completa), a diferencia del movil o la web.
+  static bool get isDesktop => isWindows || isLinux;
+
   /// Solo para tests: fuerza la rama de Android.
   @visibleForTesting
   static bool? debugAndroid;
@@ -29,4 +36,8 @@ abstract final class Device {
   /// Solo para tests: fuerza la rama de Windows.
   @visibleForTesting
   static bool? debugWindows;
+
+  /// Solo para tests: fuerza la rama de Linux.
+  @visibleForTesting
+  static bool? debugLinux;
 }

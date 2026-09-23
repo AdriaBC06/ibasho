@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 52">
+  <!-- Mando de consola flotando a su izquierda: el lado de x=70 queda pegado
+       al costado, a la altura de y=30. -->
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#82ACEB"/>
+      <stop offset=".55" stop-color="#3E7FE0"/>
+      <stop offset="1" stop-color="#356EC0"/>
+    </linearGradient>
+    <radialGradient id="halo" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#9FE0FF" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#9FE0FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="36" cy="28" rx="36" ry="24" fill="url(#halo)"/>
+  <g transform="rotate(-8 36 28)">
+    <path d="M18 14 L54 14 C64 14 69 22 69 32 C69 42 64 46 59 46 C54 46 52 40 48 38 L24 38 C20 40 18 46 13 46 C8 46 3 42 3 32 C3 22 8 14 18 14 Z"
+          fill="url(#shell)" stroke="#275591" stroke-width="2" stroke-linejoin="round"/>
+    <!-- Cruceta -->
+    <path d="M14 22 L19 22 L19 26 L23 26 L23 31 L19 31 L19 35 L14 35 L14 31 L10 31 L10 26 L14 26 Z" fill="#2B3444" stroke="#1E2733" stroke-width="1"/>
+    <!-- Botones de colores -->
+    <circle cx="55" cy="21.5" r="3" fill="#F6C43A" stroke="#8A6A1E" stroke-width="1"/>
+    <circle cx="61.5" cy="28" r="3" fill="#E8404F" stroke="#7A2230" stroke-width="1"/>
+    <circle cx="55" cy="34.5" r="3" fill="#43B86F" stroke="#23663B" stroke-width="1"/>
+    <circle cx="48.5" cy="28" r="3" fill="#4FA3F0" stroke="#24578A" stroke-width="1"/>
+    <rect x="31" y="25" width="4" height="2.2" rx="1.1" fill="#275591"/><rect x="37" y="25" width="4" height="2.2" rx="1.1" fill="#275591"/>
+    <path d="M12 18 Q20 16 30 17" fill="none" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+  <!-- Destellos de la UR -->
+  <path d="M6 4 Q6 8 10 8 Q6 8 6 12 Q6 8 2 8 Q6 8 6 4 Z" fill="#9FE0FF"/>
+  <path d="M64 44 Q64 47 67 47 Q64 47 64 50 Q64 47 61 47 Q64 47 64 44 Z" fill="#9FE0FF"/>
+</svg>

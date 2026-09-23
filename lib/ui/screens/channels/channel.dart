@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,7 +21,12 @@ import 'admin_channel.dart';
 import 'coming_soon_channel.dart';
 import 'debug_channel.dart';
 import 'friends_channel.dart';
+import '../../../games/pachinko/pachinko_channel.dart';
+import '../../../games/pinball/pinball_channel.dart';
+import 'gacha_channel.dart';
+import 'leaderboards_channel.dart';
 import 'messages_channel.dart';
+import 'missions_channel.dart';
 import 'news_channel.dart';
 import 'profile_channel.dart';
 import 'settings_channel.dart';
@@ -39,6 +46,7 @@ class ChannelSpec {
     this.badge,
     this.gift = false,
     this.gameId,
+    this.onUnwrap,
     this.art,
   });
 
@@ -64,6 +72,10 @@ class ChannelSpec {
   /// Id del juego en `/users/{cuenta}/games/{gameId}`. Solo los canales de
   /// juegos lo llevan, y hace falta para desenvolver.
   final String? gameId;
+
+  /// Que hacer al desenvolver, cuando no es un juego del Yatai (el gachapon
+  /// se abre solo, al conseguir el primer ticket).
+  final void Function(WidgetRef ref)? onUnwrap;
 }
 
 /// Un juego comprable: con esto y una entrada aqui, el juego ya sale en la
@@ -119,6 +131,12 @@ int channelsPerPage({required bool tall}) => tall ? 9 : 8;
 List<ChannelSpec> channelsFor({
   required bool isAdmin,
   Map<String, GameInstall> installedGames = const <String, GameInstall>{},
+  bool gachaUnlocked = false,
+  bool gachaGift = false,
+  bool pinballUnlocked = false,
+  bool pinballGift = false,
+  bool pachinkoUnlocked = false,
+  bool pachinkoGift = false,
 }) {
   // Los juegos comprados, en el orden en que se compraron. Solo entran los
   // que el registro conoce: si el backend trae un id que la app aun no sabe
@@ -184,6 +202,57 @@ List<ChannelSpec> channelsFor({
         label: (l) => l.channelYatai,
         builder: (_) => const YataiChannel(),
       ),
+      // Se juega y se gana algo (tickets del gacha): icono ilustrado, como el
+      // Yatai y los juegos, no el glifo blanco de los canales del sistema.
+      ChannelSpec(
+        id: 'leaderboards',
+        glyph: Glyph.trophy,
+        art: ArtIcon.leaderboards,
+        label: (l) => l.channelLeaderboards,
+        builder: (_) => const LeaderboardsChannel(),
+      ),
+      ChannelSpec(
+        id: 'missions',
+        glyph: Glyph.flag,
+        label: (l) => l.channelMissions,
+        builder: (_) => const MissionsChannel(),
+      ),
+      // El gachapon aparece al tener el primer ticket, envuelto como un
+      // regalo. Los tickets se siguen comprando en el Yatai.
+      if (gachaUnlocked)
+        ChannelSpec(
+          id: 'gacha',
+          glyph: Glyph.gift,
+          art: ArtIcon.gacha,
+          label: (l) => l.channelGacha,
+          builder: (_) => const GachaChannel(),
+          gift: gachaGift,
+          onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openGacha()),
+        ),
+      // El pinball llega igual, envuelto, con la primera bola: es donde se
+      // abren.
+      if (pinballUnlocked)
+        ChannelSpec(
+          id: 'pinball',
+          glyph: Glyph.star,
+          art: ArtIcon.pinball,
+          label: (l) => l.channelPinball,
+          builder: (_) => const PinballChannel(),
+          gift: pinballGift,
+          onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openPinball()),
+        ),
+      // El pachinko llega tras jugar la primera bola en el pinball: ahi se
+      // arriesgan bolas para subirlas de rareza.
+      if (pachinkoUnlocked)
+        ChannelSpec(
+          id: 'pachinko',
+          glyph: Glyph.star,
+          art: ArtIcon.pachinko,
+          label: (l) => l.channelPachinko,
+          builder: (_) => const PachinkoChannel(),
+          gift: pachinkoGift,
+          onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openPachinko()),
+        ),
       for (final entry in games)
         ChannelSpec(
           id: 'game-${entry.key}',

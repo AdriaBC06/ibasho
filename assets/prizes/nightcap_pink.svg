@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Gorro de dormir con estrellas y luna; la punta cae a un lado. La vuelta
+       apoya en la cabeza en (16..84, 72). -->
+  <defs>
+    <linearGradient id="cloth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F8BDDB"/>
+      <stop offset=".55" stop-color="#F59AC8"/>
+      <stop offset="1" stop-color="#CB84AD"/>
+    </linearGradient>
+    <radialGradient id="pom" cx=".38" cy=".35" r=".7">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D3D7DA"/>
+    </radialGradient>
+  </defs>
+  <!-- Cuerpo que cae a la derecha -->
+  <path d="M18 62 C18 40 34 26 56 26 C76 26 88 36 92 56 C88 50 82 44 74 42 C80 48 82 56 82 62 Z"
+        fill="url(#cloth)" stroke="#8C6484" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="92" cy="60" r="7" fill="url(#pom)" stroke="#919CA2" stroke-width="1.6"/>
+  <!-- Luna y estrellas -->
+  <path d="M40 36 A8 8 0 1 0 48 48 A6 6 0 1 1 40 36 Z" fill="#FFFFFF" stroke="#919CA2" stroke-width="1"/>
+  <g fill="#FFFFFF">
+    <path d="M62 34 L63.5 37.5 L67 38 L64.4 40.4 L65 44 L62 42.2 L59 44 L59.6 40.4 L57 38 L60.5 37.5 Z"/>
+    <path d="M28 50 L29 52.3 L31.4 52.6 L29.6 54.2 L30 56.6 L28 55.4 L26 56.6 L26.4 54.2 L24.6 52.6 L27 52.3 Z"/>
+    <circle cx="66" cy="54" r="1.4"/><circle cx="52" cy="56" r="1.2"/><circle cx="74" cy="46" r="1.1"/>
+  </g>
+  <path d="M26 46 Q30 36 40 31" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Vuelta -->
+  <path d="M15 60 Q50 54 85 60 L85 72 Q50 66 15 72 Z" fill="#FFF3C8" stroke="#919584" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M18 63 Q50 57 82 63" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="1.4" stroke-linecap="round"/>
+</svg>

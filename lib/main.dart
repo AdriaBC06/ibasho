@@ -10,9 +10,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'audio/audio_service.dart';
+import 'core/device.dart';
 import 'state/providers.dart';
 import 'ui/mobile.dart';
 import 'storage/secure_store.dart';
@@ -29,6 +31,14 @@ Future<void> main() async {
   final settingsStore = await SettingsStore.open();
   final preferences = await settingsStore.load();
   final secureStore = await openSecureStore();
+
+  if (Device.isDesktop) {
+    await windowManager.ensureInitialized();
+    await windowManager.waitUntilReadyToShow(
+      WindowOptions(fullScreen: preferences.fullscreen),
+      () async => windowManager.show(),
+    );
+  }
 
   await AudioService.instance.init();
   await AudioService.instance.setTrack(preferences.musicTrack);

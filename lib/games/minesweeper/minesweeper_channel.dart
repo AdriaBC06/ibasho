@@ -11,6 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
 import '../../audio/tama_voice.dart';
+import '../../backend/leaderboards.dart';
+import '../../backend/missions.dart';
 import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
@@ -34,6 +36,14 @@ import 'minesweeper_widgets.dart';
 /// la misma partida. En la app es siempre `null`.
 @visibleForTesting
 int? debugMinesweeperSeed;
+
+/// La tabla de clasificacion de un nivel: el buscaminas del dia cuenta para
+/// la de su nivel equivalente.
+LeaderboardGame leaderboardGameFor(MinesweeperLevel level) => switch (level) {
+      MinesweeperLevel.easy => LeaderboardGame.minesweeperEasy,
+      MinesweeperLevel.medium => LeaderboardGame.minesweeperMedium,
+      MinesweeperLevel.hard => LeaderboardGame.minesweeperHard,
+    };
 
 /// Monedas de una victoria, por tablero. Las reglas solo aceptan estas
 /// cantidades (o lo que falte para llegar al tope del dia).
@@ -392,6 +402,15 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
     _report = report;
     unawaited(_store?.save(records));
     unawaited(_claimReward());
+    // La clasificacion, sin bloquear la pantalla de resultados: si falla (sin
+    // red, o porque no mejora lo que ya habia) no rompe nada, se reintenta la
+    // proxima victoria.
+    unawaited(
+      ref
+          .read(leaderboardsProvider.notifier)
+          .submitScore(leaderboardGameFor(_choice.effectiveLevel), time.inMilliseconds),
+    );
+    unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.play));
     _resultsTimer = Timer(Duration(milliseconds: _reduced ? 150 : 1300), () {
       if (mounted) setState(() => _showResults = true);
     });

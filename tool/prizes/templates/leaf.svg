@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+  <!-- Hoja en la coronilla: un brote con dos hojas. El tallo nace en (30, 57). -->
+  <defs>
+    <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+  </defs>
+  <path d="M30 57 C30 46 31 38 33 30" fill="none" stroke="{main.edge}" stroke-width="5" stroke-linecap="round"/>
+  <path d="M30 57 C30 46 31 38 33 30" fill="none" stroke="{main.deep}" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- Hoja grande a la derecha y pequena a la izquierda -->
+  <path d="M33 31 C36 14 48 6 57 7 C57 20 48 32 33 31 Z" fill="url(#leaf)" stroke="{main.edge}" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M35 29 Q44 20 53 11" fill="none" stroke="{main.edge}" stroke-opacity=".4" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M31 37 C27 26 17 21 8 23 C10 33 19 39 31 37 Z" fill="url(#leaf)" stroke="{main.edge}" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M29 35 Q21 30 12 25" fill="none" stroke="{main.edge}" stroke-opacity=".4" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M40 17 Q45 11 51 10" fill="none" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

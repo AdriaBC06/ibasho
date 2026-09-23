@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../backend/missions.dart';
 import '../../../backend/tama.dart';
 import '../../../core/birthday.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -61,6 +62,7 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
       return;
     }
     _view.feed(food);
+    unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.feed));
   }
 
   Future<void> _setProfile(Tama tama) async {

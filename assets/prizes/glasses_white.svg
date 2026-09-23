@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40">
+  <!-- Gafas redondas. Los ojos van en (35, 20) y (65, 20). -->
+  <defs>
+    <linearGradient id="frame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F8FAFC"/>
+      <stop offset=".55" stop-color="#F4F7FA"/>
+      <stop offset="1" stop-color="#CAD1D6"/>
+    </linearGradient>
+  </defs>
+  <!-- Patillas hacia los lados -->
+  <path d="M22 17 L3 14 M78 17 L97 14" stroke="#8B979F" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M22 17 L3 14 M78 17 L97 14" stroke="#F4F7FA" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Cristales: un velo claro, se ven los ojos -->
+  <ellipse cx="35" cy="20" rx="12" ry="11" fill="#FFFFFF" fill-opacity=".22"/>
+  <ellipse cx="65" cy="20" rx="12" ry="11" fill="#FFFFFF" fill-opacity=".22"/>
+  <!-- Montura: aros con filo por fuera y por dentro -->
+  <g fill="none">
+    <ellipse cx="35" cy="20" rx="12" ry="11" stroke="#8B979F" stroke-width="5"/>
+    <ellipse cx="65" cy="20" rx="12" ry="11" stroke="#8B979F" stroke-width="5"/>
+    <path d="M47 18 Q50 15 53 18" stroke="#8B979F" stroke-width="4.4" stroke-linecap="round"/>
+    <ellipse cx="35" cy="20" rx="12" ry="11" stroke="url(#frame)" stroke-width="3"/>
+    <ellipse cx="65" cy="20" rx="12" ry="11" stroke="url(#frame)" stroke-width="3"/>
+    <path d="M47 18 Q50 15 53 18" stroke="url(#frame)" stroke-width="2.4" stroke-linecap="round"/>
+  </g>
+  <!-- Reflejos en el cristal -->
+  <path d="M28 14 L33 11.5 M58 14 L63 11.5" stroke="#FFFFFF" stroke-opacity=".9" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M40 27 L42.5 25.5 M70 27 L72.5 25.5" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

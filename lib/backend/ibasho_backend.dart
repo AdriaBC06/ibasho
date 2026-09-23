@@ -83,6 +83,13 @@ abstract interface class IbashoBackend {
   /// nuevo el estado completo de cada nodo. Solo lo usa el movil.
   void setBackground(bool background);
 
+  /// Dice cual es la cuenta propia (o `null` al cerrar sesion).
+  ///
+  /// Con ella, la implementacion puede repartir **una sola** conexion en
+  /// tiempo real entre todos los nodos de la cuenta en vez de abrir una por
+  /// cada uno. Ver `UserNodeMux`.
+  void setOwnAccount(String? accountId);
+
   // --- Salud -------------------------------------------------------------
 
   /// Comprueba conectividad real contra el endpoint de la base.

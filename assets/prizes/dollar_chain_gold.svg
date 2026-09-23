@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 52">
+  <!-- Collar con medallon del dolar. La cadena sale de (4, 4) y (76, 4);
+       el medallon cuelga en (40, 35). -->
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F8D984"/>
+      <stop offset=".35" stop-color="#F5C542"/>
+      <stop offset=".55" stop-color="#F8D984"/>
+      <stop offset=".8" stop-color="#F5C542"/>
+      <stop offset="1" stop-color="#CBA83F"/>
+    </linearGradient>
+  </defs>
+  <!-- Cadena de eslabones -->
+  <path d="M4 4 Q40 36 76 4" fill="none" stroke="#8C7C3A" stroke-width="4.6" stroke-linecap="round"/>
+  <path d="M4 4 Q40 36 76 4" fill="none" stroke="#F5C542" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="3.2 1.6"/>
+  <!-- Medallon -->
+  <circle cx="40" cy="35" r="13" fill="url(#metal)" stroke="#8C7C3A" stroke-width="2"/>
+  <circle cx="40" cy="35" r="10" fill="none" stroke="#8C7C3A" stroke-opacity=".4" stroke-width="1.1"/>
+  <!-- El simbolo, dibujado: una ese con la raya -->
+  <path d="M40 25.5 L40 44.5" stroke="#8C7C3A" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M45 30 Q44 27.8 40 27.8 Q35.2 27.8 35.2 31.3 Q35.2 34.2 40 35 Q44.8 35.8 44.8 38.7 Q44.8 42.2 40 42.2 Q36 42.2 35 40"
+        fill="none" stroke="#8C7C3A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M34 28 Q36 24.5 40 24" fill="none" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Destello de la SSR -->
+  <path d="M56 26 Q56 30 60 30 Q56 30 56 34 Q56 30 52 30 Q56 30 56 26 Z" fill="#FFFFFF"/>
+</svg>

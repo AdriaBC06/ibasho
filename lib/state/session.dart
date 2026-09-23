@@ -298,6 +298,11 @@ class SessionController extends StateNotifier<SessionState> {
     await _persist(tokens);
     _scheduleRenewal(tokens);
 
+    // A partir de aqui todos los nodos de la cuenta comparten una sola
+    // conexion en tiempo real; hay que decirle al backend cual es la cuenta
+    // antes de que ningun controlador se ponga a mirar.
+    _backend.setOwnAccount(entry.accountId);
+
     if (entry.mustChangePassword) {
       state = SessionState(
         phase: SessionPhase.mustChangePassword,
@@ -323,6 +328,7 @@ class SessionController extends StateNotifier<SessionState> {
     _renewal?.cancel();
     _renewal = null;
     await _store.delete(_tokensKey);
+    _backend.setOwnAccount(null);
     state = SessionState(phase: SessionPhase.signedOut, reason: reason);
   }
 }

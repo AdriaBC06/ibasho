@@ -2,10 +2,13 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../backend/gacha.dart';
 import '../../../backend/models.dart';
 import '../../../backend/shop.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -137,6 +140,7 @@ class DebugChannel extends ConsumerWidget {
                 ),
                 const SizedBox(height: 22),
                 const _BonusSection(),
+                const _GachaSection(),
                 const SizedBox(height: 22),
                 SectionCard(
                   title: l.debugEffects,
@@ -302,6 +306,63 @@ class _BonusSection extends ConsumerWidget {
                         }
                       }
                     : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Darse tickets del gacha sin pasar por el Yatai. Las reglas solo lo
+/// aceptan de un admin y en su propia cuenta.
+class _GachaSection extends ConsumerWidget {
+  const _GachaSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
+    final gacha = ref.watch(gachaProvider);
+    Future<void> give(TicketKind kind, int amount) async {
+      final ok = await ref.read(gachaProvider.notifier).debugGiveTickets(kind, amount);
+      if (!ok && context.mounted) showIbashoToast(context, l.debugGachaFailed, isError: true);
+    }
+
+    return SectionCard(
+      title: l.debugGacha,
+      padding: const EdgeInsets.fromLTRB(26, 12, 26, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l.debugGachaHint, style: Ty.caption),
+          const SizedBox(height: 12),
+          _InfoRow(
+            label: l.gachaTicketGachaken,
+            value: '${gacha.ticketsOf(TicketKind.gachaken)}',
+          ),
+          _InfoRow(
+            label: l.gachaTicketKinken,
+            value: '${gacha.ticketsOf(TicketKind.kinken)}',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              IbashoButton(
+                key: const Key('debug.gacha.give'),
+                label: l.debugGachaGive,
+                glyph: Glyph.gift,
+                height: 40,
+                onPressed: () => unawaited(give(TicketKind.gachaken, 10)),
+              ),
+              IbashoButton(
+                key: const Key('debug.gacha.giveGold'),
+                label: l.debugGachaGiveGold,
+                glyph: Glyph.star,
+                height: 40,
+                onPressed: () => unawaited(give(TicketKind.kinken, 1)),
               ),
             ],
           ),

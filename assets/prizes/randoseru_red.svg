@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">
+  <!-- Mochila randoseru, detras del cuerpo. El cuerpo ocupa (30..90, 20..90):
+       las esquinas asoman por los hombros. -->
+  <defs>
+    <linearGradient id="leather" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E6858D"/>
+      <stop offset=".5" stop-color="#D9434F"/>
+      <stop offset="1" stop-color="#B43D49"/>
+    </linearGradient>
+  </defs>
+  <!-- Caja -->
+  <rect x="26" y="26" width="68" height="52" rx="10" fill="url(#leather)" stroke="#7C3441" stroke-width="2"/>
+  <!-- Tapa que cae por encima, con su costura -->
+  <path d="M26 44 L26 36 Q26 26 36 26 L84 26 Q94 26 94 36 L94 44 Z" fill="#E6858D" fill-opacity=".45"/>
+  <path d="M29.5 42 L29.5 36 Q29.5 29.5 36 29.5 L84 29.5 Q90.5 29.5 90.5 36 L90.5 42" fill="none" stroke="#7C3441" stroke-opacity=".45" stroke-width="1.1" stroke-dasharray="2.2 1.8"/>
+  <!-- Asa de arriba -->
+  <path d="M52 26 Q52 20 60 20 Q68 20 68 26" fill="none" stroke="#7C3441" stroke-width="4"/>
+  <path d="M52 26 Q52 20 60 20 Q68 20 68 26" fill="none" stroke="#D9434F" stroke-width="2"/>
+  <path d="M30.5 32 Q32 28.5 37 28.5 M83 28.5 Q88 28.5 89.5 32" fill="none" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

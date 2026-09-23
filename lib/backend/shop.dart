@@ -4,6 +4,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'gacha.dart';
 import 'tama.dart';
 
 /// Unidades del stock inicial de una comida de serie. Las reglas exigen
@@ -29,6 +30,7 @@ class ShopItem {
     required this.section,
     this.food,
     this.gameId,
+    this.ticket,
   });
 
   /// Clave de `/shop/prices/{id}` y de `shop/last.item`. Para un juego,
@@ -43,6 +45,10 @@ class ShopItem {
   /// Solo si [section] es [ShopSection.games]. Coincide con la clave de
   /// `/users/{cuenta}/games/{gameId}`.
   final String? gameId;
+
+  /// Solo si [section] es [ShopSection.gacha]: el ticket que se lleva. Tiene
+  /// tope semanal ([weeklyTicketLimit]), no de cantidad por compra.
+  final TicketKind? ticket;
 
   /// Si hoy se puede comprar, dado el conjunto de comidas desbloqueadas. Un
   /// articulo de comida bloqueada se ensena igual en la rejilla, hundido y
@@ -63,7 +69,49 @@ final List<ShopItem> shopCatalog = List<ShopItem>.unmodifiable(<ShopItem>[
   const ShopItem(id: 'game_nihongo', section: ShopSection.games, gameId: 'nihongo'),
   for (final food in TamaFood.values)
     ShopItem(id: ShopItem.idForFood(food), section: ShopSection.tamas, food: food),
+  for (final kind in TicketKind.values)
+    ShopItem(id: kind.itemId, section: ShopSection.gacha, ticket: kind),
 ]);
+
+/// `/users/{cuenta}/shop/week`: lo que se lleva comprado de cada ticket esta
+/// semana. Una semana nueva empieza de cero, y las reglas comprueban que el
+/// contador sube justo en lo comprado y no pasa de [weeklyTicketLimit].
+@immutable
+class WeekTickets {
+  const WeekTickets({required this.week, this.bought = const <TicketKind, int>{}});
+
+  final int week;
+  final Map<TicketKind, int> bought;
+
+  /// Lo comprado de [kind], contando solo si el contador es de esta semana.
+  int boughtOf(TicketKind kind, [DateTime? now]) =>
+      week == gachaWeek(now) ? (bought[kind] ?? 0) : 0;
+
+  int leftOf(TicketKind kind, [DateTime? now]) =>
+      (weeklyTicketLimit[kind] ?? 0) - boughtOf(kind, now);
+
+  static WeekTickets? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final week = raw['n'];
+    if (week is! num) return null;
+    return WeekTickets(
+      week: week.toInt(),
+      bought: <TicketKind, int>{
+        for (final kind in TicketKind.values)
+          if (raw[kind.name] is num) kind: (raw[kind.name]! as num).toInt(),
+      },
+    );
+  }
+
+  /// El nodo entero como lo escribe una compra de [qty] tickets de [kind].
+  Map<String, Object?> afterBuying(TicketKind kind, int qty, [DateTime? now]) {
+    final week = gachaWeek(now);
+    return <String, Object?>{
+      'n': week,
+      for (final k in TicketKind.values) k.name: boughtOf(k, now) + (k == kind ? qty : 0),
+    };
+  }
+}
 
 /// `/users/{cuenta}/shop/last`: el recibo de la ultima compra.
 ///

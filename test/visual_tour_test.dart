@@ -17,6 +17,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ibasho/backend/prizes.dart';
+import 'package:ibasho/ui/tama/tama_outfit.dart';
 import 'package:ibasho/app.dart';
 import 'package:ibasho/backend/models.dart';
 import 'package:ibasho/backend/tama.dart';
@@ -346,7 +348,9 @@ Future<void> main() async {
     await tester.tap(find.byKey(const ValueKey<String>('tama.edit')));
     await settle(tester, 40);
     await shoot(tester, '19-creador-cuerpo');
-    for (final tab in ['color', 'eyes', 'mouth', 'crown', 'cheeks', 'limbs', 'character']) {
+    // Los dibujos de los premios se leen fuera del reloj falso.
+    await tester.runAsync(() => PrizeArt.instance.preload([for (final p in wearablePrizes) ...p.items]));
+    for (final tab in ['color', 'eyes', 'mouth', 'crown', 'cheeks', 'limbs', 'hats', 'accessories', 'character']) {
       await tester.tap(find.byKey(ValueKey<String>('creator.tab.$tab')));
       await settle(tester, 12);
       await shoot(tester, '19-creador-$tab');

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30">
+  <!-- Tirita de la SR: estampada de estrellas que brillan, algo ladeada. -->
+  <defs>
+    <linearGradient id="strip" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <linearGradient id="pad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="{pad}"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(-14 30 15)">
+    <rect x="4" y="8" width="52" height="14" rx="7" fill="url(#strip)" stroke="{main.edge}" stroke-width="1.5"/>
+    <rect x="22" y="9.5" width="16" height="11" rx="2.5" fill="url(#pad)" stroke="{main.edge}" stroke-opacity=".5" stroke-width="1"/>
+    <!-- Agujeritos -->
+    <g fill="{main.edge}" fill-opacity=".35">
+      <circle cx="26" cy="13" r=".7"/><circle cx="30" cy="13" r=".7"/><circle cx="34" cy="13" r=".7"/>
+      <circle cx="26" cy="17" r=".7"/><circle cx="30" cy="17" r=".7"/><circle cx="34" cy="17" r=".7"/>
+    </g>
+    <!-- Estrellitas -->
+    <g fill="{star}" stroke="{star.edge}" stroke-width=".5" stroke-linejoin="round">
+      <path d="M11 11.5 L12 13.6 L14.3 13.9 L12.6 15.4 L13.1 17.7 L11 16.6 L8.9 17.7 L9.4 15.4 L7.7 13.9 L10 13.6 Z"/>
+      <path d="M49 11.5 L50 13.6 L52.3 13.9 L50.6 15.4 L51.1 17.7 L49 16.6 L46.9 17.7 L47.4 15.4 L45.7 13.9 L48 13.6 Z"/>
+    </g>
+    <circle cx="17.5" cy="18" r="1.1" fill="{star}"/><circle cx="42.5" cy="12" r="1.1" fill="{star}"/>
+    <path d="M9 10 L20 9.6" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+</svg>

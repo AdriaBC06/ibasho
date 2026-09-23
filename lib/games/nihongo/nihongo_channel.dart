@@ -11,6 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
 import '../../audio/tama_voice.dart';
+import '../../backend/leaderboards.dart';
+import '../../backend/missions.dart';
 import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
@@ -329,6 +331,18 @@ class _NihongoChannelState extends ConsumerState<NihongoChannel> {
     }
     final coins = nihongoRewardFor(round);
     if (coins > 0) unawaited(_claim(coins));
+    // Nihongo no tiene una sola puntuacion: `best` guarda la mejor ronda
+    // (0-10) de cada combinacion de escritura y modo. La clasificacion usa la
+    // suma de todas esas mejores rondas, que crece con lo que se domina en
+    // conjunto (hiragana y katakana, a elegir y a escribir) en vez de premiar
+    // solo el modo mas facil.
+    unawaited(
+      ref.read(leaderboardsProvider.notifier).submitScore(
+            LeaderboardGame.nihongo,
+            _records.best.values.fold(0, (a, b) => a + b),
+          ),
+    );
+    unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.play));
     _keys.requestFocus();
     setState(() {});
   }

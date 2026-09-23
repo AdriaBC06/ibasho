@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <!-- La mitad de delante del flotador (mismo lienzo que swim_ring.svg). -->
+  <defs>
+    <clipPath id="front"><path d="M4 30 A56 22 0 0 0 116 30 L94 27 A34 9 0 0 1 26 27 Z"/></clipPath>
+    <linearGradient id="tube" x1="0" y1="0" x2="0" y2="1">
+      <stop offset=".35" stop-color="#FFFFFF" stop-opacity=".45"/>
+      <stop offset=".6" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0B2230" stop-opacity=".28"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#front)">
+    <path d="M60 30 L146.9 18.4 L146.9 41.6 Z" fill="{a}"/>
+    <path d="M60 30 L146.9 41.6 L123.6 61.8 Z" fill="#FFFFFF"/>
+    <path d="M60 30 L123.6 61.8 L83.3 73.5 Z" fill="{b}"/>
+    <path d="M60 30 L83.3 73.5 L36.7 73.5 Z" fill="#FFFFFF"/>
+    <path d="M60 30 L36.7 73.5 L-3.6 61.8 Z" fill="{c}"/>
+    <path d="M60 30 L-3.6 61.8 L-26.9 41.6 Z" fill="#FFFFFF"/>
+    <path d="M60 30 L-26.9 41.6 L-26.9 18.4 Z" fill="{a}"/>
+    <path d="M60 30 L-26.9 18.4 L-3.6 -1.8 Z" fill="#FFFFFF"/>
+    <path d="M60 30 L-3.6 -1.8 L36.7 -13.5 Z" fill="{b}"/>
+    <path d="M60 30 L36.7 -13.5 L83.3 -13.5 Z" fill="#FFFFFF"/>
+    <path d="M60 30 L83.3 -13.5 L123.6 -1.8 Z" fill="{c}"/>
+    <path d="M60 30 L123.6 -1.8 L146.9 18.4 Z" fill="#FFFFFF"/>
+    <rect x="0" y="0" width="120" height="60" fill="url(#tube)"/>
+  </g>
+  <path d="M4 30 A56 22 0 0 0 116 30 M94 27 A34 9 0 0 1 26 27" fill="none" stroke="{a.edge}" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M14 40 Q30 49 48 50.5" fill="none" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="2" stroke-linecap="round"/>
+</svg>

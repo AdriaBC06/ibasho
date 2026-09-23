@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 36">
+  <!-- Aureola flotante, sobre la cabeza. Centro en (40, 18). -->
+  <defs>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset=".4" stop-color="#F8D984" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#F8D984" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".4" stop-color="#F8D984"/>
+      <stop offset="1" stop-color="#F5C542"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="40" cy="18" rx="40" ry="18" fill="url(#glow)"/>
+  <ellipse cx="40" cy="18" rx="28" ry="9" fill="none" stroke="#8C7C3A" stroke-width="7.4"/>
+  <ellipse cx="40" cy="18" rx="28" ry="9" fill="none" stroke="url(#ring)" stroke-width="5"/>
+  <path d="M18 14 Q26 10 36 9.6" fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M72 4 Q72 7 75 7 Q72 7 72 10 Q72 7 69 7 Q72 7 72 4 Z" fill="#F8D984"/>
+  <path d="M8 26 Q8 28.5 10.5 28.5 Q8 28.5 8 31 Q8 28.5 5.5 28.5 Q8 28.5 8 26 Z" fill="#F8D984"/>
+</svg>

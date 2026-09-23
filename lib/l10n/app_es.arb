@@ -84,6 +84,14 @@
   "settingsHourFormat": "formato horario",
   "settingsHourFormat24": "24 h",
   "settingsHourFormat12": "12 h",
+  "settingsFullscreen": "pantalla completa",
+  "settingsBackdrop": "fondo del menú",
+  "settingsBackdropHint": "el que hayas ganado en el gachapón, detrás de las pantallas",
+  "backdropNone": "de serie",
+  "backdropName": "{key, select, bg_sky{cielo} bg_coral{coral} bg_mint{menta} bg_peach{melocotón} bg_lavender{lavanda} bg_dusk{noche añil} bg_sunrise{amanecer} bg_lagoon{laguna} bg_aurora{aurora} bg_candy{caramelo} bg_forest{bosque} bg_sunset{ocaso} bg_glacier{glaciar} bg_phoenix{fénix} bg_borealis{boreal} bg_starfield{vía láctea} other{fondo}}",
+  "@backdropName": {
+    "description": "Nombre corto de cada fondo del gacha, por su clave (bg_<id>)."
+  },
   "settingsSystem": "sistema",
   "settingsCredits": "créditos",
   "settingsSignOut": "cerrar sesión",
@@ -228,6 +236,12 @@
   "trackBossa": "bossa nova con sonido de 8 bits",
   "trackHanami": "original de Nihongo: koto, marimba y bajo con swing",
   "trackSumi": "original de Nihongo: piano eléctrico y koto en escala in",
+  "trackNana": "premio del gacha: una nana en tres tiempos, mecida siempre igual",
+  "trackCarrillon": "premio del gacha: una caja de música, celesta sola",
+  "trackLofi": "premio del gacha: groove suave con caja destimbrada y algo de polvo",
+  "trackFeria": "premio del gacha: la feria alegre, marimba y campanitas",
+  "trackAbrigo": "premio del gacha: un pad de cuerdas cálido, acordes de seis voces",
+  "trackCenit": "premio del gacha ∞: dos voces en contrapunto sobre un pad rico",
   "debugRhythmic": "con ritmo",
   "debugAmbient": "de ambiente",
   "creditNoteZenKaku": "Interfaz. Kana y kanji completos.",
@@ -406,6 +420,35 @@
   "tamaTabCrown": "coronilla",
   "tamaTabCheeks": "mejillas",
   "tamaTabLimbs": "brazos y pies",
+  "tamaTabHats": "gorros",
+  "@tamaTabHats": {
+    "description": "Pestaña del creador con los gorros del gacha."
+  },
+  "tamaTabAccessories": "accesorios",
+  "@tamaTabAccessories": {
+    "description": "Pestaña del creador con los accesorios del gacha."
+  },
+  "prizeName": "{key, select, cap_red{gorra roja} cap_blue{gorra azul} cap_green{gorra verde} cap_yellow{gorra amarilla} mask_a{el ladrón} mask_b{la gata} mask_c{la mariposa} mask_d{el cuervo} angel_wings_white{alas de ángel} angel_wings_black{alas oscuras} afro_brown{afro} beanie_red{gorro rojo} beanie_blue{gorro azul} beanie_cream{gorro crema} hachimaki_white{hachimaki} hachimaki_red{hachimaki rojo} headphones_white{cascos blancos} headphones_skyblue{cascos celestes} beret_red{boina roja} beret_black{boina negra} beret_green{boina verde} hood_black{capucha negra} hood_red{capucha roja} hood_green{capucha verde} crown_gold{corona de oro} crown_silver{corona de plata} leaf_green{brote} leaf_orange{brote otoñal} bow_pink{lazo rosa} bow_blue{lazo azul} bow_yellow{lazo amarillo} top_hat_black{chistera} top_hat_white{chistera blanca} hard_hat_yellow{casco de obra} hard_hat_orange{casco naranja} frog_hat_green{gorro rana} frog_hat_pink{rana rosa} chef_hat_white{gorro de chef} witch_hat_purple{bruja morado} witch_hat_black{bruja negro} nightcap_navy{gorro de noche} nightcap_pink{noche rosa} flower_crown_sakura{flores sakura} flower_crown_sunflower{girasoles} flower_crown_lavender{lavanda} kitsune_white{kitsune} kitsune_red{kitsune roja} viking_iron{casco vikingo} sombrero_straw{sombrero} sombrero_charro{charro} gamer_headset_black{cascos gamer} gamer_headset_blue{gamer azules} gamer_headset_pink{gamer rosas} kabuto_red{kabuto rojo} kabuto_black{kabuto negro} wizard_hat_blue{mago azul} wizard_hat_purple{mago morado} cat_headset_black{cascos gato} cat_headset_blue{gato azules} cat_headset_pink{gato rosas} cat_headset_white{gato blancos} halo_gold{aureola} devil_horns_red{cuernitos} devil_horns_black{cuernos negros} rainbow_cloud_sky{nube arcoíris} cat_headset_rgb_black{gato RGB negro} cat_headset_rgb_blue{gato RGB azul} cat_headset_rgb_pink{gato RGB rosa} cat_headset_rgb_white{gato RGB blanco} halo_rgb_rainbow{aureola RGB} crown_rgb_rainbow{corona RGB} glasses_black{gafas negras} glasses_white{gafas blancas} glasses_red{gafas rojas} glasses_navy{gafas azules} bowtie_black{pajarita negra} bowtie_red{pajarita roja} sneakers_red{bambas rojas} sneakers_blue{bambas azules} sneakers_green{bambas verdes} groucho_black{gafas bigote} clown_nose_red{nariz payaso} clown_nose_black{nariz negra} clown_nose_green{nariz verde} bottle_water{agua} bottle_cola{cola} bottle_bluecola{cola azul} bandage_stars{tirita} shutter_shades_orange{rejilla naranja} shutter_shades_blue{rejilla azul} shutter_shades_yellow{rejilla dorada} shutter_shades_red{rejilla roja} shutter_shades_lime{rejilla lima} energy_green{energética} energy_white{lata blanca} energy_red{lata roja} boba_pink{té de fresa} boba_green{té matcha} boba_brown{té con leche} taco_classic{taco} scarf_red{bufanda roja} scarf_blue{bufanda azul} scarf_cream{bufanda crema} randoseru_red{randoseru roja} randoseru_black{randoseru negra} balloon_red{globo rojo} balloon_blue{globo azul} balloon_yellow{globo amarillo} balloon_pink{globo rosa} uchiwa_sun{uchiwa sol} uchiwa_fish{uchiwa pez} pickaxe_diamond{pico} sword_iron{espada} sword_diamond{espada diamante} swim_ring_stripes{flotador} lantern_red{farolillo} fish_bag_gold{pez de feria} cape_red{capa roja} cape_blue{capa azul} dollar_chain_gold{collar de oro} dollar_chain_silver{collar de plata} microphone_silver{micro} kendama_red{kendama roja} kendama_blue{kendama azul} cursor_white{cursor} cursor_black{cursor negro} cursor_inverted{cursor inverso} controller_blue{mando} fairies_light{hadas} rgb_shades_rainbow{rejilla RGB} rgb_wings_rainbow{alas RGB} other{premio}}",
+  "@prizeName": {
+    "description": "Nombre de un gorro o accesorio del gacha, por su clave (id_variante). Cortos: caben en una ficha de 88 px.",
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "tamaOutfitNone": "nada",
+  "@tamaOutfitNone": {
+    "description": "Ficha para quitar el gorro o todos los accesorios."
+  },
+  "tamaAccessoriesHint": "hasta 3 a la vez, uno por sitio. Los que faltan se ganan en el pinball.",
+  "@tamaAccessoriesHint": {
+    "description": "Ayuda bajo la pestaña de accesorios."
+  },
+  "tamaAccessoriesFull": "ya lleva 3: quítale uno antes",
+  "@tamaAccessoriesFull": {
+    "description": "Aviso al intentar poner un cuarto accesorio."
+  },
   "tamaTabCharacter": "carácter",
   "tamaShape": "forma",
   "tamaStyle": "estilo",
@@ -1136,6 +1179,30 @@
   "@yataiShelf": {"description": "Pagina del mostrador del Yatai.", "placeholders": {"page": {"type": "int"}, "pages": {"type": "int"}}},
   "channelYatai": "Yatai",
   "@channelYatai": {"description": "Etiqueta de la rejilla de canales para la tienda."},
+  "channelMissions": "Misiones",
+  "@channelMissions": {"description": "Etiqueta de la rejilla de canales para las misiones."},
+  "missionsDailyTitle": "Misiones de hoy",
+  "@missionsDailyTitle": {"description": "Titulo del bloque de misiones diarias."},
+  "missionsWeeklyTitle": "Misiones de la semana",
+  "@missionsWeeklyTitle": {"description": "Titulo del bloque de misiones semanales."},
+  "missionsClaim": "cobrar",
+  "@missionsClaim": {"description": "Boton para cobrar una mision cumplida."},
+  "missionsReward": "da {count} {kind}",
+  "@missionsReward": {
+    "description": "Lo que da una mision al cobrarla.",
+    "placeholders": {
+      "count": {"type": "int"},
+      "kind": {"type": "String"}
+    }
+  },
+  "missionFeed": "Da de comer a tu Tama",
+  "@missionFeed": {"description": "Mision: dar de comer."},
+  "missionPlay": "Juega una partida",
+  "@missionPlay": {"description": "Mision: jugar una partida de cualquier minijuego."},
+  "missionPull": "Tira del gachapón",
+  "@missionPull": {"description": "Mision: tirar del gacha."},
+  "missionBuy": "Compra algo en el Yatai",
+  "@missionBuy": {"description": "Mision: comprar en la tienda."},
   "yataiTitle": "Yatai",
   "@yataiTitle": {"description": "Titulo del canal de la tienda."},
   "yataiTabGames": "juegos",
@@ -1212,9 +1279,9 @@
   "@yataiErrorNetwork": {"description": "Error de red al comprar."},
   "yataiErrorRejected": "no se ha podido comprar.",
   "@yataiErrorRejected": {"description": "Error generico al comprar."},
-  "yataiGachaTitle": "próximamente",
+  "yataiGachaTitle": "gachapon",
   "@yataiGachaTitle": {"description": "Titulo del panel de la seccion de gacha."},
-  "yataiGachaBody": "la máquina de cápsulas aún está de camino.",
+  "yataiGachaBody": "una bola por ticket; se abren en el pinball.",
   "@yataiGachaBody": {"description": "Cuerpo del panel de la seccion de gacha."},
   "yataiDescGame": "el buscaminas de siempre, con tu Tama animándote, medallas y un tablero nuevo cada día.",
   "@yataiDescGame": {"description": "Descripcion generica de un juego en el escaparate del Yatai."},
@@ -1439,5 +1506,670 @@
   "debugBonusReset": "olvidar el de hoy",
   "@debugBonusReset": {"description": "Borra el bono de la cuenta del admin."},
   "debugBonusResetFailed": "no se ha podido borrar el bono",
-  "@debugBonusResetFailed": {"description": "Error al borrar el bono."}
+  "@debugBonusResetFailed": {"description": "Error al borrar el bono."},
+  "channelGacha": "gachapón",
+  "@channelGacha": {
+    "description": "Etiqueta de la rejilla de canales para el gachapón."
+  },
+  "gachaChooseTicket": "elige ticket",
+  "@gachaChooseTicket": {
+    "description": "Rótulo sobre las dos tarjetas de ticket del canal del gachapón."
+  },
+  "gachaPull": "tirar",
+  "@gachaPull": {
+    "description": "Boton de una tirada suelta del gacha."
+  },
+  "gachaPullMulti": "tirar ×11",
+  "@gachaPullMulti": {
+    "description": "Boton de la tirada de once bolas."
+  },
+  "gachaTicketGachaken": "gachaken",
+  "@gachaTicketGachaken": {
+    "description": "Nombre del ticket normal del gacha (ガチャ券)."
+  },
+  "gachaTicketKinken": "kinken",
+  "@gachaTicketKinken": {
+    "description": "Nombre del ticket dorado del gacha (金券)."
+  },
+  "gachaTicketsLeft": "{count, plural, =0{sin tickets} =1{1 ticket} other{{count} tickets}}",
+  "@gachaTicketsLeft": {
+    "description": "Saldo de tickets de un tipo.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gachaBuy": "comprar",
+  "@gachaBuy": {
+    "description": "Boton para comprar tickets en la seccion de gacha."
+  },
+  "gachaWeeklyLeft": "{count, plural, =0{agotado esta semana} =1{queda 1 esta semana} other{quedan {count} esta semana}}",
+  "@gachaWeeklyLeft": {
+    "description": "Lo que queda por comprar de un ticket esta semana.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gachaWeeklyRenews": "vuelve el {date}",
+  "@gachaWeeklyRenews": {
+    "description": "Cuando se repone el cupo semanal de tickets.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "gachaDeposit": "depósito",
+  "@gachaDeposit": {
+    "description": "La caja donde esperan las bolas hasta el pinball."
+  },
+  "gachaDepositBody": "{count, plural, =0{aún no hay bolas} =1{1 bola esperando} other{{count} bolas esperando}}",
+  "@gachaDepositBody": {
+    "description": "Cuantas bolas hay guardadas.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gachaDepositSoon": "las bolas se abren jugándolas en el pinball.",
+  "@gachaDepositSoon": {
+    "description": "Aviso de que el pinball llega despues."
+  },
+  "gachaCatalog": "Catálogo",
+  "@gachaCatalog": {
+    "description": "La pantalla donde se pide un premio concreto."
+  },
+  "gachaCatalogBody": "pide una categoría y una rareza: cada 70 bolas jugadas en el pinball te llega una bola dirigida con un premio que aún no tengas.",
+  "@gachaCatalogBody": {
+    "description": "Explicacion del Catalogo."
+  },
+  "gachaWishNone": "sin deseo",
+  "@gachaWishNone": {
+    "description": "No hay nada pedido en el Catalogo."
+  },
+  "gachaWishSave": "pedirlo",
+  "@gachaWishSave": {
+    "description": "Boton para guardar el deseo del Catalogo."
+  },
+  "gachaCategory": "categoría",
+  "@gachaCategory": {
+    "description": "Etiqueta del selector de categoria del Catalogo."
+  },
+  "gachaRarity": "rareza",
+  "@gachaRarity": {
+    "description": "Etiqueta del selector de rareza del Catalogo."
+  },
+  "gachaCategoryHats": "sombreros",
+  "@gachaCategoryHats": {
+    "description": "Categoria de premios: sombreros para los Tamas."
+  },
+  "gachaCategoryAccessories": "accesorios",
+  "@gachaCategoryAccessories": {
+    "description": "Categoria de premios: accesorios para los Tamas."
+  },
+  "gachaCategoryBackdrops": "fondos",
+  "@gachaCategoryBackdrops": {
+    "description": "Categoria de premios: fondos y colores del menu."
+  },
+  "gachaCategoryMusic": "músicas",
+  "@gachaCategoryMusic": {
+    "description": "Categoria de premios: canciones."
+  },
+  "gachaResultTitle": "lo que ha salido",
+  "@gachaResultTitle": {
+    "description": "Titulo del resultado de una tirada."
+  },
+  "gachaRolling": "girando la manivela…",
+  "@gachaRolling": {
+    "description": "Mientras la tirada viaja al servidor."
+  },
+  "gachaKeep": "al depósito",
+  "@gachaKeep": {
+    "description": "Boton para cerrar el resultado de una tirada."
+  },
+  "gachaOdds": "probabilidades",
+  "@gachaOdds": {
+    "description": "Boton que abre la tabla de probabilidades."
+  },
+  "gachaOddsGuaranteed": "en la tirada de 11, una bola {rarity} asegurada.",
+  "@gachaOddsGuaranteed": {
+    "description": "Nota de la garantia de la tirada de once.",
+    "placeholders": {
+      "rarity": {
+        "type": "String"
+      }
+    }
+  },
+  "gachaErrorNoTickets": "no te quedan tickets de ese tipo.",
+  "gachaSkip": "toca para saltar",
+  "@gachaSkip": {
+    "description": "Pista en la pantalla de tirada: tocar se salta la ceremonia."
+  },
+  "gachaErrorPull": "la tirada no ha llegado; vuelve a intentarlo.",
+  "gachaConfirmTitle": "¿tirar del gachapón?",
+  "@gachaConfirmTitle": {
+    "description": "Confirmacion antes de gastar tickets."
+  },
+  "gachaBalls": "{count, plural, =1{1 bola} other{{count} bolas}}",
+  "@gachaBalls": {
+    "description": "Cuantas bolas da la tirada.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gachaLeftAfter": "te quedarán {count}",
+  "@gachaLeftAfter": {
+    "description": "Tickets que quedan despues de la tirada.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "actionCancelPull": "mejor no",
+  "@actionCancelPull": {
+    "description": "Boton de cancelar la tirada."
+  },
+  "@gachaErrorPull": {
+    "description": "La tirada fue rechazada por el servidor o se cayo la red."
+  },
+  "@gachaErrorNoTickets": {
+    "description": "Error al tirar sin tickets."
+  },
+  "gachaErrorWeekly": "ya has comprado todos los de esta semana.",
+  "@gachaErrorWeekly": {
+    "description": "Error al pasarse del tope semanal."
+  },
+  "gachaDoneTickets": "{count, plural, =1{1 ticket a tu cartera} other{{count} tickets a tu cartera}}",
+  "@gachaDoneTickets": {
+    "description": "Mensaje al terminar de comprar tickets.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gachaWishDone": "pedido: te llega en 70 bolas de pinball.",
+  "@gachaWishDone": {
+    "description": "Mensaje al guardar el deseo."
+  },
+  "debugGacha": "gacha",
+  "@debugGacha": {
+    "description": "Titulo de la seccion de gacha del canal de depuracion."
+  },
+  "debugGachaHint": "darte tickets para probar el gachapon; solo funciona en tu cuenta de admin.",
+  "@debugGachaHint": {
+    "description": "Explicacion de la seccion de gacha de depuracion."
+  },
+  "debugGachaGive": "+10 gachaken",
+  "@debugGachaGive": {
+    "description": "Boton que da diez tickets normales."
+  },
+  "debugGachaGiveGold": "+1 kinken",
+  "@debugGachaGiveGold": {
+    "description": "Boton que da un ticket dorado."
+  },
+  "debugGachaFailed": "las reglas no han dejado dar tickets.",
+  "@debugGachaFailed": {
+    "description": "Error al darse tickets en depuracion."
+  },
+  "channelPinball": "pinball",
+  "@channelPinball": {
+    "description": "Nombre del canal del pinball del gacha."
+  },
+  "pinballTitle": "Pinball",
+  "@pinballTitle": {
+    "description": "Titulo del canal del pinball."
+  },
+  "pinballNeedTama": "necesitas un Tama",
+  "@pinballNeedTama": {
+    "description": "El pinball exige al menos un Tama."
+  },
+  "pinballNeedTamaBody": "en el pinball tu Tama cuida de las bolas más valiosas. Haz uno en el canal de Tamas y vuelve.",
+  "@pinballNeedTamaBody": {
+    "description": "Por que hace falta un Tama."
+  },
+  "pinballLoadTitle": "carga tus bolas",
+  "@pinballLoadTitle": {
+    "description": "Cabecera de la eleccion de bolas."
+  },
+  "pinballLoadHint": "hasta 5; salen en el orden en que las pongas.",
+  "@pinballLoadHint": {
+    "description": "Como se llena la cola."
+  },
+  "pinballQueueEmpty": "toca una bola para ponerla en la cola",
+  "@pinballQueueEmpty": {
+    "description": "Cola vacia."
+  },
+  "pinballNoBalls": "no te quedan bolas: consíguelas en el gachapón.",
+  "@pinballNoBalls": {
+    "description": "Sin bolas en el deposito."
+  },
+  "pinballPlay": "¡a jugar!",
+  "@pinballPlay": {
+    "description": "Boton para cargar las bolas y empezar."
+  },
+  "pinballErrorLoad": "no se han podido cargar las bolas; vuelve a intentarlo.",
+  "@pinballErrorLoad": {
+    "description": "Error al sacar las bolas del deposito."
+  },
+  "pinballGuarded": "las del corazón las cuida tu Tama",
+  "@pinballGuarded": {
+    "description": "Etiqueta de una bola que no se puede perder."
+  },
+  "pinballLaunchHint": "arrastra hacia abajo para lanzar",
+  "@pinballLaunchHint": {
+    "description": "Como se lanza en pantalla tactil."
+  },
+  "pinballKeys": "Z o ← y M o →: flippers · espacio o ↓: lanzar · P: pausa",
+  "@pinballKeys": {
+    "description": "Teclas del pinball."
+  },
+  "pinballTouchHint": "toca a la izquierda o a la derecha para mover cada flipper",
+  "@pinballTouchHint": {
+    "description": "Como se juega en pantalla tactil."
+  },
+  "pinballScore": "puntos",
+  "@pinballScore": {
+    "description": "Marcador de puntos."
+  },
+  "pinballPrizeTitle": "¡premio!",
+  "@pinballPrizeTitle": {
+    "description": "Cabecera del premio de una bola."
+  },
+  "pinballPrizePlaceholder": "premio de prueba: los fondos y las músicas llegarán más adelante.",
+  "@pinballPrizePlaceholder": {
+    "description": "Aviso de que el premio es provisional."
+  },
+  "pinballPrizeNew": "¡nuevo!",
+  "@pinballPrizeNew": {
+    "description": "Chip del premio del pinball cuando es la primera copia."
+  },
+  "pinballPrizeCopies": "{count, plural, =1{ya tienes 1} other{ya tienes {count}}}",
+  "@pinballPrizeCopies": {
+    "description": "Copias de un premio repetido, contando la nueva.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pinballWishArrived": "¡bola del Catálogo!",
+  "@pinballWishArrived": {
+    "description": "Cartel del pinball cuando llega la bola dirigida al deposito."
+  },
+  "pinballCatalogOwned": "tienes {owned} de {total}",
+  "@pinballCatalogOwned": {
+    "description": "Cuantos premios de esa categoria y rareza hay en la coleccion.",
+    "placeholders": {
+      "owned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "pinballUnsaved": "sin conexión: los premios se guardarán al volver a intentarlo.",
+  "@pinballUnsaved": {
+    "description": "Resultados del pinball con bolas sin guardar."
+  },
+  "creatorPrizesHint": "los que faltan se ganan en el pinball.",
+  "@creatorPrizesHint": {
+    "description": "Pie de las pestañas de premios del creador de Tamas."
+  },
+  "pinballLostTitle": "bola perdida",
+  "@pinballLostTitle": {
+    "description": "Cabecera al perder una bola."
+  },
+  "pinballLostBody": "se ha ido por el desagüe. ¡La próxima entra!",
+  "@pinballLostBody": {
+    "description": "Consuelo al perder una bola."
+  },
+  "pinballNext": "siguiente bola",
+  "@pinballNext": {
+    "description": "Pasar a la siguiente bola de la cola."
+  },
+  "pinballSeeResults": "ver resultados",
+  "@pinballSeeResults": {
+    "description": "Tras la ultima bola."
+  },
+  "pinballResults": "fin de la partida",
+  "@pinballResults": {
+    "description": "Cabecera de resultados."
+  },
+  "pinballAgain": "otra partida",
+  "@pinballAgain": {
+    "description": "Volver a cargar bolas."
+  },
+  "pinballPause": "pausa",
+  "@pinballPause": {
+    "description": "Pausar la partida."
+  },
+  "pinballResume": "seguir",
+  "@pinballResume": {
+    "description": "Seguir la partida."
+  },
+  "pinballResumeHint": "la partida se queda guardada en este dispositivo aunque salgas.",
+  "@pinballResumeHint": {
+    "description": "Nota de la pausa."
+  },
+  "pinballBannerOpen": "¡agujero abierto!",
+  "@pinballBannerOpen": {
+    "description": "Cartel al abrir un agujero."
+  },
+  "pinballBannerSaved": "¡salvada!",
+  "@pinballBannerSaved": {
+    "description": "Cartel del salvabolas."
+  },
+  "pinballBannerKickback": "¡kickback!",
+  "@pinballBannerKickback": {
+    "description": "Cartel al saltar un kickback."
+  },
+  "pinballBannerKickbackLit": "kickback listo",
+  "@pinballBannerKickbackLit": {
+    "description": "Cartel al encender un kickback."
+  },
+  "pinballBubbleStart": "¡a por ello!",
+  "@pinballBubbleStart": {
+    "description": "Bocadillo del Tama al empezar."
+  },
+  "pinballBubbleGuard": "¡yo la cuido!",
+  "@pinballBubbleGuard": {
+    "description": "Bocadillo del Tama guardian al devolver la bola."
+  },
+  "pinballBubbleOpen": "¡ahí, ahí!",
+  "@pinballBubbleOpen": {
+    "description": "Bocadillo al abrirse un agujero."
+  },
+  "pinballBubblePrize": "¡qué bonito!",
+  "@pinballBubblePrize": {
+    "description": "Bocadillo al ganar un premio."
+  },
+  "pinballBubbleLost": "vaya… la próxima",
+  "@pinballBubbleLost": {
+    "description": "Bocadillo al perder una bola."
+  },
+  "pinballBubblePause": "te espero aquí",
+  "@pinballBubblePause": {
+    "description": "Bocadillo en la pausa."
+  },
+  "pinballCancel": "{count, plural, =1{cancelar y devolver 1 bola} other{cancelar y devolver {count} bolas}}",
+  "@pinballCancel": {
+    "description": "Boton de la pausa que acaba la partida y devuelve al deposito las bolas que no han salido.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pinballCancelHint": "la bola de turno aún no ha salido: puedes dejarlo aquí y guardar las que quedan.",
+  "@pinballCancelHint": {
+    "description": "Explicacion de cancelar en la pausa."
+  },
+  "pinballErrorCancel": "no se han podido devolver las bolas; vuelve a intentarlo.",
+  "@pinballErrorCancel": {
+    "description": "Error al cancelar la partida."
+  },
+  "pinballBubbleCancel": "¡para otra vez!",
+  "@pinballBubbleCancel": {
+    "description": "Bocadillo del Tama al cancelar la partida."
+  },
+  "pinballBubbleSaved": "¡te tengo!",
+  "@pinballBubbleSaved": {
+    "description": "Bocadillo del Tama cuando coge la bola con el salvabolas."
+  },
+  "pinballBannerNudge": "¡meneo!",
+  "@pinballBannerNudge": {
+    "description": "Cartel cuando la mesa sacude una bola que se ha quedado parada."
+  },
+  "channelPachinko": "pachinko",
+  "@channelPachinko": {
+    "description": "Nombre del canal del pachinko."
+  },
+  "pachinkoTitle": "Pachinko",
+  "@pachinkoTitle": {
+    "description": "Titulo del canal del pachinko."
+  },
+  "pachinkoLoadTitle": "llena la bandeja",
+  "@pachinkoLoadTitle": {
+    "description": "Titulo de la tarjeta para elegir las bolas de la tanda."
+  },
+  "pachinkoLoadHint": "hasta 50 bolas, de N a SSR. Cada una se queda igual, sube una o dos rarezas, o se pierde.",
+  "@pachinkoLoadHint": {
+    "description": "Explicacion de la tanda del pachinko."
+  },
+  "pachinkoOdds": "6 de cada 10 se pierden. Las bolas raras son más gordas y caben en menos bolsillos: el color de los remaches dice hasta qué rareza cabe.",
+  "@pachinkoOdds": {
+    "description": "Aviso de lo que se arriesga en el pachinko."
+  },
+  "pachinkoNoBalls": "no tienes bolas de N a SSR: consíguelas en el gachapón.",
+  "@pachinkoNoBalls": {
+    "description": "Sin bolas que puedan entrar al pachinko."
+  },
+  "pachinkoPlayEmpty": "elige bolas",
+  "@pachinkoPlayEmpty": {
+    "description": "Boton de jugar sin bolas elegidas."
+  },
+  "pachinkoPlay": "{count, plural, =1{¡a jugar con 1 bola!} other{¡a jugar con {count} bolas!}}",
+  "@pachinkoPlay": {
+    "description": "Boton que carga la tanda.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pachinkoLess": "una menos",
+  "@pachinkoLess": {
+    "description": "Etiqueta accesible del boton de quitar una bola."
+  },
+  "pachinkoMore": "una más",
+  "@pachinkoMore": {
+    "description": "Etiqueta accesible del boton de anadir una bola."
+  },
+  "pachinkoPocketSame": "se queda igual",
+  "@pachinkoPocketSame": {
+    "description": "Leyenda del bolsillo que devuelve la bola tal cual."
+  },
+  "pachinkoPocketUp1": "sube una",
+  "@pachinkoPocketUp1": {
+    "description": "Leyenda del bolsillo de +1."
+  },
+  "pachinkoPocketUp2": "el tulipán: sube dos",
+  "@pachinkoPocketUp2": {
+    "description": "Leyenda del bolsillo de +2."
+  },
+  "pachinkoPocketOut": "se pierde",
+  "@pachinkoPocketOut": {
+    "description": "Leyenda de la salida de abajo."
+  },
+  "pachinkoErrorLoad": "no se han podido cargar las bolas; vuelve a intentarlo.",
+  "@pachinkoErrorLoad": {
+    "description": "Error al cargar la tanda."
+  },
+  "pachinkoErrorSettle": "no se ha podido guardar lo que ha salido; vuelve a intentarlo.",
+  "@pachinkoErrorSettle": {
+    "description": "Error al cobrar la tanda."
+  },
+  "pachinkoDropHint": "toca el tablero para soltar una bola; mantén para soltar seguidas",
+  "@pachinkoDropHint": {
+    "description": "Como se juega en pantalla tactil."
+  },
+  "pachinkoKeys": "← →: apuntar · espacio: soltar · 1–4: rareza · P: pausa",
+  "@pachinkoKeys": {
+    "description": "Teclas del pachinko."
+  },
+  "pachinkoPause": "pausa",
+  "@pachinkoPause": {
+    "description": "Titulo de la pausa del pachinko."
+  },
+  "pachinkoResume": "seguir",
+  "@pachinkoResume": {
+    "description": "Boton para seguir la tanda."
+  },
+  "pachinkoResumeHint": "la tanda se queda guardada en este dispositivo aunque salgas.",
+  "@pachinkoResumeHint": {
+    "description": "Explicacion de la pausa."
+  },
+  "pachinkoFinish": "{count, plural, =1{terminar y guardar 1 bola} other{terminar y guardar {count} bolas}}",
+  "@pachinkoFinish": {
+    "description": "Boton que acaba la tanda y devuelve las bolas sin soltar.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pachinkoFinishHint": "las que no hayas soltado vuelven al depósito tal cual.",
+  "@pachinkoFinishHint": {
+    "description": "Explicacion de terminar antes."
+  },
+  "pachinkoFinishWait": "espera a que caigan las bolas para poder terminar.",
+  "@pachinkoFinishWait": {
+    "description": "No se puede terminar con bolas cayendo."
+  },
+  "pachinkoResults": "fin de la tanda",
+  "@pachinkoResults": {
+    "description": "Titulo de los resultados."
+  },
+  "pachinkoIn": "entraron",
+  "@pachinkoIn": {
+    "description": "Fila de las bolas cargadas."
+  },
+  "pachinkoOut": "vuelven",
+  "@pachinkoOut": {
+    "description": "Fila de las bolas que vuelven al deposito."
+  },
+  "pachinkoUps": "{count, plural, =1{1 ha subido} other{{count} han subido}}",
+  "@pachinkoUps": {
+    "description": "Cuantas bolas han subido de rareza.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pachinkoLost": "{count, plural, =0{ninguna perdida} =1{1 perdida} other{{count} perdidas}}",
+  "@pachinkoLost": {
+    "description": "Cuantas bolas se han perdido.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pachinkoAgain": "otra tanda",
+  "@pachinkoAgain": {
+    "description": "Boton para volver a llenar la bandeja."
+  },
+  "pachinkoRetry": "reintentar",
+  "@pachinkoRetry": {
+    "description": "Boton para volver a cobrar la tanda."
+  },
+  "pachinkoSaving": "guardando…",
+  "@pachinkoSaving": {
+    "description": "Mientras se cobra la tanda."
+  },
+  "pachinkoBubbleStart": "¡suerte!",
+  "@pachinkoBubbleStart": {
+    "description": "Bocadillo del Tama al empezar."
+  },
+  "pachinkoBubbleUp": "¡UR!",
+  "@pachinkoBubbleUp": {
+    "description": "Bocadillo del Tama cuando sale una UR."
+  },
+  "pachinkoBubbleTulip": "¡el tulipán!",
+  "@pachinkoBubbleTulip": {
+    "description": "Bocadillo del Tama con el +2."
+  },
+  "pachinkoBubbleLost": "uy…",
+  "@pachinkoBubbleLost": {
+    "description": "Bocadillo del Tama al perder una bola rara."
+  },
+  "pachinkoBubblePause": "te espero aquí",
+  "@pachinkoBubblePause": {
+    "description": "Bocadillo del Tama en la pausa."
+  },
+  "channelLeaderboards": "clasificaciones",
+  "@channelLeaderboards": {
+    "description": "Nombre del canal de clasificaciones en la rejilla."
+  },
+  "leaderboardsTitle": "clasificaciones",
+  "@leaderboardsTitle": {
+    "description": "Titulo del canal de clasificaciones."
+  },
+  "leaderboardsDaily": "diaria",
+  "@leaderboardsDaily": {
+    "description": "Boton para elegir la tabla diaria."
+  },
+  "leaderboardsWeekly": "semanal",
+  "@leaderboardsWeekly": {
+    "description": "Boton para elegir la tabla semanal."
+  },
+  "leaderboardsOfficialDaily": "resultados de ayer",
+  "@leaderboardsOfficialDaily": {
+    "description": "Titulo del podio con el top 3 ya cerrado del dia anterior."
+  },
+  "leaderboardsOfficialWeekly": "resultados de la semana pasada",
+  "@leaderboardsOfficialWeekly": {
+    "description": "Titulo del podio con el top 3 ya cerrado de la semana anterior."
+  },
+  "leaderboardsOfficialEmpty": "nadie jugó lo bastante para que hubiera resultados",
+  "@leaderboardsOfficialEmpty": {
+    "description": "Cuando el periodo ya cerrado no tiene top 3."
+  },
+  "leaderboardsStandingsDaily": "clasificación de hoy",
+  "@leaderboardsStandingsDaily": {
+    "description": "Titulo de la lista con la puntuacion de hoy, en curso."
+  },
+  "leaderboardsStandingsWeekly": "clasificación de esta semana",
+  "@leaderboardsStandingsWeekly": {
+    "description": "Titulo de la lista con la puntuacion de esta semana, en curso."
+  },
+  "leaderboardsStandingsEmpty": "todavía no ha jugado nadie",
+  "@leaderboardsStandingsEmpty": {
+    "description": "Cuando el periodo en curso no tiene puntuaciones."
+  },
+  "leaderboardsRank": "nº {rank}",
+  "@leaderboardsRank": {
+    "description": "El puesto de una cuenta en la tabla.",
+    "placeholders": {"rank": {"type": "int"}}
+  },
+  "leaderboardsYourRank": "tu puesto: nº {rank}",
+  "@leaderboardsYourRank": {
+    "description": "Chapa con el puesto propio en la clasificacion en curso.",
+    "placeholders": {"rank": {"type": "int"}}
+  },
+  "leaderboardsNoScore": "aún no tienes puntuación en esta tabla",
+  "@leaderboardsNoScore": {
+    "description": "Cuando la cuenta no ha jugado en este periodo todavia."
+  },
+  "leaderboardsClaim": "cobrar",
+  "@leaderboardsClaim": {
+    "description": "Boton para cobrar el premio de un puesto del podio."
+  },
+  "leaderboardsClaiming": "cobrando…",
+  "@leaderboardsClaiming": {
+    "description": "Mientras se cobra el premio."
+  },
+  "leaderboardsClaimed": "cobrado",
+  "@leaderboardsClaimed": {
+    "description": "Cuando el premio de ese puesto ya esta cobrado."
+  },
+  "leaderboardsClaimFailed": "no se ha podido cobrar",
+  "@leaderboardsClaimFailed": {
+    "description": "Aviso cuando el cobro del premio falla."
+  },
+  "leaderboardsReward": "+{count}",
+  "@leaderboardsReward": {
+    "description": "La cantidad de tickets que da un puesto del podio.",
+    "placeholders": {"count": {"type": "int"}}
+  }
 }

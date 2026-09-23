@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 64">
+  <!-- Microfono en la mano derecha, con la rejilla hacia su boca: el mango
+       acaba en (8, 60), pegado al costado. -->
+  <defs>
+    <radialGradient id="mesh" cx=".38" cy=".32" r=".75">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".5" stop-color="#C9D3DD"/>
+      <stop offset="1" stop-color="#6E7C8A"/>
+    </radialGradient>
+    <linearGradient id="grip" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7F8590"/>
+      <stop offset=".5" stop-color="#3A4455"/>
+      <stop offset="1" stop-color="#323E4E"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(-24 22 34)">
+    <path d="M17 26 L27 26 L25 60 Q22 63 19 60 Z" fill="url(#grip)" stroke="#253544" stroke-width="1.6" stroke-linejoin="round"/>
+    <rect x="16" y="24" width="12" height="5" rx="1.5" fill="#F07AB8" stroke="#89527B" stroke-width="1.1"/>
+    <circle cx="22" cy="14" r="11" fill="url(#mesh)" stroke="#4A5566" stroke-width="1.6"/>
+    <path d="M13 11 L31 11 M12 16 L32 16 M14.5 21 L29.5 21 M17 4.5 L17 24 M22 3 L22 25 M27 4.5 L27 24"
+          stroke="#6E7C8A" stroke-opacity=".45" stroke-width=".9"/>
+    <ellipse cx="17.5" cy="8.5" rx="3.4" ry="2.2" fill="#FFFFFF" fill-opacity=".9" transform="rotate(-30 17.5 8.5)"/>
+    <path d="M20 32 L20 54" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="1.4" stroke-linecap="round"/>
+  </g>
+  <!-- Notas y destello de la SSR -->
+  <path d="M38 6 L38 14 M38 6 L42 5 L42 12" fill="none" stroke="#F07AB8" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="36.8" cy="14.5" r="1.6" fill="#F07AB8"/><circle cx="40.8" cy="12.5" r="1.6" fill="#F07AB8"/>
+  <path d="M38 26 Q38 30 42 30 Q38 30 38 34 Q38 30 34 30 Q38 30 38 26 Z" fill="#FFFFFF"/>
+</svg>

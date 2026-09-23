@@ -181,12 +181,21 @@ class TamaStyleChip extends StatelessWidget {
     this.size = 88,
     this.zoom = 1,
     this.focus = Alignment.center,
+    this.reselectable = false,
+    this.wash,
+    this.art,
   });
 
   final TamaLook look;
   final String label;
   final bool selected;
-  final VoidCallback onPressed;
+
+  /// Si tocar la ficha elegida vuelve a llamar a [onPressed] (para quitarse
+  /// un accesorio). Si no, la elegida no se puede pulsar.
+  final bool reselectable;
+
+  /// `null` la deja apagada (un premio que aun no se tiene).
+  final VoidCallback? onPressed;
   final double size;
 
   /// Acerca la vista a la pieza (la cara, los pies) cuando el Tama entero no
@@ -194,11 +203,19 @@ class TamaStyleChip extends StatelessWidget {
   final double zoom;
   final Alignment focus;
 
+  /// El color del fondo cuando no esta elegida (el de la rareza de un premio).
+  /// Elegida, va con el acento como las demas.
+  final Color? wash;
+
+  /// Lo que se ensena en lugar del Tama (la silueta de un premio bloqueado).
+  final Widget? art;
+
   @override
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
+    final rest = wash == null ? T.hairline : Color.lerp(T.hairline, wash, .6)!;
     return Pressable(
-      onPressed: selected ? null : onPressed,
+      onPressed: selected && !reselectable ? null : onPressed,
       semanticLabel: label,
       builder: (context, state) => SizedBox(
         width: size,
@@ -216,22 +233,24 @@ class TamaStyleChip extends StatelessWidget {
                   child: GlossSurface(
                     radius: 22,
                     recessed: !selected,
-                    tint: selected ? skin.accentWash : null,
+                    tint: selected ? skin.accentWash : wash,
                     elevation: selected ? 1.4 : 0,
-                    borderWidth: selected ? 2.5 : 1,
+                    borderWidth: selected ? 2.5 : (wash == null ? 1 : 1.5),
                     borderColor: selected
                         ? skin.accentDeep
-                        : Color.lerp(T.hairline, skin.accent, state.hover)!,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: Transform.scale(
-                        scale: zoom,
-                        alignment: focus,
-                        child: CustomPaint(
-                          painter: TamaPainter(look: look, shadow: false),
-                        ),
-                      ),
-                    ),
+                        : Color.lerp(rest, skin.accent, state.hover)!,
+                    child: art != null
+                        ? Center(child: art)
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(22),
+                            child: Transform.scale(
+                              scale: zoom,
+                              alignment: focus,
+                              child: CustomPaint(
+                                painter: TamaPainter(look: look, shadow: false),
+                              ),
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -266,10 +285,10 @@ class TamaMoodMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        // Nunca mas ancho de lo que le den: en vertical comparte fila con el
-        // nombre del humor.
-        builder: (context, box) => _build(context, math.min(width, box.maxWidth)),
-      );
+    // Nunca mas ancho de lo que le den: en vertical comparte fila con el
+    // nombre del humor.
+    builder: (context, box) => _build(context, math.min(width, box.maxWidth)),
+  );
 
   Widget _build(BuildContext context, double width) {
     final skin = IbashoSkin.of(context);
@@ -295,7 +314,9 @@ class TamaMoodMeter extends StatelessWidget {
                     radius: 7,
                     tint: (value * _pips - i) > .05 ? skin.accent : null,
                     elevation: 0,
-                    borderColor: (value * _pips - i) > .05 ? skin.accentDeep : T.hairline,
+                    borderColor: (value * _pips - i) > .05
+                        ? skin.accentDeep
+                        : T.hairline,
                   ),
                 ),
               ),

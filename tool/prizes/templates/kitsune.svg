@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Mascara de kitsune ladeada, puesta a un lado de la cabeza con su
+       cordon. La cabeza apoya en (18..82, 70). -->
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+  </defs>
+  <!-- Cordon por la frente -->
+  <path d="M16 66 Q40 50 64 44" fill="none" stroke="{mark}" stroke-width="2.6" stroke-linecap="round"/>
+  <g transform="rotate(24 70 44)">
+    <!-- Orejas -->
+    <path d="M52 30 L55 10 L64 24 Z M88 30 L85 10 L76 24 Z" fill="url(#face)" stroke="{main.edge}" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M55 15 L57 26 L61 24 Z M85 15 L83 26 L79 24 Z" fill="{mark}"/>
+    <!-- Cara con el hocico hacia abajo -->
+    <path d="M50 34 C50 24 60 20 70 20 C80 20 90 24 90 34 C90 44 80 50 74 62 Q70 68 66 62 C60 50 50 44 50 34 Z"
+          fill="url(#face)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <!-- Marcas -->
+    <path d="M56 34 Q60 29 65 32 Q60 33 56 34 Z M84 34 Q80 29 75 32 Q80 33 84 34 Z" fill="{mark}" stroke="{mark.edge}" stroke-width=".8"/>
+    <path d="M67 24 Q70 30 73 24 M64 42 Q70 46 76 42" fill="none" stroke="{mark}" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="70" cy="60" r="2.4" fill="#2B3444"/>
+    <path d="M56 26 Q60 22 66 22" fill="none" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>

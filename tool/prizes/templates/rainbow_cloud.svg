@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 64">
+  <!-- Nube con arcoiris, flotando sobre la cabeza. La base de la nube, en
+       y=60, queda justo encima de la coronilla. -->
+  <defs>
+    <linearGradient id="cloud" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCE8F2"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".6" r=".5">
+      <stop offset="0" stop-color="#FFF6C8" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#FFF6C8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="50" cy="38" rx="50" ry="26" fill="url(#glow)"/>
+  <!-- Arcoiris que sale de la nube -->
+  <g fill="none" stroke-width="4.2" stroke-linecap="round">
+    <path d="M22 44 A28 28 0 0 1 78 44" stroke="#FF5A6E"/>
+    <path d="M26 44 A24 24 0 0 1 74 44" stroke="#FFA53A"/>
+    <path d="M30 44 A20 20 0 0 1 70 44" stroke="#FFE14A"/>
+    <path d="M34 44 A16 16 0 0 1 66 44" stroke="#5BE07A"/>
+    <path d="M38 44 A12 12 0 0 1 62 44" stroke="#4FC8F5"/>
+    <path d="M42 44 A8 8 0 0 1 58 44" stroke="#9A7BFF"/>
+  </g>
+  <!-- Nube: circulos con el filo solo por fuera -->
+  <g fill="#8FA3B5" stroke="#8FA3B5" stroke-width="3">
+    <circle cx="26" cy="48" r="11"/><circle cx="42" cy="44" r="14"/><circle cx="60" cy="45" r="13"/><circle cx="76" cy="49" r="10"/><rect x="18" y="48" width="66" height="12" rx="6"/>
+  </g>
+  <g fill="url(#cloud)">
+    <circle cx="26" cy="48" r="11"/><circle cx="42" cy="44" r="14"/><circle cx="60" cy="45" r="13"/><circle cx="76" cy="49" r="10"/><rect x="18" y="48" width="66" height="12" rx="6"/>
+  </g>
+  <path d="M34 38 Q38 33 44 32" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  <path d="M92 16 Q92 20 96 20 Q92 20 92 24 Q92 20 88 20 Q92 20 92 16 Z" fill="#FFE14A"/>
+  <path d="M8 22 Q8 25 11 25 Q8 25 8 28 Q8 25 5 25 Q8 25 8 22 Z" fill="#4FC8F5"/>
+</svg>

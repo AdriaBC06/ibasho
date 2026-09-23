@@ -8,6 +8,7 @@ import 'dart:ui' show Color;
 import 'package:flutter/foundation.dart';
 
 import '../theme/tokens.dart';
+import 'prizes.dart';
 
 /// Version del esquema de `/tamas/{tamaId}`. Las reglas solo aceptan esta.
 const int tamaSchema = 1;
@@ -111,6 +112,85 @@ enum TamaWear {
   partyHat,
 }
 
+/// Los premios del gacha que lleva puestos: un gorro y hasta
+/// [maxAccessories] accesorios, uno por [PrizeSlot].
+///
+/// Se guardan como claves de [PrizeItem] (`cap_red`): el gorro en
+/// `look/hat` y los accesorios en `look/acc/a`, `b` y `c`, para que las
+/// reglas comprueben cada uno contra la coleccion. Una clave que esta
+/// version no conoce se conserva al guardar y no se pinta.
+@immutable
+class TamaOutfit {
+  const TamaOutfit({this.hat, this.accessories = const <String>[]});
+
+  static const TamaOutfit none = TamaOutfit();
+  static const int maxAccessories = 3;
+
+  /// Lo que aceptan las reglas en `look/hat` y en cada hueco de `look/acc`.
+  static final RegExp keyPattern = RegExp(r'^[a-z0-9_]{1,40}$');
+
+  final String? hat;
+  final List<String> accessories;
+
+  bool get isEmpty => hat == null && accessories.isEmpty;
+
+  bool wears(String key) => hat == key || accessories.contains(key);
+
+  /// Pone o quita [item]. Un gorro sustituye al gorro; un accesorio sustituye
+  /// al que ocupe su sitio. Devuelve `null` si ya lleva [maxAccessories] y el
+  /// nuevo no desplaza a ninguno.
+  TamaOutfit? toggle(PrizeItem item) {
+    if (item.prize.slot == PrizeSlot.head) {
+      return TamaOutfit(hat: hat == item.key ? null : item.key, accessories: accessories);
+    }
+    if (accessories.contains(item.key)) {
+      return TamaOutfit(hat: hat, accessories: [...accessories.where((k) => k != item.key)]);
+    }
+    final kept = [
+      for (final k in accessories)
+        if (prizeItem(k)?.prize.slot != item.prize.slot) k,
+    ];
+    if (kept.length >= maxAccessories) return null;
+    return TamaOutfit(hat: hat, accessories: [...kept, item.key]);
+  }
+
+  /// Los huecos de `look/acc`, en orden.
+  static const List<String> _slots = <String>['a', 'b', 'c'];
+
+  /// `look/acc`, o `null` si no lleva accesorios.
+  Map<String, String>? get accJson => accessories.isEmpty
+      ? null
+      : <String, String>{
+          for (var i = 0; i < accessories.length && i < _slots.length; i++) _slots[i]: accessories[i],
+        };
+
+  static TamaOutfit fromJson(Object? hat, Object? acc) {
+    final keys = switch (acc) {
+      Map() => [
+          for (final slot in _slots)
+            if (acc[slot] is String) acc[slot] as String,
+        ],
+      // Antes de la coleccion se guardaban separados por comas.
+      String() => acc.split(','),
+      _ => const <String>[],
+    };
+    return TamaOutfit(
+      hat: hat is String && keyPattern.hasMatch(hat) ? hat : null,
+      accessories: [
+        for (final k in keys.take(maxAccessories))
+          if (keyPattern.hasMatch(k)) k,
+      ],
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is TamaOutfit && other.hat == hat && listEquals(other.accessories, accessories);
+
+  @override
+  int get hashCode => Object.hash(hat, Object.hashAll(accessories));
+}
+
 /// Los deslizadores del creador. Todos son enteros de 0 a 100.
 enum TamaDial {
   bodyWidth,
@@ -154,6 +234,7 @@ class TamaLook {
     this.dials = const <TamaDial, int>{},
     this.color = '#5BC8F5',
     this.colorMode = TamaColorMode.palette,
+    this.outfit = TamaOutfit.none,
   });
 
   final Map<TamaPart, int> parts;
@@ -163,6 +244,10 @@ class TamaLook {
   final String color;
 
   final TamaColorMode colorMode;
+
+  /// Lo que lleva puesto. Viaja con el aspecto: lo ven los amigos y se va con
+  /// el Tama si se transfiere.
+  final TamaOutfit outfit;
 
   static const Map<TamaDial, int> defaultDials = <TamaDial, int>{
     TamaDial.bodyWidth: 50,
@@ -193,6 +278,7 @@ class TamaLook {
         dials: dials,
         color: color,
         colorMode: colorMode,
+        outfit: outfit,
       );
 
   TamaLook withDial(TamaDial d, int value) => TamaLook(
@@ -200,6 +286,7 @@ class TamaLook {
         dials: {...dials, d: value.clamp(0, 100)},
         color: color,
         colorMode: colorMode,
+        outfit: outfit,
       );
 
   TamaLook withColor(String hex, TamaColorMode mode) => TamaLook(
@@ -207,6 +294,15 @@ class TamaLook {
         dials: dials,
         color: _hexPattern.hasMatch(hex) ? hex.toUpperCase() : color,
         colorMode: mode,
+        outfit: outfit,
+      );
+
+  TamaLook withOutfit(TamaOutfit value) => TamaLook(
+        parts: parts,
+        dials: dials,
+        color: color,
+        colorMode: colorMode,
+        outfit: value,
       );
 
   /// Un aspecto al azar, siempre con un color de la paleta: barajar tiene que
@@ -253,6 +349,7 @@ class TamaLook {
           ? (raw['color'] as String).toUpperCase()
           : '#5BC8F5',
       colorMode: TamaColorMode.byName(raw['colorMode']),
+      outfit: TamaOutfit.fromJson(raw['hat'], raw['acc']),
     );
   }
 
@@ -261,6 +358,9 @@ class TamaLook {
         for (final d in TamaDial.values) d.name: dial(d),
         'color': color,
         'colorMode': colorMode.name,
+        // Solo si lleva algo: un Tama sin premios se guarda como siempre.
+        if (outfit.hat != null) 'hat': outfit.hat,
+        'acc': ?outfit.accJson,
       };
 
   @override
@@ -268,6 +368,7 @@ class TamaLook {
       other is TamaLook &&
       other.color == color &&
       other.colorMode == colorMode &&
+      other.outfit == outfit &&
       TamaPart.values.every((p) => other.part(p) == part(p)) &&
       TamaDial.values.every((d) => other.dial(d) == dial(d));
 
@@ -275,6 +376,7 @@ class TamaLook {
   int get hashCode => Object.hash(
         color,
         colorMode,
+        outfit,
         Object.hashAll(TamaPart.values.map(part)),
         Object.hashAll(TamaDial.values.map(dial)),
       );

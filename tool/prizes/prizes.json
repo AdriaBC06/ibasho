@@ -1,0 +1,853 @@
+[
+  {
+    "id": "cap",
+    "template": "cap.svg",
+    "variants": {
+      "red": {
+        "main": "#F0535E"
+      },
+      "blue": {
+        "main": "#3E7FE0"
+      },
+      "green": {
+        "main": "#43B86F"
+      },
+      "yellow": {
+        "main": "#F6C43A"
+      }
+    }
+  },
+  {
+    "id": "mask",
+    "variants": {
+      "a": {
+        "template": "mask_a.svg",
+        "main": "#F4F7FA",
+        "trim": "#E23B4E"
+      },
+      "b": {
+        "template": "mask_b.svg",
+        "main": "#F07AB8",
+        "trim": "#2B3444"
+      },
+      "c": {
+        "template": "mask_c.svg",
+        "main": "#9A6BE0",
+        "trim": "#F5C542"
+      },
+      "d": {
+        "template": "mask_d.svg",
+        "main": "#2B3444",
+        "trim": "#F5C542"
+      }
+    }
+  },
+  {
+    "id": "angel_wings",
+    "template": "angel_wings.svg",
+    "variants": {
+      "white": {
+        "main": "#F2F6FA",
+        "glow": "#FFF2B8",
+        "spark": "#FFE27A"
+      },
+      "black": {
+        "main": "#3B4658",
+        "glow": "#B9A6FF",
+        "spark": "#D9CCFF"
+      }
+    }
+  },
+  {
+    "id": "afro",
+    "template": "afro.svg",
+    "variants": {
+      "brown": {
+        "main": "#5A3E2E"
+      }
+    }
+  },
+  {
+    "id": "beanie",
+    "template": "beanie.svg",
+    "variants": {
+      "red": {
+        "main": "#E8505B",
+        "pom": "#FFFFFF"
+      },
+      "blue": {
+        "main": "#3F7FD8",
+        "pom": "#FFFFFF"
+      },
+      "cream": {
+        "main": "#EFE2C8",
+        "pom": "#E8505B"
+      }
+    }
+  },
+  {
+    "id": "hachimaki",
+    "template": "hachimaki.svg",
+    "variants": {
+      "white": {
+        "main": "#F7F9FB",
+        "sun": "#E8404F"
+      },
+      "red": {
+        "main": "#E8404F",
+        "sun": "#FFFFFF"
+      }
+    }
+  },
+  {
+    "id": "headphones",
+    "template": "headphones.svg",
+    "variants": {
+      "white": {
+        "main": "#F3F6F9",
+        "pad": "#8FA3B5"
+      },
+      "skyblue": {
+        "main": "#8FD3F7",
+        "pad": "#F3F6F9"
+      }
+    }
+  },
+  {
+    "id": "beret",
+    "template": "beret.svg",
+    "variants": {
+      "red": {
+        "main": "#D9434F"
+      },
+      "black": {
+        "main": "#2B3444"
+      },
+      "green": {
+        "main": "#3E9E62"
+      }
+    }
+  },
+  {
+    "id": "hood",
+    "template": "hood.svg",
+    "variants": {
+      "black": {
+        "main": "#3A4455",
+        "string": "#F3F6F9"
+      },
+      "red": {
+        "main": "#D9434F",
+        "string": "#F3F6F9"
+      },
+      "green": {
+        "main": "#3E9E62",
+        "string": "#F3F6F9"
+      }
+    }
+  },
+  {
+    "id": "crown",
+    "template": "crown.svg",
+    "variants": {
+      "gold": {
+        "main": "#F5C542",
+        "gem": "#E84B5A",
+        "gem2": "#4FA3F0"
+      },
+      "silver": {
+        "main": "#C3CEDA",
+        "gem": "#E84B5A",
+        "gem2": "#4FA3F0"
+      }
+    }
+  },
+  {
+    "id": "leaf",
+    "template": "leaf.svg",
+    "variants": {
+      "green": {
+        "main": "#5BC87A"
+      },
+      "orange": {
+        "main": "#F7913A"
+      }
+    }
+  },
+  {
+    "id": "bow",
+    "template": "bow.svg",
+    "variants": {
+      "pink": {
+        "main": "#F59AC8"
+      },
+      "blue": {
+        "main": "#6FA8F0"
+      },
+      "yellow": {
+        "main": "#F6CE3A"
+      }
+    }
+  },
+  {
+    "id": "top_hat",
+    "template": "top_hat.svg",
+    "variants": {
+      "black": {
+        "main": "#2B3444",
+        "band": "#E23B4E"
+      },
+      "white": {
+        "main": "#F3F6F9",
+        "band": "#3A4455"
+      }
+    }
+  },
+  {
+    "id": "hard_hat",
+    "template": "hard_hat.svg",
+    "variants": {
+      "yellow": {
+        "main": "#F6C43A"
+      },
+      "orange": {
+        "main": "#F7913A"
+      }
+    }
+  },
+  {
+    "id": "frog_hat",
+    "template": "frog_hat.svg",
+    "variants": {
+      "green": {
+        "main": "#6CCB5F",
+        "cheek": "#F59AC8"
+      },
+      "pink": {
+        "main": "#F59AC8",
+        "cheek": "#E8505B"
+      }
+    }
+  },
+  {
+    "id": "chef_hat",
+    "template": "chef_hat.svg",
+    "variants": {
+      "white": {
+        "main": "#E8EEF3"
+      }
+    }
+  },
+  {
+    "id": "witch_hat",
+    "template": "witch_hat.svg",
+    "variants": {
+      "purple": {
+        "main": "#8A5BD0",
+        "band": "#43B86F"
+      },
+      "black": {
+        "main": "#2B3444",
+        "band": "#9A6BE0"
+      }
+    }
+  },
+  {
+    "id": "nightcap",
+    "template": "nightcap.svg",
+    "variants": {
+      "navy": {
+        "main": "#2F4A8A",
+        "star": "#FFD84A",
+        "cuff": "#F3F6F9"
+      },
+      "pink": {
+        "main": "#F59AC8",
+        "star": "#FFFFFF",
+        "cuff": "#FFF3C8"
+      }
+    }
+  },
+  {
+    "id": "flower_crown",
+    "template": "flower_crown.svg",
+    "variants": {
+      "sakura": {
+        "main": "#F9B8D0",
+        "heart": "#F07AA0"
+      },
+      "sunflower": {
+        "main": "#F6CE3A",
+        "heart": "#7A4A2E"
+      },
+      "lavender": {
+        "main": "#B9A0F0",
+        "heart": "#F6E27A"
+      }
+    }
+  },
+  {
+    "id": "kitsune",
+    "template": "kitsune.svg",
+    "variants": {
+      "white": {
+        "main": "#F4F7FA",
+        "mark": "#E23B4E"
+      },
+      "red": {
+        "main": "#E23B4E",
+        "mark": "#F5C542"
+      }
+    }
+  },
+  {
+    "id": "viking",
+    "template": "viking.svg",
+    "variants": {
+      "iron": {
+        "main": "#B8C3CF",
+        "horn": "#F1E6C8"
+      }
+    }
+  },
+  {
+    "id": "sombrero",
+    "template": "sombrero.svg",
+    "variants": {
+      "straw": {
+        "main": "#EBC77A",
+        "band": "#E23B4E",
+        "trim": "#43B86F"
+      },
+      "charro": {
+        "main": "#2B3444",
+        "band": "#F5C542",
+        "trim": "#E23B4E"
+      }
+    }
+  },
+  {
+    "id": "gamer_headset",
+    "template": "gamer_headset.svg",
+    "variants": {
+      "black": {
+        "main": "#2B3444",
+        "light": "#5BE07A"
+      },
+      "blue": {
+        "main": "#3E7FE0",
+        "light": "#7FE8FF"
+      },
+      "pink": {
+        "main": "#F07AB8",
+        "light": "#FFF0F8"
+      }
+    }
+  },
+  {
+    "id": "kabuto",
+    "template": "kabuto.svg",
+    "variants": {
+      "red": {
+        "main": "#C8323F",
+        "crest": "#F5C542"
+      },
+      "black": {
+        "main": "#2B3444",
+        "crest": "#F5C542"
+      }
+    }
+  },
+  {
+    "id": "wizard_hat",
+    "template": "wizard_hat.svg",
+    "variants": {
+      "blue": {
+        "main": "#2F5BC8",
+        "star": "#FFD84A"
+      },
+      "purple": {
+        "main": "#7A4FC8",
+        "star": "#FFD84A"
+      }
+    }
+  },
+  {
+    "id": "cat_headset",
+    "template": "cat_headset.svg",
+    "variants": {
+      "black": {
+        "main": "#2B3444",
+        "light": "#B9A6FF"
+      },
+      "blue": {
+        "main": "#3E7FE0",
+        "light": "#7FE8FF"
+      },
+      "pink": {
+        "main": "#F07AB8",
+        "light": "#FFD0E8"
+      },
+      "white": {
+        "main": "#F3F6F9",
+        "light": "#F59AC8"
+      }
+    }
+  },
+  {
+    "id": "halo",
+    "template": "halo.svg",
+    "variants": {
+      "gold": {
+        "main": "#F5C542"
+      }
+    }
+  },
+  {
+    "id": "devil_horns",
+    "template": "devil_horns.svg",
+    "variants": {
+      "red": {
+        "main": "#E23B4E",
+        "glow": "#FF8A6E"
+      },
+      "black": {
+        "main": "#2B3444",
+        "glow": "#B9A6FF"
+      }
+    }
+  },
+  {
+    "id": "rainbow_cloud",
+    "template": "rainbow_cloud.svg",
+    "variants": {
+      "sky": {}
+    }
+  },
+  {
+    "id": "cat_headset_rgb",
+    "template": "cat_headset_rgb.svg",
+    "variants": {
+      "black": {
+        "main": "#2B3444"
+      },
+      "blue": {
+        "main": "#3E7FE0"
+      },
+      "pink": {
+        "main": "#F07AB8"
+      },
+      "white": {
+        "main": "#F3F6F9"
+      }
+    }
+  },
+  {
+    "id": "halo_rgb",
+    "template": "halo_rgb.svg",
+    "variants": {
+      "rainbow": {}
+    }
+  },
+  {
+    "id": "crown_rgb",
+    "template": "crown_rgb.svg",
+    "variants": {
+      "rainbow": {}
+    }
+  },
+  {
+    "id": "glasses",
+    "template": "glasses.svg",
+    "variants": {
+      "black": {
+        "main": "#2B3444"
+      },
+      "white": {
+        "main": "#F4F7FA"
+      },
+      "red": {
+        "main": "#E23B4E"
+      },
+      "navy": {
+        "main": "#26407A"
+      }
+    }
+  },
+  {
+    "id": "bowtie",
+    "template": "bowtie.svg",
+    "variants": {
+      "black": {
+        "main": "#2B3444",
+        "dot": "#4A5566"
+      },
+      "red": {
+        "main": "#E23B4E",
+        "dot": "#FFFFFF"
+      }
+    }
+  },
+  {
+    "id": "sneakers",
+    "template": "sneaker.svg",
+    "variants": {
+      "red": {
+        "main": "#E8454F"
+      },
+      "blue": {
+        "main": "#3B7BE0"
+      },
+      "green": {
+        "main": "#3DB26A"
+      }
+    }
+  },
+  {
+    "id": "groucho",
+    "template": "groucho.svg",
+    "variants": {
+      "black": {
+        "main": "#2B3444",
+        "nose": "#F2A0A8",
+        "hair": "#4A3A35"
+      }
+    }
+  },
+  {
+    "id": "clown_nose",
+    "template": "clown_nose.svg",
+    "variants": {
+      "red": {
+        "main": "#E8404F"
+      },
+      "black": {
+        "main": "#3A4455"
+      },
+      "green": {
+        "main": "#3FBF62"
+      }
+    }
+  },
+  {
+    "id": "bottle",
+    "variants": {
+      "water": {
+        "template": "bottle_water.svg",
+        "main": "#8FD3F7",
+        "cap": "#3E7FE0"
+      },
+      "cola": {
+        "template": "bottle_cola.svg",
+        "main": "#7A4A2E",
+        "cap": "#C9D3DD",
+        "label": "#E23B4E",
+        "stripe": "#E23B4E",
+        "wave": "#FFFFFF"
+      },
+      "bluecola": {
+        "template": "bottle_cola.svg",
+        "main": "#7A4A2E",
+        "cap": "#2456C8",
+        "label": "#2456C8",
+        "stripe": "#E23B4E",
+        "wave": "#FFFFFF"
+      }
+    }
+  },
+  {
+    "id": "bandage",
+    "template": "bandage.svg",
+    "variants": {
+      "stars": {
+        "main": "#F6C9A6",
+        "pad": "#F3E6DA",
+        "star": "#FFD24A"
+      }
+    }
+  },
+  {
+    "id": "shutter_shades",
+    "template": "shutter_shades.svg",
+    "variants": {
+      "orange": {
+        "main": "#F7913A"
+      },
+      "blue": {
+        "main": "#3E8EF0"
+      },
+      "yellow": {
+        "main": "#F6CE3A"
+      },
+      "red": {
+        "main": "#E8404F"
+      },
+      "lime": {
+        "main": "#9BE03A"
+      }
+    }
+  },
+  {
+    "id": "energy",
+    "template": "energy_can.svg",
+    "variants": {
+      "green": {
+        "main": "#2B3444",
+        "accent": "#A6F06A"
+      },
+      "white": {
+        "main": "#F2F5F8",
+        "accent": "#8C99A6"
+      },
+      "red": {
+        "main": "#2B3444",
+        "accent": "#F0444F"
+      }
+    }
+  },
+  {
+    "id": "boba",
+    "template": "boba.svg",
+    "variants": {
+      "pink": {
+        "main": "#F6B3C8",
+        "straw": "#E8505B"
+      },
+      "green": {
+        "main": "#A9D98E",
+        "straw": "#3E9E62"
+      },
+      "brown": {
+        "main": "#C99A70",
+        "straw": "#5A3E2E"
+      }
+    }
+  },
+  {
+    "id": "taco",
+    "template": "taco.svg",
+    "variants": {
+      "classic": {
+        "main": "#F2C45A"
+      }
+    }
+  },
+  {
+    "id": "scarf",
+    "template": "scarf.svg",
+    "variants": {
+      "red": {
+        "main": "#E8505B",
+        "stripe": "#FFFFFF"
+      },
+      "blue": {
+        "main": "#3F7FD8",
+        "stripe": "#FFFFFF"
+      },
+      "cream": {
+        "main": "#EFE2C8",
+        "stripe": "#E8505B"
+      }
+    }
+  },
+  {
+    "id": "randoseru",
+    "template": "randoseru.svg",
+    "variants": {
+      "red": {
+        "main": "#D9434F"
+      },
+      "black": {
+        "main": "#2B3444"
+      }
+    }
+  },
+  {
+    "id": "balloon",
+    "template": "balloon.svg",
+    "variants": {
+      "red": {
+        "main": "#F0535E"
+      },
+      "blue": {
+        "main": "#4F8FF0"
+      },
+      "yellow": {
+        "main": "#F6CE3A"
+      },
+      "pink": {
+        "main": "#F59AC8"
+      }
+    }
+  },
+  {
+    "id": "uchiwa",
+    "variants": {
+      "sun": {
+        "template": "uchiwa_sun.svg",
+        "main": "#E8404F",
+        "rim": "#3E7FE0"
+      },
+      "fish": {
+        "template": "uchiwa_fish.svg",
+        "main": "#8FD3F7",
+        "rim": "#E8404F",
+        "fish": "#F7913A"
+      }
+    }
+  },
+  {
+    "id": "pickaxe",
+    "template": "pickaxe.svg",
+    "variants": {
+      "diamond": {
+        "main": "#4FE0E0"
+      }
+    }
+  },
+  {
+    "id": "sword",
+    "template": "sword.svg",
+    "variants": {
+      "iron": {
+        "main": "#D8DEE6"
+      },
+      "diamond": {
+        "main": "#4FE0E0"
+      }
+    }
+  },
+  {
+    "id": "swim_ring",
+    "template": "swim_ring.svg",
+    "variants": {
+      "stripes": {
+        "a": "#F0535E",
+        "b": "#F6CE3A",
+        "c": "#4F8FF0"
+      }
+    }
+  },
+  {
+    "id": "lantern",
+    "template": "lantern.svg",
+    "variants": {
+      "red": {
+        "main": "#E8404F",
+        "glow": "#FFE08A"
+      }
+    }
+  },
+  {
+    "id": "fish_bag",
+    "template": "fish_bag.svg",
+    "variants": {
+      "gold": {
+        "main": "#E8404F",
+        "fish": "#F7913A"
+      }
+    }
+  },
+  {
+    "id": "cape",
+    "template": "cape.svg",
+    "variants": {
+      "red": {
+        "main": "#E0444F",
+        "lining": "#F5C542"
+      },
+      "blue": {
+        "main": "#3E6FD8",
+        "lining": "#E8404F"
+      }
+    }
+  },
+  {
+    "id": "dollar_chain",
+    "template": "dollar_chain.svg",
+    "variants": {
+      "gold": {
+        "main": "#F5C542"
+      },
+      "silver": {
+        "main": "#C3CEDA"
+      }
+    }
+  },
+  {
+    "id": "microphone",
+    "template": "microphone.svg",
+    "variants": {
+      "silver": {
+        "main": "#3A4455",
+        "ring": "#F07AB8"
+      }
+    }
+  },
+  {
+    "id": "kendama",
+    "template": "kendama.svg",
+    "variants": {
+      "red": {
+        "main": "#E8404F"
+      },
+      "blue": {
+        "main": "#3E7FE0"
+      }
+    }
+  },
+  {
+    "id": "cursor",
+    "variants": {
+      "white": {
+        "template": "cursor.svg",
+        "main": "#FFFFFF",
+        "line": "#2B3444",
+        "glow": "#9FE0FF"
+      },
+      "black": {
+        "template": "cursor.svg",
+        "main": "#3A4455",
+        "line": "#FFFFFF",
+        "glow": "#B9A6FF"
+      },
+      "inverted": {
+        "template": "cursor_inverted.svg",
+        "glow": "#FFE27A"
+      }
+    }
+  },
+  {
+    "id": "controller",
+    "template": "controller.svg",
+    "variants": {
+      "blue": {
+        "main": "#3E7FE0",
+        "glow": "#9FE0FF"
+      }
+    }
+  },
+  {
+    "id": "fairies",
+    "template": "fairies.svg",
+    "variants": {
+      "light": {
+        "main": "#FFD84A"
+      }
+    }
+  },
+  {
+    "id": "rgb_shades",
+    "template": "rgb_shades.svg",
+    "variants": {
+      "rainbow": {}
+    }
+  },
+  {
+    "id": "rgb_wings",
+    "template": "rgb_wings.svg",
+    "variants": {
+      "rainbow": {}
+    }
+  }
+]

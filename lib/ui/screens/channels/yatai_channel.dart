@@ -5,13 +5,14 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../audio/audio_service.dart';
+import '../../../backend/gacha.dart';
+import '../../../backend/missions.dart';
 import '../../../backend/shop.dart';
 import '../../../backend/tama.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -29,10 +30,12 @@ import '../../widgets/controls.dart';
 import '../../widgets/gift_face.dart';
 import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
+import '../../widgets/pedestal.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/slot_tile.dart';
 import '../channel_route.dart';
+import 'gacha_channel.dart';
 
 /// Las tres secciones, en el mismo orden que en el catalogo.
 enum _Tab { games, tamas, gacha }
@@ -51,6 +54,17 @@ String _gameTitle(L l, String gameId) => switch (gameId) {
       'nihongo' => l.nihongoTitle,
       _ => gameId,
     };
+
+/// El nombre, la ilustracion y la descripcion de cualquier articulo: comida,
+/// juego o ticket del gachapon.
+String itemName(L l, ShopItem it) => it.food != null
+    ? foodLabel(l, it.food!)
+    : it.ticket != null
+        ? ticketName(l, it.ticket!)
+        : _gameTitle(l, it.gameId!);
+
+ArtIcon itemArt(ShopItem it) =>
+    it.ticket != null ? ticketArt(it.ticket!) : _gameArt(it.gameId!);
 
 String _gameDesc(L l, String gameId) => switch (gameId) {
       'tsumiki' => l.yataiDescTsumiki,
@@ -121,10 +135,36 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     if (price == null) return;
 
     var qty = 1;
+    final ticket = item.ticket;
     if (item.food != null) {
       final picked = await showIbashoModal<int>(
         context,
-        (context) => _QuantityDialog(food: item.food!, price: price, coins: coins),
+        (context) => _QuantityDialog(
+          title: l.yataiConfirmTitle(foodLabel(l, item.food!)),
+          art: CustomPaint(size: const Size.square(64), painter: TamaFoodPainter(item.food!, fill: .44)),
+          price: price,
+          coins: coins,
+          maxQty: maxPurchaseQty,
+        ),
+      );
+      if (picked == null) return;
+      qty = picked;
+    } else if (ticket != null) {
+      final left = ref.read(shopProvider).ticketsLeftThisWeek(ticket);
+      if (left <= 0) {
+        AudioService.instance.play(Sfx.error);
+        showIbashoToast(context, l.gachaErrorWeekly, isError: true);
+        return;
+      }
+      final picked = await showIbashoModal<int>(
+        context,
+        (context) => _QuantityDialog(
+          title: l.yataiConfirmTitle(ticketName(l, ticket)),
+          art: ArtIconView(ticketArt(ticket), size: 64),
+          price: price,
+          coins: coins,
+          maxQty: left,
+        ),
       );
       if (picked == null) return;
       qty = picked;
@@ -153,9 +193,12 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
       return;
     }
     AudioService.instance.play(Sfx.chime);
-    final done = item.section == ShopSection.games
-        ? l.yataiDoneGame
-        : l.yataiDoneFood(qty, foodLabel(l, item.food!));
+    unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.buy));
+    final done = switch (item.section) {
+      ShopSection.games => l.yataiDoneGame,
+      ShopSection.gacha => l.gachaDoneTickets(qty),
+      ShopSection.tamas => l.yataiDoneFood(qty, foodLabel(l, item.food!)),
+    };
     showIbashoToast(context, done);
   }
 
@@ -165,6 +208,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
       ShopFailure.noPrice => l.yataiErrorNoPrice,
       ShopFailure.insufficientCoins => l.yataiErrorInsufficientCoins,
       ShopFailure.foodLocked => l.yataiErrorFoodLocked,
+      ShopFailure.weeklyLimit => l.gachaErrorWeekly,
       ShopFailure.alreadyOwned => l.yataiErrorAlreadyOwned,
       ShopFailure.network => l.yataiErrorNetwork,
       ShopFailure.rejected => l.yataiErrorRejected,
@@ -205,9 +249,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     if (_page >= pages) _page = pages - 1;
     final pageItems = items.skip(_page * perPage).take(perPage).toList();
 
-    final showcase = _tab == _Tab.gacha
-        ? const _GachaShowcase()
-        : !shop.loaded
+    final showcase = !shop.loaded
             ? Center(child: Text(l.loading, style: Ty.lead))
             : _Showcase(
                 item: selected,
@@ -218,9 +260,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
                 onBuy: selected == null ? null : () => unawaited(_buy(selected)),
               );
 
-    final shelf = _tab == _Tab.gacha
-        ? const _GachaShelf()
-        : _Shelf(
+    final shelf = _Shelf(
             items: pageItems,
             perPage: perPage,
             columns: tall ? 3 : 6,
@@ -231,7 +271,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
             onSelect: _select,
           );
 
-    final pager = pages <= 1 || _tab == _Tab.gacha
+    final pager = pages <= 1
         ? null
         : _Pager(
             page: _page,
@@ -338,128 +378,6 @@ class _BalancePill extends StatelessWidget {
 // --- Escaparate ---------------------------------------------------------------
 
 /// La peana de cristal con el foco: lo que se enseña flota encima,
-/// balanceandose despacio.
-class _Pedestal extends StatefulWidget {
-  const _Pedestal({required this.size, required this.child});
-
-  final double size;
-  final Widget child;
-
-  @override
-  State<_Pedestal> createState() => _PedestalState();
-}
-
-class _PedestalState extends State<_Pedestal> with SingleTickerProviderStateMixin {
-  late final Ticker _ticker = createTicker((e) => _t.value = e.inMicroseconds / 1e6);
-  final ValueNotifier<double> _t = ValueNotifier<double>(0);
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final reduced = IbashoSkin.of(context).reducedMotion;
-    if (reduced && _ticker.isActive) _ticker.stop();
-    if (!reduced && !_ticker.isActive) _ticker.start();
-  }
-
-  @override
-  void dispose() {
-    _ticker.dispose();
-    _t.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = widget.size;
-    final skin = IbashoSkin.of(context);
-    return SizedBox(
-      width: s * 1.25,
-      height: s * 1.18,
-      child: CustomPaint(
-        painter: _PedestalPainter(skin.accent),
-        child: Align(
-          alignment: const Alignment(0, -.35),
-          child: AnimatedBuilder(
-            animation: _t,
-            builder: (context, child) => Transform.translate(
-              offset: Offset(0, math.sin(_t.value * 1.8) * s * .035),
-              child: Transform.rotate(angle: math.sin(_t.value * .9) * .03, child: child),
-            ),
-            child: SizedBox(width: s * .82, height: s * .82, child: widget.child),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PedestalPainter extends CustomPainter {
-  _PedestalPainter(this.accent);
-
-  final Color accent;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    // Foco: halo del acento y rayos.
-    final glowC = Offset(w / 2, h * .45);
-    canvas.drawCircle(
-      glowC,
-      w * .55,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [accent.withValues(alpha: .28), accent.withValues(alpha: .06), accent.withValues(alpha: 0)],
-          stops: const [0, .6, 1],
-        ).createShader(Rect.fromCircle(center: glowC, radius: w * .55)),
-    );
-    final rays = Paint()..color = T.glintSoft;
-    for (var i = 0; i < 12; i++) {
-      final a = i * math.pi / 6;
-      final r = w * .6;
-      canvas.drawPath(
-        Path()
-          ..moveTo(glowC.dx, glowC.dy)
-          ..lineTo(glowC.dx + math.cos(a - .06) * r, glowC.dy + math.sin(a - .06) * r)
-          ..lineTo(glowC.dx + math.cos(a + .06) * r, glowC.dy + math.sin(a + .06) * r)
-          ..close(),
-        rays,
-      );
-    }
-    // La peana: un disco de cristal con canto y reflejo.
-    final top = Rect.fromCenter(center: Offset(w / 2, h * .86), width: w * .82, height: h * .16);
-    final side = Rect.fromLTRB(top.left, top.center.dy, top.right, top.center.dy + h * .06);
-    paintGroundShadow(canvas, Offset(w / 2, h * .95), w * .86, .16);
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(side,
-          bottomLeft: Radius.elliptical(top.width / 2, top.height / 2),
-          bottomRight: Radius.elliptical(top.width / 2, top.height / 2)),
-      Paint()..color = Color.lerp(accent, T.shellBottom, .55)!,
-    );
-    canvas.drawOval(top.shift(Offset(0, h * .06)), Paint()..color = Color.lerp(accent, T.dusk, .1)!.withValues(alpha: .55));
-    canvas.drawOval(
-      top,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [T.shellTop, Color.lerp(T.shellBottom, accent, .25)!],
-        ).createShader(top),
-    );
-    canvas.drawOval(top.deflate(top.height * .18), Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..color = T.glintStrong);
-    canvas.drawOval(top, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Color.lerp(T.hairline, accent, .35)!);
-  }
-
-  @override
-  bool shouldRepaint(_PedestalPainter old) => old.accent != accent;
-}
-
 /// La etiqueta del precio: una pastilla con la moneda, o una cinta de
 /// «gratis».
 class _PriceTag extends StatelessWidget {
@@ -544,8 +462,12 @@ class _Showcase extends StatelessWidget {
     final locked = it.food != null && !unlocked.contains(it.food);
     final owned = it.gameId != null && shop.games.containsKey(it.gameId);
     final price = shop.prices[it.id];
-    final name = it.food != null ? foodLabel(l, it.food!) : _gameTitle(l, it.gameId!);
-    final description = it.food != null ? l.yataiDescFood : _gameDesc(l, it.gameId!);
+    final name = itemName(l, it);
+    final description = it.food != null
+        ? l.yataiDescFood
+        : it.ticket != null
+            ? l.yataiGachaBody
+            : _gameDesc(l, it.gameId!);
 
     final String actionLabel;
     final bool actionEnabled;
@@ -568,7 +490,7 @@ class _Showcase extends StatelessWidget {
             opacity: locked ? .45 : 1,
             child: CustomPaint(size: Size.square(s), painter: TamaFoodPainter(it.food!, fill: .44)),
           )
-        : ArtIconView(_gameArt(it.gameId!), size: s);
+        : ArtIconView(itemArt(it), size: s);
 
     final button = IbashoButton(
       key: const ValueKey<String>('yatai.buy'),
@@ -590,6 +512,10 @@ class _Showcase extends StatelessWidget {
         if (!owned) _PriceTag(price: price, large: !tall),
         if (it.food != null && !locked)
           Text(l.yataiUnitsOwned(pantry[it.food] ?? 0), style: Ty.caption),
+        // De los tickets, lo que de verdad limita no es el precio: es el
+        // cupo de la semana.
+        if (it.ticket != null)
+          Text(l.gachaWeeklyLeft(shop.ticketsLeftThisWeek(it.ticket!)), style: Ty.caption),
         if (locked)
           Row(mainAxisSize: MainAxisSize.min, children: [
             const GlyphIcon(Glyph.lock, size: 15, color: T.inkSoft),
@@ -608,7 +534,7 @@ class _Showcase extends StatelessWidget {
                 LayoutBuilder(
                   builder: (context, box) {
                     final s = math.min(150.0, box.maxHeight / 1.18);
-                    return _Pedestal(size: s, child: art(s * .82));
+                    return Pedestal(size: s, child: art(s * .82));
                   },
                 ),
                 const SizedBox(width: 6),
@@ -641,7 +567,7 @@ class _Showcase extends StatelessWidget {
 
     return Row(
       children: [
-        SizedBox(width: 380, child: Center(child: _Pedestal(size: 250, child: art(205)))),
+        SizedBox(width: 380, child: Center(child: Pedestal(size: 250, child: art(205)))),
         const SizedBox(width: 20),
         Expanded(
           child: Column(
@@ -928,7 +854,7 @@ class _ShopTile extends StatelessWidget {
     final skin = IbashoSkin.of(context);
     final locked = item.food != null && !unlocked.contains(item.food);
     final owned = item.gameId != null && shop.games.containsKey(item.gameId);
-    final name = item.food != null ? foodLabel(l, item.food!) : _gameTitle(l, item.gameId!);
+    final name = itemName(l, item);
     final price = shop.prices[item.id];
     final art = height * .5;
 
@@ -951,7 +877,7 @@ class _ShopTile extends StatelessWidget {
                         opacity: locked ? .35 : 1,
                         child: item.food != null
                             ? CustomPaint(size: Size.square(art), painter: TamaFoodPainter(item.food!, fill: .44))
-                            : ArtIconView(_gameArt(item.gameId!), size: art),
+                            : ArtIconView(itemArt(item), size: art),
                       ),
                     ),
                   ),
@@ -1011,178 +937,38 @@ class _CountBadge extends StatelessWidget {
   }
 }
 
-// --- Gacha: proximamente -----------------------------------------------------------
-
-class _GachaShowcase extends StatelessWidget {
-  const _GachaShowcase();
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    final tall = Layout.of(context).tall;
-    final title = Text(l.yataiGachaTitle, style: tall ? Ty.title : Ty.display.copyWith(fontSize: 42));
-    final body = Text(l.yataiGachaBody,
-        maxLines: 3, overflow: TextOverflow.ellipsis, style: (tall ? Ty.caption : Ty.lead).copyWith(color: T.inkSoft, fontWeight: FontWeight.w400));
-    if (tall) {
-      return Row(
-        children: [
-          LayoutBuilder(builder: (context, box) {
-            final s = math.min(150.0, box.maxHeight / 1.18);
-            return _Pedestal(size: s, child: const _SoonMachine());
-          }),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [title, const SizedBox(height: 4), body],
-            ),
-          ),
-        ],
-      );
-    }
-    return Row(
-      children: [
-        const SizedBox(width: 380, child: Center(child: _Pedestal(size: 250, child: _SoonMachine()))),
-        const SizedBox(width: 20),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [title, const SizedBox(height: 8), body],
-          ),
-        ),
-        const SizedBox(width: 30),
-      ],
-    );
-  }
-}
-
-/// La maquina de capsulas con un cartel de «pronto» cruzado.
-class _SoonMachine extends StatelessWidget {
-  const _SoonMachine();
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    final skin = IbashoSkin.of(context);
-    return LayoutBuilder(builder: (context, box) {
-      final s = box.biggest.shortestSide;
-      return Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          ArtIconView(ArtIcon.gacha, size: s),
-          Positioned(
-            bottom: s * .3,
-            child: Transform.rotate(
-              angle: -.12,
-              child: GlossSurface(
-                radius: s * .06,
-                tint: skin.accent,
-                elevation: 1.4,
-                padding: EdgeInsets.symmetric(horizontal: s * .08, vertical: s * .025),
-                child: Text(
-                  l.yataiGachaTitle,
-                  style: Ty.body.copyWith(fontSize: math.max(11, s * .1), fontWeight: FontWeight.w700, color: T.onAccent),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    });
-  }
-}
-
-/// El mostrador del gacha: capsulas cerradas en huecos, todavia sin nada.
-class _GachaShelf extends StatelessWidget {
-  const _GachaShelf();
-
-  @override
-  Widget build(BuildContext context) {
-    final tall = Layout.of(context).tall;
-    final columns = tall ? 3 : 6;
-    final rows = tall ? 2 : 1;
-    return LayoutBuilder(builder: (context, box) {
-      const gap = 14.0;
-      final w = (box.maxWidth - gap * (columns - 1)) / columns;
-      final h = math.min((box.maxHeight - gap * (rows - 1)) / rows, w * 1.1);
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          for (var r = 0; r < rows; r++) ...[
-            if (r > 0) const SizedBox(height: gap),
-            Row(
-              children: [
-                for (var c = 0; c < columns; c++) ...[
-                  if (c > 0) const SizedBox(width: gap),
-                  SizedBox(
-                    width: w,
-                    height: h,
-                    child: GlossSurface(
-                      radius: T.tileRadius,
-                      recessed: true,
-                      elevation: 0,
-                      child: Center(
-                        child: Opacity(
-                          opacity: .5,
-                          child: CustomPaint(
-                            size: Size.square(h * .42),
-                            painter: _CapsulePainter(Art.capsules[(r * columns + c) % Art.capsules.length]),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ],
-      );
-    });
-  }
-}
-
-class _CapsulePainter extends CustomPainter {
-  _CapsulePainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    paintCapsule(canvas, size.center(Offset.zero), size.shortestSide * .42, color, -.3);
-    final tp = TextPainter(
-      text: TextSpan(
-        text: '?',
-        style: TextStyle(fontFamily: Ty.round, fontSize: size.shortestSide * .34, fontWeight: FontWeight.w700, color: T.onAccent),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, size.center(Offset(-tp.width / 2, -tp.height * .78)));
-  }
-
-  @override
-  bool shouldRepaint(_CapsulePainter old) => old.color != color;
-}
-
-// --- Dialogos ------------------------------------------------------------------
-
 /// El paso de cantidad, para la comida: ×1, ×5 o ×10, con el total.
 class _QuantityDialog extends StatefulWidget {
-  const _QuantityDialog({required this.food, required this.price, required this.coins});
+  const _QuantityDialog({
+    required this.title,
+    required this.art,
+    required this.price,
+    required this.coins,
+    required this.maxQty,
+  });
 
-  final TamaFood food;
+  final String title;
+
+  /// La ilustracion de lo que se compra, a 64 px.
+  final Widget art;
+
   final int price;
   final int coins;
+
+  /// Lo maximo que se puede pedir de una tacada: el tope de compra de la
+  /// comida o lo que queda del cupo semanal de un ticket.
+  final int maxQty;
 
   @override
   State<_QuantityDialog> createState() => _QuantityDialogState();
 }
 
 class _QuantityDialogState extends State<_QuantityDialog> {
-  static const List<int> _options = [1, 5, 10];
+  late final List<int> _options = <int>[
+    for (final q in const <int>[1, 5, 10])
+      if (q <= widget.maxQty) q,
+    if (widget.maxQty < 10 && widget.maxQty > 1 && widget.maxQty != 5) widget.maxQty,
+  ]..sort();
   late int _qty = _options.firstWhere((q) => widget.price * q <= widget.coins, orElse: () => 1);
 
   @override
@@ -1192,7 +978,7 @@ class _QuantityDialogState extends State<_QuantityDialog> {
     final affordable = widget.price * _qty <= widget.coins;
 
     return IbashoDialog(
-      title: l.yataiConfirmTitle(foodLabel(l, widget.food)),
+      title: widget.title,
       width: 480,
       body: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1200,7 +986,7 @@ class _QuantityDialogState extends State<_QuantityDialog> {
         children: [
           Row(
             children: [
-              CustomPaint(size: const Size.square(64), painter: TamaFoodPainter(widget.food, fill: .44)),
+              SizedBox(width: 64, height: 64, child: widget.art),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -1211,8 +997,10 @@ class _QuantityDialogState extends State<_QuantityDialog> {
             ],
           ),
           const SizedBox(height: 14),
-          Text(l.yataiQuantity, style: Ty.label),
-          const SizedBox(height: 8),
+          if (_options.length > 1) ...[
+            Text(l.yataiQuantity, style: Ty.label),
+            const SizedBox(height: 8),
+          ],
           LayoutBuilder(builder: (context, box) {
             const gap = 10.0;
             final w = (box.maxWidth - gap * (_options.length - 1)) / _options.length;
@@ -1357,7 +1145,7 @@ class _PurchaseDialogState extends State<_PurchaseDialog> with SingleTickerProvi
                               offset: Offset(0, 60 * Curves.easeIn.transform(t / .3)),
                               child: Opacity(
                                 opacity: 1 - t / .3,
-                                child: ArtIconView(_gameArt(widget.item.gameId!), size: 80),
+                                child: ArtIconView(itemArt(widget.item), size: 80),
                               ),
                             ),
                           SizedBox(
@@ -1367,7 +1155,12 @@ class _PurchaseDialogState extends State<_PurchaseDialog> with SingleTickerProvi
                           ),
                         ],
                       )
-                    : _FoodDrop(food: widget.item.food!, qty: widget.qty, t: t),
+                    : _FoodDrop(
+                        food: widget.item.food,
+                        ticket: widget.item.ticket,
+                        qty: widget.qty,
+                        t: t,
+                      ),
               ),
               const SizedBox(height: 6),
               Text(game ? l.yataiWrappingBody : l.yataiPackingBody,
@@ -1385,9 +1178,12 @@ class _PurchaseDialogState extends State<_PurchaseDialog> with SingleTickerProvi
 
 /// Las chuches cayendo una a una en la bolsa de papel.
 class _FoodDrop extends StatelessWidget {
-  const _FoodDrop({required this.food, required this.qty, required this.t});
+  const _FoodDrop({required this.food, this.ticket, required this.qty, required this.t});
 
-  final TamaFood food;
+  final TamaFood? food;
+
+  /// Un ticket del gachapon cae a la bolsa igual que la comida.
+  final TicketKind? ticket;
   final int qty;
   final double t;
 
@@ -1409,7 +1205,9 @@ class _FoodDrop extends StatelessWidget {
                 offset: Offset(dx, 0),
                 child: Opacity(
                   opacity: t > start ? 1 : 0,
-                  child: CustomPaint(size: const Size.square(56), painter: TamaFoodPainter(food, fill: .44)),
+                  child: food != null
+                      ? CustomPaint(size: const Size.square(56), painter: TamaFoodPainter(food!, fill: .44))
+                      : ArtIconView(ticketArt(ticket!), size: 56),
                 ),
               ),
             );

@@ -18,14 +18,27 @@ import 'dart:convert';
 import 'dart:io';
 
 /// Precios de partida: el buscaminas es gratis, Tsumiki cuesta 10 y Nihongo
-/// 50 (150 hasta la 0.5.1), y las dos comidas de serie cuestan lo mismo. Ampliar el catalogo (mas juegos, mas comida desbloqueada)
-/// es anadir aqui su precio, nada mas.
+/// 50 (150 hasta la 0.5.1), y las dos comidas de serie cuestan lo mismo.
+/// Desde la 0.6.0 tambien estan los tickets del gacha, con tope semanal (10
+/// gachaken y 1 kinken por semana), y las ocho comidas que antes salian con
+/// candado ya se pueden comprar (empiezan a 0 unidades, sin regalo inicial).
+/// Ampliar el catalogo es anadir aqui su precio, nada mas.
 const Map<String, int> _prices = <String, int>{
   'game_minesweeper': 0,
   'game_tsumiki': 10,
   'game_nihongo': 50,
   'food_cookie': 3,
   'food_candy': 3,
+  'food_cupcake': 6,
+  'food_apple': 5,
+  'food_dango': 6,
+  'food_mochi': 6,
+  'food_lollipop': 5,
+  'food_iceCream': 7,
+  'food_donut': 6,
+  'food_flan': 7,
+  'ticket_gachaken': 25,
+  'ticket_kinken': 150,
 };
 
 Future<int> main() async {

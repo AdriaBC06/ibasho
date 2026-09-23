@@ -6,7 +6,7 @@
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
-    "test": "node --test --test-concurrency=1 rules.test.mjs rules_04.test.mjs rules_05.test.mjs"
+    "test": "node --test --test-concurrency=1 rules.test.mjs rules_04.test.mjs rules_05.test.mjs rules_06.test.mjs rules_leaderboards.test.mjs rules_missions.test.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

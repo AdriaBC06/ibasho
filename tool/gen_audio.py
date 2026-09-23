@@ -6,7 +6,7 @@
 # Los archivos de audio que produce se publican bajo CC0 1.0 (dominio publico),
 # tal y como se declara en CREDITS.md.
 #
-# Uso:  python3 tool/gen_audio.py
+# Uso:  python3 tool/gen_audio.py [--music | --pinball | --pachinko]
 # Requiere: numpy y ffmpeg en el PATH.
 
 import math
@@ -513,12 +513,233 @@ def music_plaza(bpm=120.0, bars=16):
     return np.stack([L, R], axis=1)
 
 
+# --------------------------------------------- musica del gachapon (0.6.0)
+#
+# Seis pistas nuevas para GachaCategory.music, catalogadas en
+# `lib/backend/gacha_music.dart` con clave `mu_<id>`. Reparto de rareza:
+# nana y carrillon (N), lofi (R), feria (SR), abrigo (UR) y cenit (∞, la mas
+# elaborada). Todas cierran el bucle con los mismos trucos que las de serie:
+# `_chord_pad`/`_legato_line`/`_reverb_circular` para las de pad, y el patron
+# de `_place` sobre un bucle circular para las que tienen notas sueltas.
+
+
+def music_nana(total=72.0):
+    """N: una nana en compas de tres, mecida siempre igual."""
+    rng = np.random.RandomState(53)
+    chords = [
+        [98.00, 146.83, 246.94, 293.66],    # G6
+        [87.31, 130.81, 220.00, 261.63],    # F6
+        [73.42, 110.00, 174.61, 220.00],    # Dm7
+        [82.41, 123.47, 196.00, 246.94],    # Em7
+    ]
+    l, r = _chord_pad(chords, total, fade=7.0, rng=rng, bright=0.10, amp=0.18)
+    bar = total / 4
+    # El mismo vaiven en cada compas: sube y baja, nunca sorprende.
+    line = [
+        (0.5, 3.0, 392.00), (bar - 2.0, 3.0, 349.23),
+        (bar + 0.5, 3.0, 329.63), (2 * bar - 2.0, 3.0, 293.66),
+        (2 * bar + 0.5, 3.0, 293.66), (3 * bar - 2.0, 3.0, 261.63),
+        (3 * bar + 0.5, 3.0, 246.94), (4 * bar - 3.0, 4.0, 220.00),
+    ]
+    mel = _legato_line(line, total, amp=0.06, attack=1.6, release=3.0, seed=17)
+    l = l + mel * 0.5
+    r = r + mel * 0.5
+    return np.stack([_reverb_circular(l, 3.2, 0.4, 21), _reverb_circular(r, 3.2, 0.4, 22)], axis=1)
+
+
+def music_carrillon(total=48.0):
+    """N: caja de musica. Una frase de celesta que da dos vueltas sobre un
+    pad casi inaudible, solo para no dejar silencio detras."""
+    rng = np.random.RandomState(59)
+    n = _loop_len(total)
+    L = np.zeros(n)
+    R = np.zeros(n)
+    chords = [
+        [130.81, 196.00, 329.63],
+        [110.00, 164.81, 293.66],
+        [98.00, 146.83, 261.63],
+        [123.47, 185.00, 293.66],
+    ]
+    pl, pr = _chord_pad(chords, total, fade=8.0, rng=rng, bright=0.06, amp=0.05)
+    phrase = [
+        (0.0, 76), (0.5, 79), (1.0, 83), (1.5, 79),
+        (2.0, 81), (2.5, 76), (3.0, 74), (3.75, 76),
+        (4.5, 79), (5.0, 83), (5.5, 86), (6.0, 83),
+        (6.5, 79), (7.25, 81), (7.75, 74),
+    ]
+    bar = total / 2
+    for rep in range(2):
+        for t0, note in phrase:
+            b = bell(_midi(note), 1.4, amp=0.30, bright=1.3)
+            _place(L, rep * bar + t0, b * 0.55)
+            _place(R, rep * bar + t0, b * 0.45)
+    L += pl
+    R += pr
+    return np.stack([_reverb_circular(L, 3.0, 0.38, 23), _reverb_circular(R, 3.0, 0.38, 24)], axis=1)
+
+
+def music_lofi(bpm=76.0, bars=8):
+    """R: groove suave, caja destimbrada y algo de polvo de vinilo."""
+    beat = 60.0 / bpm
+    total = bars * 4 * beat
+    n = _loop_len(total)
+    L = np.zeros(n)
+    R = np.zeros(n)
+    swing = 0.58
+
+    def eighth(bar, beat_i, off):
+        return (bar * 4 + beat_i + (swing if off else 0.0)) * beat
+
+    prog = [(45, [64, 67, 71, 74]), (43, [62, 65, 69, 72]),
+            (48, [64, 67, 71, 74]), (41, [60, 64, 67, 71])] * (bars // 4)
+    for bar, (root, chord) in enumerate(prog):
+        for b, note in enumerate((root, root + 5)):
+            sig = _bass(_midi(note), dur=0.9, amp=0.22)
+            t0 = bar * 4 * beat + b * 2 * beat
+            _place(L, t0, sig * 0.5)
+            _place(R, t0, sig * 0.5)
+        for beat_i, off in ((1, True), (3, False)):
+            for k, note in enumerate(chord):
+                sig = _epiano(_midi(note), dur=1.1, amp=0.045 / (1 + 0.2 * k))
+                t0 = eighth(bar, beat_i, off)
+                _place(L, t0, sig * 0.55)
+                _place(R, t0, sig * 0.45)
+        dust = _noise_hit(700 + bar, 0.6, 6.0, hp=False, amp=0.015)
+        _place(L, bar * 4 * beat, dust * 0.5)
+        _place(R, bar * 4 * beat, dust * 0.5)
+    L = _reverb_circular(L, 1.8, 0.22, 31)
+    R = _reverb_circular(R, 1.8, 0.22, 32)
+    return np.stack([L, R], axis=1)
+
+
+def music_feria(bpm=138.0, bars=16):
+    """SR: la feria alegre, sin swing y con las campanitas de rigor."""
+    beat = 60.0 / bpm
+    total = bars * 4 * beat
+    n = _loop_len(total)
+    L = np.zeros(n)
+    R = np.zeros(n)
+    prog = [(48, [64, 67, 71, 74]), (45, [64, 67, 72, 76]),
+            (43, [65, 69, 72, 76]), (50, [65, 69, 71, 74])] * (bars // 4)
+    for bar, (root, chord) in enumerate(prog):
+        nxt = prog[(bar + 1) % len(prog)][0]
+        for b, note in enumerate((root, root + 7, root + 12, nxt)):
+            sig = _bass(_midi(note), amp=0.28)
+            t0 = bar * 4 * beat + b * beat
+            _place(L, t0, sig * 0.5)
+            _place(R, t0, sig * 0.5)
+        for beat_i in range(4):
+            for k, note in enumerate(chord):
+                sig = _epiano(_midi(note), dur=0.4, amp=0.04 / (1 + 0.25 * k))
+                t0 = (bar * 4 + beat_i) * beat
+                _place(L, t0, sig * 0.45)
+                _place(R, t0, sig * 0.55)
+    phrase = [
+        (0, 0, 84), (0, 1, 88), (0, 2, 91), (0, 3, 88),
+        (1, 0, 86), (1, 1, 84), (1, 2, 81), (1, 3, 84),
+        (2, 0, 88), (2, 1, 91), (2, 2, 96), (2, 3, 93),
+        (3, 0, 91), (3, 1, 88), (3, 2, 84), (3, 3, 81),
+    ]
+    for rep in range(bars // 4):
+        for bar, beat_i, note in phrase:
+            t0 = ((bar + rep * 4) * 4 + beat_i) * beat
+            sig = _marimba(_midi(note), amp=0.20)
+            _place(L, t0, sig * 0.4)
+            _place(R, t0, sig * 0.6)
+    for bar in range(bars):
+        for b in range(4):
+            t0 = (bar * 4 + b) * beat
+            if b in (0, 2):
+                k = _kick(amp=0.26)
+                _place(L, t0, k)
+                _place(R, t0, k)
+            tamb = _noise_hit(900 + bar * 4 + b, 0.05, 60.0, amp=0.02)
+            _place(L, t0 + beat * 0.5, tamb * 0.5)
+            _place(R, t0 + beat * 0.5, tamb * 0.5)
+    for rep in range(bars // 4):
+        for i, f in enumerate((1567.98, 1864.66, 2093.0, 2349.32)):
+            b = bell(f, 0.5, amp=0.18, bright=1.3)
+            t0 = (rep * 4 * 4 + 15) * beat + i * 0.05
+            _place(L, t0, b * 0.5)
+            _place(R, t0, b * 0.5)
+    L = _reverb_circular(L, 1.4, 0.18, 41)
+    R = _reverb_circular(R, 1.4, 0.18, 42)
+    return np.stack([L, R], axis=1)
+
+
+def music_abrigo(total=88.0):
+    """UR: un pad de cuerdas calido, acordes extendidos de seis voces."""
+    rng = np.random.RandomState(67)
+    chords = [
+        [87.31, 130.81, 174.61, 261.63, 349.23, 440.00],   # Fmaj9
+        [65.41, 98.00, 164.81, 246.94, 329.63, 392.00],    # Cmaj9
+        [73.42, 110.00, 146.83, 220.00, 293.66, 349.23],   # Dm11
+        [98.00, 146.83, 174.61, 246.94, 349.23, 440.00],   # G13
+    ]
+    l, r = _chord_pad(chords, total, fade=8.0, rng=rng, bright=0.16, amp=0.15)
+    bar = total / 4
+    line = [
+        (1.0, 6.0, 523.25), (bar + 1.0, 6.0, 493.88),
+        (2 * bar + 1.0, 6.0, 440.00), (3 * bar + 1.0, 7.0, 392.00),
+    ]
+    mel = _legato_line(line, total, amp=0.09, attack=2.2, release=4.0, seed=29)
+    l = l + mel * 0.55
+    r = r + mel * 0.45
+    return np.stack([_reverb_circular(l, 4.2, 0.46, 43), _reverb_circular(r, 4.2, 0.46, 44)], axis=1)
+
+
+def music_cenit(total=96.0):
+    """∞: la mas lograda, con dos voces en contrapunto sobre un pad que solo
+    se mueve para sostenerlas, y un brillo que aparece una sola vez por
+    vuelta como una senal de que esto no es una pista mas."""
+    rng = np.random.RandomState(89)
+    chords = [
+        [65.41, 98.00, 130.81, 196.00, 246.94],     # Cmaj9
+        [73.42, 110.00, 146.83, 220.00, 277.18],    # Dm9
+        [82.41, 123.47, 164.81, 246.94, 311.13],    # Em11
+        [87.31, 130.81, 174.61, 261.63, 329.63],    # Fmaj7
+        [98.00, 146.83, 196.00, 293.66, 369.99],    # G9
+        [65.41, 98.00, 130.81, 196.00, 261.63],     # Cmaj9, de vuelta
+    ]
+    l, r = _chord_pad(chords, total, fade=6.0, rng=rng, bright=0.14, amp=0.15)
+    bar = total / len(chords)
+    voice_a = [
+        (0.5, 4.0, 392.00), (bar + 0.5, 4.0, 440.00), (2 * bar + 0.5, 4.0, 493.88),
+        (3 * bar + 0.5, 4.0, 523.25), (4 * bar + 0.5, 4.0, 440.00), (5 * bar + 0.5, 5.0, 392.00),
+    ]
+    voice_b = [
+        (bar * 0.5, 4.0, 261.63), (bar * 1.5, 4.0, 293.66), (bar * 2.5, 4.0, 329.63),
+        (bar * 3.5, 4.0, 349.23), (bar * 4.5, 4.0, 293.66), (bar * 5.5, 5.0, 261.63),
+    ]
+    a = _legato_line(voice_a, total, amp=0.075, attack=1.6, release=2.8, seed=51)
+    b = _legato_line(voice_b, total, amp=0.065, attack=1.8, release=3.0, seed=52)
+    l = l + a * 0.5 + b * 0.4
+    r = r + a * 0.4 + b * 0.5
+    shimmer = np.zeros(_loop_len(total))
+    for f in (1046.5, 1318.5, 1567.98):
+        _place(shimmer, total * 0.5 - 1.0, bell(f, 2.0, amp=0.12, bright=1.4))
+    l = l + shimmer * 0.5
+    r = r + shimmer * 0.5
+    return np.stack([_reverb_circular(l, 4.6, 0.48, 61), _reverb_circular(r, 4.6, 0.48, 62)], axis=1)
+
+
 MUSIC_TRACKS = {
     "calma": music_calma,
     "aurora": music_aurora,
     "brisa": music_brisa,
     "noche": music_noche,
     "plaza": music_plaza,
+}
+
+# Las seis del gachapon (0.6.0): van con `.ogg` y `.mp3` desde ya, para no
+# tener que acordarse de convertirlas aparte como paso con las de serie.
+GACHA_MUSIC_TRACKS = {
+    "nana": music_nana,
+    "carrillon": music_carrillon,
+    "lofi": music_lofi,
+    "feria": music_feria,
+    "abrigo": music_abrigo,
+    "cenit": music_cenit,
 }
 
 
@@ -532,6 +753,19 @@ def write_ogg(name, stereo, peak=0.6):
         check=True,
     )
     os.remove(tmp)
+    print("  ->", os.path.relpath(out, ROOT), f"({os.path.getsize(out) // 1024} KiB)")
+
+
+def write_mp3(name):
+    """Convierte el `.ogg` ya escrito a `.mp3`, para Windows (ver
+    `MusicTrack.asset` en `lib/audio/audio_service.dart`)."""
+    src = os.path.join(BGM_DIR, f"{name}.ogg")
+    out = os.path.join(BGM_DIR, f"{name}.mp3")
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", src,
+         "-c:a", "libmp3lame", "-q:a", "3", out],
+        check=True,
+    )
     print("  ->", os.path.relpath(out, ROOT), f"({os.path.getsize(out) // 1024} KiB)")
 
 
@@ -550,6 +784,527 @@ def write_ogg_leveled(name, stereo, lufs=-15.5):
     print("  ->", os.path.relpath(out, ROOT), f"({os.path.getsize(out) // 1024} KiB)")
 
 
+# --------------------------------------------------- efectos del gachapon
+#
+# El gacha necesita sonidos "de premio": la manivela que engancha, la capsula
+# que cae y una fanfarria distinta segun lo raro que salga. Todos son cortos y
+# secos salvo las de UR e infinito, que son las que dan el subidon.
+
+
+def _click(seed, freq, amp=1.0, dur=0.035):
+    """Un diente de la manivela: ruido muy corto con cuerpo de plastico."""
+    n = int(dur * SR)
+    rng = np.random.RandomState(seed)
+    noise = rng.normal(0, 1, n) * np.exp(-np.linspace(0, 55, n))
+    body = sine(freq, n) * np.exp(-np.linspace(0, 30, n))
+    return amp * (0.55 * noise + 0.8 * body)
+
+
+def sfx_crank():
+    """La manivela girando: seis dientes que enganchan cada vez mas rapido."""
+    total = int(0.78 * SR)
+    out = np.zeros(total)
+    at = 0.0
+    gap = 0.135
+    for i in range(6):
+        d = int(at * SR)
+        c = _click(11 + i, 320 + i * 46, amp=0.75 + i * 0.05)
+        out[d:d + len(c)] += c[:total - d]
+        at += gap
+        gap *= 0.86
+    # Un roce grave por debajo, el muelle del tambor.
+    rumble = np.random.RandomState(3).normal(0, 1, total)
+    k = int(SR * 0.004)
+    rumble = np.convolve(rumble, np.ones(k) / k, mode="same")
+    out += 0.22 * rumble * np.linspace(0.2, 1.0, total) * np.exp(-np.linspace(0, 1.2, total))
+    return fade_edges(out, 4.0)
+
+
+def sfx_capsule():
+    """La capsula cayendo por el tobogan y golpeando la bandeja."""
+    total = int(0.62 * SR)
+    out = np.zeros(total)
+    # Tres rebotes cada vez mas juntos y mas flojos.
+    for i, (at, amp, freq) in enumerate(
+        ((0.00, 1.0, 196.0), (0.16, 0.62, 233.1), (0.27, 0.38, 261.6), (0.35, 0.22, 293.7))
+    ):
+        d = int(at * SR)
+        n = int(0.16 * SR)
+        hit = (sine(freq, n) + 0.4 * sine(freq * 2.4, n)) * env_ad(n, 0.002, 0.10, curve=7.0)
+        hit += 0.25 * np.random.RandomState(20 + i).normal(0, 1, n) * np.exp(-np.linspace(0, 70, n))
+        out[d:d + n] += amp * hit[:total - d]
+    return fade_edges(out, 4.0)
+
+
+def sfx_pop():
+    """La capsula abriendose: un chasquido con chispa."""
+    n = int(0.22 * SR)
+    body = soft_tone(880.0, 0.22, 0.8, attack=0.001, curve=9.0)
+    bright = soft_tone(1318.5, 0.18, 0.6, attack=0.001, curve=12.0)
+    body[:len(bright)] += 0.4 * bright
+    air = np.random.RandomState(31).normal(0, 1, n) * np.exp(-np.linspace(0, 60, n)) * 0.18
+    return fade_edges(body[:n] + air, 3.0)
+
+
+def _fanfare(notes, tail=1.0, mix=0.3, shine=0.0):
+    """Arpegio de campanas: la base de las tres fanfarrias de rareza."""
+    last = max(d for _, d in notes)
+    n = int((last + tail) * SR)
+    out = np.zeros(n)
+    for freq, delay in notes:
+        d = int(delay * SR)
+        b = bell(freq, tail + 0.4, amp=1.0, bright=1.2)
+        out[d:d + len(b)] += b[:n - d]
+    if shine:
+        # Brillo que sube: lo que hace que suene a premio gordo.
+        sweep = np.linspace(0, 1, n)
+        glitter = np.sin(2 * math.pi * (1800 + 2600 * sweep) * t(n)) * np.exp(-np.linspace(0, 3.5, n))
+        out += shine * glitter
+    return fade_edges(reverb(out, mix=mix), 4.0)
+
+
+def sfx_rare():
+    """SR: tres notas cortas, un guiño."""
+    return _fanfare([(659.25, 0.0), (830.61, 0.08), (987.77, 0.16)], tail=0.7, mix=0.2)
+
+
+def sfx_epic():
+    """SSR: arpegio mayor con novena y un poco de brillo."""
+    return _fanfare(
+        [(523.25, 0.0), (659.25, 0.07), (783.99, 0.14), (1046.5, 0.21), (1318.5, 0.30)],
+        tail=1.4,
+        mix=0.3,
+        shine=0.05,
+    )
+
+
+def sfx_legend():
+    """UR: fanfarria larga, con golpe grave debajo y brillo ascendente."""
+    out = _fanfare(
+        [(523.25, 0.0), (783.99, 0.09), (1046.5, 0.18), (1318.5, 0.27),
+         (1567.98, 0.36), (2093.0, 0.46)],
+        tail=2.2,
+        mix=0.34,
+        shine=0.10,
+    )
+    n = len(out)
+    boom = sine(58.0, n) * env_ad(n, 0.004, 0.9, curve=2.0) * 0.5
+    boom += sine(87.0, n) * env_ad(n, 0.004, 0.7, curve=2.4) * 0.25
+    return fade_edges(out + boom, 4.0)
+
+
+def sfx_infinity():
+    """Infinito: no es una fanfarria, es algo que no deberia estar ahi.
+
+    Un acorde suspendido que sube de tono sin resolver, con las voces
+    desafinadas entre si: suena raro a proposito.
+    """
+    total = int(3.4 * SR)
+    out = np.zeros(total)
+    base = [261.63, 392.0, 523.25, 698.46, 1046.5]
+    for i, freq in enumerate(base):
+        glide = np.linspace(1.0, 1.06, total)
+        phase = 2 * math.pi * np.cumsum(freq * glide) / SR
+        voice = np.sin(phase) + 0.3 * np.sin(2 * phase)
+        env = np.exp(-np.linspace(0, 1.6, total)) * (1 - np.exp(-np.linspace(0, 12, total)))
+        out += (0.9 - i * 0.12) * voice * env
+    shimmer = np.random.RandomState(5).normal(0, 1, total)
+    k = int(SR * 0.0015)
+    shimmer = np.convolve(shimmer, np.ones(k) / k, mode="same")
+    out += 0.10 * shimmer * np.exp(-np.linspace(0, 2.4, total))
+    for freq, delay in ((1567.98, 0.0), (2093.0, 0.5), (2637.02, 1.0)):
+        d = int(delay * SR)
+        b = bell(freq, 2.4, amp=0.55, bright=1.4)
+        out[d:d + len(b)] += b[:total - d]
+    return fade_edges(reverb(out, mix=0.42, decay=3.0), 5.0)
+
+
+# ---------------------------------------------------- efectos del pinball
+#
+# El pinball tiene su propio juego de sonidos, ninguno sacado de la interfaz:
+# golpes de mesa (flippers, bumpers, gomas, muelles), las luces que se
+# encienden y el coro del Tama cuando salva la bola. Son secos y cortos
+# porque suenan muchas veces por segundo; solo el coro y los premios tienen
+# cola.
+
+
+def _thud(freq, dur, drop=0.5, amp=1.0, curve=9.0):
+    """Golpe con cuerpo: un seno que baja de tono al apagarse."""
+    n = int(dur * SR)
+    f = freq * (1 - drop * (1 - np.exp(-np.linspace(0, 6, n))))
+    phase = 2 * math.pi * np.cumsum(f) / SR
+    return amp * np.sin(phase) * env_ad(n, 0.001, dur, curve=curve)
+
+
+def _noise(seed, dur, decay=40.0, smooth=1, amp=1.0):
+    n = int(dur * SR)
+    x = np.random.RandomState(seed).normal(0, 1, n)
+    if smooth > 1:
+        x = np.convolve(x, np.ones(smooth) / smooth, mode="same")
+    return amp * x * np.exp(-np.linspace(0, decay * dur, n))
+
+
+def _sum(*sigs):
+    """Suma senales de largos distintos, todas desde el principio."""
+    out = np.zeros(max(len(x) for x in sigs))
+    for x in sigs:
+        out[:len(x)] += x
+    return out
+
+
+def _mix(total, *parts):
+    """Suma trozos (senal, empieza en segundos) en un bufer de [total] s."""
+    out = np.zeros(int(total * SR))
+    for sig, at in parts:
+        d = int(at * SR)
+        out[d:d + len(sig)] += sig[:len(out) - d]
+    return out
+
+
+def sfx_pb_launch():
+    """El lanzador: el muelle se suelta y la bola sube por el carril."""
+    total = 0.55
+    clack = _sum(_thud(140, 0.12, drop=0.3, amp=1.0), _noise(41, 0.05, decay=60, amp=0.5))
+    n = int(0.45 * SR)
+    sweep = np.linspace(0, 1, n)
+    whoosh = np.random.RandomState(42).normal(0, 1, n)
+    k = int(SR * 0.0012)
+    whoosh = np.convolve(whoosh, np.ones(k) / k, mode="same")
+    whoosh *= np.sin(math.pi * sweep) ** 2 * 0.35
+    ring = np.sin(2 * math.pi * np.cumsum(420 + 520 * sweep) / SR) * np.sin(math.pi * sweep) * 0.12
+    return fade_edges(_mix(total, (clack, 0), (whoosh + ring, 0.04)), 3.0)
+
+
+def sfx_pb_flipper():
+    """El flipper: el golpe seco del solenoide."""
+    body = _thud(110, 0.09, drop=0.35, curve=10)
+    click = _noise(43, 0.02, decay=180, amp=0.6)
+    return fade_edges(_mix(0.1, (body, 0), (click, 0)), 2.0)
+
+
+def sfx_pb_bumper():
+    """Un bumper: el pop metalico que devuelve la bola."""
+    ping = _thud(880, 0.16, drop=0.45, amp=0.7, curve=11)
+    ping += 0.35 * _thud(1760, 0.16, drop=0.45, curve=14)
+    kick = _thud(160, 0.08, drop=0.3, amp=0.8, curve=10)
+    snap = _noise(44, 0.03, decay=140, amp=0.4)
+    return fade_edges(_mix(0.18, (ping, 0), (kick, 0), (snap, 0)), 2.0)
+
+
+def sfx_pb_sling():
+    """Un tirachinas: la goma que da un latigazo."""
+    n = int(0.14 * SR)
+    f = 240 * (1 + 0.8 * np.exp(-np.linspace(0, 20, n)))
+    twang = np.sin(2 * math.pi * np.cumsum(f) / SR) * env_ad(n, 0.001, 0.12, curve=8)
+    twang += 0.3 * np.sin(4 * math.pi * np.cumsum(f) / SR) * env_ad(n, 0.001, 0.08, curve=10)
+    return fade_edges(twang + _noise(45, 0.14, decay=90, smooth=3, amp=0.3), 2.0)
+
+
+def sfx_pb_spring():
+    """Una pared-muelle: un boing que tiembla."""
+    n = int(0.32 * SR)
+    tt = t(n)
+    f = 330 * (1 + 0.12 * np.sin(2 * math.pi * 17 * tt) * np.exp(-tt * 8))
+    boing = np.sin(2 * math.pi * np.cumsum(f) / SR) * env_ad(n, 0.002, 0.3, curve=5)
+    boing += 0.25 * np.sin(2 * math.pi * np.cumsum(f * 2.5) / SR) * env_ad(n, 0.002, 0.15, curve=8)
+    return fade_edges(boing, 3.0)
+
+
+def sfx_pb_post():
+    """Un poste de goma: un toque blando y agudo."""
+    tock = _sum(_thud(1250, 0.05, drop=0.2, curve=12), 0.4 * _thud(2600, 0.03, drop=0.1, curve=14))
+    return fade_edges(tock, 1.5)
+
+
+def sfx_pb_spinner():
+    """El spinner: la paleta dando vueltas, trinquete que se frena."""
+    parts = []
+    at = 0.0
+    gap = 0.028
+    for i in range(12):
+        parts.append((_click(60 + i, 900 - i * 25, amp=1.0 - i * 0.06, dur=0.025), at))
+        at += gap
+        gap *= 1.12
+    return fade_edges(_mix(at + 0.05, *parts), 2.0)
+
+
+def sfx_pb_target():
+    """Una diana que cae: chasquido de plastico y una nota clara."""
+    clack = _sum(_thud(520, 0.05, drop=0.4, curve=12), _noise(46, 0.03, decay=150, amp=0.5))
+    ding = bell(1568.0, 0.35, amp=0.45, bright=0.8)
+    return fade_edges(_mix(0.4, (clack, 0), (ding, 0.015)), 3.0)
+
+
+def sfx_pb_hole_open():
+    """Un agujero que se abre: cuatro notas que suben y un brillo."""
+    notes = (783.99, 987.77, 1174.66, 1567.98)
+    parts = [(_marimba(f, dur=0.5, amp=0.9), i * 0.075) for i, f in enumerate(notes)]
+    n = int(0.6 * SR)
+    shimmer = np.sin(2 * math.pi * np.cumsum(np.linspace(2200, 3600, n)) / SR) * np.exp(-np.linspace(0, 5, n)) * 0.12
+    parts.append((shimmer, 0.22))
+    return fade_edges(reverb(_mix(1.0, *parts), mix=0.22), 4.0)
+
+
+def sfx_pb_capture():
+    """La bola cae en el agujero: rueda por el borde, cae y suena el premio."""
+    n = int(0.3 * SR)
+    sweep = np.linspace(0, 1, n)
+    rattle = np.sin(2 * math.pi * np.cumsum(38 - 20 * sweep) / SR)
+    rattle = (rattle > 0).astype(float) * _noise(47, 0.3, decay=2, smooth=4)[:n] * 0.35
+    drop = _thud(95, 0.25, drop=0.4, amp=1.0, curve=6)
+    ding = bell(1046.5, 0.8, amp=0.5) + bell(1567.98, 0.8, amp=0.35)
+    return fade_edges(reverb(_mix(1.2, (rattle, 0), (drop, 0.28), (ding, 0.36)), mix=0.2), 4.0)
+
+
+def sfx_pb_kickback_lit():
+    """Un kickback encendido: dos notas de luz."""
+    return fade_edges(_mix(0.5, (bell(1318.5, 0.35, amp=0.6), 0), (bell(1975.5, 0.4, amp=0.6), 0.09)), 3.0)
+
+
+def sfx_pb_kickback():
+    """El kickback: un golpe grave que devuelve la bola arriba."""
+    boom = _thud(70, 0.3, drop=0.2, amp=1.0, curve=5)
+    n = int(0.3 * SR)
+    up = np.sin(2 * math.pi * np.cumsum(np.linspace(200, 700, n)) / SR) * env_ad(n, 0.005, 0.25, curve=5) * 0.25
+    return fade_edges(_mix(0.4, (boom, 0), (up, 0.02), (_noise(48, 0.06, decay=60, amp=0.4), 0)), 3.0)
+
+
+def _choir_voice(f0, n, rng, vowel):
+    """Una voz de coro: armonicos de [f0] esculpidos por los formantes de
+    la vocal, con vibrato lento y un poco de aire."""
+    tt = t(n)
+    vib = 1 + 0.006 * np.sin(2 * math.pi * (5.2 + rng.uniform(-0.4, 0.4)) * tt + rng.uniform(0, 6.28))
+    drift = 1 + rng.uniform(-0.004, 0.004)
+    phase = 2 * math.pi * np.cumsum(f0 * drift * vib) / SR
+    out = np.zeros(n)
+    for k in range(1, 30):
+        fk = f0 * k
+        if fk > 6000:
+            break
+        a = sum(g * math.exp(-((fk - fc) / bw) ** 2) for fc, bw, g in vowel)
+        out += a / k ** 0.3 * np.sin(k * phase)
+    return out
+
+
+def sfx_pb_choir():
+    """El coro del Tama que salva la bola: un «aaah» de angeles.
+
+    Un acorde mayor con novena cantado por un coro sintetizado (voces con
+    formantes de «a», cada una en tres dobladas), que entra suave, abre a
+    «o» y se queda flotando en la reverb. Una campanita de cristal arriba.
+    """
+    total = 2.2
+    n = int(total * SR)
+    rng = np.random.RandomState(77)
+    ah = ((800, 110, 1.0), (1150, 130, 0.55), (2900, 240, 0.18), (3900, 300, 0.06))
+    oh = ((500, 100, 1.0), (850, 120, 0.5), (2800, 240, 0.12), (3600, 300, 0.04))
+    chord = (261.63, 329.63, 392.0, 523.25, 587.33, 659.25)
+    blend = np.clip(np.linspace(-0.4, 1.4, n), 0, 1)
+    out = np.zeros(n)
+    for f0 in chord:
+        for _ in range(3):
+            a = _choir_voice(f0, n, rng, ah)
+            o = _choir_voice(f0, n, rng, oh)
+            out += (1 - blend) * a + blend * o
+    out /= np.max(np.abs(out)) or 1.0
+    env = np.minimum(1, t(n) / 0.28) ** 1.5 * np.exp(-np.maximum(0, t(n) - 0.9) * 2.2)
+    out *= env
+    breath = _noise(78, total, decay=0.9, smooth=6, amp=0.04) * env
+    sparkle = _mix(total, (bell(2093.0, 1.2, amp=0.18, bright=1.4), 0.05), (bell(3135.96, 1.0, amp=0.1, bright=1.4), 0.2))
+    return fade_edges(reverb(out + breath + sparkle, mix=0.45, decay=3.0), 8.0)
+
+
+def sfx_pb_thrown():
+    """El Tama devuelve la bola: un soplido que sube con chispas."""
+    n = int(0.5 * SR)
+    sweep = np.linspace(0, 1, n)
+    air = np.random.RandomState(49).normal(0, 1, n)
+    k = int(SR * 0.0008)
+    air = np.convolve(air, np.ones(k) / k, mode="same") * np.sin(math.pi * sweep) ** 1.5 * 0.4
+    rise = np.sin(2 * math.pi * np.cumsum(500 + 1300 * sweep ** 2) / SR) * np.sin(math.pi * sweep) * 0.3
+    sparks = _mix(0.6, (bell(2637.0, 0.3, amp=0.25), 0.18), (bell(3520.0, 0.3, amp=0.2), 0.3))
+    return fade_edges(_mix(0.6, (air + rise, 0), (sparks, 0)), 3.0)
+
+
+def sfx_pb_nudge():
+    """La mesa da un meneo: dos golpes sordos de madera."""
+    a = _sum(_thud(85, 0.14, drop=0.25, curve=8), _noise(50, 0.05, decay=80, smooth=8, amp=0.4))
+    return fade_edges(_mix(0.3, (a, 0), (0.7 * a, 0.11)), 2.0)
+
+
+def sfx_pb_lost():
+    """La bola se va por el desague: tres notas que caen, con sordina."""
+    parts = []
+    for i, f in enumerate((392.0, 349.23, 293.66)):
+        n = int(0.34 * SR)
+        wob = 1 + 0.02 * np.sin(2 * math.pi * 6 * t(n))
+        voice = np.sin(2 * math.pi * np.cumsum(f * wob * np.linspace(1, 0.97, n)) / SR)
+        voice += 0.35 * np.sin(4 * math.pi * np.cumsum(f * wob) / SR)
+        parts.append((voice * env_ad(n, 0.02, 0.3, curve=3.5) * (0.9 - i * 0.1), i * 0.2))
+    return fade_edges(_mix(0.95, *parts), 4.0)
+
+
+def sfx_pb_prize():
+    """Premio en el pinball: un arpegio de marimba y campanas que sube."""
+    notes = (523.25, 659.25, 783.99, 1046.5, 1318.5)
+    parts = [(_marimba(f, dur=0.6, amp=0.8), i * 0.07) for i, f in enumerate(notes)]
+    parts.append((bell(1567.98, 1.2, amp=0.5), 0.36))
+    parts.append((bell(2093.0, 1.2, amp=0.35), 0.36))
+    return fade_edges(reverb(_mix(1.6, *parts), mix=0.28), 4.0)
+
+
+def sfx_pb_jackpot():
+    """Premio gordo (UR y ∞): el arpegio doble, un golpe grave y el coro
+    abriendo detras."""
+    notes = (523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98, 2093.0)
+    parts = [(_marimba(f, dur=0.7, amp=0.8), i * 0.065) for i, f in enumerate(notes)]
+    parts.append((_thud(55, 0.9, drop=0.1, amp=0.9, curve=3), 0.0))
+    for f in (1046.5, 1318.5, 1567.98, 2093.0):
+        parts.append((bell(f, 1.8, amp=0.3, bright=1.3), 0.48))
+    body = _mix(2.6, *parts)
+    choir = sfx_pb_choir()
+    choir = choir / (np.max(np.abs(choir)) or 1.0) * 0.35
+    return fade_edges(reverb(body, mix=0.3) + _mix(2.6, (choir, 0.3)), 5.0)
+
+
+PINBALL_SFX = {
+    "pb_launch": (sfx_pb_launch, 0.72),
+    "pb_flipper": (sfx_pb_flipper, 0.62),
+    "pb_bumper": (sfx_pb_bumper, 0.66),
+    "pb_sling": (sfx_pb_sling, 0.62),
+    "pb_spring": (sfx_pb_spring, 0.58),
+    "pb_post": (sfx_pb_post, 0.45),
+    "pb_spinner": (sfx_pb_spinner, 0.55),
+    "pb_target": (sfx_pb_target, 0.66),
+    "pb_hole_open": (sfx_pb_hole_open, 0.8),
+    "pb_capture": (sfx_pb_capture, 0.8),
+    "pb_kickback_lit": (sfx_pb_kickback_lit, 0.66),
+    "pb_kickback": (sfx_pb_kickback, 0.8),
+    "pb_choir": (sfx_pb_choir, 0.82),
+    "pb_thrown": (sfx_pb_thrown, 0.66),
+    "pb_nudge": (sfx_pb_nudge, 0.7),
+    "pb_lost": (sfx_pb_lost, 0.7),
+    "pb_prize": (sfx_pb_prize, 0.82),
+    "pb_jackpot": (sfx_pb_jackpot, 0.9),
+}
+
+
+def main_pinball():
+    print("Generando efectos del pinball...")
+    for name, (fn, peak) in PINBALL_SFX.items():
+        write_wav(os.path.join(SFX_DIR, f"{name}.wav"), fn(), peak=peak)
+
+
+# --------------------------------------------------- efectos del pachinko
+#
+# El pachinko suena a metal: bolas de acero contra clavos de laton, el
+# molinillo de plastico, el tulipan que se abre y la cascada de bolas al
+# cobrar. Los golpes son finisimos porque suenan decenas por segundo.
+
+
+def sfx_pk_drop():
+    """Una bola que se suelta: sale del riel con un clinc y rueda un poco."""
+    clink = _sum(bell(2637.0, 0.12, amp=0.5, bright=1.6), _thud(1900, 0.03, drop=0.1, amp=0.4, curve=14))
+    n = int(0.12 * SR)
+    roll = np.random.RandomState(61).normal(0, 1, n)
+    roll = np.convolve(roll, np.ones(6) / 6, mode="same") * np.sin(math.pi * np.linspace(0, 1, n)) * 0.12
+    return fade_edges(_mix(0.2, (clink, 0), (roll, 0.02)), 2.0)
+
+
+def sfx_pk_pin():
+    """Una bola de acero en un clavo de laton: un tic agudo y brillante."""
+    tik = _sum(_thud(3400, 0.018, drop=0.05, curve=16), 0.5 * _thud(5200, 0.012, drop=0.05, curve=18))
+    return fade_edges(_sum(tik, _noise(62, 0.012, decay=300, amp=0.25)), 1.0)
+
+
+def sfx_pk_windmill():
+    """El molinillo: cuatro aspas de plastico que dan la vuelta."""
+    parts = []
+    at = 0.0
+    gap = 0.035
+    for i in range(5):
+        parts.append((_click(63 + i, 1500 - i * 60, amp=0.9 - i * 0.12, dur=0.02), at))
+        at += gap
+        gap *= 1.18
+    return fade_edges(_mix(at + 0.04, *parts), 2.0)
+
+
+def sfx_pk_tulip():
+    """El tulipan: el ala de plastico que da un golpecito."""
+    flap = _sum(_thud(700, 0.05, drop=0.35, curve=12), _noise(64, 0.025, decay=160, amp=0.4))
+    return fade_edges(_mix(0.1, (flap, 0)), 1.5)
+
+
+def sfx_pk_same():
+    """Un bolsillo de «igual»: la bola cae en el cubo y suena una nota."""
+    clunk = _sum(_thud(260, 0.08, drop=0.4, curve=9), _noise(65, 0.03, decay=120, amp=0.4))
+    return fade_edges(reverb(_mix(0.6, (clunk, 0), (bell(1174.66, 0.45, amp=0.45), 0.04)), mix=0.15), 3.0)
+
+
+def sfx_pk_up1():
+    """Un bolsillo de +1: tres notas de campana que suben."""
+    clunk = _sum(_thud(260, 0.08, drop=0.4, curve=9), _noise(66, 0.03, decay=120, amp=0.4))
+    notes = (1046.5, 1318.5, 1567.98)
+    parts = [(clunk, 0)] + [(bell(f, 0.6, amp=0.5, bright=1.1), 0.04 + i * 0.07) for i, f in enumerate(notes)]
+    return fade_edges(reverb(_mix(0.9, *parts), mix=0.2), 3.0)
+
+
+def sfx_pk_up2():
+    """El tulipan se traga la bola (+2) o sale una UR: la feria entera,
+    campanas en cascada sobre un arpegio de marimba."""
+    notes = (523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98, 2093.0)
+    parts = [(_marimba(f, dur=0.6, amp=0.75), i * 0.05) for i, f in enumerate(notes)]
+    for k in range(10):
+        f = (2093.0, 2637.0, 3135.96, 2349.32)[k % 4]
+        parts.append((bell(f, 0.5, amp=0.28, bright=1.5), 0.35 + k * 0.06))
+    parts.append((_thud(80, 0.6, drop=0.15, amp=0.7, curve=4), 0.0))
+    return fade_edges(reverb(_mix(2.0, *parts), mix=0.3), 5.0)
+
+
+def sfx_pk_out():
+    """La bola se va por la salida: rueda por el canal y se pierde, sin
+    drama (pasa seis de cada diez veces)."""
+    n = int(0.22 * SR)
+    sweep = np.linspace(0, 1, n)
+    roll = np.random.RandomState(67).normal(0, 1, n)
+    roll = np.convolve(roll, np.ones(10) / 10, mode="same") * (1 - sweep) * 0.3
+    thunk = _thud(150, 0.1, drop=0.4, amp=0.6, curve=8)
+    return fade_edges(_mix(0.3, (roll, 0), (thunk, 0.16)), 3.0)
+
+
+def sfx_pk_payout():
+    """Cobrar: la cascada de bolas cayendo en la bandeja (じゃらじゃら)."""
+    rng = np.random.RandomState(68)
+    parts = []
+    for k in range(46):
+        at = (k / 46) ** 1.4 * 1.1 + rng.uniform(0, 0.02)
+        f = rng.uniform(2200, 4200)
+        amp = 0.25 + 0.2 * rng.uniform() * (1 - k / 60)
+        parts.append((_thud(f, 0.03, drop=0.05, amp=amp, curve=14), at))
+    parts.append((bell(1567.98, 0.8, amp=0.35), 0.0))
+    parts.append((bell(2093.0, 0.8, amp=0.3), 0.08))
+    return fade_edges(reverb(_mix(1.4, *parts), mix=0.18), 5.0)
+
+
+PACHINKO_SFX = {
+    "pk_drop": (sfx_pk_drop, 0.5),
+    "pk_pin": (sfx_pk_pin, 0.32),
+    "pk_windmill": (sfx_pk_windmill, 0.5),
+    "pk_tulip": (sfx_pk_tulip, 0.5),
+    "pk_same": (sfx_pk_same, 0.66),
+    "pk_up1": (sfx_pk_up1, 0.74),
+    "pk_up2": (sfx_pk_up2, 0.86),
+    "pk_out": (sfx_pk_out, 0.5),
+    "pk_payout": (sfx_pk_payout, 0.8),
+}
+
+
+def main_pachinko():
+    print("Generando efectos del pachinko...")
+    for name, (fn, peak) in PACHINKO_SFX.items():
+        write_wav(os.path.join(SFX_DIR, f"{name}.wav"), fn(), peak=peak)
+
+
 def main_music():
     print("Generando variaciones de musica...")
     for name, fn in MUSIC_TRACKS.items():
@@ -557,6 +1312,10 @@ def main_music():
             write_ogg_leveled(name, fn())
         else:
             write_ogg(name, fn())
+    print("Generando musica del gachapon...")
+    for name, fn in GACHA_MUSIC_TRACKS.items():
+        write_ogg(name, fn())
+        write_mp3(name)
 
 
 def main():
@@ -566,6 +1325,16 @@ def main():
     write_wav(os.path.join(SFX_DIR, "back.wav"), sfx_back(), peak=0.72)
     write_wav(os.path.join(SFX_DIR, "error.wav"), sfx_error(), peak=0.70)
     write_wav(os.path.join(SFX_DIR, "chime.wav"), sfx_chime(), peak=0.85)
+    print("Generando efectos del gacha...")
+    write_wav(os.path.join(SFX_DIR, "crank.wav"), sfx_crank(), peak=0.62)
+    write_wav(os.path.join(SFX_DIR, "capsule.wav"), sfx_capsule(), peak=0.72)
+    write_wav(os.path.join(SFX_DIR, "pop.wav"), sfx_pop(), peak=0.70)
+    write_wav(os.path.join(SFX_DIR, "rare.wav"), sfx_rare(), peak=0.72)
+    write_wav(os.path.join(SFX_DIR, "epic.wav"), sfx_epic(), peak=0.82)
+    write_wav(os.path.join(SFX_DIR, "legend.wav"), sfx_legend(), peak=0.90)
+    write_wav(os.path.join(SFX_DIR, "infinity.wav"), sfx_infinity(), peak=0.88)
+    main_pinball()
+    main_pachinko()
 
 
 
@@ -573,6 +1342,10 @@ if __name__ == "__main__":
     import sys
     if "--music" in sys.argv:
         main_music()
+    elif "--pinball" in sys.argv:
+        main_pinball()
+    elif "--pachinko" in sys.argv:
+        main_pachinko()
     else:
         main()
         main_music()

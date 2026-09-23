@@ -17,6 +17,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ibasho/backend/prizes.dart';
+import 'package:ibasho/ui/tama/tama_outfit.dart';
 import 'package:ibasho/app.dart';
 import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/core/friend_code.dart';
@@ -190,7 +192,9 @@ Future<void> main() async {
         await tester.tap(find.byKey(const ValueKey<String>('tama.edit')));
         await settle(tester, 40);
         await shoot(tester, '09-creador-cuerpo');
-        for (final tab in ['color', 'eyes', 'limbs', 'character']) {
+        await tester.runAsync(() => PrizeArt.instance.preload([for (final p in wearablePrizes) ...p.items]));
+        for (final tab in ['color', 'eyes', 'limbs', 'hats', 'accessories', 'character']) {
+          await tester.ensureVisible(find.byKey(ValueKey<String>('creator.tab.$tab')));
           await tester.tap(find.byKey(ValueKey<String>('creator.tab.$tab')));
           await settle(tester, 12);
           await shoot(tester, '09-creador-$tab');

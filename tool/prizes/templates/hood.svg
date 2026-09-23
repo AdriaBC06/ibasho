@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">
+  <!-- Capucha de sudadera: rodea al Tama. La abertura mide lo que el cuerpo
+       (x 12..108) y empieza en la frente (y 20); la tela baja por los lados
+       hasta y 76, donde asoman los cordones. -->
+  <defs>
+    <linearGradient id="cloth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#cloth)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"
+        d="M4 72 C0 30 26 2 60 2 C94 2 120 30 116 72 C115 80 108 82 102 78
+           C106 60 104 44 96 34 C86 23 74 20 60 20 C46 20 34 23 24 34 C16 44 14 60 18 78
+           C12 82 5 80 4 72 Z"/>
+  <!-- Dobladillo de la abertura, algo mas oscuro -->
+  <path d="M18 78 C14 60 16 44 24 34 C34 23 46 20 60 20 C74 20 86 23 96 34 C104 44 106 60 102 78"
+        fill="none" stroke="{main.deep}" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M18 78 C14 60 16 44 24 34 C34 23 46 20 60 20 C74 20 86 23 96 34 C104 44 106 60 102 78"
+        fill="none" stroke="{main.edge}" stroke-opacity=".55" stroke-width="1.1" stroke-linecap="round"/>
+  <!-- Costura del centro y brillo -->
+  <path d="M60 3 L60 17" stroke="{main.edge}" stroke-opacity=".35" stroke-width="1.3" stroke-linecap="round"/>
+  <path d="M10 46 C12 26 28 10 50 6 C34 14 20 28 16 48 Z" fill="url(#shine)"/>
+  <!-- Cordones con sus puntas -->
+  <path d="M22 76 Q21 86 23 94 M98 76 Q99 86 97 94" fill="none" stroke="{string.edge}" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M22 76 Q21 86 23 94 M98 76 Q99 86 97 94" fill="none" stroke="{string}" stroke-width="1.8" stroke-linecap="round"/>
+  <rect x="21" y="91" width="4" height="7" rx="1.5" fill="{string.deep}" stroke="{string.edge}" stroke-width=".8"/>
+  <rect x="95" y="91" width="4" height="7" rx="1.5" fill="{string.deep}" stroke="{string.edge}" stroke-width=".8"/>
+</svg>

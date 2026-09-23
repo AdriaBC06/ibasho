@@ -11,6 +11,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../backend/gacha.dart';
+import '../../../backend/prizes.dart';
 import '../../../backend/tama.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
@@ -24,18 +26,20 @@ import '../../tama/tama_view.dart';
 import '../../tama/tama_widgets.dart';
 import '../../widgets/color_picker.dart';
 import '../../widgets/controls.dart';
+import '../../widgets/gacha_art.dart';
 import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/prize_view.dart';
 import '../../widgets/text_field.dart';
 import '../../layout.dart';
 import '../channel_route.dart';
 import 'tama_room_screen.dart';
 
 /// Pestañas del creador.
-enum CreatorTab { body, color, eyes, mouth, crown, cheeks, limbs, character }
+enum CreatorTab { body, color, eyes, mouth, crown, cheeks, limbs, hats, accessories, character }
 
 /// Lo que se edita: todo lo que el creador de un Tama puede cambiar.
 class _Draft {
@@ -566,12 +570,99 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
           heading(l.tamaFeet),
           parts(TamaPart.feet, zoom: 1.6, focus: Alignment.bottomCenter),
         ],
+      CreatorTab.hats => [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Text(l.creatorPrizesHint, style: Ty.caption),
+          ),
+          _outfitChips(l, GachaCategory.hats),
+        ],
+      CreatorTab.accessories => [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Text(l.tamaAccessoriesHint, style: Ty.caption),
+          ),
+          _outfitChips(l, GachaCategory.accessories),
+        ],
       CreatorTab.character => _characterTab(l),
     };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
+    );
+  }
+
+  /// Los premios de [category] que se puede poner, cada uno en una ficha con
+  /// el Tama ya puesto. La primera ficha lo quita todo.
+  Widget _outfitChips(L l, GachaCategory category) {
+    final gacha = ref.watch(gachaProvider);
+    final look = _draft.look;
+    final outfit = look.outfit;
+    final hats = category == GachaCategory.hats;
+    final bare = hats
+        ? TamaOutfit(accessories: outfit.accessories)
+        : TamaOutfit(hat: outfit.hat);
+
+    // Lo de la cara se ve mejor de cerca, y las zapatillas desde abajo.
+    (double, Alignment) framing(PrizeSlot slot) => switch (slot) {
+          PrizeSlot.eyes || PrizeSlot.nose => (1.8, const Alignment(0, .15)),
+          PrizeSlot.feet => (1.6, Alignment.bottomCenter),
+          _ => (1.0, Alignment.center),
+        };
+
+    return Wrap(
+      spacing: 14,
+      runSpacing: 14,
+      children: [
+        TamaStyleChip(
+          key: ValueKey<String>('creator.${category.name}.none'),
+          look: look.withOutfit(bare),
+          label: l.tamaOutfitNone,
+          selected: outfit == bare,
+          onPressed: () => _apply(_draft.copyWith(look: look.withOutfit(bare))),
+        ),
+        for (final item in prizeItems(category))
+          Builder(builder: (context) {
+            final worn = outfit.wears(item.key);
+            final next = outfit.toggle(item);
+            final (zoom, focus) = framing(item.prize.slot);
+            // Lo que no se tiene sale en silueta, sin nombre. Lo que ya
+            // llevaba puesto (un Tama traspasado) se puede quitar igual.
+            if (!worn && !gacha.owns(item.key)) {
+              return TamaStyleChip(
+                key: ValueKey<String>('creator.prize.${item.key}'),
+                look: look,
+                label: '???',
+                wash: RarityArt.of(item.prize.rarity),
+                selected: false,
+                art: PrizeView(item, size: 60, locked: true),
+                onPressed: null,
+              );
+            }
+            return TamaStyleChip(
+              key: ValueKey<String>('creator.prize.${item.key}'),
+              // La ficha ensena como quedaria: con el premio puesto.
+              look: look.withOutfit(worn ? outfit : next ?? outfit),
+              label: l.prizeName(item.key),
+              // El fondo, del color de su rareza: se ve de un vistazo que es
+              // raro sin leer la sigla.
+              wash: RarityArt.of(item.prize.rarity),
+              selected: worn,
+              reselectable: true,
+              zoom: zoom,
+              focus: focus,
+              onPressed: () {
+                if (next == null) {
+                  AudioService.instance.play(Sfx.error);
+                  showIbashoToast(context, l.tamaAccessoriesFull, isError: true);
+                  return;
+                }
+                _apply(_draft.copyWith(look: look.withOutfit(next)));
+              },
+            );
+          }),
+      ],
     );
   }
 
@@ -815,6 +906,8 @@ class _TabRail extends StatelessWidget {
         CreatorTab.crown => l.tamaTabCrown,
         CreatorTab.cheeks => l.tamaTabCheeks,
         CreatorTab.limbs => l.tamaTabLimbs,
+        CreatorTab.hats => l.tamaTabHats,
+        CreatorTab.accessories => l.tamaTabAccessories,
         CreatorTab.character => l.tamaTabCharacter,
       };
 
@@ -825,11 +918,14 @@ class _TabRail extends StatelessWidget {
     final tall = Layout.of(context).tall;
     final height = tall ? 56.0 : 46.0;
 
-    // En vertical las ocho pestañas no caben de una vez: la tira se arrastra
+    // En vertical las diez pestañas no caben de una vez: la tira se arrastra
     // de lado y cada pastilla tiene su ancho.
     Widget pill(CreatorTab tab, Widget child) => tall
         ? SizedBox(width: 96, child: child)
-        : Expanded(flex: tab == CreatorTab.limbs ? 14 : 10, child: child);
+        : Expanded(
+            flex: tab == CreatorTab.limbs || tab == CreatorTab.accessories ? 14 : 10,
+            child: child,
+          );
 
     return SizedBox(
       height: height,

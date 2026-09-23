@@ -20,6 +20,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ibasho/app.dart';
 import 'package:ibasho/backend/tama.dart';
+import 'package:ibasho/games/pachinko/pachinko.dart' show debugPachinkoSeed;
 import 'package:ibasho/games/minesweeper/minesweeper.dart';
 import 'package:ibasho/games/minesweeper/minesweeper_channel.dart';
 import 'package:ibasho/games/nihongo/nihongo_channel.dart';
@@ -58,6 +59,7 @@ Future<void> main() async {
     debugMinesweeperSeed = _seed;
     debugTsumikiSeed = _seed;
     debugNihongoSeed = _seed;
+    debugPachinkoSeed = _seed;
   });
 
   for (final MapEntry(key: folder, value: size) in _canvases.entries) {
@@ -115,9 +117,13 @@ Future<void> main() async {
           'game_minesweeper': 0,
           'game_tsumiki': 10,
           'game_nihongo': 50,
+          'ticket_gachaken': 25,
+          'ticket_kinken': 150,
           for (final food in TamaFood.values) 'food_${food.name}': 3,
         })
-        ..seed('/users/${FakeIbashoBackend().uid}/coins', coins);
+        ..seed('/users/${FakeIbashoBackend().uid}/coins', coins)
+        // Con tickets en la cartera para poder tirar en el recorrido.
+        ..seed('/users/${FakeIbashoBackend().uid}/tickets', {'gachaken': 12, 'kinken': 1});
       if (game != null) {
         backend.seed('/users/${backend.uid}/games/$gameId', {
           'state': game,
@@ -155,7 +161,7 @@ Future<void> main() async {
 
         await tester.tap(find.text('gacha').last);
         await settle(tester, 30);
-        await shoot(tester, 'y3-gacha');
+        await shoot(tester, 'y3-tickets');
 
         await tester.tap(find.text('juegos').last);
         await settle(tester, 30);
@@ -168,6 +174,125 @@ Future<void> main() async {
         await settle(tester, 80);
         await shoot(tester, 'y6-comprado');
         await settle(tester, 80);
+      });
+
+      testWidgets('gachapón: regalo y tirada', (tester) async {
+        await boot(tester, backend: shopBackend());
+        await settle(tester, 100);
+
+        // Con tickets en la cartera el canal aparece envuelto: primero se
+        // desenvuelve y luego ya se abre.
+        final tile = find.byKey(const ValueKey<String>('channel.gacha')).hitTestable();
+        for (var i = 0; i < 3 && tile.evaluate().isEmpty; i++) {
+          await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+          await settle(tester, 30);
+        }
+        await shoot(tester, 'ga1-regalo');
+        await tester.tap(tile);
+        await settle(tester, 120);
+        await shoot(tester, 'ga2-desenvuelto');
+
+        await openChannel(tester, 'gacha');
+        await shoot(tester, 'ga3-cabina');
+
+        // Una tirada de once: confirmacion, maquina, bolas y botin.
+        await tester.tap(find.byKey(const ValueKey<String>('gacha.pull11')));
+        await settle(tester, 20);
+        await shoot(tester, 'ga4-confirmar');
+        await tester.tap(find.byKey(const ValueKey<String>('gacha.confirm.yes')));
+        await settle(tester, 40);
+        await shoot(tester, 'ga5-manivela');
+        await settle(tester, 60);
+        await shoot(tester, 'ga6-salen');
+        await settle(tester, 260);
+        await shoot(tester, 'ga7-botin');
+        await tester.tap(find.byKey(const ValueKey<String>('gacha.keep')));
+        await settle(tester, 30);
+
+        await tester.tap(find.byKey(const ValueKey<String>('gacha.deposit')));
+        await settle(tester, 30);
+        await shoot(tester, 'ga8-deposito');
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await settle(tester, 30);
+      });
+
+      testWidgets('pinball: carga y catálogo con la colección', (tester) async {
+        final backend = shopBackend()
+          ..seed('/users/${FakeIbashoBackend().uid}/gacha', {
+            'last': {'kind': 'gachaken', 'count': 11, 'at': 1},
+            'balls': {'n': 6, 'r': 3, 'sr': 1, 'ssr': 1, 'ur': 0, 'mu': 0},
+            'wish': {'category': 'hats', 'rarity': 'n', 'count': 42},
+          })
+          ..seed('/users/${FakeIbashoBackend().uid}/prizes', {'cap_red': 2, 'bow_pink': 1, 'afro_brown': 1});
+        await boot(tester, backend: backend);
+        await settle(tester, 100);
+        final tile = find.byKey(const ValueKey<String>('channel.pinball')).hitTestable();
+        for (var i = 0; i < 3 && tile.evaluate().isEmpty; i++) {
+          await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+          await settle(tester, 30);
+        }
+        await tester.tap(tile);
+        await settle(tester, 120);
+        await openChannel(tester, 'pinball');
+        await shoot(tester, 'pb1-carga');
+        expect(find.text('42/70'), findsOneWidget);
+
+        await tester.tap(find.byKey(const ValueKey<String>('pinball.catalog')));
+        await settle(tester, 30);
+        await shoot(tester, 'pb2-catalogo');
+        expect(find.text('tienes 3 de 15'), findsOneWidget);
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await settle(tester, 30);
+      });
+
+      testWidgets('pachinko: bandeja, tanda y resultados', (tester) async {
+        final backend = shopBackend()
+          ..seed('/users/${FakeIbashoBackend().uid}/gacha', {
+            'balls': {'n': 30, 'r': 8, 'sr': 3, 'ssr': 1, 'ur': 0, 'mu': 0},
+            // Una tanda ya cobrada: el canal sale desbloqueado.
+            'settle': {'at': 1},
+          });
+        await boot(tester, backend: backend);
+        await settle(tester, 100);
+        final tile = find.byKey(const ValueKey<String>('channel.pachinko')).hitTestable();
+        for (var i = 0; i < 3 && tile.evaluate().isEmpty; i++) {
+          await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
+          await settle(tester, 30);
+        }
+        await tester.tap(tile);
+        await settle(tester, 120);
+        await openChannel(tester, 'pachinko');
+        await shoot(tester, 'pk1-bandeja');
+
+        await tester.tap(find.byKey(const ValueKey<String>('pachinko.ten.n')));
+        await tester.tap(find.byKey(const ValueKey<String>('pachinko.more.sr')));
+        await tester.tap(find.byKey(const ValueKey<String>('pachinko.more.ssr')));
+        await settle(tester, 10);
+        await shoot(tester, 'pk2-elegidas');
+        await tester.tap(find.byKey(const ValueKey<String>('pachinko.play')));
+        await settle(tester, 30);
+
+        // Suelta unas cuantas por el tablero.
+        final board = find.byKey(const ValueKey<String>('pachinko.board'));
+        final box = tester.getRect(board);
+        for (var i = 0; i < 8; i++) {
+          await tester.tapAt(Offset(box.left + box.width * (.2 + .08 * i), box.top + box.height * .05));
+          await settle(tester, 6);
+        }
+        await shoot(tester, 'pk3-cayendo');
+        await settle(tester, 60);
+        await shoot(tester, 'pk4-bolsillos');
+
+        // Que caigan todas antes de parar: con bolas en el aire no se puede
+        // terminar.
+        await settle(tester, 300);
+        await tester.tap(find.byKey(const ValueKey<String>('pachinko.pause')));
+        await settle(tester, 20);
+        await shoot(tester, 'pk5-pausa');
+        await tester.tap(find.byKey(const ValueKey<String>('pachinko.finish')));
+        await settle(tester, 60);
+        await shoot(tester, 'pk6-resultados');
+        expect(find.byKey(const ValueKey<String>('pachinko.again')), findsOneWidget);
       });
 
       testWidgets('regalo en la rejilla', (tester) async {

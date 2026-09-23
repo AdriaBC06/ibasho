@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 70">
+  <!-- Gafas con nariz y bigote. Ojos en (35, 22) y (65, 22); la boca en y=62. -->
+  <defs>
+    <linearGradient id="frame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#757B85"/>
+      <stop offset=".55" stop-color="#2B3444"/>
+      <stop offset="1" stop-color="#253140"/>
+    </linearGradient>
+    <radialGradient id="nose" cx=".38" cy=".3" r=".75">
+      <stop offset="0" stop-color="#F7C1C6"/>
+      <stop offset=".6" stop-color="#F2A0A8"/>
+      <stop offset="1" stop-color="#C88992"/>
+    </radialGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#897F7C"/>
+      <stop offset="1" stop-color="#3F3634"/>
+    </linearGradient>
+  </defs>
+  <!-- Cejas pobladas -->
+  <path d="M20 8 Q34 1 47 7 L46 10 Q34 5 21 11 Z M80 8 Q66 1 53 7 L54 10 Q66 5 79 11 Z"
+        fill="url(#hair)" stroke="#2E2F33" stroke-width="1.4" stroke-linejoin="round"/>
+  <!-- Montura gruesa -->
+  <path d="M23 20 L4 17 M77 20 L96 17" stroke="#1D2C3B" stroke-width="3.4" stroke-linecap="round"/>
+  <g fill="none">
+    <rect x="22" y="12" width="26" height="21" rx="9" stroke="#1D2C3B" stroke-width="6"/>
+    <rect x="52" y="12" width="26" height="21" rx="9" stroke="#1D2C3B" stroke-width="6"/>
+    <rect x="22" y="12" width="26" height="21" rx="9" stroke="url(#frame)" stroke-width="3.8"/>
+    <rect x="52" y="12" width="26" height="21" rx="9" stroke="url(#frame)" stroke-width="3.8"/>
+  </g>
+  <path d="M27 14.5 L34 14.5 M57 14.5 L64 14.5" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- Bigote, bajo la nariz -->
+  <path d="M50 48 C44 44 34 44 26 50 C24 53 27 56 31 55 C37 54 44 53 50 52 C56 53 63 54 69 55 C73 56 76 53 74 50 C66 44 56 44 50 48 Z"
+        fill="url(#hair)" stroke="#2E2F33" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M34 49 L33 53 M40 48 L39.5 52.5 M60 48 L60.5 52.5 M66 49 L67 53" stroke="#2E2F33" stroke-opacity=".45" stroke-width="1" stroke-linecap="round"/>
+  <!-- Narizota -->
+  <path d="M46 24 C46 30 44 34 42 38 C40 44 44 48 50 48 C56 48 60 44 58 38 C56 34 54 30 54 24 Z"
+        fill="url(#nose)" stroke="#8A6772" stroke-width="1.5" stroke-linejoin="round"/>
+  <ellipse cx="46.5" cy="39" rx="2.4" ry="3.4" fill="#FFFFFF" fill-opacity=".75"/>
+  <rect x="45" y="17" width="10" height="5" rx="2.5" fill="url(#frame)" stroke="#1D2C3B" stroke-width="1.4"/>
+</svg>

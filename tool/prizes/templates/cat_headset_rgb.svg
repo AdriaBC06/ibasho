@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 84">
+  <!-- Auriculares gamer con orejas de gato RGB (∞): la misma forma que
+       cat_headset.svg (cascos en y=56), con la luz y las orejas en arcoiris. -->
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <linearGradient id="light" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF5A6E"/>
+      <stop offset=".2" stop-color="#FFA53A"/>
+      <stop offset=".4" stop-color="#FFE14A"/>
+      <stop offset=".6" stop-color="#5BE07A"/>
+      <stop offset=".8" stop-color="#4FC8F5"/>
+      <stop offset="1" stop-color="#9A7BFF"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="30" y1="0" x2="70" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF5A6E"/>
+      <stop offset=".2" stop-color="#FFA53A"/>
+      <stop offset=".4" stop-color="#FFE14A"/>
+      <stop offset=".6" stop-color="#5BE07A"/>
+      <stop offset=".8" stop-color="#4FC8F5"/>
+      <stop offset="1" stop-color="#9A7BFF"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF5A6E"/>
+      <stop offset=".2" stop-color="#FFA53A"/>
+      <stop offset=".4" stop-color="#FFE14A"/>
+      <stop offset=".6" stop-color="#5BE07A"/>
+      <stop offset=".8" stop-color="#4FC8F5"/>
+      <stop offset="1" stop-color="#9A7BFF"/>
+    </linearGradient>
+  </defs>
+    <g transform="translate(0 4)">
+  <!-- Orejas de gato sobre el arco -->
+  <g id="ear">
+    <path d="M20 22 L18 -2 L40 10 Z" fill="url(#shell)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M22.5 16 L21.5 4.5 L32 10.5 Z" fill="url(#inner)"/>
+  </g>
+  <use href="#ear" transform="matrix(-1 0 0 1 100 0)"/>
+  <!-- Arco con la franja de luz -->
+  <path d="M12 50 C10 22 28 5 50 5 C72 5 90 22 88 50" fill="none" stroke="{main.edge}" stroke-width="9.4" stroke-linecap="round"/>
+  <path d="M12 50 C10 22 28 5 50 5 C72 5 90 22 88 50" fill="none" stroke="url(#shell)" stroke-width="6.6" stroke-linecap="round"/>
+  <path d="M30 13 C36 9 44 7.5 50 7.5 C56 7.5 64 9 70 13" fill="none" stroke="url(#glow)" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Micro que baja hacia la boca -->
+  <path d="M10 62 C12 72 20 76 30 76" fill="none" stroke="{main.edge}" stroke-width="4" stroke-linecap="round"/>
+  <path d="M10 62 C12 72 20 76 30 76" fill="none" stroke="{main}" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="31" cy="76" r="3" fill="{main}" stroke="{main.edge}" stroke-width="1.3"/>
+  <g id="cup">
+    <rect x="14" y="38" width="7" height="28" rx="3.5" fill="#3A4455" stroke="#1E2733" stroke-width="1.1"/>
+    <path d="M2 44 Q2 34 11 34 L13 34 Q19 34 19 44 L19 60 Q19 70 13 70 L11 70 Q2 70 2 60 Z" fill="url(#shell)" stroke="{main.edge}" stroke-width="1.8"/>
+    <ellipse cx="10.5" cy="52" rx="5.2" ry="9" fill="url(#light)" stroke="{main.edge}" stroke-width="1"/>
+    <path d="M5 42 Q6 37 10 36.5" fill="none" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="1.3" stroke-linecap="round"/>
+  </g>
+  <use href="#cup" transform="matrix(-1 0 0 1 100 0)"/>
+  <!-- Destellos de la UR (sin halo: iria encima de la cara) -->
+  <path d="M94 12 Q94 16 98 16 Q94 16 94 20 Q94 16 90 16 Q94 16 94 12 Z" fill="#FFFFFF"/>
+  <path d="M4 74 Q4 76.5 6.5 76.5 Q4 76.5 4 79 Q4 76.5 1.5 76.5 Q4 76.5 4 74 Z" fill="#FFFFFF"/>
+  </g>
+</svg>

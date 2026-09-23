@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Gorro de lana con pompon. La vuelta apoya en la cabeza en (16..84, 72). -->
+  <defs>
+    <linearGradient id="knit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <linearGradient id="cuff" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <radialGradient id="pom" cx=".38" cy=".35" r=".7">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".5" stop-color="{pom}"/>
+      <stop offset="1" stop-color="{pom.deep}"/>
+    </radialGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Pompon: bolitas con el filo solo por fuera -->
+  <g fill="{pom.edge}" stroke="{pom.edge}" stroke-width="3">
+    <circle cx="50" cy="20" r="9"/><circle cx="42" cy="24" r="6"/><circle cx="58" cy="24" r="6"/><circle cx="50" cy="13" r="6"/>
+  </g>
+  <g fill="url(#pom)">
+    <circle cx="50" cy="20" r="9"/><circle cx="42" cy="24" r="6"/><circle cx="58" cy="24" r="6"/><circle cx="50" cy="13" r="6"/>
+  </g>
+  <!-- Copa de punto -->
+  <path d="M19 62 C19 40 32 27 50 27 C68 27 81 40 81 62 Z"
+        fill="url(#knit)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M38 31 Q33 45 33 60 M50 28 L50 60 M62 31 Q67 45 67 60 M27 40 Q24 50 25 60 M73 40 Q76 50 75 60"
+        fill="none" stroke="{main.edge}" stroke-opacity=".28" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M26 52 C26 42 33 34 42 31 C37 37 33 44 31 54 Z" fill="url(#shine)"/>
+  <!-- Vuelta acanalada -->
+  <path d="M15 60 Q50 54 85 60 L85 72 Q50 66 15 72 Z"
+        fill="url(#cuff)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M22 60 L22 71 M29 59 L29 70 M36 58 L36 69 M43 57.5 L43 68.5 M50 57 L50 68 M57 57.5 L57 68.5 M64 58 L64 69 M71 59 L71 70 M78 60 L78 71"
+        fill="none" stroke="{main.edge}" stroke-opacity=".3" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M18 62 Q50 56 82 62" fill="none" stroke="#FFFFFF" stroke-opacity=".5" stroke-width="1.4" stroke-linecap="round"/>
+</svg>
