@@ -222,6 +222,23 @@ class IdentityController extends StateNotifier<IdentityState> {
     return null;
   }
 
+  /// Quien ha perdido las doce palabras empieza de cero: claves nuevas, frase
+  /// nueva y respaldo nuevo, encima de los de antes. Los mensajes viejos
+  /// quedan cerrados para siempre en este lado (iban a la clave anterior, y
+  /// sin la frase nadie puede abrirla); los amigos siguen leyendo su copia.
+  /// Las reglas ya dejan a la dueña reescribir `/users/{cuenta}/keys`.
+  Future<bool> startOver() async {
+    try {
+      await _store.delete(_privateKeyName);
+      await _store.delete(_phraseKeyName);
+      await _create(await _session.freshToken());
+      return true;
+    } catch (e) {
+      debugPrint('Ibasho: no se han podido crear claves nuevas ($e)');
+      return false;
+    }
+  }
+
   /// Vuelve a intentar el arranque tras un fallo de red.
   Future<void> retry() async {
     if (!mounted) return;

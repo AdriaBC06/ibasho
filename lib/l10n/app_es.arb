@@ -886,6 +886,26 @@
   "keysRestoreHint": "doce palabras separadas por espacios",
   "keysRestoreSubmit": "recuperar",
   "keysRestoreWorking": "abriendo…",
+  "keysForgot": "he olvidado las palabras",
+  "@keysForgot": {
+    "description": "Boton para empezar de cero con claves nuevas si se ha perdido la frase."
+  },
+  "keysForgotTitle": "¿empezar con claves nuevas?",
+  "@keysForgotTitle": {
+    "description": "Titulo de la confirmacion de regenerar las claves."
+  },
+  "keysForgotBody": "Sin las doce palabras nadie puede abrir tus mensajes de antes, tampoco la administración: se quedarán cerrados para siempre en tu lado. Tus amigos seguirán viendo los suyos. Tendrás una clave nueva, con doce palabras nuevas que apuntar, y a partir de ahí todo funciona como siempre.",
+  "@keysForgotBody": {
+    "description": "Explicacion de lo que se pierde al regenerar las claves."
+  },
+  "keysForgotConfirm": "empezar de cero",
+  "@keysForgotConfirm": {
+    "description": "Boton que confirma regenerar las claves."
+  },
+  "keysForgotFailed": "no se han podido crear las claves nuevas. prueba otra vez.",
+  "@keysForgotFailed": {
+    "description": "Error al regenerar las claves."
+  },
   "keysErrorCount": "tienen que ser doce palabras",
   "keysErrorWord": "«{word}» no está en la lista",
   "@keysErrorWord": {

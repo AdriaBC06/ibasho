@@ -560,6 +560,11 @@
   "keysRestoreHint": "twelve words separated by spaces",
   "keysRestoreSubmit": "restore",
   "keysRestoreWorking": "unlocking…",
+  "keysForgot": "I forgot the words",
+  "keysForgotTitle": "start over with new keys?",
+  "keysForgotBody": "Without the twelve words nobody can open your old messages, not even the admins: they'll stay locked on your side for good. Your friends will still see theirs. You'll get a new key, with twelve new words to write down, and from then on everything works as usual.",
+  "keysForgotConfirm": "start over",
+  "keysForgotFailed": "couldn't create the new keys. try again.",
   "keysErrorCount": "it has to be twelve words",
   "keysErrorWord": "\"{word}\" is not on the list",
   "@keysErrorWord": {

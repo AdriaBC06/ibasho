@@ -123,6 +123,44 @@ Future<void> main() async {
       expect(segundo.read(identityProvider).phase, IdentityPhase.ready);
       expect(segundo.read(identityProvider).keys!.public.encoded, publica);
     });
+    test('sin la frase se puede empezar de cero con claves nuevas', () async {
+      final backend = FakeIbashoBackend();
+      final primero = await signedIn(backend);
+      primero.listen(identityProvider, (_, _) {}, fireImmediately: true);
+      await settle();
+      final vieja = primero.read(identityProvider).keys!.public.encoded;
+      final fraseVieja = primero.read(identityProvider).phrase;
+
+      final segundo = await signedIn(
+        backend,
+        store: FakeSecureStore(session: backend.tokens),
+      );
+      segundo.listen(identityProvider, (_, _) {}, fireImmediately: true);
+      await settle();
+      expect(segundo.read(identityProvider).phase, IdentityPhase.needsPhrase);
+
+      expect(await segundo.read(identityProvider.notifier).startOver(), isTrue);
+      final nueva = segundo.read(identityProvider);
+      // Enseña la frase nueva para apuntarla, como la primera vez.
+      expect(nueva.phase, IdentityPhase.fresh);
+      expect(nueva.phrase, isNot(fraseVieja));
+      expect(nueva.keys!.public.encoded, isNot(vieja));
+      expect(backend.peek('/users/${backend.uid}/keys/pub'), nueva.keys!.public.encoded);
+
+      // La frase vieja ya no abre nada; la nueva, si.
+      final tercero = await signedIn(
+        backend,
+        store: FakeSecureStore(session: backend.tokens),
+      );
+      tercero.listen(identityProvider, (_, _) {}, fireImmediately: true);
+      await settle();
+      await tercero.read(identityProvider.notifier).restoreWithPhrase(fraseVieja!.join(' '));
+      await settle(10);
+      expect(tercero.read(identityProvider).phase, IdentityPhase.needsPhrase);
+      await tercero.read(identityProvider.notifier).restoreWithPhrase(nueva.phrase!.join(' '));
+      await settle(10);
+      expect(tercero.read(identityProvider).phase, IdentityPhase.ready);
+    });
   });
 
   group('conversacion privada', () {

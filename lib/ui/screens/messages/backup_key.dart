@@ -17,6 +17,7 @@ import '../../layout.dart';
 import '../../widgets/controls.dart';
 import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
+import '../../widgets/overlays.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/text_field.dart';
 
@@ -205,6 +206,27 @@ class _RestoreKeyPanelState extends ConsumerState<RestoreKeyPanel> {
     super.dispose();
   }
 
+  Future<void> _startOver() async {
+    final l = L.of(context)!;
+    final confirmed = await askConfirmation(
+      context,
+      title: l.keysForgotTitle,
+      body: l.keysForgotBody,
+      confirmLabel: l.keysForgotConfirm,
+      cancelLabel: l.actionCancel,
+      tone: ButtonTone.warn,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() {
+      _working = true;
+      _error = null;
+    });
+    final ok = await ref.read(identityProvider.notifier).startOver();
+    if (!mounted) return;
+    setState(() => _working = false);
+    if (!ok) showIbashoToast(context, l.keysForgotFailed, isError: true);
+  }
+
   Future<void> _restore() async {
     final l = L.of(context)!;
     setState(() {
@@ -269,6 +291,15 @@ class _RestoreKeyPanelState extends ConsumerState<RestoreKeyPanel> {
             glyph: Glyph.lock,
             tone: ButtonTone.accent,
             onPressed: _working || words.length != mnemonicWords ? null : _restore,
+          ),
+          const SizedBox(height: 10),
+          // Sin las palabras no hay vuelta atras: se empieza con claves nuevas
+          // y los mensajes de antes se quedan cerrados.
+          IbashoButton(
+            key: const ValueKey<String>('keys.forgot'),
+            label: l.keysForgot,
+            tone: ButtonTone.quiet,
+            onPressed: _working ? null : _startOver,
           ),
         ],
       ),

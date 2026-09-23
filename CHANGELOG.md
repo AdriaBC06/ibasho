@@ -5,6 +5,17 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.6.2 — sin publicar
+
+### Añadido
+
+- **«He olvidado las palabras»** en la pantalla que pide la clave de respaldo.
+  Tras una confirmación, crea claves nuevas con doce palabras nuevas que
+  apuntar. Los mensajes de antes se quedan cerrados para siempre en ese lado
+  (sin la frase nadie puede abrirlos); los amigos siguen viendo los suyos. Si
+  un amigo tiene la conversación abierta en ese momento, lo que mande antes de
+  volver a entrar va a la clave vieja.
+
 ## 0.6.1 — Que el pinball dé lo que promete
 
 ### Arreglado
