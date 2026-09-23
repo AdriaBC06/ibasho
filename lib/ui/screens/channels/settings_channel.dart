@@ -8,14 +8,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../audio/audio_service.dart';
 import '../../../backend/backdrops.dart';
 import '../../../backend/gacha.dart';
-import '../../../backend/gacha_music.dart';
 import '../../../core/device.dart';
 import '../../../core/version.dart';
 import '../../../l10n/gen/app_localizations.dart';
+import '../../../state/koro.dart';
 import '../../../state/providers.dart';
+import '../../../theme/menu_theme.dart';
 import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
+import '../../tama/accent_prompt.dart';
 import '../../widgets/backdrop_art.dart';
 import '../../widgets/controls.dart';
 import '../../widgets/gacha_art.dart';
@@ -27,8 +29,6 @@ import '../../widgets/pressable.dart';
 import '../../layout.dart';
 import '../channel_route.dart';
 import '../messages/backup_key.dart';
-import '../../track_text.dart';
-import '../../widgets/track_tile.dart';
 import 'change_own_password_dialog.dart';
 import 'credits_channel.dart';
 
@@ -43,30 +43,16 @@ class SettingsChannel extends ConsumerWidget {
     final preferences = ref.watch(preferencesProvider);
     final controller = ref.read(preferencesProvider.notifier);
     final gacha = ref.watch(gachaProvider);
-    final library = ref.watch(musicLibraryProvider);
     final currentTrack = MusicTrack.byId(preferences.musicTrack);
     final layout = Layout.of(context);
 
-    // Una pista tambien esta desbloqueada si es un premio del gacha ya
-    // ganado (`mu_<id>`), ademas de las de serie y las que se escuchan
-    // jugando (ver `MusicLibraryState.isUnlocked`). Igual que los fondos,
-    // la propiedad se mira aqui, no en `MusicLibraryState`.
-    bool trackUnlocked(MusicTrack track) {
-      if (library.isUnlocked(track)) return true;
-      final prize = gachaMusicById(track.id);
-      return prize != null && gacha.owns(prize.key);
-    }
-
-    final availableTracks =
-        MusicTrack.values.where(trackUnlocked).toList(growable: false);
-    final pendingTracks = MusicTrack.values.length - availableTracks.length;
 
     /// Fila de volumen: en vertical el raíl ocupa el ancho entero.
     Widget volume(Glyph glyph, double value, ValueChanged<double> onChanged) =>
         Row(
           mainAxisSize: layout.pick(MainAxisSize.min, MainAxisSize.max),
           children: [
-            GlyphIcon(glyph, size: 20, color: T.inkSoft),
+            GlyphIcon(glyph, size: 20, color: Ty.inkSoft),
             const SizedBox(width: 14),
             layout.pick<Widget>(
               IbashoSlider(value: value, onChanged: onChanged),
@@ -83,7 +69,7 @@ class SettingsChannel extends ConsumerWidget {
               child: Text(
                 '${(value * 100).round()}',
                 textAlign: TextAlign.right,
-                style: Ty.numeral(17, color: T.inkSoft),
+                style: Ty.numeral(17, color: Ty.inkSoft),
               ),
             ),
           ],
@@ -139,43 +125,20 @@ class SettingsChannel extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Desde la 0.6.2 se elige en Tamakoro, junto a las
+                      // canciones propias: aqui solo se dice que suena.
                       Padding(
-                        padding: const EdgeInsets.only(left: 6, bottom: 10),
-                        child: Text(l.settingsMenuMusicHint, style: Ty.caption),
-                      ),
-                      for (final track in availableTracks)
-                        TrackTile(
-                          title: track.id,
-                          subtitle: describeTrack(l, track),
-                          selected: track == currentTrack,
-                          onPressed: () async {
-                            final notifier =
-                                ref.read(musicLibraryProvider.notifier);
-                            // Una pista ganada en el gacha pero nunca
-                            // "escuchada" aun no cuenta como desbloqueada
-                            // para `select`, que solo mira la biblioteca: se
-                            // marca al elegirla la primera vez.
-                            if (!library.isUnlocked(track)) {
-                              await notifier.markHeard(track);
-                            }
-                            await notifier.select(track);
-                          },
-                          trailing: track == currentTrack
-                              ? Text(
-                                  l.musicPlaying,
-                                  style: Ty.caption.copyWith(
-                                    color: T.onAccent,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                )
-                              : null,
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6, top: 10),
+                        padding: const EdgeInsets.only(left: 6, bottom: 8),
                         child: Text(
-                          l.settingsMenuMusicPending(pendingTracks),
-                          style: Ty.micro,
+                          koroSlotOfTrack(preferences.musicTrack) != null
+                              ? l.settingsMenuMusicKoro
+                              : currentTrack.id,
+                          style: Ty.body,
                         ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Text(l.settingsMenuMusicFromKoro, style: Ty.caption),
                       ),
                     ],
                   ),
@@ -265,13 +228,33 @@ class SettingsChannel extends ConsumerWidget {
                                   locked: !owned,
                                   selected: preferences.backdropId == b.id,
                                   onPressed: owned
-                                      ? () => controller.setBackdrop(b.id)
+                                      ? () async {
+                                          await controller.setBackdrop(b.id);
+                                          if (!context.mounted) return;
+                                          await askAccentForTheme(context, ref, b.id);
+                                        }
                                       : null,
                                 );
                               },
                             ),
                         ],
                       ),
+                      // El cristal de las pantallas del menu, solo si el tema
+                      // puesto lo tiene.
+                      if ((menuThemeFor(preferences.backdropId)?.surfaces.glass ?? 1) < 1)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
+                          child: SettingRow(
+                            label: l.settingsGlass,
+                            hint: l.settingsGlassHint,
+                            divider: false,
+                            control: volume(
+                              Glyph.eye,
+                              preferences.glassLevel / 2,
+                              (v) => controller.setGlassLevel(v * 2),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -489,7 +472,7 @@ class _BackdropChip extends StatelessWidget {
                             Center(
                               child: Text(
                                 '???',
-                                style: Ty.label.copyWith(color: T.inkSoft),
+                                style: Ty.label.copyWith(color: Ty.inkSoft),
                               ),
                             ),
                         ],

@@ -21,7 +21,7 @@ import 'package:ibasho/backend/gacha.dart';
 
 void main() {
   testWidgets('ilustraciones', (tester) async {
-    tester.view.physicalSize = const Size(2500, 850);
+    tester.view.physicalSize = const Size(2500, 1020);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -49,7 +49,7 @@ void main() {
               textDirection: TextDirection.ltr,
               child: Column(
                 children: [
-                  Row(
+                  Wrap(
                     children: [
                       for (final a in ArtIcon.values)
                         cell(ArtIconView(a, size: 140)),

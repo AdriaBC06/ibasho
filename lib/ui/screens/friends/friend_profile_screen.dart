@@ -146,11 +146,11 @@ class _FriendProfileScreenState extends ConsumerState<FriendProfileScreen> {
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: layout.gutter),
         child: friendsLoaded && friendship == null
-            ? Center(child: Text(l.friendNotFriends, style: Ty.lead.copyWith(color: T.inkSoft)))
+            ? Center(child: Text(l.friendNotFriends, style: Ty.lead.copyWith(color: Ty.inkSoft)))
             : profile.when(
                 loading: () => Center(child: Text(l.loading, style: Ty.lead)),
                 error: (_, _) =>
-                    Center(child: Text(l.friendNotFriends, style: Ty.lead.copyWith(color: T.inkSoft))),
+                    Center(child: Text(l.friendNotFriends, style: Ty.lead.copyWith(color: Ty.inkSoft))),
                 data: (data) => data == null
                     ? Center(child: Text(l.loading, style: Ty.lead))
                     : _Body(
@@ -375,7 +375,7 @@ class _Identity extends ConsumerWidget {
                   children: [
                     PresenceLight.of(presence.state, size: 14),
                     const SizedBox(width: 8),
-                    Text(presenceLine(l, presence, now), style: Ty.body.copyWith(color: T.inkSoft)),
+                    Text(presenceLine(l, presence, now), style: Ty.body.copyWith(color: Ty.inkSoft)),
                   ],
                 ),
                 if (profile.statusMessage.isNotEmpty && !tall) ...[
@@ -384,7 +384,7 @@ class _Identity extends ConsumerWidget {
                     profile.statusMessage,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Ty.lead.copyWith(color: T.ink, fontWeight: FontWeight.w400),
+                    style: Ty.lead.copyWith(color: Ty.ink, fontWeight: FontWeight.w400),
                   ),
                 ],
                 SizedBox(height: tall ? 10 : 14),
@@ -409,7 +409,7 @@ class _Identity extends ConsumerWidget {
                               : l.friendSince(DateFormat.yMMMMd(locale).format(friendship!.since)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Ty.caption.copyWith(color: T.inkSoft),
+                          style: Ty.caption.copyWith(color: Ty.inkSoft),
                         ),
                       ),
                       if (track != null) ...[
@@ -421,7 +421,7 @@ class _Identity extends ConsumerWidget {
                             l.friendMusic(track.id),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Ty.caption.copyWith(color: T.inkSoft),
+                            style: Ty.caption.copyWith(color: Ty.inkSoft),
                           ),
                         ),
                       ],
@@ -551,13 +551,13 @@ class _LocalTime extends ConsumerWidget {
           Text(
             formatClock(there, hourFormat24: hourFormat24),
             key: const ValueKey<String>('friend.localTime'),
-            style: tall ? Ty.clockSmall(T.ink) : Ty.clock(T.ink),
+            style: tall ? Ty.clockSmall(Ty.ink) : Ty.clock(Ty.ink),
           ),
           if (!tall) ...[
             const SizedBox(height: 4),
             Text(
               DateFormat.MMMEd(locale).format(there),
-              style: Ty.caption.copyWith(color: T.inkSoft),
+              style: Ty.caption.copyWith(color: Ty.inkSoft),
             ),
           ],
           const SizedBox(height: 2),
@@ -603,7 +603,7 @@ class _LocalTime extends ConsumerWidget {
                     since!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Ty.caption.copyWith(color: T.inkSoft),
+                    style: Ty.caption.copyWith(color: Ty.inkSoft),
                   ),
                 ),
               ],
@@ -620,7 +620,7 @@ class _LocalTime extends ConsumerWidget {
                     music!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Ty.caption.copyWith(color: T.inkSoft),
+                    style: Ty.caption.copyWith(color: Ty.inkSoft),
                   ),
                 ),
               ],

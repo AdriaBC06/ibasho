@@ -5,16 +5,61 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
-## 0.6.2 — sin publicar
+## 0.6.2 — Tamakoro
 
 ### Añadido
 
+- **Tamakoro, el canal para pintar música con los Tamas.** Un lienzo en
+  rejilla (32 pasos × 16 notas, en escala mayor, menor o pentatónica) y un
+  coro de hasta **6 Tamas**: cada uno pinta con el color de su cuerpo y canta
+  con su voz allí donde hay tinta suya (arriba, más agudo). Pinceles, goma,
+  deshacer y rehacer, tempo, y se guarda sola. Las canciones no llevan título:
+  se numeran solas («Graznata n.º 3 de …»). Hay **10 huecos de serie** y en el
+  Yatai se compran más, de uno en uno, hasta 50: del 11 al 20 a 10 monedas,
+  del 21 al 30 a 20, del 31 al 40 a 30 y del 41 al 50 a 40. El canal llega
+  envuelto como regalo con el primer Tama, y es el único sin música de fondo:
+  la pone el coro.
+- **Tamapiano**, dentro de Tamakoro: una octava (Do–Do' con sus negras) que
+  canta con la voz del Tama que se siente al piano. En escritorio se toca con
+  el teclado.
+- **La música del menú se elige ahora en Tamakoro**, con las pistas ganadas y
+  las canciones propias: una canción de Tamakoro puede sonar en el menú de
+  inicio. En Ajustes queda un aviso que lleva al canal.
+- **Ordenar los canales.** Un botón a la izquierda del de ampliar pone las
+  baldosas a temblar: se arrastran, también de una página a otra, y el orden
+  se guarda en la cuenta.
+- **Los fondos del gacha son temas del menú**: tiñen el plástico, los huecos,
+  el bisel y las líneas de todo el entorno, y más cuanto más raro es el fondo
+  (un velo en N, dos tonos en R, cristal en SR, destellos en SSR y una luz que
+  respira en UR e ∞). Noche añil, boreal y vía láctea son temas oscuros. Con
+  un tema puesto las pantallas del menú son de cristal esmerilado, y en
+  Ajustes se elige cuánta transparencia. El color de acento puede **seguir al
+  tema** (en el perfil, y se pregunta al equipar uno).
 - **«He olvidado las palabras»** en la pantalla que pide la clave de respaldo.
   Tras una confirmación, crea claves nuevas con doce palabras nuevas que
   apuntar. Los mensajes de antes se quedan cerrados para siempre en ese lado
   (sin la frase nadie puede abrirlos); los amigos siguen viendo los suyos. Si
   un amigo tiene la conversación abierta en ese momento, lo que mande antes de
   volver a entrar va a la clave vieja.
+- **Un ticket de gacha de regalo** para todas las cuentas registradas hasta
+  el 23 de septiembre.
+
+### Cambiado
+
+- **Android: el APK va firmado con la clave de Ibasho** y se compila en
+  local. Desde esta versión, las siguientes se instalan encima sin
+  desinstalar. La 0.6.2 es la última que hay que desinstalar antes de
+  instalar, porque las anteriores iban con la firma de depuración.
+- El workflow de GitHub Actions ya solo compila Windows, y se lanza a mano.
+
+### Arreglado
+
+- **El párpado de un Tama adormilado ya no es un rectángulo.** Se pintaba
+  un bloque del color de la piel encima del ojo y se notaba el corte. Ahora el
+  ojo se recorta por arriba y solo se ve la línea del párpado.
+- **Contadores en negativo**: una cuenta con tickets o comida por debajo de 0
+  (dato viejo) ya no enseña un -1 y puede volver a comprar: las reglas parten
+  de 0.
 
 ## 0.6.1 — Que el pinball dé lo que promete
 

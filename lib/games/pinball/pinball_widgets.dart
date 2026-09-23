@@ -159,7 +159,7 @@ class PinballLoadCard extends StatelessWidget {
               if (stock.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(l.pinballNoBalls, textAlign: TextAlign.center, style: Ty.body.copyWith(color: T.inkSoft)),
+                  child: Text(l.pinballNoBalls, textAlign: TextAlign.center, style: Ty.body.copyWith(color: Ty.inkSoft)),
                 )
               else
                 Wrap(
@@ -476,7 +476,7 @@ class PinballResultsCard extends StatelessWidget {
                 tween: Tween<double>(begin: 0, end: score.toDouble()),
                 duration: skin.motion(const Duration(milliseconds: 1200)),
                 curve: Curves.easeOutCubic,
-                builder: (context, v, _) => Text('${v.round()}', style: Ty.numeral(40, color: T.ink, weight: FontWeight.w700)),
+                builder: (context, v, _) => Text('${v.round()}', style: Ty.numeral(40, color: Ty.ink, weight: FontWeight.w700)),
               ),
               Text('${l.gameBest} $best', style: Ty.caption),
               if (newRecord) ...[
@@ -512,7 +512,7 @@ class PinballResultsCard extends StatelessWidget {
                               ),
                               RarityBadge(o.ball.rarity, height: 18),
                             ] else
-                              Expanded(child: Text(l.pinballLostTitle, style: Ty.body.copyWith(color: T.inkSoft))),
+                              Expanded(child: Text(l.pinballLostTitle, style: Ty.body.copyWith(color: Ty.inkSoft))),
                           ],
                         ),
                       ),

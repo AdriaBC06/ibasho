@@ -111,10 +111,10 @@ class TamaPainter extends CustomPainter {
     this.shadow = true,
     this.wear = TamaWear.none,
     ValueListenable<TamaPose>? live,
-  })  : _pose = pose,
-        _live = live,
-        // Tambien se repinta cuando llega el dibujo de un premio que lleva.
-        super(repaint: Listenable.merge([live, PrizeArt.instance]));
+  }) : _pose = pose,
+       _live = live,
+       // Tambien se repinta cuando llega el dibujo de un premio que lleva.
+       super(repaint: Listenable.merge([live, PrizeArt.instance]));
 
   final TamaLook look;
   final TamaPose _pose;
@@ -181,7 +181,11 @@ class TamaPainter extends CustomPainter {
 
     // Premios: primero lo que va detras del cuerpo (alas, mochila, la mitad
     // de detras del flotador).
-    paintOutfit(canvas, look, body, const {PrizeSlot.back, PrizeSlot.waist, PrizeSlot.aura});
+    paintOutfit(canvas, look, body, const {
+      PrizeSlot.back,
+      PrizeSlot.waist,
+      PrizeSlot.aura,
+    });
 
     _crownBehind(canvas, body, skin, rim, color);
     _arms(canvas, body, skin, rim, color);
@@ -206,11 +210,19 @@ class TamaPainter extends CustomPainter {
     _feetFront(canvas, body, color, rim);
     paintOutfit(canvas, look, body, const {PrizeSlot.feet});
     // Y la parte de delante de lo que va en dos (correas, flotador, hadas).
-    paintOutfit(canvas, look, body, const {PrizeSlot.back, PrizeSlot.waist, PrizeSlot.aura}, front: true);
+    paintOutfit(canvas, look, body, const {
+      PrizeSlot.back,
+      PrizeSlot.waist,
+      PrizeSlot.aura,
+    }, front: true);
     _face(canvas, body, skin, color);
     // Lo de la cara y el cuello, luego el gorro y al final lo que tiene al
     // lado. El gorrito del cumpleaños solo sale si no lleva gorro.
-    paintOutfit(canvas, look, body, const {PrizeSlot.eyes, PrizeSlot.nose, PrizeSlot.neck});
+    paintOutfit(canvas, look, body, const {
+      PrizeSlot.eyes,
+      PrizeSlot.nose,
+      PrizeSlot.neck,
+    });
     if (look.outfit.hat == null) {
       _wear(canvas, body);
     } else {
@@ -237,7 +249,8 @@ class TamaPainter extends CustomPainter {
       ),
       Paint()
         ..color = T.tamaGroundShadow.withValues(
-            alpha: T.tamaGroundShadow.a * (1 - lift * .55))
+          alpha: T.tamaGroundShadow.a * (1 - lift * .55),
+        )
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.6),
     );
   }
@@ -254,11 +267,7 @@ class TamaPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            T.glintNone,
-            T.glintNone,
-            T.dusk.withValues(alpha: .10),
-          ],
+          colors: [T.glintNone, T.glintNone, T.dusk.withValues(alpha: .10)],
           stops: const [0, .55, 1],
         ).createShader(rect),
     );
@@ -340,7 +349,10 @@ class TamaPainter extends CustomPainter {
           (-.12, -.62, .07),
         ]) {
           canvas.drawCircle(
-            Offset(r.center.dx + dx * r.width / 2, r.center.dy + dy * r.height / 2),
+            Offset(
+              r.center.dx + dx * r.width / 2,
+              r.center.dy + dy * r.height / 2,
+            ),
             s * r.width,
             paint,
           );
@@ -356,8 +368,12 @@ class TamaPainter extends CustomPainter {
           canvas.drawPath(
             Path()
               ..moveTo(r.left - 2, y + r.height * .1)
-              ..quadraticBezierTo(r.center.dx, y - r.height * .06,
-                  r.right + 2, y + r.height * .1),
+              ..quadraticBezierTo(
+                r.center.dx,
+                y - r.height * .06,
+                r.right + 2,
+                y + r.height * .1,
+              ),
             stroke,
           );
         }
@@ -371,7 +387,11 @@ class TamaPainter extends CustomPainter {
         for (var i = 0; i < scallops; i++) {
           final x0 = r.right + 2 - i * step;
           path.quadraticBezierTo(
-              x0 - step / 2, y + r.height * .09, x0 - step, y);
+            x0 - step / 2,
+            y + r.height * .09,
+            x0 - step,
+            y,
+          );
         }
         path.close();
         canvas.drawPath(path, paint);
@@ -379,7 +399,12 @@ class TamaPainter extends CustomPainter {
   }
 
   void _crownBehind(
-      Canvas canvas, TamaBody body, Paint skin, Color rim, Color color) {
+    Canvas canvas,
+    TamaBody body,
+    Paint skin,
+    Color rim,
+    Color color,
+  ) {
     final variant = look.part(TamaPart.crown);
     if (variant == 0) return;
     final r = body.bounds;
@@ -412,7 +437,9 @@ class TamaPainter extends CustomPainter {
             ..quadraticBezierTo(w * .55, -h * .45, w * .5, h * .05)
             ..close();
           canvas.drawPath(
-              inner, Paint()..color = Color.lerp(color, T.tamaBlush, .62)!);
+            inner,
+            Paint()..color = Color.lerp(color, T.tamaBlush, .62)!,
+          );
           canvas.restore();
         case 2: // Orejas largas de conejo.
           final baseY = r.top + r.height * .14;
@@ -423,17 +450,26 @@ class TamaPainter extends CustomPainter {
           final w = r.width * .15;
           final h = r.height * .62 * k;
           final ear = Rect.fromCenter(
-              center: Offset(0, -h * .42), width: w, height: h);
+            center: Offset(0, -h * .42),
+            width: w,
+            height: h,
+          );
           canvas.drawOval(ear, skin);
           canvas.drawOval(ear, outline);
           canvas.drawOval(
             Rect.fromCenter(
-                center: Offset(0, -h * .38), width: w * .48, height: h * .7),
+              center: Offset(0, -h * .38),
+              width: w * .48,
+              height: h * .7,
+            ),
             Paint()..color = Color.lerp(color, T.tamaBlush, .6)!,
           );
           canvas.restore();
         case 3: // Antenas.
-          final base = Offset(r.center.dx + side * r.width * .16, r.top + r.height * .08);
+          final base = Offset(
+            r.center.dx + side * r.width * .16,
+            r.top + r.height * .08,
+          );
           final tip = Offset(
             r.center.dx + side * r.width * (.3 + pose.sway * .25),
             r.top - r.height * .3 * k + pose.sway.abs() * 2,
@@ -442,7 +478,11 @@ class TamaPainter extends CustomPainter {
             Path()
               ..moveTo(base.dx, base.dy)
               ..quadraticBezierTo(
-                  base.dx + side * 1.5, tip.dy + (base.dy - tip.dy) * .35, tip.dx, tip.dy),
+                base.dx + side * 1.5,
+                tip.dy + (base.dy - tip.dy) * .35,
+                tip.dx,
+                tip.dy,
+              ),
             Paint()
               ..style = PaintingStyle.stroke
               ..strokeCap = StrokeCap.round
@@ -485,7 +525,9 @@ class TamaPainter extends CustomPainter {
           final hornColor = Color.lerp(color, T.shellTop, .62)!;
           canvas.drawPath(horn, Paint()..color = hornColor);
           canvas.drawPath(
-              horn, outline..color = Color.lerp(hornColor, T.dusk, .3)!);
+            horn,
+            outline..color = Color.lerp(hornColor, T.dusk, .3)!,
+          );
           canvas.restore();
         case 5: // Mechon rizado, solo uno, en el centro.
           if (side > 0) break;
@@ -567,7 +609,11 @@ class TamaPainter extends CustomPainter {
       ..color = T.partyStripe;
     for (var i = 0; i < 4; i++) {
       final y = -height * (.12 + i * .27);
-      canvas.drawLine(Offset(-half * 1.4, y + half * .5), Offset(half * 1.4, y - half * .5), stripe);
+      canvas.drawLine(
+        Offset(-half * 1.4, y + half * .5),
+        Offset(half * 1.4, y - half * .5),
+        stripe,
+      );
     }
     // Brillo de la casa en el lado de la luz.
     canvas.drawPath(
@@ -596,10 +642,18 @@ class TamaPainter extends CustomPainter {
     final puff = Paint()
       ..shader = RadialGradient(
         center: const Alignment(-.35, -.45),
-        colors: [T.shellTop, T.partyPompom, Color.lerp(T.partyPompom, T.partyStripe, .55)!],
+        colors: [
+          T.shellTop,
+          T.partyPompom,
+          Color.lerp(T.partyPompom, T.partyStripe, .55)!,
+        ],
         stops: const [0, .5, 1],
       ).createShader(Rect.fromCircle(center: tip, radius: 4.4));
-    for (final (dx, dy, rad) in const [(-2.0, .6, 2.4), (2.0, .6, 2.4), (0.0, -1.4, 2.7)]) {
+    for (final (dx, dy, rad) in const [
+      (-2.0, .6, 2.4),
+      (2.0, .6, 2.4),
+      (0.0, -1.4, 2.7),
+    ]) {
       canvas.drawCircle(tip + Offset(dx, dy), rad, puff);
     }
     canvas.restore();
@@ -632,8 +686,16 @@ class TamaPainter extends CustomPainter {
         final hand = Offset(0, r.height * .22);
         final hr = r.width * .09;
         final handColor = Paint()..color = Color.lerp(color, T.shellTop, .3)!;
-        canvas.drawCircle(hand + Offset(-side * hr * .8, -hr * .3), hr * .45, handColor);
-        canvas.drawCircle(hand + Offset(-side * hr * .8, -hr * .3), hr * .45, outline);
+        canvas.drawCircle(
+          hand + Offset(-side * hr * .8, -hr * .3),
+          hr * .45,
+          handColor,
+        );
+        canvas.drawCircle(
+          hand + Offset(-side * hr * .8, -hr * .3),
+          hr * .45,
+          outline,
+        );
         canvas.drawCircle(hand, hr, handColor);
         canvas.drawCircle(hand, hr, outline);
         canvas.restore();
@@ -663,11 +725,28 @@ class TamaPainter extends CustomPainter {
         final h = r.height * .24;
         final wing = Path()
           ..moveTo(0, h * .3)
-          ..cubicTo(side * w * .5, h * .45, side * w * 1.1, h * .05, side * w, -h * .45)
-          ..cubicTo(side * w * .75, -h * .25, side * w * .45, -h * .5, side * w * .3, -h * .2)
+          ..cubicTo(
+            side * w * .5,
+            h * .45,
+            side * w * 1.1,
+            h * .05,
+            side * w,
+            -h * .45,
+          )
+          ..cubicTo(
+            side * w * .75,
+            -h * .25,
+            side * w * .45,
+            -h * .5,
+            side * w * .3,
+            -h * .2,
+          )
           ..cubicTo(side * w * .15, -h * .35, 0, -h * .1, 0, h * .3)
           ..close();
-        canvas.drawPath(wing, Paint()..color = Color.lerp(color, T.shellTop, .5)!);
+        canvas.drawPath(
+          wing,
+          Paint()..color = Color.lerp(color, T.shellTop, .5)!,
+        );
         canvas.drawPath(wing, outline);
         canvas.restore();
       }
@@ -675,7 +754,12 @@ class TamaPainter extends CustomPainter {
   }
 
   void _feetBehind(
-      Canvas canvas, TamaBody body, Paint skin, Color rim, Color color) {
+    Canvas canvas,
+    TamaBody body,
+    Paint skin,
+    Color rim,
+    Color color,
+  ) {
     final variant = look.part(TamaPart.feet);
     if (variant == 2) {
       _legs(canvas, body, rim, color);
@@ -713,7 +797,12 @@ class TamaPainter extends CustomPainter {
     for (final side in const [-1.0, 1.0]) {
       final x = r.center.dx + side * r.width * .17;
       final leg = RRect.fromRectAndRadius(
-        Rect.fromLTRB(x - r.width * .055, r.bottom - 4, x + r.width * .055, floor - 2.5),
+        Rect.fromLTRB(
+          x - r.width * .055,
+          r.bottom - 4,
+          x + r.width * .055,
+          floor - 2.5,
+        ),
         Radius.circular(r.width * .055),
       );
       canvas.drawRRect(leg, Paint()..color = legColor);
@@ -726,7 +815,11 @@ class TamaPainter extends CustomPainter {
       canvas.drawOval(shoe, Paint()..color = Color.lerp(color, T.dusk, .28)!);
       canvas.drawOval(shoe, outline);
       canvas.drawOval(
-        Rect.fromCenter(center: shoe.center.translate(-shoe.width * .15, -1.2), width: shoe.width * .35, height: 1.4),
+        Rect.fromCenter(
+          center: shoe.center.translate(-shoe.width * .15, -1.2),
+          width: shoe.width * .35,
+          height: 1.4,
+        ),
         Paint()..color = T.glintSoft,
       );
     }
@@ -779,8 +872,7 @@ class TamaPainter extends CustomPainter {
     canvas.translate(faceShift.dx, faceShift.dy);
     _cheeks(canvas, f, color);
     for (final side in const [-1.0, 1.0]) {
-      _eye(canvas, f, Offset(f.centre.dx + side * f.eyeDx, f.eyeY), side, gaze,
-          skin);
+      _eye(canvas, f, Offset(f.centre.dx + side * f.eyeDx, f.eyeY), side, gaze);
     }
     _mouth(canvas, f);
     canvas.restore();
@@ -797,7 +889,9 @@ class TamaPainter extends CustomPainter {
       // El rubor del momento (vergueenza, mimos) sale aunque no haya mejillas.
       final extra = pose.blush.clamp(0.0, 1.0);
       if (variant == 1 || extra > 0) {
-        final alpha = variant == 1 ? math.min(1.0, base + extra * .3) : extra * .7;
+        final alpha = variant == 1
+            ? math.min(1.0, base + extra * .3)
+            : extra * .7;
         canvas.drawOval(
           Rect.fromCenter(center: c, width: f.eyeR * 2.0, height: f.eyeR * 1.1),
           Paint()
@@ -834,8 +928,7 @@ class TamaPainter extends CustomPainter {
     }
   }
 
-  void _eye(Canvas canvas, TamaFace f, Offset c, double side, Offset gaze,
-      Paint skin) {
+  void _eye(Canvas canvas, TamaFace f, Offset c, double side, Offset gaze) {
     final r = f.eyeR;
     final variant = look.part(TamaPart.eyes);
     final ink = Paint()..color = T.tamaInk;
@@ -853,8 +946,11 @@ class TamaPainter extends CustomPainter {
         Path()
           ..moveTo(c.dx - r * .72, c.dy + (up ? r * .22 : 0))
           ..quadraticBezierTo(
-              c.dx, c.dy + (up ? -r * .62 : r * .42), c.dx + r * .72,
-              c.dy + (up ? r * .22 : 0)),
+            c.dx,
+            c.dy + (up ? -r * .62 : r * .42),
+            c.dx + r * .72,
+            c.dy + (up ? r * .22 : 0),
+          ),
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
@@ -864,7 +960,16 @@ class TamaPainter extends CustomPainter {
       return;
     }
 
+    // Sueno: el parpado baja recortando el ojo por arriba; solo se ve su linea.
+    final doze = alreadyClosed ? 0.0 : pose.doze.clamp(0.0, 1.0);
+    final lidY = c.dy - r * 1.2 + r * 1.3 * doze;
+
     canvas.save();
+    if (doze > .02) {
+      canvas.clipRect(
+        Rect.fromLTRB(c.dx - r * 2, lidY, c.dx + r * 2, c.dy + r * 2.4),
+      );
+    }
     // El parpadeo aplasta el ojo hacia su linea media.
     canvas.translate(c.dx, c.dy);
     canvas.scale(1, 1 - closed * .9);
@@ -875,11 +980,18 @@ class TamaPainter extends CustomPainter {
           Rect.fromCenter(center: pupil * .6, width: r * 1.1, height: r * 1.46),
           ink,
         );
-        canvas.drawCircle(pupil * .6 + Offset(-r * .2, -r * .32), r * .22, white);
+        canvas.drawCircle(
+          pupil * .6 + Offset(-r * .2, -r * .32),
+          r * .22,
+          white,
+        );
       case 1: // Brillantes.
       case 4: // Con destello de estrella.
         final eye = Rect.fromCenter(
-            center: pupil * .5, width: r * 1.7, height: r * 2.06);
+          center: pupil * .5,
+          width: r * 1.7,
+          height: r * 2.06,
+        );
         canvas.drawOval(
           eye,
           Paint()
@@ -905,7 +1017,12 @@ class TamaPainter extends CustomPainter {
         canvas.drawPath(
           Path()
             ..moveTo(-r * .74 + pupil.dx * .5, r * .3)
-            ..quadraticBezierTo(pupil.dx * .5, -r * .62, r * .74 + pupil.dx * .5, r * .3),
+            ..quadraticBezierTo(
+              pupil.dx * .5,
+              -r * .62,
+              r * .74 + pupil.dx * .5,
+              r * .3,
+            ),
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeCap = StrokeCap.round
@@ -953,18 +1070,19 @@ class TamaPainter extends CustomPainter {
     }
     canvas.restore();
 
-    // Sueno: parpados a media asta, pintados con la misma piel que el cuerpo
-    // para que el corte no se note.
-    final doze = pose.doze.clamp(0.0, 1.0);
-    if (doze > .02 && variant != 2 && variant != 3) {
-      final lidY = c.dy - r * 1.2 + r * 1.3 * doze;
-      canvas.drawRect(
-        Rect.fromLTRB(c.dx - r * 1.3, c.dy - r * 2.4, c.dx + r * 1.3, lidY),
-        skin,
-      );
+    // La linea del parpado mide lo que el ojo a esa altura: si aun no lo toca,
+    // no se pinta.
+    final (halfW, halfH) = switch (variant) {
+      0 => (r * .55, r * .73),
+      5 => (r * 1.02, r * 1.02),
+      _ => (r * .85, r * 1.03),
+    };
+    final dy = (lidY - c.dy) / (halfH * (1 - closed * .9));
+    if (doze > .02 && dy.abs() < 1) {
+      final w = halfW * math.sqrt(1 - dy * dy) + r * .08;
       canvas.drawLine(
-        Offset(c.dx - r * .9, lidY),
-        Offset(c.dx + r * .9, lidY),
+        Offset(c.dx - w, lidY),
+        Offset(c.dx + w, lidY),
         Paint()
           ..strokeCap = StrokeCap.round
           ..strokeWidth = r * .2
@@ -982,7 +1100,11 @@ class TamaPainter extends CustomPainter {
         Path()
           ..moveTo(inner.dx, inner.dy)
           ..quadraticBezierTo(
-              c.dx + side * r * .1, c.dy - r * 1.62, outer.dx, outer.dy),
+            c.dx + side * r * .1,
+            c.dy - r * 1.62,
+            outer.dx,
+            outer.dy,
+          ),
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
@@ -1056,12 +1178,17 @@ class TamaPainter extends CustomPainter {
       final catDip = depth * 1.5 + m * .15;
       final lip = variant == 1
           ? (Path()
-            ..moveTo(c.dx - m * 1.05, c.dy - m * .12)
-            ..quadraticBezierTo(c.dx - m * .52, c.dy + catDip, c.dx, c.dy)
-            ..quadraticBezierTo(c.dx + m * .52, c.dy + catDip, c.dx + m * 1.05, c.dy - m * .12))
+              ..moveTo(c.dx - m * 1.05, c.dy - m * .12)
+              ..quadraticBezierTo(c.dx - m * .52, c.dy + catDip, c.dx, c.dy)
+              ..quadraticBezierTo(
+                c.dx + m * .52,
+                c.dy + catDip,
+                c.dx + m * 1.05,
+                c.dy - m * .12,
+              ))
           : (Path()
-            ..moveTo(c.dx - m, c.dy)
-            ..quadraticBezierTo(c.dx, c.dy + depth * 2, c.dx + m, c.dy));
+              ..moveTo(c.dx - m, c.dy)
+              ..quadraticBezierTo(c.dx, c.dy + depth * 2, c.dx + m, c.dy));
       final below = Path.from(lip)
         ..lineTo(c.dx + m * 1.05, c.dy + m * 4)
         ..lineTo(c.dx - m * 1.05, c.dy + m * 4)
@@ -1089,7 +1216,12 @@ class TamaPainter extends CustomPainter {
           Path()
             ..moveTo(c.dx - m * 1.05, c.dy - m * .12)
             ..quadraticBezierTo(c.dx - m * .52, c.dy + d, c.dx, c.dy)
-            ..quadraticBezierTo(c.dx + m * .52, c.dy + d, c.dx + m * 1.05, c.dy - m * .12),
+            ..quadraticBezierTo(
+              c.dx + m * .52,
+              c.dy + d,
+              c.dx + m * 1.05,
+              c.dy - m * .12,
+            ),
           line,
         );
       case 2: // Boquita en o, con la lengua asomando dentro.
@@ -1113,8 +1245,14 @@ class TamaPainter extends CustomPainter {
         canvas.drawOval(o, line..strokeWidth = math.max(.8, m * .2));
         if (tongue > .05) {
           // La lengua sale por abajo, por encima del borde de la boquita.
-          _tongueOut(canvas, Offset(o.center.dx, o.center.dy + o.height * .15), m,
-              tongue, reach: o.height * .35, width: o.width * .72);
+          _tongueOut(
+            canvas,
+            Offset(o.center.dx, o.center.dy + o.height * .15),
+            m,
+            tongue,
+            reach: o.height * .35,
+            width: o.width * .72,
+          );
         }
       case 3: // Colmillo.
         canvas.drawPath(
@@ -1137,16 +1275,28 @@ class TamaPainter extends CustomPainter {
         final smile = Path()
           ..moveTo(c.dx - w, c.dy - m * .05)
           ..quadraticBezierTo(c.dx, c.dy + m * .12, c.dx + w, c.dy - m * .05)
-          ..cubicTo(c.dx + w * .9, c.dy + h * 1.2, c.dx - w * .9, c.dy + h * 1.2, c.dx - w, c.dy - m * .05)
+          ..cubicTo(
+            c.dx + w * .9,
+            c.dy + h * 1.2,
+            c.dx - w * .9,
+            c.dy + h * 1.2,
+            c.dx - w,
+            c.dy - m * .05,
+          )
           ..close();
         canvas.drawPath(smile, Paint()..color = T.tamaMouth);
         canvas.drawPath(smile, line..strokeWidth = math.max(.8, m * .2));
         // Siempre asoma un poco por el borde de abajo; con la pose de lengua
         // fuera, bastante mas.
-        _tongueOut(canvas, Offset(c.dx, c.dy + h * .3), m, .2 + tongue * .8,
-            reach: h * .45, width: w * 1.05);
+        _tongueOut(
+          canvas,
+          Offset(c.dx, c.dy + h * .3),
+          m,
+          .2 + tongue * .8,
+          reach: h * .45,
+          width: w * 1.05,
+        );
     }
-
   }
 
   /// Lengua fuera, del descarado: un lobulo centrado con su pliegue que asoma
@@ -1207,10 +1357,15 @@ class TamaPainter extends CustomPainter {
       final phase = (pose.heartPhase + i / 3) % 1.0;
       final alpha = pose.hearts * math.sin(phase * math.pi);
       if (alpha <= .02) continue;
-      final x = r.center.dx + (i - 1) * r.width * .42 + math.sin(phase * 6 + i) * 2;
+      final x =
+          r.center.dx + (i - 1) * r.width * .42 + math.sin(phase * 6 + i) * 2;
       final y = r.top + 2 - phase * 20 - pose.hop;
-      _heart(canvas, Offset(x, y), 5.2 + i * .6,
-          Paint()..color = T.tamaHeart.withValues(alpha: alpha));
+      _heart(
+        canvas,
+        Offset(x, y),
+        5.2 + i * .6,
+        Paint()..color = T.tamaHeart.withValues(alpha: alpha),
+      );
     }
   }
 
@@ -1218,10 +1373,22 @@ class TamaPainter extends CustomPainter {
     canvas.drawPath(
       Path()
         ..moveTo(c.dx, c.dy + s * .34)
-        ..cubicTo(c.dx - s * .62, c.dy - s * .02, c.dx - s * .4, c.dy - s * .6,
-            c.dx, c.dy - s * .26)
-        ..cubicTo(c.dx + s * .4, c.dy - s * .6, c.dx + s * .62, c.dy - s * .02,
-            c.dx, c.dy + s * .34)
+        ..cubicTo(
+          c.dx - s * .62,
+          c.dy - s * .02,
+          c.dx - s * .4,
+          c.dy - s * .6,
+          c.dx,
+          c.dy - s * .26,
+        )
+        ..cubicTo(
+          c.dx + s * .4,
+          c.dy - s * .6,
+          c.dx + s * .62,
+          c.dy - s * .02,
+          c.dx,
+          c.dy + s * .34,
+        )
         ..close(),
       paint,
     );
@@ -1364,7 +1531,8 @@ class TamaBody {
       maxY = math.max(maxY, p.dy);
     }
     // El cuerpo apoya justo encima del suelo, o sobre sus piernecitas.
-    final bottom = TamaPainter.floor - 1.2 - (look.part(TamaPart.feet) == 2 ? legLift : 0);
+    final bottom =
+        TamaPainter.floor - 1.2 - (look.part(TamaPart.feet) == 2 ? legLift : 0);
     final points = [
       for (final p in raw)
         Offset(
@@ -1415,11 +1583,20 @@ class TamaFace {
     // Cara algo baja y ojos separados: proporciones de cria, que es lo que
     // hace que algo parezca achuchable.
     final eyeY = r.top + r.height * (.38 + .24 * look.unit(TamaDial.eyeHeight));
-    final eyeR = TamaPainter.baseRadius * (.13 + .1 * look.unit(TamaDial.eyeSize)) * scale;
+    final eyeR =
+        TamaPainter.baseRadius *
+        (.13 + .1 * look.unit(TamaDial.eyeSize)) *
+        scale;
     final half = body.halfWidthAt(eyeY);
     final eyeDx = half * (.28 + .26 * look.unit(TamaDial.eyeSpacing));
-    final mouthY = eyeY + eyeR * .9 + r.height * (.03 + .1 * look.unit(TamaDial.mouthHeight));
-    final mouthW = TamaPainter.baseRadius * (.075 + .09 * look.unit(TamaDial.mouthSize)) * scale;
+    final mouthY =
+        eyeY +
+        eyeR * .9 +
+        r.height * (.03 + .1 * look.unit(TamaDial.mouthHeight));
+    final mouthW =
+        TamaPainter.baseRadius *
+        (.075 + .09 * look.unit(TamaDial.mouthSize)) *
+        scale;
     return TamaFace._(
       centre: Offset(r.center.dx, eyeY),
       eyeY: eyeY,

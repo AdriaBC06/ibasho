@@ -8,7 +8,10 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 
+import '../../theme/menu_theme.dart';
+import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
+import '../../theme/type.dart';
 import '../../ui/widgets/channel_art.dart';
 import 'tsumiki.dart';
 
@@ -115,13 +118,15 @@ class TsumikiBoard extends StatelessWidget {
   Widget build(BuildContext context) => RepaintBoundary(
         child: CustomPaint(
           size: Size(TsumikiGame.width * cellSize, TsumikiGame.visibleRows * cellSize),
-          painter: _BoardPainter(game, cellSize, fx, clock, accent, worried),
+          painter: _BoardPainter(game, cellSize, fx, clock, accent, worried, IbashoSkin.of(context).surfaces),
         ),
       );
 }
 
 class _BoardPainter extends CustomPainter {
-  _BoardPainter(this.game, this.cell, this.fx, this.clock, this.accent, this.worried) : super(repaint: clock);
+  _BoardPainter(this.game, this.cell, this.fx, this.clock, this.accent, this.worried, this.surfaces) : super(repaint: clock);
+
+  final Surfaces surfaces;
 
   final TsumikiGame game;
   final double cell;
@@ -152,7 +157,7 @@ class _BoardPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color.lerp(T.shellTop, accent, .06)!, Color.lerp(T.shellBottom, accent, .16)!],
+          colors: [Color.lerp(surfaces.shellTop, accent, .06)!, Color.lerp(surfaces.shellBottom, accent, .16)!],
         ).createShader(full),
     );
     final grid = Paint()
@@ -201,7 +206,7 @@ class _BoardPainter extends CustomPainter {
         final p = game.at(x, y);
         if (p == null) continue;
         var r = _rect(x, y);
-        var color = stone ? Color.lerp(pieceColor(p), T.inkSoft, .72)! : pieceColor(p);
+        var color = stone ? Color.lerp(pieceColor(p), Ty.inkSoft, .72)! : pieceColor(p);
         if (clearing.contains(y)) {
           // Se hinchan, se vuelven blancas y se encogen hacia el centro.
           final grow = clearK < .35 ? 1 + clearK * .3 : math.max(0.0, 1.1 - (clearK - .35) / .65 * 1.1);
@@ -276,7 +281,7 @@ class _BoardPainter extends CustomPainter {
     cells.sort((a, b) => a.$2 != b.$2 ? a.$2.compareTo(b.$2) : (a.$1 - 4.5).abs().compareTo((b.$1 - 4.5).abs()));
     final r = _rect(cells.first.$1, cells.first.$2);
     final blink = (t % 3.4) > 3.25;
-    final ink = Paint()..color = T.ink.withValues(alpha: .85);
+    final ink = Paint()..color = Ty.ink.withValues(alpha: .85);
     for (final dx in [-.18, .18]) {
       final c = r.center + Offset(dx * cell, worried ? -cell * .02 : cell * .04);
       if (blink) {
@@ -325,7 +330,7 @@ class _PreviewPainter extends CustomPainter {
     final h = maxY - minY + 1;
     final s = math.min(size.width / 4.4, size.height / 2.4);
     final origin = Offset((size.width - w * s) / 2, (size.height - h * s) / 2);
-    final color = muted ? Color.lerp(pieceColor(piece), T.inkSoft, .6)! : pieceColor(piece);
+    final color = muted ? Color.lerp(pieceColor(piece), Ty.inkSoft, .6)! : pieceColor(piece);
     for (final (x, y) in cells) {
       BlockStamp.paint(canvas, Rect.fromLTWH(origin.dx + (x - minX) * s, origin.dy + (y - minY) * s, s, s), color);
     }

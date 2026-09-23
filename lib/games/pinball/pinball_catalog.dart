@@ -18,7 +18,6 @@ import '../../backend/gacha_prizes.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
-import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../../ui/layout.dart';
 import '../../ui/screens/channels/gacha_channel.dart' show categoryName;
@@ -95,7 +94,7 @@ class PinballWishBar extends StatelessWidget {
                 ),
                 Text(
                   '$done/$wishPulls',
-                  style: Ty.numeral(14, weight: FontWeight.w700).copyWith(color: T.inkSoft),
+                  style: Ty.numeral(14, weight: FontWeight.w700).copyWith(color: Ty.inkSoft),
                 ),
               ],
             ),
@@ -106,10 +105,10 @@ class PinballWishBar extends StatelessWidget {
                 height: 7,
                 child: Stack(
                   children: [
-                    const Positioned.fill(child: ColoredBox(color: T.wellTop)),
+                    Positioned.fill(child: ColoredBox(color: skin.wellTop)),
                     FractionallySizedBox(
                       widthFactor: (done / wishPulls).clamp(0.0, 1.0),
-                      child: ColoredBox(color: w == null ? T.hairline : skin.accent),
+                      child: ColoredBox(color: w == null ? skin.hairline : skin.accent),
                     ),
                   ],
                 ),
@@ -178,9 +177,9 @@ class _PinballCatalogDialogState extends ConsumerState<PinballCatalogDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(l.gachaCatalogBody, style: (tall ? Ty.caption : Ty.body).copyWith(color: T.inkSoft)),
+          Text(l.gachaCatalogBody, style: (tall ? Ty.caption : Ty.body).copyWith(color: Ty.inkSoft)),
           const SizedBox(height: 12),
-          Text(l.gachaCategory, style: Ty.micro.copyWith(color: T.inkSoft)),
+          Text(l.gachaCategory, style: Ty.micro.copyWith(color: Ty.inkSoft)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
@@ -208,7 +207,7 @@ class _PinballCatalogDialogState extends ConsumerState<PinballCatalogDialog> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(l.gachaRarity, style: Ty.micro.copyWith(color: T.inkSoft)),
+          Text(l.gachaRarity, style: Ty.micro.copyWith(color: Ty.inkSoft)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
@@ -229,7 +228,7 @@ class _PinballCatalogDialogState extends ConsumerState<PinballCatalogDialog> {
             Text(
               l.pinballCatalogOwned(owned, items.length),
               key: const ValueKey<String>('pinball.catalog.owned'),
-              style: Ty.micro.copyWith(color: T.inkSoft),
+              style: Ty.micro.copyWith(color: Ty.inkSoft),
             ),
             const SizedBox(height: 6),
             GlossSurface(

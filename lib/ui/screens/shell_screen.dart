@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../audio/audio_service.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/card.dart';
+import '../../state/channel_order.dart';
 import '../../state/login_bonus.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
@@ -128,8 +129,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     if (_bonusOffered ||
         !loginBonusAutoOpen ||
         !bonus.loaded ||
-        bonus.claimedToday)
+        bonus.claimedToday) {
       return;
+    }
     _bonusOffered = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(showLoginBonus(context));
@@ -138,6 +140,17 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
 
   PanelBalance _balance = PanelBalance.balanced;
   int _page = 0;
+
+  /// Modo de arrastrar los canales para cambiarlos de sitio.
+  bool _editingOrder = false;
+
+  void _toggleEditingOrder() {
+    AudioService.instance.play(Sfx.tick);
+    setState(() => _editingOrder = !_editingOrder);
+  }
+
+  void _reorderChannels(List<String> order) =>
+      unawaited(ref.read(channelOrderProvider.notifier).setOrder(order));
 
   /// Alto del panel de arriba cuando empezo la animacion de ampliar. Se guarda
   /// en vez de calcularlo porque al girar el movil las alturas cambian.
@@ -168,7 +181,11 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     // El pachinko, tras la primera bola jugada en el pinball (o si ya se ha
     // jugado alguna tanda, desde otro dispositivo).
     final pachinko = prefs.pinballPlayed || gacha.pachinkoPlayed;
-    return channelsFor(
+    // Tamakoro, con el primer Tama. Quien ya lo abrio lo conserva.
+    final koro =
+        ref.watch(tamasProvider.select((t) => t.tamas.isNotEmpty)) ||
+        prefs.koroOpened;
+    final channels = channelsFor(
       isAdmin: ref.read(sessionProvider).isAdmin,
       installedGames: ref.watch(installedGamesProvider),
       gachaUnlocked: unlocked,
@@ -177,7 +194,13 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
       pinballGift: pinball && !prefs.pinballOpened,
       pachinkoUnlocked: pachinko,
       pachinkoGift: pachinko && !prefs.pachinkoOpened,
+      koroUnlocked: koro,
+      koroGift: koro && !prefs.koroOpened,
     );
+    // El orden que haya elegido la cuenta manda; lo nuevo va al final y lo que
+    // ya no existe se ignora (ver `applyChannelOrder`).
+    final order = ref.watch(channelOrderProvider.select((s) => s.order));
+    return applyChannelOrder(channels, order);
   }
 
   int _pageCount(bool tall) =>
@@ -222,8 +245,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     if (event is! PointerScrollEvent) return;
     final now = DateTime.now();
     if (now.difference(_lastWheel) < const Duration(milliseconds: 260)) return;
-    if (event.scrollDelta.dy.abs() < 2 && event.scrollDelta.dx.abs() < 2)
+    if (event.scrollDelta.dy.abs() < 2 && event.scrollDelta.dx.abs() < 2) {
       return;
+    }
     _lastWheel = now;
     final forward = (event.scrollDelta.dy + event.scrollDelta.dx) > 0;
     _goToPage(_page + (forward ? 1 : -1));
@@ -248,128 +272,157 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
       ref.watch(adminProvider.select((a) => a.loading));
     }
     // El fondo puesto en Ajustes: detras de los paneles, se ve por el aire
-    // que dejan (el carril, la barra y los margenes). Vacio no pinta nada, y
-    // uno que la coleccion ya no tiene (un admin que se lo ha quitado) tampoco.
-    final chosenBackdrop = ref.watch(
-      preferencesProvider.select((p) => p.backdropId),
-    );
-    final backdropGone = ref.watch(
-      gachaProvider.select((g) => g.loaded && chosenBackdrop.isNotEmpty && !g.owns('bg_$chosenBackdrop')),
-    );
-    final backdropId = backdropGone ? '' : chosenBackdrop;
+    // que dejan (el carril, la barra y los margenes).
+    final backdropId = ref.watch(backdropIdProvider);
 
     return Bezel(
-      child: FocusScope(
-        autofocus: true,
-        child: Shortcuts(
-          shortcuts: const <ShortcutActivator, Intent>{
-            SingleActivator(LogicalKeyboardKey.pageDown): _PageIntent(1),
-            SingleActivator(LogicalKeyboardKey.pageUp): _PageIntent(-1),
-          },
-          child: Actions(
-            actions: <Type, Action<Intent>>{
-              _PageIntent: CallbackAction<_PageIntent>(
-                onInvoke: (intent) {
-                  _goToPage(_page + intent.delta);
-                  return null;
+      child: Stack(
+        children: [
+          // Detras de todo y de lado a lado: solo se ve por el aire que dejan
+          // los paneles (los margenes, el carril y la barra). No ocupa sitio
+          // ni cambia ningun tamano.
+          Positioned.fill(
+            child: RepaintBoundary(child: BackdropView(id: backdropId)),
+          ),
+          FocusScope(
+            autofocus: true,
+            child: Shortcuts(
+              shortcuts: const <ShortcutActivator, Intent>{
+                SingleActivator(LogicalKeyboardKey.pageDown): _PageIntent(1),
+                SingleActivator(LogicalKeyboardKey.pageUp): _PageIntent(-1),
+              },
+              child: Actions(
+                actions: <Type, Action<Intent>>{
+                  _PageIntent: CallbackAction<_PageIntent>(
+                    onInvoke: (intent) {
+                      _goToPage(_page + intent.delta);
+                      return null;
+                    },
+                  ),
                 },
-              ),
-            },
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: layout.gutter),
-              child: LayoutBuilder(
-                builder: (context, box) {
-                  final panelWidth = box.maxWidth;
-                  final railHeight = layout.pick(_railHeight, _tallRailHeight);
-                  final barHeight = layout.pick(_barHeight, _tallBarHeight);
-                  final barGap = layout.pick(_barGap, 10.0);
-                  final available =
-                      box.maxHeight - 24 - railHeight - barGap - barHeight;
-                  final gridNatural = ChannelGrid.tallNaturalHeight(panelWidth);
-                  _retune(layout, available, gridNatural);
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: layout.gutter),
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final panelWidth = box.maxWidth;
+                      final railHeight = layout.pick(
+                        _railHeight,
+                        _tallRailHeight,
+                      );
+                      final barHeight = layout.pick(_barHeight, _tallBarHeight);
+                      final barGap = layout.pick(_barGap, 10.0);
+                      final available =
+                          box.maxHeight - 24 - railHeight - barGap - barHeight;
+                      final gridNatural = ChannelGrid.tallNaturalHeight(
+                        panelWidth,
+                      );
+                      _retune(layout, available, gridNatural);
 
-                  return AnimatedBuilder(
-                    animation: _topHeight,
-                    builder: (context, _) {
-                      final topHeight = _topHeight.value;
-                      final bottomHeight = layout.tall
-                          ? available - topHeight
-                          : T.panelBalanced * 2 - topHeight;
+                      return AnimatedBuilder(
+                        animation: _topHeight,
+                        builder: (context, _) {
+                          final topHeight = _topHeight.value;
+                          final bottomHeight = layout.tall
+                              ? available - topHeight
+                              : T.panelBalanced * 2 - topHeight;
 
-                      return Stack(
-                        children: [
-                          // Detras de todo: solo se ve por el aire que dejan
-                          // los paneles (los margenes, el carril y la barra).
-                          // No ocupa sitio ni cambia ningun tamano.
-                          Positioned.fill(
-                            child: RepaintBoundary(
-                              child: BackdropView(id: backdropId),
-                            ),
-                          ),
-                          Column(
+                          return Stack(
                             children: [
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                height: topHeight,
-                                child: ScreenPanel(
-                                  child: TopPanel(height: topHeight),
-                                ),
-                              ),
-                              SizedBox(
-                                height: railHeight,
-                                child: _ControlRail(
-                                  page: _page,
-                                  pageCount: pageCount,
-                                  diameter: layout.pill,
-                                  onPrevious: () => _goToPage(_page - 1),
-                                  onNext: () => _goToPage(_page + 1),
-                                  onMagnify: _cycleBalance,
-                                ),
-                              ),
-                              SizedBox(
-                                height: bottomHeight,
-                                child: Listener(
-                                  onPointerSignal: _onWheel,
-                                  child: PageSwipe(
-                                    onPrevious: () => _goToPage(_page - 1),
-                                    onNext: () => _goToPage(_page + 1),
+                              Column(
+                                children: [
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: topHeight,
                                     child: ScreenPanel(
-                                      child: ChannelGrid(
-                                        channels: channels,
-                                        page: _page,
-                                        height: bottomHeight,
-                                        width: panelWidth,
-                                      ),
+                                      glass: true,
+                                      child: TopPanel(height: topHeight),
                                     ),
                                   ),
-                                ),
+                                  SizedBox(
+                                    height: railHeight,
+                                    child: _ControlRail(
+                                      page: _page,
+                                      pageCount: pageCount,
+                                      diameter: layout.pill,
+                                      editingOrder: _editingOrder,
+                                      onPrevious: () => _goToPage(_page - 1),
+                                      onNext: () => _goToPage(_page + 1),
+                                      onMagnify: _cycleBalance,
+                                      onToggleEditingOrder: _toggleEditingOrder,
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: bottomHeight,
+                                    child: Listener(
+                                      onPointerSignal: _editingOrder
+                                          ? null
+                                          : _onWheel,
+                                      child: _editingOrder
+                                          ? ScreenPanel(
+                                            glass: true,
+                                              child: ChannelGrid(
+                                                channels: channels,
+                                                page: _page,
+                                                height: bottomHeight,
+                                                width: panelWidth,
+                                                editing: true,
+                                                onReorder: _reorderChannels,
+                                                onRequestPrevious: _page > 0
+                                                    ? () => _goToPage(_page - 1)
+                                                    : null,
+                                                onRequestNext:
+                                                    _page < pageCount - 1
+                                                    ? () => _goToPage(_page + 1)
+                                                    : null,
+                                              ),
+                                            )
+                                          : PageSwipe(
+                                              onPrevious: () =>
+                                                  _goToPage(_page - 1),
+                                              onNext: () =>
+                                                  _goToPage(_page + 1),
+                                              child: ScreenPanel(
+                                                glass: true,
+                                                child: ChannelGrid(
+                                                  channels: channels,
+                                                  page: _page,
+                                                  height: bottomHeight,
+                                                  width: panelWidth,
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                  SizedBox(height: barGap),
+                                  SizedBox(
+                                    height: barHeight,
+                                    child: _BottomBar(
+                                      page: _page,
+                                      pageCount: pageCount,
+                                      settingsAnchor: _settingsAnchor,
+                                      profileAnchor: _profileAnchor,
+                                      channels: channels,
+                                      label: l,
+                                      height: barHeight,
+                                      width: panelWidth,
+                                      editingOrder: _editingOrder,
+                                      onDoneEditingOrder: _toggleEditingOrder,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                               ),
-                              SizedBox(height: barGap),
-                              SizedBox(
-                                height: barHeight,
-                                child: _BottomBar(
-                                  page: _page,
-                                  pageCount: pageCount,
-                                  settingsAnchor: _settingsAnchor,
-                                  profileAnchor: _profileAnchor,
-                                  channels: channels,
-                                  label: l,
-                                  height: barHeight,
-                                  width: panelWidth,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
                             ],
-                          ),
-                        ],
+                          );
+                        },
                       );
                     },
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -387,43 +440,83 @@ class _ControlRail extends StatelessWidget {
     required this.page,
     required this.pageCount,
     required this.diameter,
+    required this.editingOrder,
     required this.onPrevious,
     required this.onNext,
     required this.onMagnify,
+    required this.onToggleEditingOrder,
   });
 
   final int page;
   final int pageCount;
   final double diameter;
+
+  /// En modo de ordenar canales, las flechas tambien pasan de pagina si una
+  /// baldosa se queda arrastrada encima un ratito.
+  final bool editingOrder;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onMagnify;
+  final VoidCallback onToggleEditingOrder;
+
+  Widget _arrow(
+    String key,
+    Glyph glyph,
+    double diameter,
+    VoidCallback? onPressed,
+    VoidCallback? onHover,
+  ) {
+    final pill = IconPill(
+      key: ValueKey<String>(key),
+      glyph: glyph,
+      diameter: diameter,
+      onPressed: onPressed,
+    );
+    if (!editingOrder) return pill;
+    return Stack(
+      children: [
+        pill,
+        Positioned.fill(child: EdgeDropZone(onHover: onHover)),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      // Las flechas en los extremos, simetricas; ampliar al lado de la
-      // derecha, hacia dentro.
-      IconPill(
-        key: const ValueKey<String>('grid.previous'),
-        glyph: Glyph.arrowLeft,
-        diameter: diameter,
-        onPressed: page > 0 ? onPrevious : null,
+      // Las flechas en los extremos, simetricas; ordenar y ampliar hacia
+      // dentro, a la derecha.
+      _arrow(
+        'grid.previous',
+        Glyph.arrowLeft,
+        diameter,
+        page > 0 ? onPrevious : null,
+        page > 0 ? onPrevious : null,
       ),
       const Spacer(),
+      IconPill(
+        key: const ValueKey<String>('reorder-channels'),
+        glyph: Glyph.pencil,
+        diameter: diameter,
+        tone: editingOrder ? ButtonTone.accent : ButtonTone.plain,
+        semanticLabel: L.of(context)!.reorderChannelsStart,
+        onPressed: onToggleEditingOrder,
+      ),
+      const SizedBox(width: 14),
       IconPill(
         key: const ValueKey<String>('magnify'),
         glyph: Glyph.magnify,
         diameter: diameter,
         tone: ButtonTone.accent,
-        onPressed: onMagnify,
+        onPressed: editingOrder ? null : onMagnify,
       ),
       const SizedBox(width: 14),
-      IconPill(
-        key: const ValueKey<String>('grid.next'),
-        glyph: Glyph.arrowRight,
-        diameter: diameter,
-        onPressed: page < pageCount - 1 ? onNext : null,
+      _arrow(
+        'grid.next',
+        Glyph.arrowRight,
+        diameter,
+        page < pageCount - 1 ? onNext : null,
+        page < pageCount - 1 ? onNext : null,
       ),
     ],
   );
@@ -440,6 +533,8 @@ class _BottomBar extends StatelessWidget {
     required this.label,
     required this.height,
     required this.width,
+    required this.editingOrder,
+    required this.onDoneEditingOrder,
   });
 
   final int page;
@@ -450,6 +545,12 @@ class _BottomBar extends StatelessWidget {
   final GlobalKey profileAnchor;
   final List<ChannelSpec> channels;
   final L label;
+
+  /// En modo de ordenar canales, los puntos de pagina dejan sitio al boton de
+  /// «Hecho», la otra forma de salir del modo (la primera es volver a pulsar
+  /// el lapiz del carril).
+  final bool editingOrder;
+  final VoidCallback onDoneEditingOrder;
 
   ChannelSpec _spec(String id) => channels.firstWhere((c) => c.id == id);
 
@@ -495,15 +596,24 @@ class _BottomBar extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < pageCount; i++) ...[
-              if (i > 0) const SizedBox(width: 10),
-              _PageDot(active: i == page, accent: skin.accent),
-            ],
-          ],
-        ),
+        editingOrder
+            ? IbashoButton(
+                key: const ValueKey<String>('reorder-channels.done'),
+                label: label.reorderChannelsDone,
+                tone: ButtonTone.accent,
+                height: height,
+                cue: null,
+                onPressed: onDoneEditingOrder,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < pageCount; i++) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    _PageDot(active: i == page, accent: skin.accent),
+                  ],
+                ],
+              ),
         const Spacer(),
         fit(
           KeyedSubtree(
@@ -538,9 +648,9 @@ class _PageDot extends StatelessWidget {
       height: active ? 12 : 9,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active ? accent : T.hairline,
+        color: active ? accent : skin.hairline,
         border: Border.all(
-          color: active ? Color.lerp(accent, T.dusk, .4)! : T.hairline,
+          color: active ? Color.lerp(accent, T.dusk, .4)! : skin.hairline,
         ),
       ),
     );

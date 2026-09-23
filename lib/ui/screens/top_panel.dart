@@ -11,7 +11,6 @@ import '../../core/clock_format.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
-import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../layout.dart';
 import '../widgets/glyphs.dart';
@@ -69,7 +68,7 @@ class TopPanel extends ConsumerWidget {
                 ],
               ),
             ),
-            Text(clock, style: Ty.clockSmall(T.ink)),
+            Text(clock, style: Ty.clockSmall(Ty.ink)),
             const SizedBox(width: 26),
             const Flexible(
               child: FittedBox(
@@ -124,7 +123,7 @@ class TopPanel extends ConsumerWidget {
                               profile.statusMessage,
                               maxLines: _expanded ? 3 : 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Ty.caption.copyWith(color: T.ink),
+                              style: Ty.caption.copyWith(color: Ty.ink),
                             ),
                           ),
                         ),
@@ -146,13 +145,13 @@ class TopPanel extends ConsumerWidget {
               children: [
                 Transform.scale(
                   scale: clockScale,
-                  child: Text(clock, style: Ty.clock(T.ink)),
+                  child: Text(clock, style: Ty.clock(Ty.ink)),
                 ),
                 SizedBox(height: _expanded ? 22 : 4),
                 Text(
                   date,
                   style: (_expanded ? Ty.title : Ty.lead)
-                      .copyWith(color: T.inkSoft, fontWeight: FontWeight.w400),
+                      .copyWith(color: Ty.inkSoft, fontWeight: FontWeight.w400),
                 ),
               ],
             ),
@@ -200,7 +199,7 @@ class TopPanel extends ConsumerWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text(clock, style: Ty.clockSmall(T.ink), maxLines: 1),
+                    child: Text(clock, style: Ty.clockSmall(Ty.ink), maxLines: 1),
                   ),
                 ],
               ),
@@ -263,7 +262,7 @@ class TopPanel extends ConsumerWidget {
                           profile.statusMessage,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Ty.caption.copyWith(color: T.ink),
+                          style: Ty.caption.copyWith(color: Ty.ink),
                         ),
                       ),
                   ],
@@ -282,12 +281,12 @@ class TopPanel extends ConsumerWidget {
                   children: [
                     Transform.scale(
                       scale: expanded ? 1.3 : 1,
-                      child: Text(clock, style: Ty.clock(T.ink)),
+                      child: Text(clock, style: Ty.clock(Ty.ink)),
                     ),
                     SizedBox(height: expanded ? 10 : 2),
                     Text(
                       date,
-                      style: Ty.lead.copyWith(color: T.inkSoft, fontWeight: FontWeight.w400),
+                      style: Ty.lead.copyWith(color: Ty.inkSoft, fontWeight: FontWeight.w400),
                     ),
                   ],
                 ),
@@ -367,7 +366,7 @@ class _Announcement extends ConsumerWidget {
         text,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: Ty.caption.copyWith(color: T.ink, fontSize: 14),
+        style: Ty.caption.copyWith(color: Ty.ink, fontSize: 14),
       ),
     );
   }

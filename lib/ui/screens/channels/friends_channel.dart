@@ -195,7 +195,7 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
           ? null
           : Text(
               l.friendsCount(state.friends.length, maxFriendsPerAccount),
-              style: Ty.numeral(layout.pick(19, 16), color: T.inkSoft),
+              style: Ty.numeral(layout.pick(19, 16), color: Ty.inkSoft),
             ),
       child: Focus(
         autofocus: true,
@@ -393,7 +393,7 @@ class _MyCard extends ConsumerWidget {
               code == null ? l.friendsCodePending : FriendCode.format(code),
               key: const ValueKey<String>('friends.code'),
               style: code == null
-                  ? Ty.lead.copyWith(color: T.inkSoft)
+                  ? Ty.lead.copyWith(color: Ty.inkSoft)
                   : Ty.numeral(tall ? 26 : 44, weight: FontWeight.w700)
                       .copyWith(letterSpacing: 1),
             ),
@@ -528,7 +528,7 @@ class _MyCard extends ConsumerWidget {
                           code == null ? l.friendsCodePending : FriendCode.format(code),
                           key: const ValueKey<String>('friends.code'),
                           style: code == null
-                              ? Ty.lead.copyWith(color: T.inkSoft)
+                              ? Ty.lead.copyWith(color: Ty.inkSoft)
                               : Ty.numeral(tall ? 24 : 44, weight: FontWeight.w700)
                                   .copyWith(letterSpacing: 1),
                         ),
@@ -632,7 +632,7 @@ class _PresencePicker extends ConsumerWidget {
                         borderWidth: selected ? 2 : 1,
                         borderColor: selected
                             ? skin.accentDeep
-                            : Color.lerp(T.hairline, skin.accent, state.hover)!,
+                            : Color.lerp(skin.hairline, skin.accent, state.hover)!,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -649,7 +649,7 @@ class _PresencePicker extends ConsumerWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Ty.caption.copyWith(
-                                  color: selected ? skin.accentDeep : T.ink,
+                                  color: selected ? skin.accentDeep : Ty.ink,
                                   fontWeight: FontWeight.w500,
                                   height: 1.1,
                                 ),
@@ -736,8 +736,8 @@ class _PageDot extends StatelessWidget {
       height: active ? 12 : 9,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active ? skin.accent : T.hairline,
-        border: Border.all(color: active ? skin.accentDeep : T.hairline),
+        color: active ? skin.accent : skin.hairline,
+        border: Border.all(color: active ? skin.accentDeep : skin.hairline),
       ),
     );
   }
@@ -892,7 +892,7 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
               radius: 22,
               elevation: 1.2,
               padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
-              child: Text(widget.empty!, style: Ty.body.copyWith(color: T.inkSoft)),
+              child: Text(widget.empty!, style: Ty.body.copyWith(color: Ty.inkSoft)),
             ),
           ),
       ],
@@ -958,7 +958,7 @@ class _FriendTile extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Ty.caption.copyWith(
-                    color: T.ink,
+                    color: Ty.ink,
                     fontWeight: FontWeight.w500,
                     height: 1.1,
                   ),
@@ -1054,7 +1054,7 @@ class _RequestTile extends ConsumerWidget {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Ty.body.copyWith(color: T.ink, fontWeight: FontWeight.w500),
+                      style: Ty.body.copyWith(color: Ty.ink, fontWeight: FontWeight.w500),
                     ),
                     if (!incoming) Text(l.friendsPending, style: Ty.micro),
                   ],
@@ -1090,7 +1090,7 @@ class _RequestTile extends ConsumerWidget {
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Ty.caption.copyWith(color: T.ink, fontWeight: FontWeight.w500, height: 1.1),
+            style: Ty.caption.copyWith(color: Ty.ink, fontWeight: FontWeight.w500, height: 1.1),
           ),
           if (!incoming) Text(l.friendsPending, style: Ty.micro.copyWith(height: 1.2)),
           Padding(
@@ -1138,7 +1138,7 @@ class _AddTile extends StatelessWidget {
             child: GlossSurface(
               radius: T.tileRadius,
               recessed: true,
-              borderColor: Color.lerp(T.hairline, skin.accent, state.hover)!,
+              borderColor: Color.lerp(skin.hairline, skin.accent, state.hover)!,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
@@ -1146,7 +1146,7 @@ class _AddTile extends StatelessWidget {
                   GlyphIcon(
                     Glyph.personPlus,
                     size: height * (tall ? .28 : .3),
-                    color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover)!,
+                    color: Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover)!,
                     strokeWidth: 2.2,
                   ),
                   SizedBox(height: height * (tall ? .05 : .06)),
@@ -1156,7 +1156,7 @@ class _AddTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Ty.caption.copyWith(
-                      color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
+                      color: Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover),
                       fontWeight: FontWeight.w500,
                     ),
                   ),

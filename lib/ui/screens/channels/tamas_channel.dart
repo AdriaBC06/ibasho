@@ -158,7 +158,7 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
           ? null
           : Text(
               l.tamasCount(state.tamas.length, maxTamasPerAccount),
-              style: Ty.numeral(layout.pick(19, 16), color: T.inkSoft),
+              style: Ty.numeral(layout.pick(19, 16), color: Ty.inkSoft),
             ),
       child: Focus(
         autofocus: true,
@@ -513,7 +513,7 @@ class _EmptyShowcase extends StatelessWidget {
               children: [
                 Text(l.tamasEmptyTitle, style: Ty.title),
                 const SizedBox(height: 10),
-                Text(l.tamasEmptyBody, style: Ty.body.copyWith(color: T.inkSoft)),
+                Text(l.tamasEmptyBody, style: Ty.body.copyWith(color: Ty.inkSoft)),
                 const SizedBox(height: 26),
                 Row(
                   children: [
@@ -608,8 +608,8 @@ class _PageDot extends StatelessWidget {
       height: active ? 12 : 9,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active ? skin.accent : T.hairline,
-        border: Border.all(color: active ? skin.accentDeep : T.hairline),
+        color: active ? skin.accent : skin.hairline,
+        border: Border.all(color: active ? skin.accentDeep : skin.hairline),
       ),
     );
   }
@@ -829,7 +829,7 @@ class _TamaTile extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Ty.caption.copyWith(
-                    color: selected ? skin.accentDeep : T.ink,
+                    color: selected ? skin.accentDeep : Ty.ink,
                     fontWeight: FontWeight.w500,
                     height: 1.1,
                   ),
@@ -878,7 +878,7 @@ class _CreateTile extends StatelessWidget {
             child: GlossSurface(
               radius: T.tileRadius,
               recessed: true,
-              borderColor: Color.lerp(T.hairline, skin.accent, state.hover)!,
+              borderColor: Color.lerp(skin.hairline, skin.accent, state.hover)!,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: tall ? MainAxisSize.min : MainAxisSize.max,
@@ -886,7 +886,7 @@ class _CreateTile extends StatelessWidget {
                   GlyphIcon(
                     Glyph.plus,
                     size: height * (tall ? .28 : .3),
-                    color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover)!,
+                    color: Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover)!,
                     strokeWidth: 2.2,
                   ),
                   SizedBox(height: height * (tall ? .05 : .06)),
@@ -897,7 +897,7 @@ class _CreateTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Ty.caption.copyWith(
-                        color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
+                        color: Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover),
                         fontWeight: FontWeight.w500,
                       ),
                     ),

@@ -151,7 +151,7 @@ Future<bool> askConfirmation(
     (context) => IbashoDialog(
       width: width,
       title: title,
-      body: Text(body, style: Ty.body.copyWith(color: T.inkSoft)),
+      body: Text(body, style: Ty.body.copyWith(color: Ty.inkSoft)),
       actions: [
         IbashoButton(
           label: cancelLabel,

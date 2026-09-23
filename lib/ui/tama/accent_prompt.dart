@@ -10,6 +10,7 @@ import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/accent_sync.dart';
 import '../../state/providers.dart';
+import '../../theme/menu_theme.dart';
 import '../widgets/overlays.dart';
 
 /// El Tama de perfil tiene un color nuevo: sincroniza el acento si toca, o
@@ -61,4 +62,29 @@ Future<bool> putTamaOnProfile(BuildContext context, WidgetRef ref, Tama tama) as
     await reconcileAccentWithTama(context, ref, tama.look.color);
   }
   return true;
+}
+
+/// Se acaba de poner el tema [backdropId]: si trae otro acento y el acento
+/// aun no sigue al tema, pregunta si debe seguirlo. Quien ya lo sigue no
+/// recibe la pregunta: el acento cambia solo con el tema.
+Future<void> askAccentForTheme(
+  BuildContext context,
+  WidgetRef ref,
+  String backdropId,
+) async {
+  final theme = menuThemeFor(backdropId);
+  if (theme == null) return;
+  if (ref.read(preferencesProvider).accentFollowsTheme) return;
+  if (ref.read(accentProvider) == theme.accent) return;
+  final l = L.of(context)!;
+  final yes = await askConfirmation(
+    context,
+    title: l.themeAccentTitle,
+    body: l.themeAccentBody(l.backdropName('bg_$backdropId')),
+    confirmLabel: l.themeAccentYes,
+    cancelLabel: l.themeAccentNo,
+    width: 640,
+  );
+  if (!yes) return;
+  await ref.read(preferencesProvider.notifier).setAccentFollowsTheme(true);
 }

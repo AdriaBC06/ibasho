@@ -11,6 +11,7 @@ import '../../audio/audio_service.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/rewards.dart';
 import '../../theme/skin.dart';
+import '../../theme/menu_theme.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../../ui/widgets/channel_art.dart';
@@ -181,7 +182,7 @@ class ModeSwitch extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Ty.body.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: active ? skin.accentDeep : Color.lerp(T.inkSoft, T.ink, state.hover)!,
+                      color: active ? skin.accentDeep : Color.lerp(Ty.inkSoft, Ty.ink, state.hover)!,
                     ),
                   ),
                 ),
@@ -314,7 +315,7 @@ class LevelCard extends StatelessWidget {
               height: height * .56,
               child: choice.daily
                   ? const ArtIconView(ArtIcon.calendar)
-                  : CustomPaint(painter: _MiniBoardPainter(level, IbashoSkin.of(context).accent)),
+                  : CustomPaint(painter: _MiniBoardPainter(level, IbashoSkin.of(context).accent, IbashoSkin.of(context).surfaces)),
             ),
             SizedBox(width: height * .14),
             Expanded(
@@ -329,7 +330,7 @@ class LevelCard extends StatelessWidget {
               ),
             ),
             if (locked)
-              GlyphIcon(Glyph.lock, size: height * .3, color: T.inkSoft, strokeWidth: 2.2)
+              GlyphIcon(Glyph.lock, size: height * .3, color: Ty.inkSoft, strokeWidth: 2.2)
             else if (medal != null || stamp)
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -360,7 +361,9 @@ class _StampDot extends StatelessWidget {
 
 /// Un tablero en miniatura: mas casillas cuanto mas dificil.
 class _MiniBoardPainter extends CustomPainter {
-  _MiniBoardPainter(this.level, this.accent);
+  _MiniBoardPainter(this.level, this.accent, this.surfaces);
+
+  final Surfaces surfaces;
 
   final MinesweeperLevel level;
   final Color accent;
@@ -381,7 +384,7 @@ class _MiniBoardPainter extends CustomPainter {
         final open = rnd.nextDouble() < .35;
         final rr = RRect.fromRectAndRadius(r, Radius.circular(u * .22));
         if (open) {
-          canvas.drawRRect(rr, Paint()..color = T.wellTop);
+          canvas.drawRRect(rr, Paint()..color = surfaces.wellTop);
         } else {
           canvas.drawRRect(
             rr,
@@ -389,7 +392,7 @@ class _MiniBoardPainter extends CustomPainter {
               ..shader = LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [T.shellTop, Color.lerp(T.shellBottom, accent, .35)!],
+                colors: [surfaces.shellTop, Color.lerp(surfaces.shellBottom, accent, .35)!],
               ).createShader(r),
           );
         }
@@ -398,7 +401,7 @@ class _MiniBoardPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_MiniBoardPainter old) => old.level != level || old.accent != accent;
+  bool shouldRepaint(_MiniBoardPainter old) => old.level != level || old.accent != accent || old.surfaces != surfaces;
 }
 
 // --- Resultados -------------------------------------------------------------
@@ -488,7 +491,7 @@ class ResultsCard extends StatelessWidget {
                         ),
                 ),
               const SizedBox(height: 6),
-              Text(formatDuration(report.time), style: Ty.numeral(40, color: T.ink, weight: FontWeight.w700)),
+              Text(formatDuration(report.time), style: Ty.numeral(40, color: Ty.ink, weight: FontWeight.w700)),
               Text('${l.gameBest} ${formatDuration(report.best)}', style: Ty.caption),
               const SizedBox(height: 10),
               Wrap(
@@ -514,7 +517,7 @@ class ResultsCard extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: Ty.body.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: reward?.status == RewardStatus.granted ? Art.goldDark : T.inkSoft,
+                        color: reward?.status == RewardStatus.granted ? Art.goldDark : Ty.inkSoft,
                       ),
                     ),
                   ),

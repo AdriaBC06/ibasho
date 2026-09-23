@@ -35,8 +35,14 @@ void main() {
   group('catalogo', () {
     test('un articulo por juego y uno por cada comida', () {
       expect(
-        shopCatalog.where((i) => i.section == ShopSection.games).map((i) => i.gameId),
+        shopCatalog
+            .where((i) => i.section == ShopSection.games && i.koroTier == null)
+            .map((i) => i.gameId),
         ['minesweeper', 'tsumiki', 'nihongo'],
+      );
+      expect(
+        shopCatalog.where((i) => i.koroTier != null).map((i) => i.koroTier),
+        [1, 2, 3, 4],
       );
       final foods = shopCatalog.where((i) => i.section == ShopSection.tamas).toList();
       expect(foods.length, TamaFood.values.length);

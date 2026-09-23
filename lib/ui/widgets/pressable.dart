@@ -146,8 +146,14 @@ class _PressableState extends State<Pressable>
               _press.forward();
             }
           },
-          onPointerUp: (_) => _press.reverse(),
-          onPointerCancel: (_) => _press.reverse(),
+          // El boton puede haberse ido mientras se pulsaba (el «Hecho» de
+          // ordenar canales, por ejemplo): entonces no queda nada que animar.
+          onPointerUp: (_) {
+            if (mounted) _press.reverse();
+          },
+          onPointerCancel: (_) {
+            if (mounted) _press.reverse();
+          },
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _fire,

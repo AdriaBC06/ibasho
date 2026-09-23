@@ -116,7 +116,7 @@ class NewsEntry extends ConsumerWidget {
           Text(item.titleIn(locale), style: Ty.lead),
           if (item.bodyIn(locale).isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(item.bodyIn(locale), style: Ty.body.copyWith(color: T.inkSoft)),
+            Text(item.bodyIn(locale), style: Ty.body.copyWith(color: Ty.inkSoft)),
           ],
           if (item.isPoll) ...[
             const SizedBox(height: 18),
@@ -191,7 +191,7 @@ class _KindChip extends StatelessWidget {
     final skin = IbashoSkin.of(context);
     final (label, tint) = switch (kind) {
       NewsKind.update => (l.newsKindUpdate, skin.accent),
-      NewsKind.note => (l.newsKindNote, T.inkSoft),
+      NewsKind.note => (l.newsKindNote, Ty.inkSoft),
       NewsKind.poll => (l.newsKindPoll, skin.accentDeep),
     };
 
@@ -249,7 +249,7 @@ class _Poll extends StatelessWidget {
           children: [
             Text(
               l.pollVotes(item.totalVotes),
-              style: Ty.caption.copyWith(color: T.ink),
+              style: Ty.caption.copyWith(color: Ty.ink),
             ),
             Text(closesLabel, style: Ty.caption),
             if (open && myVote != null) Text(l.pollChangeHint, style: Ty.caption),
@@ -260,7 +260,7 @@ class _Poll extends StatelessWidget {
         // vote de verdad, asi que se lee siempre, con voto o sin el.
         Row(
           children: [
-            const GlyphIcon(Glyph.lock, size: 15, color: T.inkSoft),
+            GlyphIcon(Glyph.lock, size: 15, color: Ty.inkSoft),
             const SizedBox(width: 8),
             Expanded(child: Text(l.pollAnonymous, style: Ty.micro)),
           ],
@@ -306,8 +306,8 @@ class _PollOption extends StatelessWidget {
       builder: (context, state) {
         final fill = mine
             ? skin.accent
-            : Color.lerp(skin.accent, T.shellBottom, .55 - .2 * state.hover)!;
-        final ink = mine ? skin.accentDeep : T.ink;
+            : Color.lerp(skin.accent, skin.shellBottom, .55 - .2 * state.hover)!;
+        final ink = mine ? skin.accentDeep : Ty.ink;
 
         return FocusRing(
           visible: state.focus,
@@ -345,7 +345,7 @@ class _PollOption extends StatelessWidget {
                     const SizedBox(width: 12),
                     Text(
                       '${(share * 100).round()}%',
-                      style: Ty.numeral(15, color: mine ? skin.accentDeep : T.inkSoft),
+                      style: Ty.numeral(15, color: mine ? skin.accentDeep : Ty.inkSoft),
                     ),
                   ],
                 ),

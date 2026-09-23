@@ -228,7 +228,7 @@ class _Thread extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               l.messagesDecrypting,
-              style: Ty.caption.copyWith(color: T.inkSoft),
+              style: Ty.caption.copyWith(color: Ty.inkSoft),
             ),
           ),
       ],
@@ -264,7 +264,7 @@ class _Bubble extends ConsumerWidget {
     final content = switch (body) {
       TextBody(:final text) => Text(
         text,
-        style: Ty.body.copyWith(color: mine ? T.shellTop : T.ink),
+        style: Ty.body.copyWith(color: mine ? T.shellTop : Ty.ink),
       ),
       StickerBody(:final face, :final name, :final look) => TamaSticker(
         look: look,
@@ -274,7 +274,7 @@ class _Bubble extends ConsumerWidget {
       ),
       null => Text(
         l.messagesUnreadable,
-        style: Ty.caption.copyWith(color: T.inkSoft),
+        style: Ty.caption.copyWith(color: Ty.inkSoft),
       ),
     };
 
@@ -290,7 +290,7 @@ class _Bubble extends ConsumerWidget {
             child: Text(
               DateFormat.yMMMMd(code).format(message.at),
               textAlign: TextAlign.center,
-              style: Ty.caption.copyWith(color: T.inkSoft),
+              style: Ty.caption.copyWith(color: Ty.inkSoft),
             ),
           ),
         Align(
@@ -317,7 +317,7 @@ class _Bubble extends ConsumerWidget {
                           ? content
                           : GlossSurface(
                               radius: 14,
-                              tint: mine ? skin.accentDeep : T.wellBottom,
+                              tint: mine ? skin.accentDeep : skin.wellBottom,
                               elevation: mine ? 1 : .4,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -331,7 +331,7 @@ class _Bubble extends ConsumerWidget {
                     const SizedBox(height: 3),
                     Text(
                       formatClock(message.at, hourFormat24: hourFormat24),
-                      style: Ty.numeral(11, color: T.inkSoft),
+                      style: Ty.numeral(11, color: Ty.inkSoft),
                     ),
                   ],
                 ),
@@ -379,7 +379,7 @@ class _Composer extends StatelessWidget {
             SendBlock.otherHasNoKeys => l.messagesOtherNoKeys,
           },
           textAlign: TextAlign.center,
-          style: Ty.caption.copyWith(color: T.inkSoft),
+          style: Ty.caption.copyWith(color: Ty.inkSoft),
         ),
       );
     }
@@ -429,11 +429,11 @@ class _Composer extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const GlyphIcon(Glyph.lock, size: 13, color: T.inkSoft),
+                  GlyphIcon(Glyph.lock, size: 13, color: Ty.inkSoft),
                   const SizedBox(width: 6),
                   Text(
                     l.messagesPrivacy,
-                    style: Ty.caption.copyWith(color: T.inkSoft),
+                    style: Ty.caption.copyWith(color: Ty.inkSoft),
                   ),
                 ],
               ),
@@ -447,7 +447,7 @@ class _Composer extends StatelessWidget {
               else if (left <= 80)
                 Text(
                   l.messagesLeft(left),
-                  style: Ty.numeral(12, color: left < 0 ? T.warn : T.inkSoft),
+                  style: Ty.numeral(12, color: left < 0 ? T.warn : Ty.inkSoft),
                 ),
             ],
           ),
@@ -470,12 +470,12 @@ class _Notice extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GlyphIcon(glyph, size: 34, color: T.inkSoft),
+          GlyphIcon(glyph, size: 34, color: Ty.inkSoft),
           const SizedBox(height: 14),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: Ty.body.copyWith(color: T.inkSoft),
+            style: Ty.body.copyWith(color: Ty.inkSoft),
           ),
         ],
       ),

@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../backend/tama.dart';
+import '../../theme/menu_theme.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
@@ -59,7 +60,10 @@ class TamaOnStand extends StatelessWidget {
             top: standTop,
             child: CustomPaint(
               size: Size(standWidth, standHeight),
-              painter: _StandPainter(IbashoSkin.of(context).accent),
+              painter: _StandPainter(
+                IbashoSkin.of(context).accent,
+                IbashoSkin.of(context).surfaces,
+              ),
             ),
           ),
           Positioned(
@@ -88,9 +92,10 @@ class TamaOnStand extends StatelessWidget {
 
 /// La peana: un disco de plastico blanco con su canto y el brillo de la casa.
 class _StandPainter extends CustomPainter {
-  _StandPainter(this.accent);
+  _StandPainter(this.accent, this.surfaces);
 
   final Color accent;
+  final Surfaces surfaces;
 
   /// Alto de la peana respecto a su ancho.
   static const double aspect = .3;
@@ -125,9 +130,9 @@ class _StandPainter extends CustomPainter {
     canvas.drawPath(
       rim,
       Paint()
-        ..shader = const LinearGradient(
-          colors: [T.bezelBottom, T.shellTop, T.cardBottom, T.bezelBottom],
-          stops: [0, .3, .72, 1],
+        ..shader = LinearGradient(
+          colors: [surfaces.bezelBottom, surfaces.shellTop, surfaces.cardBottom, surfaces.bezelBottom],
+          stops: const [0, .3, .72, 1],
         ).createShader(Offset.zero & size),
     );
     // Filo de acento en la base, muy fino: la peana es de este entorno.
@@ -146,18 +151,18 @@ class _StandPainter extends CustomPainter {
     canvas.drawOval(
       face,
       Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-.15, -.35),
+        ..shader = RadialGradient(
+          center: const Alignment(-.15, -.35),
           radius: .95,
-          colors: [T.shellTop, T.cardBottom, T.shellBottom],
-          stops: [0, .55, 1],
+          colors: [surfaces.shellTop, surfaces.cardBottom, surfaces.shellBottom],
+          stops: const [0, .55, 1],
         ).createShader(face),
     );
     canvas.drawOval(
       face.deflate(.5),
       Paint()
         ..style = PaintingStyle.stroke
-        ..color = T.hairline,
+        ..color = surfaces.hairline,
     );
     // Brillo especular en el borde de atras.
     canvas.drawOval(
@@ -167,7 +172,7 @@ class _StandPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_StandPainter old) => old.accent != accent;
+  bool shouldRepaint(_StandPainter old) => old.accent != accent || old.surfaces != surfaces;
 }
 
 /// Una variante de una pieza, con el Tama entero pintado con ella.
@@ -213,7 +218,7 @@ class TamaStyleChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
-    final rest = wash == null ? T.hairline : Color.lerp(T.hairline, wash, .6)!;
+    final rest = wash == null ? skin.hairline : Color.lerp(skin.hairline, wash, .6)!;
     return Pressable(
       onPressed: selected && !reselectable ? null : onPressed,
       semanticLabel: label,
@@ -263,7 +268,7 @@ class TamaStyleChip extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Ty.micro.copyWith(
                 fontSize: 12,
-                color: selected ? T.ink : T.inkSoft,
+                color: selected ? Ty.ink : Ty.inkSoft,
               ),
             ),
           ],
@@ -316,7 +321,7 @@ class TamaMoodMeter extends StatelessWidget {
                     elevation: 0,
                     borderColor: (value * _pips - i) > .05
                         ? skin.accentDeep
-                        : T.hairline,
+                        : skin.hairline,
                   ),
                 ),
               ),

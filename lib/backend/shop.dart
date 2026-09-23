@@ -31,6 +31,7 @@ class ShopItem {
     this.food,
     this.gameId,
     this.ticket,
+    this.koroTier,
   });
 
   /// Clave de `/shop/prices/{id}` y de `shop/last.item`. Para un juego,
@@ -50,6 +51,10 @@ class ShopItem {
   /// tope semanal ([weeklyTicketLimit]), no de cantidad por compra.
   final TicketKind? ticket;
 
+  /// Solo en los huecos de Tamakoro (seccion de juegos): el tramo de precio,
+  /// 1 a 4. Se vende uno a uno y solo el del tramo en el que va la cuenta.
+  final int? koroTier;
+
   /// Si hoy se puede comprar, dado el conjunto de comidas desbloqueadas. Un
   /// articulo de comida bloqueada se ensena igual en la rejilla, hundido y
   /// con un candado, pero no se puede pedir.
@@ -58,6 +63,7 @@ class ShopItem {
 
   static String idForFood(TamaFood food) => 'food_${food.name}';
   static String idForGame(String gameId) => 'game_$gameId';
+  static String idForKoroTier(int tier) => 'koro_slot_$tier';
 }
 
 /// El catalogo del Yatai, fijo en el codigo. Los juegos y una comida por
@@ -71,6 +77,8 @@ final List<ShopItem> shopCatalog = List<ShopItem>.unmodifiable(<ShopItem>[
     ShopItem(id: ShopItem.idForFood(food), section: ShopSection.tamas, food: food),
   for (final kind in TicketKind.values)
     ShopItem(id: kind.itemId, section: ShopSection.gacha, ticket: kind),
+  for (var tier = 1; tier <= 4; tier++)
+    ShopItem(id: ShopItem.idForKoroTier(tier), section: ShopSection.games, koroTier: tier),
 ]);
 
 /// `/users/{cuenta}/shop/week`: lo que se lleva comprado de cada ticket esta

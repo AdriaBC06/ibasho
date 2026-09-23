@@ -41,6 +41,7 @@ class ChannelTile extends ConsumerStatefulWidget {
     required this.height,
     this.compact = false,
     this.glyphOnly = false,
+    this.editing = false,
   });
 
   final ChannelSpec spec;
@@ -52,6 +53,10 @@ class ChannelTile extends ConsumerStatefulWidget {
 
   /// Sin etiqueta: en vertical, cuando la baldosa se queda pequeña.
   final bool glyphOnly;
+
+  /// Modo de ordenar canales: no se abre ni se desenvuelve al tocarla, porque
+  /// el toque es lo que empieza a arrastrarla (ver `channel_grid.dart`).
+  final bool editing;
 
   @override
   ConsumerState<ChannelTile> createState() => _ChannelTileState();
@@ -132,7 +137,9 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
     return Pressable(
       cue: null,
       semanticLabel: spec.label(l),
-      onPressed: showingGift
+      onPressed: widget.editing
+          ? null
+          : showingGift
           ? _onGiftTap
           : () => openChannel(
               context,
@@ -159,7 +166,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
               : GlyphIcon(
                   spec.glyph,
                   size: size,
-                  color: spec.empty ? T.inkSoft : T.onAccent,
+                  color: spec.empty ? Ty.inkSoft : T.onAccent,
                 );
           if (compact || widget.glyphOnly) return Center(child: glyph);
           return Padding(
@@ -176,7 +183,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
                   style: Ty.body.copyWith(
                     fontSize: math.max(11, height * .115),
                     fontWeight: FontWeight.w500,
-                    color: spec.empty ? T.inkSoft : (art != null ? T.ink : T.onAccent),
+                    color: spec.empty ? Ty.inkSoft : (art != null ? Ty.ink : T.onAccent),
                     height: 1.1,
                   ),
                 ),
@@ -246,7 +253,7 @@ class _ChannelTileState extends ConsumerState<ChannelTile>
                     elevation: spec.empty ? 0 : 1 + ease * 1.1,
                     specular: spec.empty ? 0 : 1 - state.press * .35,
                     borderColor: plain
-                        ? T.hairline
+                        ? skin.hairline
                         : Color.lerp(skin.accent, T.dusk, .36)!,
                     sink: state.press * 1.5,
                     child: face(unwrapT),

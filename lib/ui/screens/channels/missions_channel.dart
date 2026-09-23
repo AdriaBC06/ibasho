@@ -14,7 +14,6 @@ import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/login_bonus.dart' show bonusDay;
 import '../../../state/providers.dart';
 import '../../../theme/skin.dart';
-import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
 import '../../layout.dart';
 import '../../widgets/controls.dart';
@@ -143,7 +142,7 @@ class _MissionRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
       child: Row(
         children: [
-          GlyphIcon(glyph, size: 26, color: claimed ? T.inkSoft : skin.accentDeep),
+          GlyphIcon(glyph, size: 26, color: claimed ? Ty.inkSoft : skin.accentDeep),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -156,7 +155,7 @@ class _MissionRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           if (claimed)
-            const GlyphIcon(Glyph.check, size: 22, color: T.inkSoft)
+            GlyphIcon(Glyph.check, size: 22, color: Ty.inkSoft)
           else
             IbashoButton(
               label: l.missionsClaim,

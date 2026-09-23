@@ -7,6 +7,8 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../backend/gacha.dart';
+import '../../theme/menu_theme.dart';
+import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../ui/widgets/channel_art.dart';
 import '../../ui/widgets/gacha_art.dart';
@@ -95,13 +97,15 @@ class PinballBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => RepaintBoundary(
         child: CustomPaint(
-          painter: _BoardPainter(game, fx, clock, accent, accentDeep),
+          painter: _BoardPainter(game, fx, clock, accent, accentDeep, IbashoSkin.of(context).surfaces),
         ),
       );
 }
 
 class _BoardPainter extends CustomPainter {
-  _BoardPainter(this.game, this.fx, this.clock, this.accent, this.accentDeep) : super(repaint: clock);
+  _BoardPainter(this.game, this.fx, this.clock, this.accent, this.accentDeep, this.surfaces) : super(repaint: clock);
+
+  final Surfaces surfaces;
 
   final PinballGame game;
   final PinballFx fx;
@@ -161,7 +165,7 @@ class _BoardPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[Color.lerp(T.shellTop, accent, .1)!, Color.lerp(T.shellBottom, accent, .16)!],
+          colors: <Color>[Color.lerp(surfaces.shellTop, accent, .1)!, Color.lerp(surfaces.shellBottom, accent, .16)!],
         ).createShader(rect),
     );
 
@@ -204,7 +208,7 @@ class _BoardPainter extends CustomPainter {
     canvas.drawRect(
       lane,
       Paint()
-        ..shader = const LinearGradient(colors: <Color>[T.wellTop, T.wellBottom]).createShader(lane),
+        ..shader = LinearGradient(colors: <Color>[surfaces.wellTop, surfaces.wellBottom]).createShader(lane),
     );
     _rail(canvas, const Offset(PinballTable.fieldRight, PinballTable.height + 10), const Offset(PinballTable.fieldRight, PinballTable.gateY), 4);
     _rail(canvas, const Offset(PinballTable.fieldRight, PinballTable.gateY), const Offset(392, PinballTable.gateY - 20), 3,
@@ -311,7 +315,7 @@ class _BoardPainter extends CustomPainter {
           const Radius.circular(5),
         ));
       if (down) {
-        canvas.drawPath(body, Paint()..color = Color.lerp(color, T.shellBottom, .55)!.withValues(alpha: .7));
+        canvas.drawPath(body, Paint()..color = Color.lerp(color, surfaces.shellBottom, .55)!.withValues(alpha: .7));
         canvas.drawPath(body, Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1

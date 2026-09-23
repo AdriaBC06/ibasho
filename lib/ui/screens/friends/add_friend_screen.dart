@@ -228,7 +228,7 @@ class _AddFriendScreenState extends ConsumerState<AddFriendScreen> {
                                   ? l.addFriendSearching
                                   : l.addFriendDigits(digits, FriendCode.length),
                               style: Ty.caption.copyWith(
-                                color: digits == FriendCode.length ? skin.accentDeep : T.inkSoft,
+                                color: digits == FriendCode.length ? skin.accentDeep : Ty.inkSoft,
                               ),
                             ),
                           ),
@@ -291,14 +291,14 @@ class _Result extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text(l.addFriendEmpty, style: Ty.body.copyWith(color: T.inkSoft)),
+            Text(l.addFriendEmpty, style: Ty.body.copyWith(color: Ty.inkSoft)),
           ],
         ),
       );
     }
 
     final card = found.card;
-    final accent = card?.accent ?? T.inkSoft;
+    final accent = card?.accent ?? Ty.inkSoft;
     final name = card?.displayName ?? l.addFriendNoCard;
 
     final Widget action = switch (found.relation) {
@@ -407,7 +407,7 @@ class _Result extends StatelessWidget {
                           ? l.addFriendTheyAsked
                           : l.addFriendPrivacy,
                   textAlign: tall ? TextAlign.center : TextAlign.start,
-                  style: Ty.body.copyWith(color: T.inkSoft),
+                  style: Ty.body.copyWith(color: Ty.inkSoft),
                 ),
                 SizedBox(height: tall ? 16 : 26),
                 Row(children: [if (tall) Expanded(child: action) else action]),

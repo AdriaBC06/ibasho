@@ -107,7 +107,7 @@ class _HsvColorPickerState extends State<HsvColorPicker> {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: T.hairline),
+                          border: Border.all(color: skin.hairline),
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,

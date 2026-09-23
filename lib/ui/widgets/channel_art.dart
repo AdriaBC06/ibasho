@@ -24,6 +24,7 @@ enum ArtIcon {
   minesweeper,
   tsumiki,
   nihongo,
+  tamakoro,
   gacha,
   pinball,
   pachinko,
@@ -72,6 +73,8 @@ class ArtPainter extends CustomPainter {
         paintTsumiki(canvas);
       case ArtIcon.nihongo:
         paintNihongo(canvas);
+      case ArtIcon.tamakoro:
+        paintTamakoro(canvas);
       case ArtIcon.gacha:
         paintGacha(canvas);
       case ArtIcon.pinball:
@@ -492,6 +495,72 @@ void paintNihongo(Canvas canvas) {
     ..close();
   paintPlastic(canvas, petal, Art.sakura, edge: 1.2);
   canvas.restore();
+}
+
+// --- Tamakoro ------------------------------------------------------------------
+
+/// El lienzo de Tamakoro: una tarjeta blanca con la tinta de tres Tamas en
+/// escalera, como notas, un pincel mojado apoyado encima y una corchea que se
+/// escapa cantando.
+void paintTamakoro(Canvas canvas) {
+  paintGroundShadow(canvas, const Offset(50, 91), 78);
+  canvas.save();
+  canvas.translate(46, 52);
+  canvas.rotate(-.06);
+  final card = Path()
+    ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset.zero, width: 70, height: 70), const Radius.circular(11)));
+  paintPlastic(canvas, card, T.shellTop, edge: 2, shine: .7);
+  // La rejilla, apenas insinuada.
+  final grid = Paint()
+    ..color = Art.paperBlue
+    ..strokeWidth = 1.2;
+  for (var i = 1; i < 5; i++) {
+    final d = -35 + i * 14.0;
+    canvas.drawLine(Offset(-30, d), Offset(30, d), grid);
+  }
+  // Tres voces, tres colores: trazos redondos a distinta altura.
+  void ink(Color color, double x0, double x1, double y) => canvas.drawLine(
+        Offset(x0, y),
+        Offset(x1, y),
+        Paint()
+          ..color = color
+          ..strokeWidth = 9
+          ..strokeCap = StrokeCap.round,
+      );
+  ink(Art.capsules[0], -24, -12, 14);
+  ink(Art.capsules[3], -6, 4, 0);
+  ink(Art.capsules[1], 10, 24, -14);
+  ink(Art.capsules[2], -24, -18, -14);
+  canvas.restore();
+
+  // El pincel: mango de madera, virola plateada y la punta mojada en rosa.
+  canvas.save();
+  canvas.translate(70, 64);
+  canvas.rotate(.75);
+  final handle = Path()
+    ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-4.5, -4, 9, 34), const Radius.circular(4.5)));
+  paintPlastic(canvas, handle, T.foodDough, edge: 1.4, shine: .6);
+  final ferrule = Path()..addRect(const Rect.fromLTWH(-5, -12, 10, 9));
+  paintPlastic(canvas, ferrule, Art.light(T.inkSoft, .5), edge: 1.2, shine: .9);
+  final tip = Path()
+    ..moveTo(-5, -12)
+    ..quadraticBezierTo(-5, -22, 0, -27)
+    ..quadraticBezierTo(5, -22, 5, -12)
+    ..close();
+  paintPlastic(canvas, tip, Art.capsules[3], edge: 1.2);
+  canvas.restore();
+
+  // Una corchea que sale cantando.
+  const n = Offset(80, 22);
+  paintPlastic(canvas, Path()..addOval(Rect.fromCenter(center: n, width: 13, height: 10)), Art.capsules[4], edge: 1.4);
+  canvas.drawPath(
+    Path()
+      ..moveTo(n.dx + 5.5, n.dy)
+      ..lineTo(n.dx + 5.5, n.dy - 18)
+      ..quadraticBezierTo(n.dx + 12, n.dy - 14, n.dx + 12, n.dy - 7),
+    _edge(Art.deep(Art.capsules[4]), 3),
+  );
 }
 
 /// La mina: se usa en el icono y en el tablero. [spark] enciende la chispa.

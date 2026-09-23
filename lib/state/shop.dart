@@ -14,6 +14,7 @@ import '../backend/live_tree.dart';
 import '../backend/models.dart';
 import '../backend/shop.dart';
 import '../backend/tama.dart';
+import '../games/tamakoro/koro_song.dart';
 import 'session.dart';
 
 /// Por que no ha salido una compra.
@@ -100,12 +101,14 @@ class ShopController extends StateNotifier<ShopState> {
     required int Function(TamaFood food) pantryQtyOf,
     required Set<TamaFood> Function() unlockedFoodsOf,
     required int Function(TicketKind kind) ticketsOf,
+    required int Function() koroSlotsOf,
   }) : _backend = backend,
        _session = session,
        _coinsOf = coinsOf,
        _pantryQtyOf = pantryQtyOf,
        _unlockedFoodsOf = unlockedFoodsOf,
        _ticketsOf = ticketsOf,
+       _koroSlotsOf = koroSlotsOf,
        super(const ShopState()) {
     if (_me.isNotEmpty && session.state.phase == SessionPhase.active) {
       unawaited(_start());
@@ -118,6 +121,7 @@ class ShopController extends StateNotifier<ShopState> {
   final int Function(TamaFood food) _pantryQtyOf;
   final Set<TamaFood> Function() _unlockedFoodsOf;
   final int Function(TicketKind kind) _ticketsOf;
+  final int Function() _koroSlotsOf;
 
   final List<StreamSubscription<DatabaseEvent>> _watches =
       <StreamSubscription<DatabaseEvent>>[];
@@ -229,6 +233,12 @@ class ShopController extends StateNotifier<ShopState> {
     if (ticket != null && qty > state.ticketsLeftThisWeek(ticket)) {
       throw const ShopException(ShopFailure.weeklyLimit);
     }
+    final tier = item.koroTier;
+    final slots = _koroSlotsOf();
+    if (tier != null &&
+        (qty != 1 || slots >= koroMaxSlots || tier != koroSlotTier(slots))) {
+      throw const ShopException(ShopFailure.alreadyOwned);
+    }
     final price = state.prices[item.id];
     if (price == null) throw const ShopException(ShopFailure.noPrice);
     final cost = price * qty;
@@ -255,6 +265,7 @@ class ShopController extends StateNotifier<ShopState> {
         'users/$_me/shop/week':
             (state.week ?? WeekTickets(week: gachaWeek())).afterBuying(ticket, qty),
       },
+      if (tier != null) 'users/$_me/koro/slots': slots + 1,
       // Señal para la mision «compra algo en el Yatai» (`missions.dart`).
       'users/$_me/missions/signal/buy': {'at': serverTimestamp},
     };

@@ -6,7 +6,6 @@ import 'package:flutter/widgets.dart';
 
 import '../../l10n/gen/app_localizations.dart';
 import '../../theme/skin.dart';
-import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../widgets/gloss.dart';
 import '../widgets/logo.dart';
@@ -81,13 +80,13 @@ class _SplashScreenState extends State<SplashScreen>
                     opacity: word.clamp(0, 1),
                     child: Transform.translate(
                       offset: Offset(0, 14 * (1 - word)),
-                      child: Text(l.appName, style: Ty.logo(62, T.ink)),
+                      child: Text(l.appName, style: Ty.logo(62, Ty.ink)),
                     ),
                   ),
                   const SizedBox(height: 14),
                   Opacity(
                     opacity: kanji.clamp(0, 1),
-                    child: Text('居場所', style: Ty.logoJa(30, T.inkSoft)),
+                    child: Text('居場所', style: Ty.logoJa(30, Ty.inkSoft)),
                   ),
                   const SizedBox(height: 10),
                   Opacity(

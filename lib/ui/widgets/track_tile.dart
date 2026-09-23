@@ -53,7 +53,7 @@ class TrackTile extends StatelessWidget {
             elevation: selected ? 1 : 0,
             borderColor: selected
                 ? skin.accentDeep
-                : Color.lerp(T.hairline, skin.accentDeep,
+                : Color.lerp(skin.hairline, skin.accentDeep,
                     onPressed == null ? 0 : state.hover)!,
             padding: EdgeInsets.symmetric(horizontal: tall ? 14 : 18, vertical: 11),
             child: tall
@@ -75,7 +75,7 @@ class TrackTile extends StatelessWidget {
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Ty.lead.copyWith(color: onTint ?? T.ink),
+                              style: Ty.lead.copyWith(color: onTint ?? Ty.ink),
                             ),
                           ),
                           if (trailing != null)
@@ -92,7 +92,7 @@ class TrackTile extends StatelessWidget {
                         subtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Ty.caption.copyWith(color: onTint ?? T.inkSoft, height: 1.3),
+                        style: Ty.caption.copyWith(color: onTint ?? Ty.inkSoft, height: 1.3),
                       ),
                     ],
                   )
@@ -108,7 +108,7 @@ class TrackTile extends StatelessWidget {
                   width: 100,
                   child: Text(
                     title,
-                    style: Ty.lead.copyWith(color: onTint ?? T.ink),
+                    style: Ty.lead.copyWith(color: onTint ?? Ty.ink),
                   ),
                 ),
                 Expanded(
@@ -117,7 +117,7 @@ class TrackTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Ty.caption.copyWith(
-                      color: onTint ?? T.inkSoft,
+                      color: onTint ?? Ty.inkSoft,
                       height: 1.3,
                     ),
                   ),

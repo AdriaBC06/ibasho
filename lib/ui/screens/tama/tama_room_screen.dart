@@ -230,7 +230,7 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                               child: Text(
                                 '${personalityLabel(l, tama.personality)} · '
                                 '${personalityHint(l, tama.personality)}',
-                                style: Ty.caption.copyWith(color: T.ink),
+                                style: Ty.caption.copyWith(color: Ty.ink),
                               ),
                             ),
                           ],
@@ -636,7 +636,7 @@ class _FoodButton extends StatelessWidget {
                       recessed: recessed,
                       elevation: recessed ? 0 : 1 + ease * .8,
                       sink: recessed ? 0 : state.press * 1.5,
-                      borderColor: recessed ? T.hairline : Color.lerp(T.hairline, skin.accent, state.hover)!,
+                      borderColor: recessed ? skin.hairline : Color.lerp(skin.hairline, skin.accent, state.hover)!,
                       child: Stack(
                         children: [
                           Positioned.fill(
@@ -646,10 +646,10 @@ class _FoodButton extends StatelessWidget {
                             ),
                           ),
                           if (locked)
-                            const Positioned(
+                            Positioned(
                               right: 4,
                               bottom: 4,
-                              child: GlyphIcon(Glyph.lock, size: 14, color: T.inkSoft),
+                              child: GlyphIcon(Glyph.lock, size: 14, color: Ty.inkSoft),
                             ),
                           if (units != null)
                             Positioned(
@@ -670,7 +670,7 @@ class _FoodButton extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: Ty.micro.copyWith(
-                  color: recessed ? T.inkSoft.withValues(alpha: .7) : Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
+                  color: recessed ? Ty.inkSoft.withValues(alpha: .7) : Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover),
                 ),
               ),
             ],
@@ -698,7 +698,7 @@ class _UnitsBadge extends StatelessWidget {
       child: Text(
         count > 99 ? '99+' : '$count',
         style: Ty.micro.copyWith(
-          color: count == 0 ? T.inkSoft : T.onAccent,
+          color: count == 0 ? Ty.inkSoft : T.onAccent,
           fontWeight: FontWeight.w600,
           fontSize: 10,
         ),

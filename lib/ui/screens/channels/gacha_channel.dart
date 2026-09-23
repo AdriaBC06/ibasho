@@ -22,7 +22,6 @@ import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/gacha.dart';
 import '../../../state/providers.dart';
 import '../../../theme/skin.dart';
-import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
 import '../../layout.dart';
 import '../../widgets/channel_art.dart';
@@ -389,7 +388,7 @@ class _GachaChannelState extends ConsumerState<GachaChannel>
                       children: [
                         Text(
                           l.gachaChooseTicket,
-                          style: Ty.micro.copyWith(color: T.inkSoft),
+                          style: Ty.micro.copyWith(color: Ty.inkSoft),
                         ),
                         const SizedBox(height: 6),
                         tickets[0],
@@ -586,7 +585,7 @@ class _MachineStageState extends State<_MachineStage>
           foot = Center(
             child: Text(
               phase == _Phase.crank ? l.gachaRolling : l.gachaSkip,
-              style: Ty.body.copyWith(color: T.inkSoft),
+              style: Ty.body.copyWith(color: Ty.inkSoft),
             ),
           );
         } else {
@@ -795,7 +794,7 @@ class _TicketCard extends StatelessWidget {
     final counter = Text(
       '$count',
       style: Ty.numeral(compact ? 22 : 28, weight: FontWeight.w700)
-          .copyWith(color: selected ? skin.accentDeep : T.ink),
+          .copyWith(color: selected ? skin.accentDeep : Ty.ink),
     );
     // En vertical los puntitos se quedan fuera: la frase sola ya dice
     // cuantos quedan, y en 360 px no cabe todo en una linea.
@@ -808,7 +807,7 @@ class _TicketCard extends StatelessWidget {
         Expanded(
           child: Text(
             l.gachaWeeklyLeft(left),
-            style: Ty.micro.copyWith(color: T.inkSoft),
+            style: Ty.micro.copyWith(color: Ty.inkSoft),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -872,7 +871,7 @@ class _WeeklyPips extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: i < left ? skin.accent : T.hairline,
+                  color: i < left ? skin.accent : skin.hairline,
                 ),
               ),
             ),
@@ -908,7 +907,7 @@ class _DepositCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(l.gachaDeposit, style: Ty.micro.copyWith(color: T.inkSoft)),
+                Text(l.gachaDeposit, style: Ty.micro.copyWith(color: Ty.inkSoft)),
                 Text('$balls', style: Ty.numeral(18, weight: FontWeight.w700)),
               ],
             ),
@@ -958,7 +957,7 @@ class _ConfirmPull extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Text('→', style: Ty.title.copyWith(color: T.inkSoft)),
+                child: Text('→', style: Ty.title.copyWith(color: Ty.inkSoft)),
               ),
               Column(
                 mainAxisSize: MainAxisSize.min,
@@ -971,7 +970,7 @@ class _ConfirmPull extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(l.gachaLeftAfter(after), style: Ty.body.copyWith(color: T.inkSoft)),
+          Text(l.gachaLeftAfter(after), style: Ty.body.copyWith(color: Ty.inkSoft)),
         ],
       ),
       actions: [
@@ -1055,7 +1054,7 @@ class _DepositDialog extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(l.gachaDepositBody(gacha.totalBalls), style: Ty.body.copyWith(color: T.inkSoft)),
+          Text(l.gachaDepositBody(gacha.totalBalls), style: Ty.body.copyWith(color: Ty.inkSoft)),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
@@ -1077,7 +1076,7 @@ class _DepositDialog extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Text(l.gachaDepositSoon, style: Ty.micro.copyWith(color: T.inkSoft)),
+          Text(l.gachaDepositSoon, style: Ty.micro.copyWith(color: Ty.inkSoft)),
         ],
       ),
       actions: [

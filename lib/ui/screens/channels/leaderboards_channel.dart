@@ -235,7 +235,7 @@ class _OfficialPanel extends StatelessWidget {
                         child: Text(
                           l.leaderboardsOfficialEmpty,
                           textAlign: TextAlign.center,
-                          style: Ty.body.copyWith(color: T.inkSoft),
+                          style: Ty.body.copyWith(color: Ty.inkSoft),
                         ),
                       )
                     : IbashoScroll(
@@ -310,7 +310,7 @@ class _PodiumTile extends ConsumerWidget {
             textAlign: TextAlign.center,
             style: Ty.caption.copyWith(fontWeight: FontWeight.w600),
           ),
-          Text(l.leaderboardsRank(rank), style: Ty.micro.copyWith(color: T.inkSoft)),
+          Text(l.leaderboardsRank(rank), style: Ty.micro.copyWith(color: Ty.inkSoft)),
           if (mine && reward != null) ...[
             const SizedBox(height: 8),
             for (final entry in reward.entries)
@@ -423,7 +423,7 @@ class _StandingsPanel extends StatelessWidget {
               if (myRank != null)
                 _RankChip(text: l.leaderboardsYourRank(myRank))
               else
-                Text(l.leaderboardsNoScore, style: Ty.caption.copyWith(color: T.inkSoft)),
+                Text(l.leaderboardsNoScore, style: Ty.caption.copyWith(color: Ty.inkSoft)),
             ],
           ),
           const SizedBox(height: 10),
@@ -434,7 +434,7 @@ class _StandingsPanel extends StatelessWidget {
                     ? Center(
                         child: Text(
                           l.leaderboardsStandingsEmpty,
-                          style: Ty.body.copyWith(color: T.inkSoft),
+                          style: Ty.body.copyWith(color: Ty.inkSoft),
                         ),
                       )
                     : IbashoScroll(
@@ -506,7 +506,7 @@ class _StandingRow extends ConsumerWidget {
             child: Text(
               '$rank',
               textAlign: TextAlign.center,
-              style: Ty.numeral(18, color: rank <= 3 ? skin.accentDeep : T.inkSoft, weight: FontWeight.w700),
+              style: Ty.numeral(18, color: rank <= 3 ? skin.accentDeep : Ty.inkSoft, weight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 8),
@@ -520,7 +520,7 @@ class _StandingRow extends ConsumerWidget {
               style: Ty.body.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-          Text(scoreText, style: Ty.numeral(18, color: T.ink, weight: FontWeight.w700)),
+          Text(scoreText, style: Ty.numeral(18, color: Ty.ink, weight: FontWeight.w700)),
         ],
       ),
     );

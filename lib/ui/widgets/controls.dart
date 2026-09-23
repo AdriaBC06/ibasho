@@ -76,15 +76,15 @@ class IbashoButton extends StatelessWidget {
         final enabled = state.enabled;
         final lift = quiet ? 0.0 : 2.0 * state.hover - 2.0 * state.press;
         final ink = quiet
-            ? Color.lerp(T.inkSoft, skin.accentDeep, state.hover)!
-            : (tint == null ? T.ink : T.onAccent);
+            ? Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover)!
+            : (tint == null ? Ty.ink : T.onAccent);
 
         final content = Row(
           mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (glyph != null) ...[
-              GlyphIcon(glyph!, size: height * .42, color: enabled ? ink : T.inkSoft),
+              GlyphIcon(glyph!, size: height * .42, color: enabled ? ink : Ty.inkSoft),
               SizedBox(width: label.isEmpty ? 0 : height * .18),
             ],
             if (label.isNotEmpty)
@@ -96,7 +96,7 @@ class IbashoButton extends StatelessWidget {
                   style: Ty.body.copyWith(
                     fontSize: height * .32,
                     fontWeight: FontWeight.w500,
-                    color: enabled ? ink : T.inkSoft,
+                    color: enabled ? ink : Ty.inkSoft,
                     height: 1.1,
                   ),
                 ),
@@ -126,7 +126,7 @@ class IbashoButton extends StatelessWidget {
                       elevation: enabled ? 1 + state.hover * .7 : .35,
                       specular: enabled ? 1 - state.press * .45 : .3,
                       borderColor: tint == null
-                          ? T.hairline
+                          ? skin.hairline
                           : Color.lerp(tint, T.dusk, .34)!,
                       sink: state.press * 1.6,
                       padding: EdgeInsets.symmetric(horizontal: height * .46),
@@ -190,10 +190,10 @@ class IconPill extends StatelessWidget {
                   glyph,
                   size: diameter * .48,
                   color: !state.enabled
-                      ? T.inkSoft.withValues(alpha: .45)
+                      ? Ty.inkSoft.withValues(alpha: .45)
                       : tint != null
                           ? T.onAccent
-                          : Color.lerp(T.ink, skin.accentDeep, state.hover)!,
+                          : Color.lerp(Ty.ink, skin.accentDeep, state.hover)!,
                 ),
               ),
             ),
@@ -248,7 +248,7 @@ class IbashoToggle extends StatelessWidget {
                   child: GlossSurface(
                     radius: knob / 2,
                     elevation: 1.1,
-                    borderColor: value ? skin.accentDeep : T.hairline,
+                    borderColor: value ? skin.accentDeep : skin.hairline,
                   ),
                 ),
               ),
@@ -498,7 +498,7 @@ class IbashoSegmented<V> extends StatelessWidget {
                       style: Ty.body.copyWith(
                         color: selected
                             ? T.onAccent
-                            : Color.lerp(T.inkSoft, skin.accentDeep, state.hover)!,
+                            : Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover)!,
                         fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                       ),
                     ),
@@ -571,7 +571,7 @@ class ColorChip extends StatelessWidget {
                 borderWidth: selected ? 2.5 : 1,
                 borderColor: selected
                     ? Color.lerp(color, T.dusk, .45)!
-                    : T.hairline,
+                    : IbashoSkin.of(context).hairline,
                 child: selected
                     ? Center(
                         child: GlyphIcon(

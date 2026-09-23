@@ -169,7 +169,7 @@ class CardTama extends ConsumerWidget {
           child: GlyphIcon(
             Glyph.tama,
             size: size * .5,
-            color: (resolved?.accent ?? T.inkSoft).withValues(alpha: .55),
+            color: (resolved?.accent ?? Ty.inkSoft).withValues(alpha: .55),
             strokeWidth: 2.2,
           ),
         ),

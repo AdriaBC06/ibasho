@@ -35,7 +35,7 @@ class CreditsChannel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(l.creditsIntro, style: Ty.body.copyWith(color: T.inkSoft)),
+                Text(l.creditsIntro, style: Ty.body.copyWith(color: Ty.inkSoft)),
                 const SizedBox(height: 26),
                 _Group(title: l.creditsFonts, entries: fontCredits),
                 const SizedBox(height: 22),
@@ -145,9 +145,9 @@ class _Licence extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
         child: Row(
           children: [
-            const GlyphIcon(Glyph.keycard, size: 24, color: T.inkSoft),
+            GlyphIcon(Glyph.keycard, size: 24, color: Ty.inkSoft),
             const SizedBox(width: 14),
-            Expanded(child: Text(text, style: Ty.caption.copyWith(color: T.ink))),
+            Expanded(child: Text(text, style: Ty.caption.copyWith(color: Ty.ink))),
           ],
         ),
       );

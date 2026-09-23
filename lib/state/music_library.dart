@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../audio/audio_service.dart';
 import '../backend/gacha_music.dart';
 import '../backend/ibasho_backend.dart';
+import 'koro.dart';
 import 'preferences.dart';
 import 'session.dart';
 
@@ -168,6 +169,19 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     try {
       await _backend.write('$_path/menuTrack', track.id,
           idToken: await _session.freshToken());
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido guardar la musica del menu ($e)');
+    }
+  }
+
+  /// Pone de musica del menu la cancion de Tamakoro del hueco [slot]. La
+  /// renderiza `koroMenuMusicProvider`.
+  Future<void> selectKoro(int slot) async {
+    final id = '$koroTrackPrefix$slot';
+    state = state.copyWith(menuTrack: id);
+    await _preferences.setMusicTrack(id);
+    try {
+      await _backend.write('$_path/menuTrack', id, idToken: await _session.freshToken());
     } catch (e) {
       debugPrint('Ibasho: no se ha podido guardar la musica del menu ($e)');
     }

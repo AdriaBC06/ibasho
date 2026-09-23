@@ -12,7 +12,6 @@ import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/identity.dart';
 import '../../../state/messages.dart';
 import '../../../state/providers.dart';
-import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
 import '../../layout.dart';
 import '../../social/social_widgets.dart';
@@ -82,7 +81,7 @@ class _Unavailable extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 4),
-          Text(l.keysUnavailable, style: Ty.body.copyWith(color: T.inkSoft)),
+          Text(l.keysUnavailable, style: Ty.body.copyWith(color: Ty.inkSoft)),
           const SizedBox(height: 16),
           IbashoButton(
             label: l.keysRetry,
@@ -121,7 +120,7 @@ class _Conversations extends ConsumerWidget {
               child: Text(
                 friends.loaded ? l.messagesNoFriends : l.keysPreparing,
                 textAlign: TextAlign.center,
-                style: Ty.body.copyWith(color: T.inkSoft),
+                style: Ty.body.copyWith(color: Ty.inkSoft),
               ),
             ),
           )
@@ -146,9 +145,9 @@ class _Conversations extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const GlyphIcon(Glyph.lock, size: 14, color: T.inkSoft),
+            GlyphIcon(Glyph.lock, size: 14, color: Ty.inkSoft),
             const SizedBox(width: 7),
-            Text(l.messagesPrivacy, style: Ty.caption.copyWith(color: T.inkSoft)),
+            Text(l.messagesPrivacy, style: Ty.caption.copyWith(color: Ty.inkSoft)),
           ],
         ),
       ],
@@ -196,7 +195,7 @@ class _FriendRow extends ConsumerWidget {
               ),
               if (unread) const CountBadge(count: 1, size: 14),
               const SizedBox(width: 10),
-              const GlyphIcon(Glyph.arrowRight, size: 16, color: T.inkSoft),
+              GlyphIcon(Glyph.arrowRight, size: 16, color: Ty.inkSoft),
             ],
           ),
         ),
@@ -216,7 +215,7 @@ class _Notice extends StatelessWidget {
         child: Text(
           text,
           textAlign: TextAlign.center,
-          style: Ty.body.copyWith(color: T.inkSoft),
+          style: Ty.body.copyWith(color: Ty.inkSoft),
         ),
       );
 }

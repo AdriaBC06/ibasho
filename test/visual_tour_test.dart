@@ -26,7 +26,7 @@ import 'package:ibasho/state/providers.dart';
 import 'package:ibasho/storage/settings_store.dart';
 import 'package:ibasho/core/friend_code.dart';
 import 'package:ibasho/theme/tokens.dart';
-import 'package:ibasho/ui/screens/channels/coming_soon_channel.dart';
+import 'package:ibasho/games/minesweeper/minesweeper_channel.dart';
 import 'package:ibasho/ui/social/business_card.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -230,27 +230,31 @@ Future<void> main() async {
     await shoot(tester, '14-zona-horaria');
   });
 
-  testWidgets('con un regalo en la rejilla, la segunda pagina se puede tocar',
-      (tester) async {
+  // Un juego mas que los ocho canales fijos lleva la rejilla a una segunda
+  // pagina, que es lo que se quiere tocar.
+  FakeIbashoBackend withSecondPage() {
     final backend = FakeIbashoBackend();
     backend.seed('/users/${backend.uid}/games/minesweeper', {
-      'state': 'gift',
+      'state': 'open',
       'at': DateTime.now().millisecondsSinceEpoch,
     });
-    await boot(tester, backend: backend);
+    return backend;
+  }
+
+  testWidgets('la segunda pagina se puede tocar', (tester) async {
+    await boot(tester, backend: withSecondPage());
     await settle(tester, 100);
     await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
     await settle(tester, 30);
-    await tester.tap(find.byKey(const ValueKey<String>('channel.slot-0')));
+    await tester.tap(find.byKey(const ValueKey<String>('channel.game-minesweeper')));
     await settle(tester, 60);
-    expect(find.byType(ComingSoonChannel), findsOneWidget);
+    expect(find.byType(MinesweeperChannel), findsOneWidget);
   });
 
   // Con el dedo un toque sin destino lo recoge `TouchAssist`, asi que solo un
   // raton de verdad delata una pagina cuyos canales no reciben el clic.
   testWidgets('con raton, la segunda pagina tambien se abre', (tester) async {
-    final backend = FakeIbashoBackend();
-    await boot(tester, backend: backend);
+    await boot(tester, backend: withSecondPage());
     await settle(tester, 100);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -261,23 +265,13 @@ Future<void> main() async {
     await mouse.up();
     await settle(tester, 30);
 
-    final slot = tester.getCenter(find.byKey(const ValueKey<String>('channel.slot-0')));
-    await mouse.moveTo(slot);
+    final game = tester.getCenter(find.byKey(const ValueKey<String>('channel.game-minesweeper')));
+    await mouse.moveTo(game);
     await settle(tester, 10);
-    await mouse.down(slot);
+    await mouse.down(game);
     await mouse.up();
     await settle(tester, 60);
-    expect(find.byType(ComingSoonChannel), findsOneWidget);
-  });
-
-  testWidgets('ranura libre', (tester) async {
-    await boot(tester, backend: FakeIbashoBackend());
-    await settle(tester, 100);
-    await tester.tap(find.byKey(const ValueKey<String>('grid.next')));
-    await settle(tester, 30);
-    await tester.tap(find.byKey(const ValueKey<String>('channel.slot-0')));
-    await settle(tester, 60);
-    await shoot(tester, '11-proximamente');
+    expect(find.byType(MinesweeperChannel), findsOneWidget);
   });
 
   testWidgets('entorno a 1920x1080, sin bandas', (tester) async {
@@ -326,6 +320,40 @@ Future<void> main() async {
           ),
         ),
       ];
+
+  // Los temas del gacha: el menu con un Tama, Ajustes, el Yatai y el perfil,
+  // con el acento del tema.
+  for (final theme in const [
+    'sky', 'coral', 'mint', 'peach', // N
+    'lavender', 'dusk', 'sunrise', 'lagoon', // R
+    'aurora', 'candy', 'forest', // SR
+    'sunset', 'glacier', // SSR
+    'phoenix', 'borealis', // UR
+    'starfield', // ∞
+  ]) {
+    Future<void> bootTheme(WidgetTester tester) async {
+      final backend = FakeIbashoBackend(tamas: family(), profileTamaId: family().first.id)
+        ..seed('/users/$kAdminUid/prizes', {'bg_$theme': 1})
+        ..seed('/shop/prices', {'game_minesweeper': 0, 'food_cookie': 3, 'food_candy': 3});
+      await boot(
+        tester,
+        backend: backend,
+        preferences: Preferences(backdropId: theme, accentFollowsTheme: true),
+      );
+      await settle(tester, 100);
+    }
+
+    for (final (channel, shot) in const [('', '1-menu'), ('settings', '2-ajustes'), ('yatai', '3-yatai'), ('profile', '4-perfil')]) {
+      testWidgets('tema $theme $shot', (tester) async {
+        await bootTheme(tester);
+        if (channel.isNotEmpty) {
+          await tester.tap(find.byKey(ValueKey<String>('channel.$channel')));
+          await settle(tester, 60);
+        }
+        await shoot(tester, 'tema-$theme-$shot');
+      });
+    }
+  }
 
   testWidgets('tamas: panel, canal, habitacion y creador', (tester) async {
     final backend = FakeIbashoBackend(tamas: family(), profileTamaId: family().first.id);

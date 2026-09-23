@@ -18,11 +18,11 @@ import '../../../state/providers.dart';
 import '../../widgets/channel_art.dart';
 import '../../widgets/glyphs.dart';
 import 'admin_channel.dart';
-import 'coming_soon_channel.dart';
 import 'debug_channel.dart';
 import 'friends_channel.dart';
 import '../../../games/pachinko/pachinko_channel.dart';
 import '../../../games/pinball/pinball_channel.dart';
+import '../../../games/tamakoro/tamakoro_channel.dart';
 import 'gacha_channel.dart';
 import 'leaderboards_channel.dart';
 import 'messages_channel.dart';
@@ -118,13 +118,6 @@ final Map<String, GameChannelEntry> gameChannelRegistry = <String, GameChannelEn
   ),
 };
 
-/// Cuantas ranuras libres ensena el entorno mientras no haya apps propias.
-///
-/// Una, no dos: el Yatai ya deja la rejilla de una cuenta nueva justa en la
-/// primera pagina en horizontal (ocho canales fijos). Con dos, el entorno
-/// pasaba a una pagina de mas solo para enseñar un segundo hueco vacio.
-const int emptySlotCount = 1;
-
 /// Canales por pagina: rejilla de 4x2 en horizontal, de 3x3 en vertical.
 int channelsPerPage({required bool tall}) => tall ? 9 : 8;
 
@@ -137,6 +130,8 @@ List<ChannelSpec> channelsFor({
   bool pinballGift = false,
   bool pachinkoUnlocked = false,
   bool pachinkoGift = false,
+  bool koroUnlocked = false,
+  bool koroGift = false,
 }) {
   // Los juegos comprados, en el orden en que se compraron. Solo entran los
   // que el registro conoce: si el backend trae un id que la app aun no sabe
@@ -253,6 +248,18 @@ List<ChannelSpec> channelsFor({
           gift: pachinkoGift,
           onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openPachinko()),
         ),
+      // Tamakoro llega envuelto en cuanto la cuenta tiene su primer Tama: sin
+      // Tamas no hay coro.
+      if (koroUnlocked)
+        ChannelSpec(
+          id: 'tamakoro',
+          glyph: Glyph.note,
+          art: ArtIcon.tamakoro,
+          label: (l) => l.channelTamakoro,
+          builder: (_) => const TamakoroChannel(),
+          gift: koroGift,
+          onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openKoro()),
+        ),
       for (final entry in games)
         ChannelSpec(
           id: 'game-${entry.key}',
@@ -276,14 +283,6 @@ List<ChannelSpec> channelsFor({
           glyph: Glyph.bug,
           label: (l) => l.channelDebug,
           builder: (_) => const DebugChannel(),
-        ),
-      for (var i = 0; i < emptySlotCount; i++)
-        ChannelSpec(
-          id: 'slot-$i',
-          glyph: Glyph.slot,
-          label: (l) => l.channelEmpty,
-          empty: true,
-          builder: (_) => const ComingSoonChannel(),
         ),
     ];
 }

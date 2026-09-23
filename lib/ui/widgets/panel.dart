@@ -3,12 +3,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/gestures.dart';
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/widgets.dart';
 
 import '../../theme/skin.dart';
+import '../../theme/menu_theme.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../layout.dart';
+import 'theme_ornament.dart' show StarRim;
 
 /// Una de las dos pantallas encastradas en el bisel.
 class ScreenPanel extends StatelessWidget {
@@ -17,23 +21,59 @@ class ScreenPanel extends StatelessWidget {
     required this.child,
     this.radius = T.panelRadius,
     this.clip = true,
+    this.glass = false,
   });
 
   final Widget child;
   final double radius;
   final bool clip;
 
+  /// Las pantallas del menu de inicio: con un tema puesto son de cristal
+  /// esmerilado ([Surfaces.glass]) y dejan ver el fondo, desenfocado.
+  final bool glass;
+
   @override
-  Widget build(BuildContext context) => CustomPaint(
-        painter: _ScreenPainter(radius),
-        child: clip
-            ? ClipRRect(borderRadius: BorderRadius.circular(radius), child: child)
-            : child,
-      );
+  Widget build(BuildContext context) {
+    final surfaces = IbashoSkin.of(context).surfaces;
+    final opacity = glass ? surfaces.glass : 1.0;
+    final panel = CustomPaint(
+      painter: _ScreenPainter(radius, surfaces, opacity),
+      child: clip
+          ? ClipRRect(borderRadius: BorderRadius.circular(radius), child: child)
+          : child,
+    );
+    if (opacity >= 1) return panel;
+    final blur = ((opacity - .06) * 28).clamp(0.0, 14.0);
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        Positioned.fill(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: BackdropFilter(
+              // Cuanto mas transparente, menos esmerilado: al fondo del
+              // deslizador el cristal es limpio, no traslucido.
+              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+        panel,
+        // La ∞ ademas lleva un cometa de luz dando la vuelta al marco.
+        if (surfaces.ornament == Ornament.stars)
+          Positioned.fill(child: StarRim(radius: radius)),
+      ],
+    );
+  }
 }
 
 class _ScreenPainter extends CustomPainter {
-  _ScreenPainter(this.radius);
+  _ScreenPainter(this.radius, this.surfaces, this.opacity);
+
+  final Surfaces surfaces;
+
+  /// Opacidad del cuerpo: 1 es plastico, menos es cristal.
+  final double opacity;
 
   final double radius;
 
@@ -62,10 +102,13 @@ class _ScreenPainter extends CustomPainter {
     canvas.drawRRect(
       rrect,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [T.shellTop, T.shellBottom],
+          colors: [
+            surfaces.shellTop.withValues(alpha: opacity),
+            surfaces.shellBottom.withValues(alpha: opacity),
+          ],
         ).createShader(rect),
     );
 
@@ -79,7 +122,13 @@ class _ScreenPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: const [T.glintPanel, T.glintNone],
+          colors: [
+            (surfaces.dark ? T.glintSoft : T.glintPanel).withValues(
+              alpha: (surfaces.dark ? T.glintSoft : T.glintPanel).a *
+                  (opacity * 2).clamp(0.0, 1.0),
+            ),
+            T.glintNone,
+          ],
           stops: const [0, .40],
         ).createShader(rect),
     );
@@ -90,12 +139,13 @@ class _ScreenPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
-        ..color = T.hairline,
+        ..color = surfaces.hairline,
     );
   }
 
   @override
-  bool shouldRepaint(_ScreenPainter old) => old.radius != radius;
+  bool shouldRepaint(_ScreenPainter old) =>
+      old.radius != radius || old.surfaces != surfaces || old.opacity != opacity;
 }
 
 /// Bloque de contenido dentro de un canal.
@@ -128,12 +178,12 @@ class SectionCard extends StatelessWidget {
             DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [T.onAccent, T.cardBottom],
+                  colors: [IbashoSkin.of(context).shellTop, IbashoSkin.of(context).cardBottom],
                 ),
-                border: Border.all(color: T.hairline),
+                border: Border.all(color: IbashoSkin.of(context).hairline),
                 boxShadow: const [
                   BoxShadow(color: T.shadow, blurRadius: 10, offset: Offset(0, 3)),
                 ],
@@ -217,9 +267,9 @@ class Hairline extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsets.symmetric(horizontal: indent),
-        child: const SizedBox(
+        child: SizedBox(
           height: 1,
-          child: DecoratedBox(decoration: BoxDecoration(color: T.hairline)),
+          child: DecoratedBox(decoration: BoxDecoration(color: IbashoSkin.of(context).hairline)),
         ),
       );
 }

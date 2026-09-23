@@ -6,6 +6,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../../theme/menu_theme.dart';
+import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 
 /// La firma de la casa: un degradado vertical muy suave con un brillo
@@ -56,14 +58,16 @@ class GlossSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final skin = IbashoSkin.of(context);
     return CustomPaint(
       painter: _GlossPainter(
+        surfaces: skin.surfaces,
         radius: radius,
         tint: tint,
         recessed: recessed,
         elevation: elevation,
         specular: specular,
-        borderColor: borderColor ?? T.hairline,
+        borderColor: borderColor ?? skin.hairline,
         borderWidth: borderWidth,
       ),
       child: Padding(
@@ -76,6 +80,7 @@ class GlossSurface extends StatelessWidget {
 
 class _GlossPainter extends CustomPainter {
   _GlossPainter({
+    required this.surfaces,
     required this.radius,
     required this.tint,
     required this.recessed,
@@ -85,6 +90,7 @@ class _GlossPainter extends CustomPainter {
     required this.borderWidth,
   });
 
+  final Surfaces surfaces;
   final double radius;
   final Color? tint;
   final bool recessed;
@@ -120,14 +126,14 @@ class _GlossPainter extends CustomPainter {
     final Color top;
     final Color bottom;
     if (recessed) {
-      top = tint == null ? T.wellTop : Color.lerp(T.wellTop, tint!, .30)!;
-      bottom = tint == null ? T.wellBottom : Color.lerp(T.wellBottom, tint!, .16)!;
+      top = tint == null ? surfaces.wellTop : Color.lerp(surfaces.wellTop, tint!, .30)!;
+      bottom = tint == null ? surfaces.wellBottom : Color.lerp(surfaces.wellBottom, tint!, .16)!;
     } else if (tint != null) {
-      top = Color.lerp(tint!, T.shellTop, .28)!;
+      top = Color.lerp(tint!, surfaces.shellTop, .28)!;
       bottom = Color.lerp(tint!, T.dusk, .16)!;
     } else {
-      top = T.shellTop;
-      bottom = T.shellBottom;
+      top = surfaces.shellTop;
+      bottom = surfaces.shellBottom;
     }
     canvas.drawRRect(
       rrect,
@@ -159,7 +165,7 @@ class _GlossPainter extends CustomPainter {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              T.specular.withValues(alpha: T.specular.a * specular),
+              surfaces.specular.withValues(alpha: surfaces.specular.a * specular),
               T.specularSoft.withValues(alpha: T.specularSoft.a * specular),
             ],
           ).createShader(Rect.fromLTWH(0, 0, size.width, h * 1.42)),
@@ -177,7 +183,7 @@ class _GlossPainter extends CustomPainter {
             colors: [
               T.glintNone,
               T.glintNone,
-              Color.fromRGBO(255, 255, 255, .78 * specular),
+              surfaces.bounce.withValues(alpha: .78 * specular),
             ],
             stops: const [0, .58, 1],
           ).createShader(rect),
@@ -214,6 +220,7 @@ class _GlossPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GlossPainter old) =>
+      old.surfaces != surfaces ||
       old.radius != radius ||
       old.tint != tint ||
       old.recessed != recessed ||
@@ -231,11 +238,18 @@ class Bezel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox.expand(
-        child: CustomPaint(painter: _BezelPainter(), child: child),
+        child: CustomPaint(
+          painter: _BezelPainter(IbashoSkin.of(context).surfaces),
+          child: child,
+        ),
       );
 }
 
 class _BezelPainter extends CustomPainter {
+  _BezelPainter(this.surfaces);
+
+  final Surfaces surfaces;
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
@@ -243,11 +257,11 @@ class _BezelPainter extends CustomPainter {
     canvas.drawRect(
       rect,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [T.bezelTop, T.bezelBottom],
-          stops: [0, .92],
+          colors: [surfaces.bezelTop, surfaces.bezelBottom],
+          stops: const [0, .92],
         ).createShader(rect),
     );
 
@@ -279,5 +293,5 @@ class _BezelPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BezelPainter old) => false;
+  bool shouldRepaint(_BezelPainter old) => old.surfaces != surfaces;
 }

@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/providers.dart';
 import '../state/rewards.dart';
+import '../theme/menu_theme.dart';
 import '../theme/skin.dart';
 import '../theme/tokens.dart';
 import '../theme/type.dart';
@@ -101,7 +102,7 @@ class SpeechBubble extends StatelessWidget {
               key: ValueKey<String>('bubble.$t'),
               constraints: BoxConstraints(maxWidth: maxWidth),
               child: CustomPaint(
-                painter: _BubblePainter(),
+                painter: _BubblePainter(IbashoSkin.of(context).surfaces),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(14, 7, 14, 15),
                   child: Text(
@@ -119,6 +120,10 @@ class SpeechBubble extends StatelessWidget {
 }
 
 class _BubblePainter extends CustomPainter {
+  _BubblePainter(this.surfaces);
+
+  final Surfaces surfaces;
+
   @override
   void paint(Canvas canvas, Size size) {
     final body = RRect.fromRectAndRadius(
@@ -140,10 +145,10 @@ class _BubblePainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [T.shellTop, T.cardBottom],
+          colors: [surfaces.shellTop, surfaces.cardBottom],
         ).createShader(Offset.zero & size),
     );
     canvas.drawPath(
@@ -151,12 +156,12 @@ class _BubblePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
-        ..color = T.hairline,
+        ..color = surfaces.hairline,
     );
   }
 
   @override
-  bool shouldRepaint(_BubblePainter old) => false;
+  bool shouldRepaint(_BubblePainter old) => old.surfaces != surfaces;
 }
 
 /// La cara de reserva, para una cuenta sin Tamas: una gota de plastico
@@ -350,7 +355,7 @@ class DailyCoinsMeter extends ConsumerWidget {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          ColoredBox(color: T.hairline),
+                          ColoredBox(color: skin.hairline),
                           // Crece hasta lo cobrado al abrir el menu.
                           TweenAnimationBuilder<double>(
                             tween: Tween<double>(begin: 0, end: t),
@@ -407,7 +412,7 @@ class ResultChip extends StatelessWidget {
           Text(text,
               style: Ty.caption.copyWith(
                 fontWeight: FontWeight.w600,
-                color: accent ? T.onAccent : T.ink,
+                color: accent ? T.onAccent : Ty.ink,
               )),
         ],
       ),
@@ -461,7 +466,7 @@ class SegmentPill extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (glyph != null) ...[
-                  GlyphIcon(glyph!, size: 18, color: selected ? skin.accentDeep : T.inkSoft, strokeWidth: 2.2),
+                  GlyphIcon(glyph!, size: 18, color: selected ? skin.accentDeep : Ty.inkSoft, strokeWidth: 2.2),
                   const SizedBox(width: 6),
                 ],
                 Flexible(
@@ -475,7 +480,7 @@ class SegmentPill extends StatelessWidget {
                         maxLines: 1,
                         style: Ty.body.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: selected ? skin.accentDeep : T.ink,
+                          color: selected ? skin.accentDeep : Ty.ink,
                           height: 1.1,
                         ),
                       ),
@@ -567,7 +572,7 @@ class CoinLine extends StatelessWidget {
               text,
               key: const ValueKey<String>('game.results.coins'),
               textAlign: TextAlign.center,
-              style: Ty.body.copyWith(fontWeight: FontWeight.w600, color: granted ? Art.goldDark : T.inkSoft),
+              style: Ty.body.copyWith(fontWeight: FontWeight.w600, color: granted ? Art.goldDark : Ty.inkSoft),
             ),
           ),
         ],

@@ -344,12 +344,12 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(24),
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [T.onAccent, T.cardBottom],
+                            colors: [IbashoSkin.of(context).shellTop, IbashoSkin.of(context).cardBottom],
                           ),
-                          border: Border.all(color: T.hairline),
+                          border: Border.all(color: IbashoSkin.of(context).hairline),
                           boxShadow: const [
                             BoxShadow(color: T.shadow, blurRadius: 10, offset: Offset(0, 3)),
                           ],
@@ -721,7 +721,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
                             personalityLabel(l, p),
                             style: Ty.body.copyWith(
                               fontWeight: FontWeight.w500,
-                              color: selected ? skin.accentDeep : T.ink,
+                              color: selected ? skin.accentDeep : Ty.ink,
                             ),
                           ),
                           Text(
@@ -803,7 +803,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
                       radius: 20,
                       tint: selected ? skin.accent : null,
                       elevation: selected ? .9 : .7 + state.hover * .5,
-                      borderColor: selected ? skin.accentDeep : Color.lerp(T.hairline, skin.accent, state.hover)!,
+                      borderColor: selected ? skin.accentDeep : Color.lerp(skin.hairline, skin.accent, state.hover)!,
                       sink: state.press * 1.2,
                       padding: const EdgeInsets.symmetric(horizontal: 18),
                       child: Center(
@@ -811,7 +811,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
                         child: Text(
                           timbreLabel(l, t),
                           style: Ty.body.copyWith(
-                            color: selected ? T.onAccent : T.ink,
+                            color: selected ? T.onAccent : Ty.ink,
                             fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                             height: 1.1,
                           ),
@@ -851,7 +851,7 @@ class _DialRow extends StatelessWidget {
     final number = Text(
       '$value',
       textAlign: TextAlign.right,
-      style: Ty.numeral(17, color: T.inkSoft),
+      style: Ty.numeral(17, color: Ty.inkSoft),
     );
     final slider = IbashoSlider(
       value: value / 100,
@@ -953,7 +953,7 @@ class _TabRail extends StatelessWidget {
                         fontSize: 14,
                         color: selected
                             ? T.onAccent
-                            : Color.lerp(T.inkSoft, skin.accentDeep, state.hover),
+                            : Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover),
                         fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                       ),
                     );
@@ -1149,7 +1149,7 @@ class GlossSurfaceCard extends StatelessWidget {
         tint: selected ? skin.accentWash : null,
         elevation: selected ? 1.2 : .8 + hover * .6,
         borderWidth: selected ? 2.2 : 1,
-        borderColor: selected ? skin.accentDeep : T.hairline,
+        borderColor: selected ? skin.accentDeep : skin.hairline,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         child: child,
       ),

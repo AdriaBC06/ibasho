@@ -9,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
-import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
 import '../../layout.dart';
 import '../../widgets/glyphs.dart';
@@ -92,7 +91,7 @@ class _NewsChannelState extends ConsumerState<NewsChannel> {
                       child: Text(
                         l.newsEmpty,
                         textAlign: TextAlign.center,
-                        style: Ty.body.copyWith(color: T.inkSoft),
+                        style: Ty.body.copyWith(color: Ty.inkSoft),
                       ),
                     ),
                   )

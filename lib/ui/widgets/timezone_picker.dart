@@ -56,7 +56,7 @@ class TimezoneField extends StatelessWidget {
             child: GlossSurface(
               radius: T.fieldRadius,
               recessed: true,
-              borderColor: Color.lerp(T.hairline, skin.accentDeep, state.hover)!,
+              borderColor: Color.lerp(skin.hairline, skin.accentDeep, state.hover)!,
               padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
               child: Row(
                 children: [
@@ -73,7 +73,7 @@ class TimezoneField extends StatelessWidget {
                       style: Ty.body.copyWith(fontSize: 17, height: 1.3),
                     ),
                   ),
-                  const GlyphIcon(Glyph.chevronDown, size: 20, color: T.inkSoft),
+                  GlyphIcon(Glyph.chevronDown, size: 20, color: Ty.inkSoft),
                 ],
               ),
             ),
@@ -237,7 +237,7 @@ class _ZoneRow extends StatelessWidget {
                         ? T.onAccent
                         : newOffset
                             ? skin.accentDeep
-                            : T.inkSoft.withValues(alpha: .55),
+                            : Ty.inkSoft.withValues(alpha: .55),
                     weight: newOffset || selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
@@ -248,7 +248,7 @@ class _ZoneRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Ty.body.copyWith(
-                    color: selected ? T.onAccent : T.ink,
+                    color: selected ? T.onAccent : Ty.ink,
                     fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                   ),
                 ),
@@ -256,7 +256,7 @@ class _ZoneRow extends StatelessWidget {
               Text(
                 zone.region,
                 style: Ty.micro.copyWith(
-                  color: selected ? T.onAccent : T.inkSoft,
+                  color: selected ? T.onAccent : Ty.inkSoft,
                 ),
               ),
             ],

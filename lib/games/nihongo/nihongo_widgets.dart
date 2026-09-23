@@ -261,7 +261,7 @@ class AnswerTile extends StatelessWidget {
       AnswerLook.wrong => T.wrong,
       _ => null,
     };
-    final ink = tint != null ? T.onAccent : T.ink;
+    final ink = tint != null ? T.onAccent : Ty.ink;
     return AnimatedOpacity(
       opacity: look == AnswerLook.dim ? .5 : 1,
       duration: skin.motion(const Duration(milliseconds: 180)),
@@ -417,7 +417,7 @@ class _ChartCell extends StatelessWidget {
                       Text(
                         kana.romaji,
                         maxLines: 1,
-                        style: Ty.numeral(size * .19, color: selected ? T.onAccent : T.inkSoft, weight: FontWeight.w700),
+                        style: Ty.numeral(size * .19, color: selected ? T.onAccent : Ty.inkSoft, weight: FontWeight.w700),
                       ),
                     ],
                   ),
@@ -493,10 +493,10 @@ class CategoryCard extends StatelessWidget {
                   height: tile,
                   child: GlossSurface(
                     radius: tile * .2,
-                    tint: locked ? T.shellBottom : Art.paper,
+                    tint: locked ? skin.shellBottom : Art.paper,
                     elevation: .8,
                     child: Center(
-                      child: Text(char, style: kanaStyle(tile * .6, color: locked ? T.inkSoft : Art.brush)),
+                      child: Text(char, style: kanaStyle(tile * .6, color: locked ? Ty.inkSoft : Art.brush)),
                     ),
                   ),
                 ),
@@ -511,13 +511,13 @@ class CategoryCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: (compact ? Ty.body : Ty.lead).copyWith(
                             fontWeight: FontWeight.w600,
-                            color: locked ? T.inkSoft : (selected ? skin.accentDeep : T.ink),
+                            color: locked ? Ty.inkSoft : (selected ? skin.accentDeep : Ty.ink),
                           )),
                       const SizedBox(height: 4),
                       if (locked)
                         Row(
                           children: [
-                            GlyphIcon(Glyph.lock, size: 14, color: T.inkSoft, strokeWidth: 2),
+                            GlyphIcon(Glyph.lock, size: 14, color: Ty.inkSoft, strokeWidth: 2),
                             const SizedBox(width: 4),
                             Flexible(child: Text(caption, maxLines: 1, overflow: TextOverflow.ellipsis, style: Ty.micro)),
                           ],
@@ -632,7 +632,7 @@ class NihongoResultsCard extends StatelessWidget {
                   child: const SizedBox.square(dimension: 84, child: CustomPaint(painter: MaruPainter(hana: true))),
                 ),
               Text(l.nihongoScore(round.right, round.questions.length),
-                  style: Ty.numeral(36, color: T.ink, weight: FontWeight.w700)),
+                  style: Ty.numeral(36, color: Ty.ink, weight: FontWeight.w700)),
               const SizedBox(height: 6),
               RoundDots(round: round, dot: 12),
               const SizedBox(height: 10),

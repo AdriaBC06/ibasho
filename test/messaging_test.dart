@@ -154,10 +154,10 @@ Future<void> main() async {
       );
       tercero.listen(identityProvider, (_, _) {}, fireImmediately: true);
       await settle();
-      await tercero.read(identityProvider.notifier).restoreWithPhrase(fraseVieja!.join(' '));
+      await tercero.read(identityProvider.notifier).restoreWithPhrase(fraseVieja.join(' '));
       await settle(10);
       expect(tercero.read(identityProvider).phase, IdentityPhase.needsPhrase);
-      await tercero.read(identityProvider.notifier).restoreWithPhrase(nueva.phrase!.join(' '));
+      await tercero.read(identityProvider.notifier).restoreWithPhrase(nueva.phrase.join(' '));
       await settle(10);
       expect(tercero.read(identityProvider).phase, IdentityPhase.ready);
     });

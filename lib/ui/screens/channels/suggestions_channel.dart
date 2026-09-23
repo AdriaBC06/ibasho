@@ -123,7 +123,7 @@ class _SuggestionsChannelState extends ConsumerState<SuggestionsChannel> {
                         SectionCard(
                           child: Row(
                             children: [
-                              const GlyphIcon(Glyph.lock, size: 22, color: T.inkSoft),
+                              GlyphIcon(Glyph.lock, size: 22, color: Ty.inkSoft),
                               const SizedBox(width: 14),
                               Expanded(
                                 child: Text(l.suggestClosed, style: Ty.body),
@@ -191,7 +191,7 @@ class _MineCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(suggestion.body, style: Ty.body.copyWith(color: T.inkSoft)),
+          Text(suggestion.body, style: Ty.body.copyWith(color: Ty.inkSoft)),
           if (suggestion.note != null) ...[
             const SizedBox(height: 16),
             GlossSurface(
@@ -238,14 +238,14 @@ class _StatusSeal extends StatelessWidget {
     };
     final accepted = status == SuggestionStatus.accepted;
     final rejected = status == SuggestionStatus.rejected;
-    final ink = accepted ? T.onAccent : T.inkSoft;
+    final ink = accepted ? T.onAccent : Ty.inkSoft;
 
     return GlossSurface(
       radius: 13,
       tint: accepted ? skin.accent : null,
       recessed: rejected,
       elevation: accepted ? 1 : .5,
-      borderColor: accepted ? skin.accentDeep : T.hairline,
+      borderColor: accepted ? skin.accentDeep : skin.hairline,
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -255,7 +255,7 @@ class _StatusSeal extends StatelessWidget {
           Text(
             label,
             style: Ty.micro.copyWith(
-              color: accepted ? T.onAccent : T.ink,
+              color: accepted ? T.onAccent : Ty.ink,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -292,7 +292,7 @@ class _Compose extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l.suggestIntro, style: Ty.body.copyWith(color: T.inkSoft)),
+          Text(l.suggestIntro, style: Ty.body.copyWith(color: Ty.inkSoft)),
           const SizedBox(height: 18),
           _Counted(
             controller: headline,
@@ -361,7 +361,7 @@ class _Counted extends StatelessWidget {
               valueListenable: controller,
               builder: (context, value, _) => Text(
                 '${value.text.characters.length}/$maximum',
-                style: Ty.numeral(12, color: T.inkSoft),
+                style: Ty.numeral(12, color: Ty.inkSoft),
               ),
             ),
           ),
@@ -571,7 +571,7 @@ class _PendingRowState extends ConsumerState<_PendingRow> {
           const SizedBox(height: 6),
           Row(
             children: [
-              const GlyphIcon(Glyph.person, size: 15, color: T.inkSoft),
+              GlyphIcon(Glyph.person, size: 15, color: Ty.inkSoft),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(author, maxLines: 1, overflow: TextOverflow.ellipsis, style: Ty.micro),

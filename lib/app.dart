@@ -15,6 +15,8 @@ import 'state/debug.dart';
 import 'state/providers.dart';
 import 'state/session.dart';
 import 'state/update_gate.dart';
+import 'theme/accent.dart';
+import 'theme/menu_theme.dart';
 import 'theme/skin.dart';
 import 'theme/tokens.dart';
 import 'theme/type.dart';
@@ -59,6 +61,8 @@ class _IbashoAppState extends ConsumerState<IbashoApp> {
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider);
+    // La cancion de Tamakoro del menu se mantiene al dia en cualquier pantalla.
+    ref.watch(koroMenuMusicProvider);
 
     return WidgetsApp(
       navigatorKey: rootNavigatorKey,
@@ -79,7 +83,21 @@ class _IbashoAppState extends ConsumerState<IbashoApp> {
         reverseTransitionDuration: Duration.zero,
       ),
       builder: (context, navigator) {
-        final accent = ref.watch(accentProvider);
+        // El tema del fondo puesto tine los materiales y, si se quiere,
+        // da el acento.
+        final theme = menuThemeFor(ref.watch(backdropIdProvider));
+        final followsTheme =
+            ref.watch(preferencesProvider.select((p) => p.accentFollowsTheme));
+        final glassLevel =
+            ref.watch(preferencesProvider.select((p) => p.glassLevel));
+        final surfaces =
+            (theme?.surfaces ?? Surfaces.house).withGlassLevel(glassLevel);
+        _applyInk(surfaces);
+        final chosen = followsTheme && theme != null
+            ? theme.accent
+            : ref.watch(accentProvider);
+        // Sobre plastico negro un acento oscuro no se ve: se aclara.
+        final accent = surfaces.dark ? brightAccent(chosen) : chosen;
         final userPrefersReduced =
             ref.watch(preferencesProvider.select((p) => p.reducedMotion));
         // La preferencia del sistema no se puede desactivar desde la app: se
@@ -90,6 +108,7 @@ class _IbashoAppState extends ConsumerState<IbashoApp> {
         return IbashoSkin(
           accent: accent,
           reducedMotion: reduced,
+          surfaces: surfaces,
           child: DefaultTextStyle(
             style: Ty.body,
             child: MobileLifecycle(
@@ -205,4 +224,19 @@ class _AppRootState extends ConsumerState<AppRoot> {
     // el gesto de atras a la app, y BackGate pregunta antes de salir.
     return PopScope(canPop: !Device.isAndroid, child: switcher);
   }
+}
+
+/// Pone la tinta del tema en los estilos de texto ([Ty.ink], [Ty.inkSoft]).
+///
+/// Los estilos se leen al construir y los pintores al pintar, y muchos no
+/// dependen de la piel (son `const` o no la miran), asi que al pasar de un
+/// tema claro a uno oscuro se redibuja la app entera una vez, como tras una
+/// recarga en caliente: conserva el estado y no toca la cache de imagenes.
+void _applyInk(Surfaces surfaces) {
+  if (Ty.ink == surfaces.ink && Ty.inkSoft == surfaces.inkSoft) return;
+  Ty.ink = surfaces.ink;
+  Ty.inkSoft = surfaces.inkSoft;
+  WidgetsBinding.instance.addPostFrameCallback(
+    (_) => unawaited(WidgetsBinding.instance.reassembleApplication()),
+  );
 }

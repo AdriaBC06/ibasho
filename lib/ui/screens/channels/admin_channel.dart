@@ -182,7 +182,7 @@ class _AdminChannelState extends ConsumerState<AdminChannel> {
                           padding: const EdgeInsets.only(top: 6),
                           child: Row(
                             children: [
-                              const GlyphIcon(Glyph.lock, size: 18, color: T.inkSoft),
+                              GlyphIcon(Glyph.lock, size: 18, color: Ty.inkSoft),
                               const SizedBox(width: 10),
                               Text(_password, style: Ty.credential.copyWith(fontSize: 17)),
                             ],
@@ -313,7 +313,7 @@ class _VersionLockState extends ConsumerState<_VersionLock> {
         children: [
           Row(
             children: [
-              const GlyphIcon(Glyph.lock, size: 20, color: T.inkSoft),
+              GlyphIcon(Glyph.lock, size: 20, color: Ty.inkSoft),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -475,7 +475,7 @@ class _AccountRow extends StatelessWidget {
             ? l.adminStatePending
             : l.adminStateEnabled;
     final stateColor = entry.disabled
-        ? T.inkSoft
+        ? Ty.inkSoft
         : entry.mustChangePassword
             ? T.warn
             : skin.accent;
@@ -516,7 +516,7 @@ class _AccountRow extends StatelessWidget {
                 child: GlyphIcon(
                   Glyph.person,
                   size: 21,
-                  color: entry.disabled ? T.inkSoft : T.onAccent,
+                  color: entry.disabled ? Ty.inkSoft : T.onAccent,
                 ),
               ),
             ),
@@ -546,7 +546,7 @@ class _AccountRow extends StatelessWidget {
             ),
             child: Text(
               stateLabel,
-              style: Ty.micro.copyWith(color: T.ink),
+              style: Ty.micro.copyWith(color: Ty.ink),
             ),
           ),
           if (!tall) ...[
@@ -635,7 +635,7 @@ class _CoinsFieldState extends ConsumerState<_CoinsField> {
       children: [
         GlyphIcon(Glyph.coin, size: 16, color: skin.accentDeep),
         const SizedBox(width: 8),
-        Text('$current', style: Ty.numeral(14, color: T.inkSoft)),
+        Text('$current', style: Ty.numeral(14, color: Ty.inkSoft)),
         const SizedBox(width: 14),
         // Flexible y no de ancho fijo: en la composicion vertical la fila de
         // una cuenta se queda en 264 puntos y un campo de 120 no cabe con el

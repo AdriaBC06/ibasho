@@ -12,6 +12,7 @@ import '../../backend/gacha_music.dart';
 import '../../backend/prizes.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../theme/tokens.dart';
+import '../../theme/type.dart';
 import 'backdrop_art.dart';
 import 'gacha_art.dart';
 
@@ -26,7 +27,7 @@ class PrizeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filter = locked ? ColorFilter.mode(T.inkSoft.withValues(alpha: .45), BlendMode.srcIn) : null;
+    final filter = locked ? ColorFilter.mode(Ty.inkSoft.withValues(alpha: .45), BlendMode.srcIn) : null;
     Widget art(String asset) => SvgPicture.asset(asset, width: size, height: size, colorFilter: filter);
     final front = item.frontAsset;
     return SizedBox(

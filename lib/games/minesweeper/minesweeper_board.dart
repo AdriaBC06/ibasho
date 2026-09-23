@@ -6,6 +6,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../../theme/menu_theme.dart';
+import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../../ui/widgets/channel_art.dart';
@@ -122,6 +124,7 @@ class MinesweeperBoard extends StatelessWidget {
           height: size.height,
           child: CustomPaint(
             painter: _BoardPainter(
+              surfaces: IbashoSkin.of(context).surfaces,
               game: game,
               fx: fx,
               clock: clock,
@@ -137,6 +140,7 @@ class MinesweeperBoard extends StatelessWidget {
 
 class _BoardPainter extends CustomPainter {
   _BoardPainter({
+    required this.surfaces,
     required this.game,
     required this.fx,
     required this.clock,
@@ -149,6 +153,7 @@ class _BoardPainter extends CustomPainter {
   final ValueNotifier<double> clock;
   final ValueNotifier<int?> hover;
   final Color accent;
+  final Surfaces surfaces;
 
   /// Numeros ya maquetados, por numero y tamaño: maquetar texto en cada
   /// fotograma para 256 casillas se nota.
@@ -254,7 +259,7 @@ class _BoardPainter extends CustomPainter {
     final rr = r.shift(Offset(0, -lift));
     canvas.drawRRect(r.shift(Offset(0, unit * .05)), Paint()..color = T.shadowDeep);
     final top = Color.lerp(T.shellTop, accent, odd ? .10 : .05)!;
-    final bottom = Color.lerp(T.shellBottom, accent, odd ? .30 : .22)!;
+    final bottom = Color.lerp(surfaces.shellBottom, accent, odd ? .30 : .22)!;
     canvas.drawRRect(
       rr,
       Paint()
@@ -279,7 +284,7 @@ class _BoardPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
-        ..color = Color.lerp(T.hairline, accent, .25)!,
+        ..color = Color.lerp(surfaces.hairline, accent, .25)!,
     );
   }
 
@@ -294,7 +299,7 @@ class _BoardPainter extends CustomPainter {
           end: Alignment.bottomCenter,
           colors: exploded
               ? [T.badge, T.mineBoom]
-              : [odd ? T.wellTop : Color.lerp(T.wellTop, T.wellBottom, .35)!, T.wellBottom],
+              : [odd ? surfaces.wellTop : Color.lerp(surfaces.wellTop, surfaces.wellBottom, .35)!, surfaces.wellBottom],
         ).createShader(rect),
     );
     canvas.save();

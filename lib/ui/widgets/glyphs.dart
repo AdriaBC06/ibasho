@@ -54,6 +54,7 @@ enum Glyph {
   heart,
   treat,
   pencil,
+  eraser,
   portrait,
   trash,
   wave,
@@ -513,6 +514,24 @@ class _GlyphPainter extends CustomPainter {
           stroke,
         );
         canvas.drawLine(const Offset(14, 7), const Offset(17.6, 10.6), stroke);
+      case Glyph.eraser:
+        // Una goma inclinada: el cuerpo y la franja de la punta, y la raya
+        // de suelo donde borra.
+        canvas.drawPath(
+          Path()
+            ..moveTo(9.2, 18)
+            ..lineTo(4.6, 13.4)
+            ..cubicTo(4, 12.8, 4, 11.8, 4.6, 11.2)
+            ..lineTo(12.4, 3.4)
+            ..cubicTo(13, 2.8, 14, 2.8, 14.6, 3.4)
+            ..lineTo(19.8, 8.6)
+            ..cubicTo(20.4, 9.2, 20.4, 10.2, 19.8, 10.8)
+            ..lineTo(12.6, 18)
+            ..close(),
+          stroke,
+        );
+        canvas.drawLine(const Offset(8.2, 7.6), const Offset(15.6, 15), stroke);
+        canvas.drawLine(const Offset(9.2, 18), const Offset(20, 18), stroke);
       case Glyph.portrait:
         // Mini perfil: un marco redondeado con una persona dentro. Los hombros
         // se apoyan en el borde de abajo del marco en vez de atravesarlo.

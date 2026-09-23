@@ -56,6 +56,11 @@ class PreferencesController extends StateNotifier<Preferences> {
       ? Future<void>.value()
       : _commit(state.copyWith(pachinkoOpened: true));
 
+  /// El canal de Tamakoro ya se ha desenvuelto.
+  Future<void> openKoro() => state.koroOpened
+      ? Future<void>.value()
+      : _commit(state.copyWith(koroOpened: true));
+
   Future<void> setHourFormat24(bool value) =>
       _commit(state.copyWith(hourFormat24: value));
 
@@ -72,6 +77,14 @@ class PreferencesController extends StateNotifier<Preferences> {
   /// aspecto de siempre.
   Future<void> setBackdrop(String id) =>
       _commit(state.copyWith(backdropId: id));
+
+  /// El acento sigue al tema puesto (ver `Preferences.accentFollowsTheme`).
+  Future<void> setAccentFollowsTheme(bool value) =>
+      _commit(state.copyWith(accentFollowsTheme: value));
+
+  /// El cristal de las pantallas del menu (ver `Preferences.glassLevel`).
+  Future<void> setGlassLevel(double value) =>
+      _commit(state.copyWith(glassLevel: value));
 
   Future<void> rememberAccent(String hex) async {
     if (hex == state.accentHex) return;

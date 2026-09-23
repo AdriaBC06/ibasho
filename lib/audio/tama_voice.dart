@@ -192,10 +192,11 @@ Uint8List synthesizeChirp({
     cursor += length + (syllable.gap * sampleRate).round();
   }
 
-  return _wav(samples, sampleRate);
+  return encodeWav(samples, sampleRate);
 }
 
-Uint8List _wav(Float64List samples, int sampleRate) {
+/// Muestras en [-1, 1] a un WAV mono de 16 bits.
+Uint8List encodeWav(Float64List samples, int sampleRate) {
   final dataBytes = samples.length * 2;
   final bytes = ByteData(44 + dataBytes);
   void ascii(int offset, String text) {

@@ -59,3 +59,11 @@ Color readableAccent(Color color) {
   }
   return hsl.withLightness(darken ? lo : hi).toColor();
 }
+
+/// El acento sobre plastico negro (temas oscuros): lo mismo que
+/// [readableAccent] pero al reves, se aclara lo justo para que se lea sobre
+/// la tinta de fondo. Uno ya claro se queda como esta.
+Color brightAccent(Color color) {
+  final hsl = HSLColor.fromColor(color.withValues(alpha: 1));
+  return hsl.lightness >= .62 ? hsl.toColor() : hsl.withLightness(.62).toColor();
+}

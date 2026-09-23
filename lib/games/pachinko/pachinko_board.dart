@@ -7,6 +7,8 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../backend/gacha.dart';
+import '../../theme/menu_theme.dart';
+import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../../ui/widgets/channel_art.dart';
@@ -90,12 +92,14 @@ class PachinkoBoard extends StatelessWidget {
   /// Ocupa lo que le den, con el tablero entero a lo ancho.
   @override
   Widget build(BuildContext context) => RepaintBoundary(
-        child: CustomPaint(painter: _BoardPainter(game, fx, clock, accent, accentDeep)),
+        child: CustomPaint(painter: _BoardPainter(game, fx, clock, accent, accentDeep, IbashoSkin.of(context).surfaces)),
       );
 }
 
 class _BoardPainter extends CustomPainter {
-  _BoardPainter(this.game, this.fx, this.clock, this.accent, this.accentDeep) : super(repaint: clock);
+  _BoardPainter(this.game, this.fx, this.clock, this.accent, this.accentDeep, this.surfaces) : super(repaint: clock);
+
+  final Surfaces surfaces;
 
   final PachinkoGame game;
   final PachinkoFx fx;
@@ -148,7 +152,7 @@ class _BoardPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[Color.lerp(T.shellTop, accent, .08)!, Color.lerp(T.shellBottom, accent, .18)!],
+          colors: <Color>[Color.lerp(surfaces.shellTop, accent, .08)!, Color.lerp(surfaces.shellBottom, accent, .18)!],
         ).createShader(rect),
     );
 

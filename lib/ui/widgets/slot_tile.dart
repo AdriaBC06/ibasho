@@ -74,7 +74,7 @@ class SlotTile extends StatelessWidget {
                   elevation: 1 + raised * 1.1,
                   specular: 1 - state.press * .35,
                   borderWidth: selected ? 2.5 : 1,
-                  borderColor: selected ? skin.accentDeep : T.hairline,
+                  borderColor: selected ? skin.accentDeep : skin.hairline,
                   sink: state.press * 1.5,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(T.tileRadius),

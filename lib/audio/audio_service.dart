@@ -501,7 +501,8 @@ class AudioService {
     final fade = _fadeNext;
     _fadeNext = false;
     try {
-      var shouldPlay = _musicWanted && _musicVolume > 0 && !_suspended && !_focusLost;
+      var shouldPlay =
+          _musicWanted && _hushed == 0 && _musicVolume > 0 && !_suspended && !_focusLost;
       if (shouldPlay && _android != null && !await _android!.requestFocus()) {
         shouldPlay = false;
       }
@@ -510,14 +511,16 @@ class AudioService {
         if (_android != null && !_suspended && !_focusLost) await _android!.abandonFocus();
         return;
       }
-      final wanted = (_guest ?? _track).asset;
+      // Una cancion de Tamakoro puesta en el menu es un archivo, no un asset.
+      final file = _guest == null ? _menuFile : null;
+      final wanted = file ?? (_guest ?? _track).asset;
       var fadeIn = false;
       if (_loadedAsset != wanted) {
         if (fade && player.state == PlayerState.playing) {
           await _fade(player, _effectiveMusicVolume, 0, _fadeOut);
         }
         await player.stop();
-        await player.setSource(AssetSource(wanted));
+        await player.setSource(file != null ? DeviceFileSource(file) : AssetSource(wanted));
         _loadedAsset = wanted;
         fadeIn = fade;
       }
@@ -543,7 +546,9 @@ class AudioService {
   /// si el sistema de audio falla de verdad.
   void _watchMusic(AudioPlayer player) {
     player.onPlayerStateChanged.listen((state) {
-      if (_reconciling || !_musicWanted || _musicVolume <= 0 || _suspended || _focusLost) return;
+      if (_reconciling || !_musicWanted || _hushed > 0 || _musicVolume <= 0 || _suspended || _focusLost) {
+        return;
+      }
       if (state != PlayerState.stopped && state != PlayerState.completed) return;
       final now = DateTime.now();
       if (now.difference(_lastAutoRestart) < const Duration(seconds: 2)) return;
@@ -638,6 +643,34 @@ class AudioService {
   /// Pista de perfil que suena ahora, si hay.
   MusicTrack? get profileTrack => _guest;
 
+  /// Cancion de Tamakoro puesta como musica del menu: la ruta del WAV ya
+  /// renderizado. Manda sobre [track] mientras no sea `null`.
+  String? _menuFile;
+
+  String? get menuFile => _menuFile;
+
+  /// Con la misma ruta vuelve a cargarla: el archivo puede haber cambiado.
+  Future<void> setMenuFile(String? path) {
+    if (path == null && _menuFile == null) return _musicQueue;
+    _menuFile = path;
+    _loadedAsset = null;
+    return _serial(_reconcileMusic);
+  }
+
+  /// Quien pide silencio: Tamakoro es el unico canal sin musica, porque la
+  /// pone el propio coro.
+  int _hushed = 0;
+
+  Future<void> hushMusic() {
+    _hushed++;
+    return _serial(_reconcileMusic);
+  }
+
+  Future<void> unhushMusic() {
+    if (_hushed > 0) _hushed--;
+    return _serial(_reconcileMusic);
+  }
+
   /// Dispara un efecto. Es inmediato y nunca bloquea la interfaz.
   void play(Sfx sfx) {
     if (!_sfxReady || _effectsVolume <= 0) return;
@@ -725,6 +758,82 @@ class AudioService {
     }
   }
 
+  // --- Tamakoro ------------------------------------------------------------
+  //
+  // El coro se renderiza entero y suena en bucle por SoLoud, como los
+  // graznidos: asi el cabezal se lee de la posicion real del audio y nunca se
+  // desfasa del dibujo.
+
+  AudioSource? _koroSource;
+  SoundHandle? _koroVoice;
+  final Map<String, AudioSource> _koroNotes = <String, AudioSource>{};
+
+  /// Hay con que sintetizar y los efectos no estan a cero.
+  bool get synthReady => _sfxReady && _effectsVolume > 0;
+
+  /// Pone a sonar en bucle una vuelta de coro, empezando en [from] segundos.
+  /// Sustituye a la que sonara.
+  Future<void> playKoro(Uint8List wav, {double from = 0}) async {
+    if (!_sfxReady) return;
+    try {
+      final soloud = SoLoud.instance;
+      final source = await soloud.loadMem('koro-loop.wav', wav);
+      final handle = soloud.play(source, looping: true);
+      if (from > 0) soloud.seek(handle, Duration(microseconds: (from * 1e6).round()));
+      await stopKoro();
+      _koroSource = source;
+      _koroVoice = handle;
+    } catch (e) {
+      debugPrint('Ibasho: el coro no ha podido sonar ($e)');
+    }
+  }
+
+  Future<void> stopKoro() async {
+    final voice = _koroVoice;
+    final source = _koroSource;
+    _koroVoice = null;
+    _koroSource = null;
+    if (!_sfxReady) return;
+    try {
+      final soloud = SoLoud.instance;
+      if (voice != null && soloud.getIsValidVoiceHandle(voice)) soloud.stop(voice);
+      if (source != null) await soloud.disposeSource(source);
+    } catch (_) {}
+  }
+
+  /// Segundos dentro de la vuelta que suena, o `null` si no suena ninguna.
+  double? get koroPosition {
+    final voice = _koroVoice;
+    if (!_sfxReady || voice == null) return null;
+    try {
+      final soloud = SoLoud.instance;
+      if (!soloud.getIsValidVoiceHandle(voice)) return null;
+      return soloud.getPosition(voice).inMicroseconds / 1e6;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Una tecla del Tamapiano. [key] identifica voz y nota; [build] solo se
+  /// llama la primera vez.
+  Future<void> playKoroNote(String key, Uint8List Function() build) async {
+    if (!synthReady) return;
+    try {
+      final soloud = SoLoud.instance;
+      var source = _koroNotes[key];
+      if (source == null) {
+        // Un Tama y trece teclas: con dos teclados enteros basta.
+        if (_koroNotes.length >= 26) {
+          await soloud.disposeSource(_koroNotes.remove(_koroNotes.keys.first)!);
+        }
+        source = _koroNotes[key] = await soloud.loadMem('koro-$key.wav', build());
+      }
+      soloud.play(source);
+    } catch (e) {
+      debugPrint('Ibasho: la tecla no ha sonado ($e)');
+    }
+  }
+
   double get musicVolume => _musicVolume;
 
   double get effectsVolume => _effectsVolume;
@@ -751,6 +860,9 @@ class AudioService {
       SoLoud.instance.deinit();
       _sfxSources.clear();
       _chirps.clear();
+      _koroNotes.clear();
+      _koroSource = null;
+      _koroVoice = null;
       _liveVoices.clear();
       _sfxReady = false;
     }

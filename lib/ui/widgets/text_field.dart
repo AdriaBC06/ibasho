@@ -118,9 +118,9 @@ class _IbashoTextFieldState extends State<IbashoTextField>
       maxLines: widget.multiline ? 3 : 1,
       minLines: 1,
       style: (widget.textStyle ?? Ty.body.copyWith(fontSize: 17, height: 1.3))
-          .copyWith(color: widget.enabled ? T.ink : T.inkSoft),
+          .copyWith(color: widget.enabled ? Ty.ink : Ty.inkSoft),
       cursorColor: skin.accentDeep,
-      backgroundCursorColor: T.inkSoft,
+      backgroundCursorColor: Ty.inkSoft,
       cursorWidth: 2,
       cursorRadius: const Radius.circular(1),
       cursorOpacityAnimates: !skin.reducedMotion,
@@ -148,7 +148,7 @@ class _IbashoTextFieldState extends State<IbashoTextField>
         ? T.warn
         : _focused
             ? skin.accentDeep
-            : T.hairline;
+            : skin.hairline;
 
     return SizedBox(
       width: widget.width,
@@ -189,7 +189,7 @@ class _IbashoTextFieldState extends State<IbashoTextField>
                                       widget.hint,
                                       style: (widget.textStyle ??
                                               Ty.body.copyWith(fontSize: 17, height: 1.3))
-                                          .copyWith(color: T.inkSoft.withValues(alpha: .7)),
+                                          .copyWith(color: Ty.inkSoft.withValues(alpha: .7)),
                                     )
                                   : const SizedBox.shrink(),
                             ),
@@ -212,7 +212,7 @@ class _IbashoTextFieldState extends State<IbashoTextField>
                               _revealed ? Glyph.eyeOff : Glyph.eye,
                               size: 21,
                               color: Color.lerp(
-                                  T.inkSoft, skin.accentDeep, state.hover)!,
+                                  Ty.inkSoft, skin.accentDeep, state.hover)!,
                             ),
                           ),
                         ),

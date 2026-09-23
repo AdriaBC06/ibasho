@@ -55,7 +55,7 @@ class StatusBar extends ConsumerWidget {
         SignalArcs(
           bars: bars,
           color: bars == 0 ? T.warn : skin.accentDeep,
-          dim: T.hairline,
+          dim: skin.hairline,
           size: compact ? 16 : 18,
         ),
         SizedBox(width: compact ? 12 : 16),
@@ -104,7 +104,7 @@ class _CoinsReadout extends StatelessWidget {
             NumberFormat.decimalPattern(
               Localizations.localeOf(context).languageCode,
             ).format(coins),
-            style: Ty.numeral(15, color: T.inkSoft),
+            style: Ty.numeral(15, color: Ty.inkSoft),
           ),
         ],
       ),
@@ -125,14 +125,14 @@ class _BatteryReadout extends StatelessWidget {
           BatteryGauge(
             level: battery.level,
             charging: battery.charging,
-            color: T.inkSoft,
+            color: Ty.inkSoft,
             accent: accent,
             warn: T.warn,
           ),
           const SizedBox(width: 8),
           Text(
             '${battery.level}%',
-            style: Ty.numeral(15, color: T.inkSoft),
+            style: Ty.numeral(15, color: Ty.inkSoft),
           ),
         ],
       );
@@ -161,7 +161,7 @@ class _LocaleButton extends StatelessWidget {
             code.toUpperCase(),
             style: Ty.numeral(
               15,
-              color: Color.lerp(T.inkSoft, skin.accentDeep, state.hover)!,
+              color: Color.lerp(Ty.inkSoft, skin.accentDeep, state.hover)!,
               weight: FontWeight.w700,
             ).copyWith(letterSpacing: 1.2),
           ),

@@ -15,6 +15,7 @@ import '../../../backend/gacha.dart';
 import '../../../backend/missions.dart';
 import '../../../backend/shop.dart';
 import '../../../backend/tama.dart';
+import '../../../games/tamakoro/koro_song.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/pantry.dart';
 import '../../../state/providers.dart';
@@ -61,10 +62,15 @@ String itemName(L l, ShopItem it) => it.food != null
     ? foodLabel(l, it.food!)
     : it.ticket != null
         ? ticketName(l, it.ticket!)
-        : _gameTitle(l, it.gameId!);
+        : it.koroTier != null
+            ? l.koroShopName
+            : _gameTitle(l, it.gameId!);
 
-ArtIcon itemArt(ShopItem it) =>
-    it.ticket != null ? ticketArt(it.ticket!) : _gameArt(it.gameId!);
+ArtIcon itemArt(ShopItem it) => it.ticket != null
+    ? ticketArt(it.ticket!)
+    : it.koroTier != null
+        ? ArtIcon.tamakoro
+        : _gameArt(it.gameId!);
 
 String _gameDesc(L l, String gameId) => switch (gameId) {
       'tsumiki' => l.yataiDescTsumiki,
@@ -101,7 +107,17 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
       _Tab.tamas => ShopSection.tamas,
       _Tab.gacha => ShopSection.gacha,
     };
-    return shopCatalog.where((i) => i.section == section).toList(growable: false);
+    // De los huecos de Tamakoro se ve solo el del tramo en el que va la
+    // cuenta, y solo si el canal ya ha llegado.
+    final koroOpen = ref.read(tamasProvider).tamas.isNotEmpty ||
+        ref.read(preferencesProvider).koroOpened;
+    final slots = ref.read(koroProvider).slots;
+    return shopCatalog
+        .where((i) => i.section == section)
+        .where((i) =>
+            i.koroTier == null ||
+            (koroOpen && slots < koroMaxSlots && i.koroTier == koroSlotTier(slots)))
+        .toList(growable: false);
   }
 
   void _setTab(_Tab tab) {
@@ -171,7 +187,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     } else {
       final ok = await askConfirmation(
         context,
-        title: l.yataiConfirmTitle(_gameTitle(l, item.gameId!)),
+        title: l.yataiConfirmTitle(itemName(l, item)),
         body: price == 0 ? l.yataiConfirmBodyFree : l.yataiConfirmBodyPrice(price),
         confirmLabel: price == 0 ? l.yataiGet : l.yataiBuy,
         cancelLabel: l.actionCancel,
@@ -194,7 +210,13 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     }
     AudioService.instance.play(Sfx.chime);
     unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.buy));
+    if (item.koroTier != null) {
+      ref.read(koroProvider.notifier).boughtSlots(ref.read(koroProvider).slots + 1);
+      // El siguiente hueco puede ser de otro tramo: se elige el que toque.
+      setState(() => _selectedId = null);
+    }
     final done = switch (item.section) {
+      ShopSection.games when item.koroTier != null => l.koroShopDone,
       ShopSection.games => l.yataiDoneGame,
       ShopSection.gacha => l.gachaDoneTickets(qty),
       ShopSection.tamas => l.yataiDoneFood(qty, foodLabel(l, item.food!)),
@@ -237,6 +259,8 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     final coins = ref.watch(coinsProvider);
     final unlocked = ref.watch(unlockedFoodsProvider);
     final pantry = ref.watch(pantryProvider);
+    // `_items` lee los huecos de Tamakoro: si cambian, el mostrador tambien.
+    ref.watch(koroProvider.select((k) => k.slots));
 
     final items = _items(_tab);
     if (_selectedId == null && items.isNotEmpty) _selectedId = items.first.id;
@@ -467,7 +491,9 @@ class _Showcase extends StatelessWidget {
         ? l.yataiDescFood
         : it.ticket != null
             ? l.yataiGachaBody
-            : _gameDesc(l, it.gameId!);
+            : it.koroTier != null
+                ? l.koroShopDesc(koroMaxSlots)
+                : _gameDesc(l, it.gameId!);
 
     final String actionLabel;
     final bool actionEnabled;
@@ -518,7 +544,7 @@ class _Showcase extends StatelessWidget {
           Text(l.gachaWeeklyLeft(shop.ticketsLeftThisWeek(it.ticket!)), style: Ty.caption),
         if (locked)
           Row(mainAxisSize: MainAxisSize.min, children: [
-            const GlyphIcon(Glyph.lock, size: 15, color: T.inkSoft),
+            GlyphIcon(Glyph.lock, size: 15, color: Ty.inkSoft),
             const SizedBox(width: 4),
             Text(l.yataiLocked, style: Ty.caption),
           ]),
@@ -577,7 +603,7 @@ class _Showcase extends StatelessWidget {
               Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Ty.display.copyWith(fontSize: 42)),
               const SizedBox(height: 8),
               Text(description, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: Ty.lead.copyWith(color: T.inkSoft, fontWeight: FontWeight.w400)),
+                  style: Ty.lead.copyWith(color: Ty.inkSoft, fontWeight: FontWeight.w400)),
               const SizedBox(height: 18),
               meta,
               const SizedBox(height: 26),
@@ -656,7 +682,7 @@ class _TabButton extends StatelessWidget {
       semanticLabel: label,
       onPressed: onTap,
       builder: (context, state) {
-        final ink = selected ? skin.accentDeep : Color.lerp(T.inkSoft, T.ink, state.hover)!;
+        final ink = selected ? skin.accentDeep : Color.lerp(Ty.inkSoft, Ty.ink, state.hover)!;
         // Estrecha (un movil pequeño): icono encima y la etiqueta debajo, en
         // pequeño, para que no se corte.
         final content = LayoutBuilder(
@@ -745,7 +771,7 @@ class _Pager extends StatelessWidget {
                   width: i == page ? 22 : 9,
                   height: 9,
                   decoration: BoxDecoration(
-                    color: i == page ? skin.accent : T.hairline,
+                    color: i == page ? skin.accent : skin.hairline,
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),
@@ -885,7 +911,7 @@ class _ShopTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
-                      style: Ty.caption.copyWith(fontWeight: FontWeight.w600, color: locked ? T.inkSoft : T.ink)),
+                      style: Ty.caption.copyWith(fontWeight: FontWeight.w600, color: locked ? Ty.inkSoft : Ty.ink)),
                   const SizedBox(height: 3),
                   if (owned)
                     Row(mainAxisSize: MainAxisSize.min, children: [
@@ -897,7 +923,7 @@ class _ShopTile extends StatelessWidget {
                       ),
                     ])
                   else if (locked)
-                    const GlyphIcon(Glyph.lock, size: 14, color: T.inkSoft)
+                    GlyphIcon(Glyph.lock, size: 14, color: Ty.inkSoft)
                   else
                     FittedBox(fit: BoxFit.scaleDown, child: _PriceTag(price: price, large: false)),
                 ],
@@ -931,7 +957,7 @@ class _CountBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
       child: Text(
         '×$count',
-        style: Ty.micro.copyWith(color: count > 0 ? T.onAccent : T.inkSoft, fontWeight: FontWeight.w700),
+        style: Ty.micro.copyWith(color: count > 0 ? T.onAccent : Ty.inkSoft, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -991,7 +1017,7 @@ class _QuantityDialogState extends State<_QuantityDialog> {
               Expanded(
                 child: Text(
                   widget.price == 0 ? l.yataiConfirmBodyFree : l.yataiConfirmBodyPrice(widget.price),
-                  style: Ty.body.copyWith(color: T.inkSoft),
+                  style: Ty.body.copyWith(color: Ty.inkSoft),
                 ),
               ),
             ],
@@ -1164,7 +1190,7 @@ class _PurchaseDialogState extends State<_PurchaseDialog> with SingleTickerProvi
               ),
               const SizedBox(height: 6),
               Text(game ? l.yataiWrappingBody : l.yataiPackingBody,
-                  textAlign: TextAlign.center, style: Ty.body.copyWith(color: T.inkSoft)),
+                  textAlign: TextAlign.center, style: Ty.body.copyWith(color: Ty.inkSoft)),
               const SizedBox(height: 16),
               _ProgressBar(value: t, accent: skin.accent),
             ],

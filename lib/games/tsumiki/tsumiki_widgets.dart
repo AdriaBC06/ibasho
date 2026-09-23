@@ -11,6 +11,7 @@ import '../../audio/audio_service.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/rewards.dart';
 import '../../theme/skin.dart';
+import '../../theme/menu_theme.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../../ui/widgets/channel_art.dart';
@@ -149,7 +150,7 @@ class _DPadState extends State<DPad> {
         onPointerCancel: (_) => _to(null),
         child: CustomPaint(
           size: Size.square(widget.size),
-          painter: _DPadPainter(_dir, skin.accent, skin.accentDeep),
+          painter: _DPadPainter(_dir, skin.accent, skin.accentDeep, skin.surfaces),
         ),
       ),
     );
@@ -157,7 +158,9 @@ class _DPadState extends State<DPad> {
 }
 
 class _DPadPainter extends CustomPainter {
-  const _DPadPainter(this.dir, this.accent, this.accentDeep);
+  const _DPadPainter(this.dir, this.accent, this.accentDeep, this.surfaces);
+
+  final Surfaces surfaces;
 
   final PadDir? dir;
   final Color accent;
@@ -173,10 +176,10 @@ class _DPadPainter extends CustomPainter {
       c,
       s * .5,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [T.wellTop, T.wellBottom],
+          colors: [surfaces.wellTop, surfaces.wellBottom],
         ).createShader(Offset.zero & size),
     );
     final union = Path.combine(
@@ -190,7 +193,7 @@ class _DPadPainter extends CustomPainter {
         ..color = T.shadowDeep
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
     );
-    paintPlastic(canvas, union, T.shellBottom, edge: 1.6);
+    paintPlastic(canvas, union, surfaces.shellBottom, edge: 1.6);
     // El brazo pulsado se hunde y se tiñe.
     final d = dir;
     if (d != null) {
@@ -223,13 +226,13 @@ class _DPadPainter extends CustomPainter {
           ..lineTo(back.dx + side.dx, back.dy + side.dy)
           ..lineTo(back.dx - side.dx, back.dy - side.dy)
           ..close(),
-        Paint()..color = (dd == d ? accentDeep : T.inkSoft).withValues(alpha: .85),
+        Paint()..color = (dd == d ? accentDeep : Ty.inkSoft).withValues(alpha: .85),
       );
     }
   }
 
   @override
-  bool shouldRepaint(_DPadPainter old) => old.dir != dir || old.accent != accent;
+  bool shouldRepaint(_DPadPainter old) => old.dir != dir || old.accent != accent || old.surfaces != surfaces;
 }
 
 // --- Huecos -------------------------------------------------------------------
@@ -550,7 +553,7 @@ class TsumikiResultsCard extends StatelessWidget {
                 curve: Curves.easeOutCubic,
                 builder: (context, v, _) => Text(
                   '${v.round()}',
-                  style: Ty.numeral(42, color: T.ink, weight: FontWeight.w700),
+                  style: Ty.numeral(42, color: Ty.ink, weight: FontWeight.w700),
                 ),
               ),
               Text('${l.gameBest} ${report.best}', style: Ty.caption),

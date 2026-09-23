@@ -73,7 +73,7 @@ class DebugChannel extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(l.debugIntro, style: Ty.body.copyWith(color: T.inkSoft)),
+                Text(l.debugIntro, style: Ty.body.copyWith(color: Ty.inkSoft)),
                 const SizedBox(height: 22),
                 SectionCard(
                   title: l.debugMusic,
@@ -108,7 +108,7 @@ class DebugChannel extends ConsumerWidget {
                               ? Text(
                                   track.unlockedByDefault ? '' : l.debugUnlocked,
                                   style: Ty.micro.copyWith(
-                                    color: track == current ? T.onAccent : T.inkSoft,
+                                    color: track == current ? T.onAccent : Ty.inkSoft,
                                   ),
                                 )
                               : IbashoButton(
@@ -230,7 +230,7 @@ class DebugChannel extends ConsumerWidget {
                             LinkQuality.strong => 3,
                           },
                           color: IbashoSkin.of(context).accentDeep,
-                          dim: T.hairline,
+                          dim: IbashoSkin.of(context).hairline,
                           size: 22,
                         ),
                       ),
@@ -255,7 +255,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SettingRow(
         label: label,
-        control: Text(value, style: Ty.numeral(14, color: T.inkSoft)),
+        control: Text(value, style: Ty.numeral(14, color: Ty.inkSoft)),
       );
 }
 

@@ -31,6 +31,10 @@ abstract final class T {
   /// Texto secundario y estados deshabilitados.
   static const Color inkSoft = Color(0xFF7C8B97);
 
+  /// La tinta de los temas oscuros: casi blanca, nunca blanco puro.
+  static const Color inkDark = Color(0xFFE9EFF6);
+  static const Color inkSoftDark = Color(0xFF9DAABB);
+
   // --- Acento ------------------------------------------------------------
   /// Acento unico: foco, seleccion, brillos.
   ///
@@ -87,6 +91,54 @@ abstract final class T {
     Color(0xFFB08BE0),
     Color(0xFF7C9BE8),
   ];
+
+  // --- Temas del menu ----------------------------------------------------
+
+  /// Tono de cada tema N del gacha: el color de su fondo
+  /// (`backdrop_art.dart`). Tine las superficies de todo el entorno con un
+  /// velo (ver `lib/theme/menu_theme.dart`) y da el acento «del tema».
+  static const Color themeSky = Color(0xFF7FD4F5);
+  static const Color themeCoral = Color(0xFFFF9C86);
+  static const Color themeMint = Color(0xFF7FE0B8);
+  static const Color themePeach = Color(0xFFFFC58A);
+
+  /// Los R, SR, SSR, UR y ∞ tinen con dos o tres tonos: el plastico, el
+  /// marco (bisel, huecos) y, desde SSR, uno hondo para el pie del bisel y
+  /// las lineas. Los `Glow` son la luz de los adornos de los canales.
+  static const Color themeLavender = Color(0xFFC8A8F2);
+  static const Color themeLavenderFrame = Color(0xFF9FA8F0);
+  static const Color themeDusk = Color(0xFF6A78C8);
+  static const Color themeDuskFrame = Color(0xFF7A5CC0);
+  static const Color themeSunrise = Color(0xFFFFC37A);
+  static const Color themeSunriseFrame = Color(0xFFFF8FA6);
+  static const Color themeLagoon = Color(0xFF5FD6C4);
+  static const Color themeLagoonFrame = Color(0xFF3FADC4);
+  static const Color themeAurora = Color(0xFF7FE8C4);
+  static const Color themeAuroraFrame = Color(0xFF7FD6F2);
+  static const Color themeCandy = Color(0xFFFF9FCB);
+  static const Color themeCandyFrame = Color(0xFFCBA6F5);
+  static const Color themeForest = Color(0xFFA8D878);
+  static const Color themeForestFrame = Color(0xFF3E8F5C);
+  static const Color themeSunset = Color(0xFFFFB35C);
+  static const Color themeSunsetFrame = Color(0xFFF0578C);
+  static const Color themeSunsetDeep = Color(0xFF5E3AA0);
+  static const Color themeGlacier = Color(0xFF7FD1F2);
+  static const Color themeGlacierFrame = Color(0xFF3E6FA8);
+  static const Color themeGlacierDeep = Color(0xFF2E4F8A);
+  static const Color themePhoenix = Color(0xFFFFC04A);
+  static const Color themePhoenixFrame = Color(0xFFF0577A);
+  static const Color themePhoenixDeep = Color(0xFF6E1E3C);
+  static const Color themePhoenixGlow = Color(0xFFFF9A3C);
+  static const Color themeBorealis = Color(0xFF3FC99A);
+  static const Color themeBorealisFrame = Color(0xFF5E7FD0);
+  static const Color themeBorealisDeep = Color(0xFF3C1E6E);
+  static const Color themeBorealisGlow = Color(0xFF5FF0B0);
+  static const Color themeBorealisGlowAlt = Color(0xFFA07CF0);
+  static const Color themeStarfield = Color(0xFF6C84D8);
+  static const Color themeStarfieldFrame = Color(0xFF3A4E9A);
+  static const Color themeStarfieldDeep = Color(0xFF1C2C5C);
+  static const Color themeStarfieldGlow = Color(0xFF8FA6F0);
+  static const Color themeStarfieldGlowAlt = Color(0xFFC8B8FF);
 
   // --- Tamas -------------------------------------------------------------
 

@@ -26,8 +26,11 @@ class Preferences {
     this.pinballOpened = false,
     this.pinballPlayed = false,
     this.pachinkoOpened = false,
+    this.koroOpened = false,
     this.fullscreen = false,
     this.backdropId = '',
+    this.accentFollowsTheme = false,
+    this.glassLevel = 1,
   });
 
   final double musicVolume;
@@ -74,6 +77,9 @@ class Preferences {
   /// El canal del pachinko ya se ha desenvuelto.
   final bool pachinkoOpened;
 
+  /// El canal de Tamakoro ya se ha desenvuelto.
+  final bool koroOpened;
+
   /// Solo en escritorio: la ventana estaba en pantalla completa al cerrar.
   final bool fullscreen;
 
@@ -81,6 +87,16 @@ class Preferences {
   /// aparato (el `id` de `Backdrop`, sin el prefijo `bg_`). Vacio es el
   /// aspecto de siempre, para quien no ha jugado al gacha.
   final String backdropId;
+
+  /// El acento sigue al tema puesto en [backdropId] en lugar del elegido en
+  /// el perfil. Solo en este aparato, como el tema: la tarjeta de visita
+  /// sigue llevando el acento del perfil.
+  final bool accentFollowsTheme;
+
+  /// Cuanto cristal llevan las pantallas del menu con un tema que lo tenga:
+  /// multiplica la transparencia que da la rareza. 0 es opaco, 1 lo de
+  /// serie y 2 el doble.
+  final double glassLevel;
 
   Preferences copyWith({
     double? musicVolume,
@@ -97,8 +113,11 @@ class Preferences {
     bool? pinballOpened,
     bool? pinballPlayed,
     bool? pachinkoOpened,
+    bool? koroOpened,
     bool? fullscreen,
     String? backdropId,
+    bool? accentFollowsTheme,
+    double? glassLevel,
   }) => Preferences(
     musicVolume: musicVolume ?? this.musicVolume,
     effectsVolume: effectsVolume ?? this.effectsVolume,
@@ -114,8 +133,11 @@ class Preferences {
     pinballOpened: pinballOpened ?? this.pinballOpened,
     pinballPlayed: pinballPlayed ?? this.pinballPlayed,
     pachinkoOpened: pachinkoOpened ?? this.pachinkoOpened,
+    koroOpened: koroOpened ?? this.koroOpened,
     fullscreen: fullscreen ?? this.fullscreen,
     backdropId: backdropId ?? this.backdropId,
+    accentFollowsTheme: accentFollowsTheme ?? this.accentFollowsTheme,
+    glassLevel: glassLevel ?? this.glassLevel,
   );
 
   Map<String, Object?> toJson() => {
@@ -133,8 +155,11 @@ class Preferences {
     'pinballOpened': pinballOpened,
     'pinballPlayed': pinballPlayed,
     'pachinkoOpened': pachinkoOpened,
+    'koroOpened': koroOpened,
     'fullscreen': fullscreen,
     'backdropId': backdropId,
+    'accentFollowsTheme': accentFollowsTheme,
+    'glassLevel': glassLevel,
   };
 
   static Preferences fromJson(Map<String, Object?> json) {
@@ -156,8 +181,11 @@ class Preferences {
       pinballOpened: (json['pinballOpened'] as bool?) ?? false,
       pinballPlayed: (json['pinballPlayed'] as bool?) ?? false,
       pachinkoOpened: (json['pachinkoOpened'] as bool?) ?? false,
+      koroOpened: (json['koroOpened'] as bool?) ?? false,
       fullscreen: (json['fullscreen'] as bool?) ?? false,
       backdropId: (json['backdropId'] as String?) ?? '',
+      accentFollowsTheme: (json['accentFollowsTheme'] as bool?) ?? false,
+      glassLevel: ((json['glassLevel'] as num?)?.toDouble() ?? 1).clamp(0, 2),
     );
   }
 }

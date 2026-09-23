@@ -22,6 +22,8 @@ import 'dart:io';
 /// Desde la 0.6.0 tambien estan los tickets del gacha, con tope semanal (10
 /// gachaken y 1 kinken por semana), y las ocho comidas que antes salian con
 /// candado ya se pueden comprar (empiezan a 0 unidades, sin regalo inicial).
+/// Desde la 0.6.2, los huecos de Tamakoro: 10, 20, 30 y 40 monedas segun el
+/// tramo (del 11 al 20, del 21 al 30...).
 /// Ampliar el catalogo es anadir aqui su precio, nada mas.
 const Map<String, int> _prices = <String, int>{
   'game_minesweeper': 0,
@@ -39,6 +41,10 @@ const Map<String, int> _prices = <String, int>{
   'food_flan': 7,
   'ticket_gachaken': 25,
   'ticket_kinken': 150,
+  'koro_slot_1': 10,
+  'koro_slot_2': 20,
+  'koro_slot_3': 30,
+  'koro_slot_4': 40,
 };
 
 Future<int> main() async {

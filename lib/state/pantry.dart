@@ -101,7 +101,9 @@ class PantryController extends StateNotifier<Map<TamaFood, int>> {
       final qty = entry.value;
       if (qty is! num) continue;
       for (final food in TamaFood.values) {
-        if (food.name == entry.key) out[food] = qty.toInt();
+        // Un -1 (u otro negativo) de una cuenta que quedo mal no se ensena
+        // ni se usa: se trata como si no quedara nada.
+        if (food.name == entry.key) out[food] = qty.toInt() < 0 ? 0 : qty.toInt();
       }
     }
     return Map<TamaFood, int>.unmodifiable(out);

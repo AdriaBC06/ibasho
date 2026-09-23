@@ -17,12 +17,14 @@ import '../theme/tokens.dart';
 import 'accent_sync.dart';
 import 'admin.dart';
 import 'card.dart';
+import 'channel_order.dart';
 import 'coins.dart';
 import 'rewards.dart';
 import 'conversation.dart';
 import 'friends.dart';
 import 'gacha.dart';
 import 'identity.dart';
+import 'koro.dart';
 import 'leaderboards.dart';
 import 'login_bonus.dart';
 import 'messages.dart';
@@ -239,6 +241,16 @@ final musicLibraryProvider =
   return controller;
 });
 
+/// Orden de los canales del HOME, elegido por la cuenta.
+final channelOrderProvider =
+    StateNotifierProvider<ChannelOrderController, ChannelOrderState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  return ChannelOrderController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+  );
+});
+
 /// Presencia propia. Vive mientras dure la sesion activa de una cuenta; al
 /// salir se cierra su conexion y el servidor marca la desconexion.
 final presenceProvider = StateNotifierProvider<PresenceController, PresenceStatus>((ref) {
@@ -351,6 +363,7 @@ final shopProvider = StateNotifierProvider<ShopController, ShopState>((ref) {
     pantryQtyOf: (food) => ref.read(pantryProvider)[food] ?? 0,
     unlockedFoodsOf: () => ref.read(unlockedFoodsProvider),
     ticketsOf: (kind) => ref.read(gachaProvider).ticketsOf(kind),
+    koroSlotsOf: () => ref.read(koroProvider).slots,
   );
 });
 
@@ -362,6 +375,17 @@ final gachaProvider = StateNotifierProvider<GachaController, GachaState>((ref) {
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
   );
+});
+
+/// El fondo puesto en Ajustes (el `id` de `Backdrop`), o vacio. Uno que la
+/// coleccion ya no tiene (un admin que se lo ha quitado) cuenta como vacio.
+final backdropIdProvider = Provider<String>((ref) {
+  final chosen = ref.watch(preferencesProvider.select((p) => p.backdropId));
+  if (chosen.isEmpty) return '';
+  final gone = ref.watch(
+    gachaProvider.select((g) => g.loaded && !g.owns('bg_$chosen')),
+  );
+  return gone ? '' : chosen;
 });
 
 /// Las misiones diarias y semanales: señales, cobros y lo que dan.
@@ -428,3 +452,35 @@ final unreadNewsProvider =
 /// que la chapa del canal de sugerencias solo se le enciende a el.
 final pendingSuggestionsProvider =
     Provider<int>((ref) => ref.watch(suggestionsProvider.select((s) => s.pending.length)));
+
+/// Las canciones de Tamakoro y los huecos de la cuenta.
+final koroProvider = StateNotifierProvider<KoroController, KoroState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  return KoroController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+  );
+});
+
+/// Mantiene al dia la musica del menu cuando es una cancion de Tamakoro: la
+/// vuelve a renderizar si cambia la cancion o la voz de alguien del coro.
+final koroMenuMusicProvider = Provider<void>((ref) {
+  final library = ref.watch(
+      musicLibraryProvider.select((m) => (loaded: m.loaded, track: m.menuTrack)));
+  if (!library.loaded) return;
+  final slot = koroSlotOfTrack(library.track);
+  if (slot == null) {
+    unawaited(applyKoroMenuMusic(null, const <Tama>[]));
+    return;
+  }
+  final koro = ref.watch(koroProvider.select((k) => (loaded: k.loaded, song: k.songs[slot])));
+  final song = koro.song;
+  // Solo las voces del coro: dar de comer a un Tama no vuelve a renderizar.
+  final voices = ref.watch(tamasProvider.select((t) => t.loaded && song != null
+      ? koroVoices(song, t.tamas)
+          .map((v) => v == null ? '-' : '${v.pitch}.${v.tempo}.${v.timbre.index}')
+          .join(',')
+      : null));
+  if (!koro.loaded || voices == null) return;
+  unawaited(applyKoroMenuMusic(song, ref.read(tamasProvider).tamas));
+});

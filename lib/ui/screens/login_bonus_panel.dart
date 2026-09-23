@@ -206,7 +206,7 @@ class _LoginBonusPanelState extends ConsumerState<LoginBonusPanel> with TickerPr
                     _ => l.bonusHint,
                   },
                   textAlign: TextAlign.center,
-                  style: Ty.caption.copyWith(color: _step == _Step.failed ? T.wrong : T.inkSoft),
+                  style: Ty.caption.copyWith(color: _step == _Step.failed ? T.wrong : Ty.inkSoft),
                 ),
                 SizedBox(height: layout.pick(14, 10)),
                 if (_step == _Step.done || already || _step == _Step.failed)
@@ -332,7 +332,7 @@ class _Counter extends StatelessWidget {
             Text(
               '+$value',
               key: const ValueKey<String>('bonus.counter'),
-              style: Ty.numeral(24, color: done ? Art.goldDark : T.inkSoft, weight: FontWeight.w700),
+              style: Ty.numeral(24, color: done ? Art.goldDark : Ty.inkSoft, weight: FontWeight.w700),
             ),
           ],
         ),
@@ -354,7 +354,7 @@ class _Weekdays extends StatelessWidget {
           child: Text(
             d,
             textAlign: TextAlign.center,
-            style: Ty.micro.copyWith(fontWeight: FontWeight.w600, color: i >= 4 ? Art.goldDark : T.inkSoft),
+            style: Ty.micro.copyWith(fontWeight: FontWeight.w600, color: i >= 4 ? Art.goldDark : Ty.inkSoft),
           ),
         ),
     ],
@@ -482,7 +482,7 @@ class _DayCell extends StatelessWidget {
                         '$amount',
                         style: Ty.numeral(
                           u * (big ? .3 : .26),
-                          color: big ? Art.goldDark : T.ink,
+                          color: big ? Art.goldDark : Ty.ink,
                           weight: FontWeight.w700,
                         ),
                       ),

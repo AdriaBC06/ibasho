@@ -87,7 +87,7 @@ class _Word extends StatelessWidget {
             child: Text(
               '$number',
               textAlign: TextAlign.right,
-              style: Ty.numeral(13, color: T.inkSoft),
+              style: Ty.numeral(13, color: Ty.inkSoft),
             ),
           ),
           const SizedBox(width: 8),
@@ -137,7 +137,7 @@ class _BackupKeyPanelState extends ConsumerState<BackupKeyPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 4),
-          Text(l.keysIntro, style: Ty.body.copyWith(color: T.inkSoft)),
+          Text(l.keysIntro, style: Ty.body.copyWith(color: Ty.inkSoft)),
           const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +265,7 @@ class _RestoreKeyPanelState extends ConsumerState<RestoreKeyPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 4),
-          Text(l.keysRestoreIntro, style: Ty.body.copyWith(color: T.inkSoft)),
+          Text(l.keysRestoreIntro, style: Ty.body.copyWith(color: Ty.inkSoft)),
           const SizedBox(height: 16),
           IbashoTextField(
             controller: _typed,
@@ -282,7 +282,7 @@ class _RestoreKeyPanelState extends ConsumerState<RestoreKeyPanel> {
             '$good / $mnemonicWords',
             style: Ty.numeral(
               14,
-              color: good == mnemonicWords ? IbashoSkin.of(context).accentDeep : T.inkSoft,
+              color: good == mnemonicWords ? IbashoSkin.of(context).accentDeep : Ty.inkSoft,
             ),
           ),
           const SizedBox(height: 16),

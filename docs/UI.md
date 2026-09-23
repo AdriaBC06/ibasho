@@ -98,7 +98,29 @@ Y los decorados de escena:
 - El acento se lee siempre de `IbashoSkin.of(context)`: `accent`,
   `accentDeep` (bordes y texto de acento) y `accentWash` (fondo de lo
   elegido). Nunca `T.cyan` directamente.
-- **Nunca negro puro.** El texto es `T.ink` y el secundario `T.inkSoft`. Para
+- **Los materiales también se leen de la piel.** El plástico, los huecos, el
+  bisel y las líneas (`skin.shellTop`, `shellBottom`, `cardBottom`,
+  `wellTop`, `wellBottom`, `hairline`, `bezelTop`, `bezelBottom`) cambian con
+  el tema del menú puesto (`lib/theme/menu_theme.dart`). Nunca `T.hairline`
+  o `T.wellTop` directamente en la interfaz; un pintor recibe `skin.surfaces`
+  y lo compara en `shouldRepaint`. Las ilustraciones siguen con sus colores.
+  El tema sube con la rareza del fondo: N un velo, R dos tonos, SR cristal
+  (brillo tintado y reflejo detrás de los canales), SSR destellos en las
+  esquinas, UR y ∞ una luz que respira y el rebote de color en el filo de
+  cada pieza. El adorno de los canales (`ThemeOrnament`) va siempre por
+  debajo del contenido y fuera de las esquinas de arriba. Los fondos del
+  menú se mueven de SR en adelante, muy despacio y nunca con movimiento
+  reducido. Con un tema puesto las dos pantallas del menú de inicio son de
+  cristal esmerilado (`ScreenPanel(glass: true)`), más transparentes cuanto
+  más raro es el fondo; Ajustes deja mover esa transparencia
+  (`Preferences.glassLevel`, de opaco a cristal limpio sin esmerilar). Noche añil, boreal y vía
+  láctea son **oscuros**: plástico hondo y brillante del color del tema (nunca
+  negro) y tinta clara. La ∞ es la más vistosa: nebulosas, vía láctea,
+  estrellas en tres capas, fugaces y un cometa de luz que da la vuelta a las
+  pantallas del menú (`StarRim`). Por los oscuros el texto se lee de
+  `Ty.ink`/`Ty.inkSoft` (o `skin.ink`), nunca de `T.ink`, salvo en piezas con
+  fondo propio como la tarjeta de visita.
+- **Nunca negro puro.** El texto es `Ty.ink` y el secundario `Ty.inkSoft`. Para
   oscurecer se mezcla hacia `T.dusk` (azul noche), no hacia el negro.
 - Las ilustraciones tienen **colores propios**, como un icono de la 3DS: se
   ven igual con cualquier acento. Lo que sí sigue al acento es la interfaz de

@@ -13,6 +13,7 @@ import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/accent_sync.dart';
 import '../../../state/profile.dart';
 import '../../../state/providers.dart';
+import '../../../theme/menu_theme.dart';
 import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
@@ -48,6 +49,10 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
   String _timezone = '';
   String _accent = '';
   bool _followsTama = false;
+
+  /// El acento sigue al tema del menu. Es de este aparato (`Preferences`),
+  /// no del perfil, pero se elige aqui con los demas y se aplica al guardar.
+  bool _followsTheme = false;
   String _locale = 'es';
   bool _seeded = false;
   String? _nameError;
@@ -73,6 +78,7 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
     _year.text = parts == null ? '' : parts.$1.toString();
     _accent = profile.accentColor;
     _followsTama = profile.accentFollowsTama == true;
+    _followsTheme = ref.read(preferencesProvider).accentFollowsTheme;
     _locale = profile.locale;
     _seeded = true;
   }
@@ -112,6 +118,7 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
     if (saved) {
       // El idioma del perfil manda sobre el local en cuanto se guarda.
       await ref.read(preferencesProvider.notifier).setLocale(_locale);
+      await ref.read(preferencesProvider.notifier).setAccentFollowsTheme(_followsTheme);
       if (!mounted) return;
       AudioService.instance.play(Sfx.open);
       showIbashoToast(context, l.profileSaved);
@@ -128,7 +135,6 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
     final state = ref.watch(profileProvider);
     final profile = state.profile;
     final profileTama = ref.watch(tamasProvider.select((t) => t.profileTama));
-
     if (profile == null) {
       return ChannelScaffold(
         title: l.profileTitle,
@@ -137,6 +143,9 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
       );
     }
     if (!_seeded) _seed(profile);
+    // Solo con un tema que tine el entorno hay acento del tema que seguir.
+    final theme = menuThemeFor(ref.watch(backdropIdProvider));
+    final followingTheme = _followsTheme && theme != null;
     final layout = Layout.of(context);
     final tall = layout.tall;
 
@@ -218,12 +227,24 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                         runSpacing: 14,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
+                          if (theme != null)
+                            _FollowChip(
+                              key: const ValueKey<String>('profile.followTheme'),
+                              color: theme.accent,
+                              glyph: Glyph.star,
+                              selected: _followsTheme,
+                              label: l.profileAccentFollowTheme,
+                              onPressed: () => setState(() => _followsTheme = true),
+                            ),
                           if (profileTama != null)
-                            _FollowTamaChip(
+                            _FollowChip(
+                              key: const ValueKey<String>('profile.followTama'),
                               color: accentForTama(profileTama.look.color),
-                              selected: _followsTama,
+                              glyph: Glyph.tama,
+                              selected: _followsTama && !followingTheme,
                               label: l.profileAccentFollowTama,
                               onPressed: () => setState(() {
+                                _followsTheme = false;
                                 _followsTama = true;
                                 _accent = _hex(accentForTama(profileTama.look.color));
                               }),
@@ -232,17 +253,24 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                             ColorChip(
                               color: color,
                               selected: !_followsTama &&
+                                  !followingTheme &&
                                   _hex(color) == _accent.toUpperCase(),
                               // Tocar un color a mano rompe la sincronizacion
-                              // con el Tama.
+                              // con el Tama y con el tema.
                               onPressed: () => setState(() {
+                                _followsTheme = false;
                                 _followsTama = false;
                                 _accent = _hex(color);
                               }),
                             ),
                         ],
                       ),
-                      if (_followsTama && profileTama != null)
+                      if (followingTheme)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12, left: 4),
+                          child: Text(l.profileAccentThemeHint, style: Ty.caption),
+                        )
+                      else if (_followsTama && profileTama != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 12, left: 4),
                           child: Text(l.profileAccentFollowHint, style: Ty.caption),
@@ -359,18 +387,89 @@ class _ProfileMusic extends ConsumerWidget {
         children: [
           Text(l.profileMusicHint, style: Ty.caption),
           const SizedBox(height: 12),
-          IbashoSegmented<String>(
+          // Con las pistas del gacha no caben en una fila: van en pastillas
+          // que saltan de linea.
+          Wrap(
             key: const ValueKey<String>('profile.music'),
-            options: [
-              ('', l.profileMusicNone),
-              for (final track in library.available) (track.id, track.id),
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final (id, label) in [
+                ('', l.profileMusicNone),
+                for (final track in library.available) (track.id, track.id),
+              ])
+                _TrackPill(
+                  key: ValueKey<String>('profile.music.$id'),
+                  label: label,
+                  selected: (library.profileTrack ?? '') == id,
+                  onPressed: () => ref
+                      .read(musicLibraryProvider.notifier)
+                      .selectProfileTrack(id.isEmpty ? null : MusicTrack.byId(id)),
+                ),
             ],
-            value: library.profileTrack ?? '',
-            onChanged: (id) => ref
-                .read(musicLibraryProvider.notifier)
-                .selectProfileTrack(id.isEmpty ? null : MusicTrack.byId(id)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Una pista para el perfil: plastico blanco, o lavado de acento con filo si
+/// es la elegida (docs/UI.md §7).
+class _TrackPill extends StatelessWidget {
+  const _TrackPill({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final skin = IbashoSkin.of(context);
+    final height = Layout.of(context).pick(40.0, 48.0);
+    return Pressable(
+      onPressed: onPressed,
+      semanticLabel: label,
+      builder: (context, state) => FocusRing(
+        visible: state.focus,
+        radius: height / 2,
+        child: Transform.translate(
+          offset: Offset(0, -2 * state.hover),
+          child: SizedBox(
+            height: height,
+            child: GlossSurface(
+              radius: height / 2,
+              tint: selected ? skin.accentWash : null,
+              borderColor: selected ? skin.accentDeep : null,
+              borderWidth: selected ? 1.6 : 1,
+              elevation: selected ? 1.2 : .8,
+              sink: state.press,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (selected) ...[
+                    GlyphIcon(Glyph.check, size: 16, color: skin.accentDeep),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    label,
+                    maxLines: 1,
+                    style: Ty.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: selected ? skin.accentDeep : Ty.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -530,22 +629,24 @@ class _ProfileTama extends ConsumerWidget {
 }
 
 /// Muestra de acento que sigue al Tama: su color con la silueta encima.
-class _FollowTamaChip extends StatelessWidget {
-  const _FollowTamaChip({
+class _FollowChip extends StatelessWidget {
+  const _FollowChip({
+    super.key,
     required this.color,
+    required this.glyph,
     required this.selected,
     required this.label,
     required this.onPressed,
   });
 
   final Color color;
+  final Glyph glyph;
   final bool selected;
   final String label;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) => Pressable(
-        key: const ValueKey<String>('profile.followTama'),
         onPressed: onPressed,
         semanticLabel: label,
         builder: (context, state) => FocusRing(
@@ -560,13 +661,13 @@ class _FollowTamaChip extends StatelessWidget {
                 tint: color,
                 elevation: selected ? 1.6 : .8,
                 borderWidth: selected ? 2.5 : 1,
-                borderColor: selected ? Color.lerp(color, T.dusk, .45)! : T.hairline,
+                borderColor: selected ? Color.lerp(color, T.dusk, .45)! : IbashoSkin.of(context).hairline,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     GlyphIcon(
-                      selected ? Glyph.check : Glyph.tama,
+                      selected ? Glyph.check : glyph,
                       size: 20,
                       color: T.onAccent,
                     ),

@@ -1,26 +1,22 @@
-# Ibasho — compila y empaqueta las tres plataformas.
+# Ibasho — compila y empaqueta la version de Windows.
 # Copyright (C) 2026 Adrià Bonnin Catalán
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Para anadir una plataforma basta con anadir una entrada a la matriz de
-# `compilar` y su bloque de pasos, marcado con `if: matrix.plataforma == ...`.
-# Lo comun (checkout, SDK, .env, version) ya esta resuelto para todas.
+# Desde la 0.6.2, Android y Linux se compilan en local: el APK se firma con la
+# clave de release, que no sale del ordenador (android/key.properties), y asi
+# se instala encima de la version anterior. Aqui solo queda Windows, que no se
+# puede compilar desde Linux, y el workflow se lanza a mano:
+#   gh workflow run build.yml --ref vX.Y.Z
 #
 # Secrets que espera el repositorio:
 #   IBASHO_API_KEY         obligatorio, clave web del proyecto Firebase
 #   IBASHO_DATABASE_URL    obligatorio, URL de la Realtime Database sin barra final
 #   IBASHO_PROJECT_ID      opcional
 #   IBASHO_EMAIL_DOMAIN    opcional, por defecto ibasho.top
-#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
-#   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
-#                          opcionales: si estan, el APK se firma; si no, sale sin firmar.
 
 name: Compilar
 
 on:
-  push:
-    branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 # La misma version del SDK con la que esta hecho el proyecto (ver .metadata).
@@ -69,12 +65,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - plataforma: linux
-            nombre: Linux (bundle)
-            runner: ubuntu-latest
-          - plataforma: android
-            nombre: Android (APK)
-            runner: ubuntu-latest
           - plataforma: windows
             nombre: Windows (instalador y zip)
             runner: windows-latest
@@ -111,61 +101,6 @@ jobs:
         # espacio, y en un escalar suelto YAML lo lee como una clave anidada.
         run: |
           echo "valor=$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' pubspec.yaml)" >> "$GITHUB_OUTPUT"
-
-      # ---------------------------------------------------------------- Linux
-      - name: Dependencias de escritorio de Linux
-        if: matrix.plataforma == 'linux'
-        run: |
-          sudo apt-get update
-          # gstreamer va aparte y es facil de olvidar: lo pide audioplayers_linux
-          # y sin el, cmake corta con "required packages were not found".
-          sudo apt-get install -y clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libasound2-dev \
-            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-
-      - name: Compilar Linux
-        if: matrix.plataforma == 'linux'
-        run: |
-          flutter build linux --release --dart-define-from-file=.env
-          mkdir -p dist
-          tar -czf "dist/Ibasho-${{ steps.version.outputs.valor }}-linux-x64.tar.gz" \
-            -C build/linux/x64/release/bundle .
-
-      # -------------------------------------------------------------- Android
-      - uses: actions/setup-java@v4
-        if: matrix.plataforma == 'android'
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Preparar la firma (solo si hay keystore)
-        if: matrix.plataforma == 'android'
-        shell: bash
-        env:
-          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          if [ -z "$KEYSTORE" ]; then
-            echo "Sin keystore en los secrets: el APK saldra sin firmar (firma de debug)."
-            exit 0
-          fi
-          echo "$KEYSTORE" | base64 -d > android/app/ibasho.jks
-          {
-            echo "storeFile=ibasho.jks"
-            echo "storePassword=$STORE_PASSWORD"
-            echo "keyAlias=$KEY_ALIAS"
-            echo "keyPassword=$KEY_PASSWORD"
-          } > android/key.properties
-
-      - name: Compilar Android
-        if: matrix.plataforma == 'android'
-        run: |
-          flutter build apk --release --dart-define-from-file=.env
-          mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk \
-            "dist/Ibasho-${{ steps.version.outputs.valor }}-android.apk"
 
       # -------------------------------------------------------------- Windows
       - name: Inno Setup

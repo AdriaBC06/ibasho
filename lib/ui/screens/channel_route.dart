@@ -14,6 +14,7 @@ import '../layout.dart';
 import '../widgets/channel_art.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
+import '../widgets/theme_ornament.dart';
 import 'channel_grid.dart';
 
 /// El gesto de la casa: el icono crece desde su sitio hasta llenar la pantalla
@@ -80,7 +81,13 @@ class ChannelRoute extends PageRoute<void> {
     if (reducedMotion) {
       return FadeTransition(
         opacity: animation,
-        child: ColoredBox(color: T.shellTop, child: child),
+        child: ColoredBox(
+          color: IbashoSkin.of(context).shellTop,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [const ThemeOrnament(), child],
+          ),
+        ),
       );
     }
 
@@ -96,6 +103,7 @@ class ChannelRoute extends PageRoute<void> {
     );
 
     final canvas = CanvasSize.of(context);
+    final skin = IbashoSkin.of(context);
     return AnimatedBuilder(
       animation: grow,
       builder: (context, _) {
@@ -110,12 +118,12 @@ class ChannelRoute extends PageRoute<void> {
               child: IgnorePointer(
                 child: Opacity(
                   opacity: (t * 1.25).clamp(0.0, 1.0),
-                  child: const DecoratedBox(
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [T.bezelTop, T.bezelBottom],
+                        colors: [skin.bezelTop, skin.bezelBottom],
                       ),
                     ),
                   ),
@@ -128,13 +136,13 @@ class ChannelRoute extends PageRoute<void> {
                 borderRadius: BorderRadius.circular(radius),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [T.shellTop, T.shellBottom],
+                      colors: [skin.shellTop, skin.shellBottom],
                     ),
                     border: radius > 1
-                        ? Border.all(color: T.hairline, width: 1)
+                        ? Border.all(color: skin.hairline, width: 1)
                         : null,
                     borderRadius: BorderRadius.circular(radius),
                   ),
@@ -152,6 +160,11 @@ class ChannelRoute extends PageRoute<void> {
                       // (1,6), asi que la escala es uniforme y no deforma;
                       // y como no hay relayout por frame, la apertura se queda
                       // en componer una capa.
+                      // El rastro del tema, por debajo del contenido.
+                      FadeTransition(
+                        opacity: content,
+                        child: const ThemeOrnament(),
+                      ),
                       FadeTransition(
                         opacity: content,
                         child: FittedBox(
@@ -185,13 +198,15 @@ class _TileFace extends StatelessWidget {
   final ArtIcon? art;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
+  Widget build(BuildContext context) {
+    final skin = IbashoSkin.of(context);
+    return DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: art != null
-                ? const [T.shellTop, T.shellBottom]
+                ? [skin.shellTop, skin.shellBottom]
                 : [
                     Color.lerp(tint, T.shellTop, .30)!,
                     Color.lerp(tint, T.dusk, .14)!,
@@ -204,6 +219,7 @@ class _TileFace extends StatelessWidget {
               : GlyphIcon(glyph, size: 46, color: T.onAccent),
         ),
       );
+  }
 }
 
 /// Abre un canal desde el rectangulo que ocupa su icono.
@@ -270,11 +286,11 @@ class ChannelPageRoute<R> extends PageRoute<R> {
   Widget buildPage(BuildContext context, Animation<double> animation,
           Animation<double> secondaryAnimation) =>
       DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [T.shellTop, T.shellBottom],
+            colors: [IbashoSkin.of(context).shellTop, IbashoSkin.of(context).shellBottom],
           ),
         ),
         child: builder(context),
@@ -415,9 +431,9 @@ class ChannelScaffold extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(
+              SizedBox(
                 height: 1,
-                child: DecoratedBox(decoration: BoxDecoration(color: T.hairline)),
+                child: DecoratedBox(decoration: BoxDecoration(color: skin.hairline)),
               ),
               Expanded(child: child),
             ],

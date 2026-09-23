@@ -100,7 +100,7 @@ class _UpdateRequiredScreenState extends ConsumerState<UpdateRequiredScreen> {
                     children: [
                       IbashoMark(size: 58, accent: skin.accent),
                       const SizedBox(width: 16),
-                      Text(l.appName, style: Ty.logo(34, T.ink)),
+                      Text(l.appName, style: Ty.logo(34, Ty.ink)),
                     ],
                   ),
                   const SizedBox(height: 28),
@@ -109,7 +109,7 @@ class _UpdateRequiredScreenState extends ConsumerState<UpdateRequiredScreen> {
                   Text(
                     l.updateBody(minimum),
                     textAlign: TextAlign.center,
-                    style: Ty.body.copyWith(color: T.inkSoft),
+                    style: Ty.body.copyWith(color: Ty.inkSoft),
                   ),
                   const SizedBox(height: 24),
                   // Las dos versiones y la flecha: si no caben de lado, la
@@ -168,7 +168,7 @@ class _UpdateRequiredScreenState extends ConsumerState<UpdateRequiredScreen> {
                     Text(
                       _failed ? l.updateOpenFailed : l.updateOrVisit,
                       textAlign: TextAlign.center,
-                      style: Ty.caption.copyWith(color: _failed ? T.warn : T.inkSoft),
+                      style: Ty.caption.copyWith(color: _failed ? T.warn : Ty.inkSoft),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -227,7 +227,7 @@ class _VersionChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           child: Text(
             version,
-            style: Ty.numeral(24, color: current ? T.onAccent : T.inkSoft, weight: FontWeight.w700),
+            style: Ty.numeral(24, color: current ? T.onAccent : Ty.inkSoft, weight: FontWeight.w700),
           ),
         ),
       ],

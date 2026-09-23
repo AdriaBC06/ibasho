@@ -256,7 +256,9 @@ class GachaController extends StateNotifier<GachaState> {
     for (final entry in raw.entries) {
       final kind = TicketKind.byName('${entry.key}');
       final value = entry.value;
-      if (kind != null && value is num) out[kind] = value.toInt();
+      // Un negativo de una cuenta que quedo mal se trata como si no hubiera
+      // ninguno: ni se ensena ni se puede gastar mas.
+      if (kind != null && value is num) out[kind] = value.toInt() < 0 ? 0 : value.toInt();
     }
     return Map<TicketKind, int>.unmodifiable(out);
   }
@@ -267,7 +269,8 @@ class GachaController extends StateNotifier<GachaState> {
     for (final entry in raw.entries) {
       final rarity = Rarity.byName('${entry.key}');
       final value = entry.value;
-      if (rarity != null && value is num) out[rarity] = value.toInt();
+      // Igual que con los tickets: un negativo se lee como 0.
+      if (rarity != null && value is num) out[rarity] = value.toInt() < 0 ? 0 : value.toInt();
     }
     return Map<Rarity, int>.unmodifiable(out);
   }

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
@@ -25,12 +26,29 @@ class ChannelGrid extends StatefulWidget {
     required this.page,
     required this.height,
     required this.width,
+    this.editing = false,
+    this.onReorder,
+    this.onRequestPrevious,
+    this.onRequestNext,
   });
 
   final List<ChannelSpec> channels;
   final int page;
   final double height;
   final double width;
+
+  /// Modo de arrastrar para cambiar el orden: las baldosas tiemblan y se
+  /// pueden soltar en cualquier ranura, en vez de abrir su canal.
+  final bool editing;
+
+  /// Se llama con la lista de ids ya en el orden nuevo, al soltar una baldosa
+  /// sobre otra ranura. Solo hace falta en modo de edicion.
+  final ValueChanged<List<String>>? onReorder;
+
+  /// Al arrastrar una baldosa cerca del borde de la pagina, para pasar a la
+  /// anterior o a la siguiente sin soltar.
+  final VoidCallback? onRequestPrevious;
+  final VoidCallback? onRequestNext;
 
   static const double _padH = 28;
   static const double _padV = 26;
@@ -89,8 +107,48 @@ class _ChannelGridState extends State<ChannelGrid>
     return _from + (_to - _from) * t;
   }
 
+  /// Hacia donde se esta pidiendo pasar de pagina al arrastrar: -1, 0 o 1.
+  int _edge = 0;
+  Timer? _edgeTimer;
+
+  /// Lo que mide, desde cada borde hacia dentro, la zona que pasa de pagina.
+  /// Pasado el borde (el margen, el bisel, fuera de la ventana) tambien
+  /// cuenta: arrastrar «a tope» es lo que sale natural.
+  static const double _edgeBand = 64;
+
+  /// Al mover una baldosa arrastrada. Se mira la posicion del puntero contra
+  /// la rejilla entera en vez de poner zonas `DragTarget` en los bordes: una
+  /// zona solo se entera mientras el puntero esta encima, y al llevar la
+  /// baldosa a tope el puntero se sale de la rejilla y deja de contar.
+  void _onDragMove(Offset global) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final x = box.globalToLocal(global).dx;
+    final edge = x < _edgeBand
+        ? -1
+        : x > box.size.width - _edgeBand
+        ? 1
+        : 0;
+    if (edge == _edge) return;
+    _edge = edge;
+    _edgeTimer?.cancel();
+    _edgeTimer = edge == 0
+        ? null
+        : Timer.periodic(const Duration(milliseconds: 550), (_) {
+            final turn = _edge < 0 ? widget.onRequestPrevious : widget.onRequestNext;
+            turn?.call();
+          });
+  }
+
+  void _onDragStop() {
+    _edgeTimer?.cancel();
+    _edgeTimer = null;
+    _edge = 0;
+  }
+
   @override
   void dispose() {
+    _edgeTimer?.cancel();
     _slide.dispose();
     super.dispose();
   }
@@ -135,7 +193,7 @@ class _ChannelGridState extends State<ChannelGrid>
       tileH = tileW / ChannelGrid._aspect;
     }
 
-    return ClipRect(
+    final grid = ClipRect(
       child: AnimatedBuilder(
         animation: _slide,
         // Las paginas van una al lado de otra en una fila que es tan ancha
@@ -182,6 +240,13 @@ class _ChannelGridState extends State<ChannelGrid>
                       // HOME de la consola.
                       fill: tall || !compact,
                       glyphOnly: tall && tileH < 58,
+                      editing: widget.editing,
+                      onReorder: widget.onReorder,
+                      onDragMove: _onDragMove,
+                      onDragStop: _onDragStop,
+                      allIds: widget.editing
+                          ? widget.channels.map((c) => c.id).toList(growable: false)
+                          : const <String>[],
                     ),
                   ),
               ],
@@ -190,7 +255,56 @@ class _ChannelGridState extends State<ChannelGrid>
         ),
       ),
     );
+
+    return grid;
   }
+}
+
+/// Zona invisible encima de las flechas del carril: si una baldosa se queda
+/// encima mientras se arrastra, al ratito pasa de pagina sin soltarla. (En
+/// la rejilla no se usa: ver `_ChannelGridState._onDragMove`.)
+class EdgeDropZone extends StatefulWidget {
+  const EdgeDropZone({super.key, required this.onHover});
+
+  final VoidCallback? onHover;
+
+  @override
+  State<EdgeDropZone> createState() => _EdgeDropZoneState();
+}
+
+class _EdgeDropZoneState extends State<EdgeDropZone> {
+  Timer? _timer;
+
+  // Se lee `widget.onHover` al disparar, no al armar: entre medias la pagina
+  // puede haber cambiado y el borde haberse quedado sin a donde ir. Es
+  // periodico para que, quieto encima, siga pasando paginas sin tener que
+  // menear el dedo (`onMove` solo llega si el puntero se mueve).
+  void _arm() {
+    if (widget.onHover == null) return;
+    _timer ??= Timer.periodic(const Duration(milliseconds: 550), (_) => widget.onHover?.call());
+  }
+
+  void _disarm() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  @override
+  void dispose() {
+    _disarm();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => DragTarget<String>(
+        onWillAcceptWithDetails: (_) {
+          _arm();
+          return false;
+        },
+        onMove: (_) => _arm(),
+        onLeave: (_) => _disarm(),
+        builder: (context, candidate, rejected) => const SizedBox.expand(),
+      );
 }
 
 class _Page extends StatelessWidget {
@@ -205,6 +319,11 @@ class _Page extends StatelessWidget {
     required this.compact,
     required this.fill,
     required this.glyphOnly,
+    this.editing = false,
+    this.onReorder,
+    this.onDragMove,
+    this.onDragStop,
+    this.allIds = const <String>[],
   });
 
   final List<ChannelSpec> channels;
@@ -217,6 +336,45 @@ class _Page extends StatelessWidget {
   final bool compact;
   final bool fill;
   final bool glyphOnly;
+  final bool editing;
+  final ValueChanged<List<String>>? onReorder;
+  final ValueChanged<Offset>? onDragMove;
+  final VoidCallback? onDragStop;
+
+  /// Ids de todos los canales (todas las paginas), para calcular el orden
+  /// nuevo al soltar una baldosa. Solo hace falta en modo de edicion.
+  final List<String> allIds;
+
+  Widget _tile(
+    ChannelSpec spec, {
+    required double width,
+    required double height,
+    bool compact = false,
+    bool glyphOnly = false,
+  }) {
+    if (!editing) {
+      return ChannelTile(
+        key: ValueKey<String>('channel.${spec.id}'),
+        spec: spec,
+        width: width,
+        height: height,
+        compact: compact,
+        glyphOnly: glyphOnly,
+      );
+    }
+    return _ReorderableChannel(
+      key: ValueKey<String>('channel.${spec.id}'),
+      spec: spec,
+      width: width,
+      height: height,
+      compact: compact,
+      glyphOnly: glyphOnly,
+      allIds: allIds,
+      onReorder: onReorder,
+      onDragMove: onDragMove,
+      onDragStop: onDragStop,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -227,13 +385,7 @@ class _Page extends StatelessWidget {
           children: [
             for (var i = 0; i < channels.length; i++) ...[
               if (i > 0) SizedBox(width: gapH),
-              ChannelTile(
-                key: ValueKey<String>('channel.${channels[i].id}'),
-                spec: channels[i],
-                width: tileWidth,
-                height: tileHeight,
-                compact: true,
-              ),
+              _tile(channels[i], width: tileWidth, height: tileHeight, compact: true),
             ],
           ],
         ),
@@ -254,21 +406,24 @@ class _Page extends StatelessWidget {
           children: [
             for (var i = 0; i < slice.length; i++) ...[
               if (i > 0) SizedBox(width: gapH),
-              ChannelTile(
-                key: ValueKey<String>('channel.${slice[i].id}'),
-                spec: slice[i],
-                width: tileWidth,
-                height: tileHeight,
-                glyphOnly: glyphOnly,
-              ),
+              _tile(slice[i], width: tileWidth, height: tileHeight, glyphOnly: glyphOnly),
             ],
             // Relleno para que la fila incompleta no se recentre respecto a la
             // de arriba: los canales tienen que quedar en columna.
             for (var i = slice.length; i < columns; i++) ...[
               if (i > 0) SizedBox(width: gapH),
-              fill
-                  ? EmptySlot(width: tileWidth, height: tileHeight)
-                  : SizedBox(width: tileWidth, height: tileHeight),
+              if (editing)
+                _EmptyDropSlot(
+                  width: tileWidth,
+                  height: tileHeight,
+                  fill: fill,
+                  allIds: allIds,
+                  onReorder: onReorder,
+                )
+              else if (fill)
+                EmptySlot(width: tileWidth, height: tileHeight)
+              else
+                SizedBox(width: tileWidth, height: tileHeight),
             ],
           ],
         ),
@@ -284,6 +439,170 @@ class _Page extends StatelessWidget {
             rows[i],
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Mueve [draggedId] a la posicion [to] de [ids] (un indice de la lista tal
+/// cual esta, antes de moverlo). Un [to] fuera de rango lo lleva al final.
+List<String> moveChannelId(List<String> ids, String draggedId, int to) {
+  final from = ids.indexOf(draggedId);
+  if (from == -1 || from == to) return ids;
+  final next = List<String>.from(ids)..removeAt(from);
+  next.insert(to < 0 || to > next.length ? next.length : to, draggedId);
+  return next;
+}
+
+/// Una ranura hundida en modo de edicion: soltar ahi manda el canal al final
+/// de todo, para poder llevarlo a la ultima pagina aunque no haya con quien
+/// cambiarse.
+class _EmptyDropSlot extends StatelessWidget {
+  const _EmptyDropSlot({
+    required this.width,
+    required this.height,
+    required this.fill,
+    required this.allIds,
+    required this.onReorder,
+  });
+
+  final double width;
+  final double height;
+  final bool fill;
+  final List<String> allIds;
+  final ValueChanged<List<String>>? onReorder;
+
+  @override
+  Widget build(BuildContext context) => DragTarget<String>(
+        onAcceptWithDetails: (details) {
+          final callback = onReorder;
+          if (callback != null) callback(moveChannelId(allIds, details.data, allIds.length));
+        },
+        builder: (context, candidate, rejected) => fill
+            ? EmptySlot(width: width, height: height)
+            : SizedBox(width: width, height: height),
+      );
+}
+
+/// Una baldosa arrastrable en modo de edicion: tiembla un poco (como en el
+/// HOME de la 3DS, pero mas suave) y acepta que otra se suelte encima, en
+/// cuyo caso cambia de sitio con ella (empujando al resto, no intercambiando).
+class _ReorderableChannel extends StatelessWidget {
+  const _ReorderableChannel({
+    super.key,
+    required this.spec,
+    required this.width,
+    required this.height,
+    required this.compact,
+    required this.glyphOnly,
+    required this.allIds,
+    required this.onReorder,
+    this.onDragMove,
+    this.onDragStop,
+  });
+
+  final ChannelSpec spec;
+  final double width;
+  final double height;
+  final bool compact;
+  final bool glyphOnly;
+  final List<String> allIds;
+  final ValueChanged<List<String>>? onReorder;
+
+  /// Posicion global del puntero mientras se arrastra, y fin del arrastre
+  /// (soltada donde sea o cancelada): la rejilla lo usa para pasar de pagina.
+  final ValueChanged<Offset>? onDragMove;
+  final VoidCallback? onDragStop;
+
+  /// La baldosa arrastrada se queda con el hueco de [targetId], y las de en
+  /// medio corren uno hacia ella. El indice del destino se toma ANTES de
+  /// quitar la arrastrada: si se toma despues, al arrastrar hacia delante
+  /// todo lo de detras ya ha corrido uno y la baldosa acaba una antes.
+  List<String> _moved(String draggedId, String targetId) =>
+      moveChannelId(allIds, draggedId, allIds.indexOf(targetId));
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = ChannelTile(
+      spec: spec,
+      width: width,
+      height: height,
+      compact: compact,
+      glyphOnly: glyphOnly,
+      editing: true,
+    );
+
+    return DragTarget<String>(
+      onWillAcceptWithDetails: (details) => details.data != spec.id,
+      onAcceptWithDetails: (details) {
+        final callback = onReorder;
+        if (callback != null) callback(_moved(details.data, spec.id));
+      },
+      builder: (context, candidate, rejected) => Draggable<String>(
+        data: spec.id,
+        // La baldosa que se arrastra va centrada bajo el dedo. Con el ancla
+        // de siempre queda donde se cogio, y como el destino lo decide el
+        // dedo y no la baldosa, al apuntar con su centro caia una ranura
+        // antes o despues de donde se veia.
+        dragAnchorStrategy: (draggable, context, position) =>
+            Offset(width / 2, height / 2),
+        onDragUpdate: (details) => onDragMove?.call(details.globalPosition),
+        onDragEnd: (_) => onDragStop?.call(),
+        feedback: Opacity(
+          opacity: .85,
+          child: SizedBox(width: width, height: height, child: tile),
+        ),
+        childWhenDragging: Opacity(
+          opacity: .3,
+          child: _Wiggle(id: spec.id, child: tile),
+        ),
+        child: _Wiggle(id: spec.id, child: tile),
+      ),
+    );
+  }
+}
+
+/// El temblor sutil de una baldosa en modo de edicion. Cada una lleva una
+/// fase distinta segun su id, para que no tiemblen todas a la vez.
+class _Wiggle extends StatefulWidget {
+  const _Wiggle({required this.id, required this.child});
+
+  final String id;
+  final Widget child;
+
+  @override
+  State<_Wiggle> createState() => _WiggleState();
+}
+
+class _WiggleState extends State<_Wiggle> with SingleTickerProviderStateMixin {
+  late final AnimationController _shiver = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _shiver
+      ..value = (widget.id.hashCode.abs() % 100) / 100
+      ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _shiver.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (IbashoSkin.of(context).reducedMotion) return widget.child;
+    return AnimatedBuilder(
+      animation: _shiver,
+      child: widget.child,
+      builder: (context, child) => Transform.rotate(
+        angle: (_shiver.value * 2 - 1) * (1.6 * math.pi / 180),
+        child: child,
       ),
     );
   }

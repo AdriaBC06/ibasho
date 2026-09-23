@@ -11,7 +11,6 @@ import '../../../backend/tama.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
 import '../../../theme/skin.dart';
-import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
 import '../../layout.dart';
 import '../../tama/tama_sticker.dart';
@@ -47,7 +46,7 @@ class _StickerSheetState extends ConsumerState<_StickerSheet> {
         title: l.stickerOpen,
         body: Padding(
           padding: const EdgeInsets.symmetric(vertical: 18),
-          child: Text(l.stickerNone, style: Ty.body.copyWith(color: T.inkSoft)),
+          child: Text(l.stickerNone, style: Ty.body.copyWith(color: Ty.inkSoft)),
         ),
         actions: [
           IbashoButton(
@@ -266,6 +265,6 @@ class _Heading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
         text,
-        style: Ty.caption.copyWith(color: T.inkSoft),
+        style: Ty.caption.copyWith(color: Ty.inkSoft),
       );
 }

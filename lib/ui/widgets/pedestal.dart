@@ -8,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../theme/skin.dart';
+import '../../theme/menu_theme.dart';
 import '../../theme/tokens.dart';
 import 'channel_art.dart';
 
@@ -50,7 +51,7 @@ class _PedestalState extends State<Pedestal> with SingleTickerProviderStateMixin
       width: s * 1.25,
       height: s * 1.18,
       child: CustomPaint(
-        painter: PedestalPainter(skin.accent),
+        painter: PedestalPainter(skin.accent, skin.surfaces),
         child: Align(
           alignment: const Alignment(0, -.35),
           child: AnimatedBuilder(
@@ -68,7 +69,9 @@ class _PedestalState extends State<Pedestal> with SingleTickerProviderStateMixin
 }
 
 class PedestalPainter extends CustomPainter {
-  PedestalPainter(this.accent);
+  PedestalPainter(this.accent, [this.surfaces = Surfaces.house]);
+
+  final Surfaces surfaces;
 
   final Color accent;
 
@@ -108,7 +111,7 @@ class PedestalPainter extends CustomPainter {
       RRect.fromRectAndCorners(side,
           bottomLeft: Radius.elliptical(top.width / 2, top.height / 2),
           bottomRight: Radius.elliptical(top.width / 2, top.height / 2)),
-      Paint()..color = Color.lerp(accent, T.shellBottom, .55)!,
+      Paint()..color = Color.lerp(accent, surfaces.shellBottom, .55)!,
     );
     canvas.drawOval(top.shift(Offset(0, h * .06)), Paint()..color = Color.lerp(accent, T.dusk, .1)!.withValues(alpha: .55));
     canvas.drawOval(
@@ -117,7 +120,7 @@ class PedestalPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [T.shellTop, Color.lerp(T.shellBottom, accent, .25)!],
+          colors: [surfaces.shellTop, Color.lerp(surfaces.shellBottom, accent, .25)!],
         ).createShader(top),
     );
     canvas.drawOval(top.deflate(top.height * .18), Paint()
@@ -127,9 +130,9 @@ class PedestalPainter extends CustomPainter {
     canvas.drawOval(top, Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = Color.lerp(T.hairline, accent, .35)!);
+      ..color = Color.lerp(surfaces.hairline, accent, .35)!);
   }
 
   @override
-  bool shouldRepaint(PedestalPainter old) => old.accent != accent;
+  bool shouldRepaint(PedestalPainter old) => old.accent != accent || old.surfaces != surfaces;
 }

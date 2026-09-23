@@ -71,7 +71,7 @@ class PachinkoLoadCard extends StatelessWidget {
               if (owned.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(l.pachinkoNoBalls, textAlign: TextAlign.center, style: Ty.body.copyWith(color: T.inkSoft)),
+                  child: Text(l.pachinkoNoBalls, textAlign: TextAlign.center, style: Ty.body.copyWith(color: Ty.inkSoft)),
                 )
               else
                 GlossSurface(
@@ -187,7 +187,7 @@ class _Stepper extends StatelessWidget {
         children: [
           GachaBallView(rarity, size: 30, shadow: false),
           const SizedBox(width: 6),
-          Text('/$owned', style: Ty.numeral(13, color: T.inkSoft)),
+          Text('/$owned', style: Ty.numeral(13, color: Ty.inkSoft)),
           const Spacer(),
           IconPill(
             key: ValueKey<String>('pachinko.less.${rarity.name}'),
@@ -202,7 +202,7 @@ class _Stepper extends StatelessWidget {
               '$count',
               key: ValueKey<String>('pachinko.count.${rarity.name}'),
               textAlign: TextAlign.center,
-              style: Ty.numeral(18, weight: FontWeight.w700, color: T.ink),
+              style: Ty.numeral(18, weight: FontWeight.w700, color: Ty.ink),
             ),
           ),
           IconPill(
@@ -225,7 +225,7 @@ class _Stepper extends StatelessWidget {
               opacity: canAddTen ? 1 : .35,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                child: Text('+10', style: Ty.numeral(13, weight: FontWeight.w800, color: T.inkSoft)),
+                child: Text('+10', style: Ty.numeral(13, weight: FontWeight.w800, color: Ty.inkSoft)),
               ),
             ),
           ),
@@ -419,7 +419,7 @@ class PachinkoResultsCard extends StatelessWidget {
                 child: balls.values.every((n) => n == 0)
                     ? Padding(
                         padding: const EdgeInsets.only(top: 6),
-                        child: Text('—', style: Ty.caption.copyWith(color: T.inkSoft)),
+                        child: Text('—', style: Ty.caption.copyWith(color: Ty.inkSoft)),
                       )
                     : Wrap(
                         spacing: 8,

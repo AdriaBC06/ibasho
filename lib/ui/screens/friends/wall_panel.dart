@@ -169,7 +169,7 @@ class _WallPanelState extends ConsumerState<WallPanel> {
                   child: Text(
                     '$year',
                     textAlign: TextAlign.center,
-                    style: Ty.numeral(tall ? 18 : 22, color: T.ink, weight: FontWeight.w700),
+                    style: Ty.numeral(tall ? 18 : 22, color: Ty.ink, weight: FontWeight.w700),
                   ),
                 ),
                 IconPill(
@@ -186,7 +186,7 @@ class _WallPanelState extends ConsumerState<WallPanel> {
                     onPressed: page > 0 ? () => setState(() => _page = page - 1) : null,
                   ),
                   const SizedBox(width: 6),
-                  Text('${page + 1} / $pages', style: Ty.numeral(16, color: T.inkSoft)),
+                  Text('${page + 1} / $pages', style: Ty.numeral(16, color: Ty.inkSoft)),
                   const SizedBox(width: 6),
                   IconPill(
                     glyph: Glyph.arrowRight,
@@ -222,7 +222,7 @@ class _WallPanelState extends ConsumerState<WallPanel> {
                           child: Text(
                             widget.own ? l.wallEmptyOwn : l.wallEmpty,
                             textAlign: TextAlign.center,
-                            style: Ty.body.copyWith(color: T.inkSoft),
+                            style: Ty.body.copyWith(color: Ty.inkSoft),
                           ),
                         )
                       : LayoutBuilder(
@@ -298,7 +298,7 @@ class _Composer extends StatelessWidget {
               GlyphIcon(
                 alreadyWrote ? Glyph.check : Glyph.lock,
                 size: 36,
-                color: alreadyWrote ? skin.accentDeep : T.inkSoft,
+                color: alreadyWrote ? skin.accentDeep : Ty.inkSoft,
               ),
               const SizedBox(height: 12),
               Text(
@@ -308,7 +308,7 @@ class _Composer extends StatelessWidget {
                         ? l.wallNoBirthday
                         : l.wallOpensOn(birthdayLabel),
                 textAlign: TextAlign.center,
-                style: Ty.body.copyWith(color: T.inkSoft),
+                style: Ty.body.copyWith(color: Ty.inkSoft),
               ),
             ],
           ),
@@ -332,7 +332,7 @@ class _Composer extends StatelessWidget {
           children: [
             Text(
               '$length / $wallMessageMax',
-              style: Ty.numeral(14, color: length > wallMessageMax - 10 ? T.warn : T.inkSoft),
+              style: Ty.numeral(14, color: length > wallMessageMax - 10 ? T.warn : Ty.inkSoft),
             ),
             const Spacer(),
             IbashoButton(
@@ -370,7 +370,7 @@ class _MessageCard extends ConsumerWidget {
       key: ValueKey<String>('wall.message.${message.year}.${message.author}'),
       radius: 20,
       elevation: 1.2,
-      borderColor: Color.lerp(T.hairline, accent, .35)!,
+      borderColor: Color.lerp(skin.hairline, accent, .35)!,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
