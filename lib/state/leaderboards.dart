@@ -28,12 +28,14 @@ class LeaderboardEntry {
 /// Lo que hay en `/leaderboards/{juego}/{daily|weekly}/{periodo}`.
 @immutable
 class LeaderboardPeriod {
-  const LeaderboardPeriod({this.scores = const <String, int>{}, this.results});
+  const LeaderboardPeriod({this.scores = const <String, int>{}, this.results, this.lines = const <String, int>{}});
 
   final Map<String, int> scores;
 
-  /// El top 3 (o top 2 si aun no hay tres cuentas con puntuacion), ya
-  /// cerrado. `null` mientras el periodo sigue abierto o nadie lo ha
+  /// Solo Tsumiki: las filas de la partida de cada puntuacion.
+  final Map<String, int> lines;
+
+  /// El top 3 (o menos, si jugaron menos de tres cuentas), ya cerrado. `null` mientras el periodo sigue abierto o nadie lo ha
   /// calculado todavia.
   final List<String>? results;
 
@@ -66,16 +68,33 @@ class LeaderboardPeriod {
         for (final e in scoresRaw.entries)
           if (e.value is num) '${e.key}': (e.value as num).toInt(),
     };
+    final linesRaw = raw['lines'];
+    final lines = <String, int>{
+      if (linesRaw is Map)
+        for (final e in linesRaw.entries)
+          if (e.value is num) '${e.key}': (e.value as num).toInt(),
+    };
     final resultsRaw = raw['results'];
-    final results = resultsRaw is Map ? _ranksFromMap(resultsRaw) : null;
-    return LeaderboardPeriod(scores: scores, results: results);
+    final results = (resultsRaw is Map || resultsRaw is List) ? _ranksFromMap(resultsRaw!) : null;
+    return LeaderboardPeriod(scores: scores, results: results, lines: lines);
   }
 }
 
-List<String> _ranksFromMap(Map raw) => [
-      for (final rank in const ['1', '2', '3'])
-        if (raw[rank] is String) raw[rank] as String,
-    ];
+/// Los puestos de `results`. Firebase devuelve `{1: a, 2: b, 3: c}` como una
+/// lista `[null, a, b, c]` (claves numericas seguidas), asi que se aceptan
+/// las dos formas: leer solo mapas hacia que el podio saliera la vez que se
+/// calculaba y nunca mas al releerlo.
+List<String> _ranksFromMap(Object raw) {
+  Object? at(int rank) => switch (raw) {
+        Map() => raw['$rank'] ?? raw[rank],
+        List() => rank < raw.length ? raw[rank] : null,
+        _ => null,
+      };
+  return [
+    for (var rank = 1; rank <= 3; rank++)
+      if (at(rank) is String) at(rank)! as String,
+  ];
+}
 
 String _periodKey(LeaderboardGame game, bool weekly, int key) =>
     '${game.key}|${weekly ? 'weekly' : 'daily'}|$key';
@@ -180,12 +199,13 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
     required int key,
     required LeaderboardPeriod period,
   }) async {
+    // Basta con una cuenta: si solo jugo una persona, se lleva el primer
+    // puesto y su premio (antes hacian falta dos y el periodo no se cerraba
+    // nunca, sin podio ni premio).
     final ranked = period.ranked(game);
-    if (ranked.length < 2) return period;
+    if (ranked.isEmpty) return period;
     final results = <String, Object?>{
-      '1': ranked[0].accountId,
-      '2': ranked[1].accountId,
-      if (ranked.length > 2) '3': ranked[2].accountId,
+      for (var i = 0; i < ranked.length && i < 3; i++) '${i + 1}': ranked[i].accountId,
     };
     try {
       await _backend.merge(
@@ -208,7 +228,9 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
           '${_path(game, weekly, key)}/results',
           idToken: await _session.freshToken(),
         );
-        if (raw is Map) return LeaderboardPeriod(scores: period.scores, results: _ranksFromMap(raw));
+        if (raw is Map || raw is List) {
+          return LeaderboardPeriod(scores: period.scores, results: _ranksFromMap(raw!), lines: period.lines);
+        }
       } catch (_) {
         // Sin red: se deja el periodo como estaba, se reintentara luego.
       }
@@ -220,7 +242,9 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
   /// dos escrituras separadas: si una no mejora (las reglas la rechazan) no
   /// tiene que arrastrar a la otra. Un fallo no rompe la partida: se
   /// reintenta la proxima vez que se gane.
-  Future<void> submitScore(LeaderboardGame game, int score) async {
+  /// [lines] (solo Tsumiki) va junto a la puntuacion: las reglas solo la
+  /// aceptan en la misma escritura.
+  Future<void> submitScore(LeaderboardGame game, int score, {int? lines}) async {
     if (_me.isEmpty) return;
     final day = bonusDay();
     final week = gachaWeek();
@@ -236,6 +260,7 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
           'leaderboards/${game.key}/daily/$day/day': day,
           'leaderboards/${game.key}/daily/$day/scores/$_me': score,
           'leaderboards/${game.key}/daily/$day/at/$_me': serverTimestamp,
+          'leaderboards/${game.key}/daily/$day/lines/$_me': ?lines,
         },
         idToken: token,
       );
@@ -249,6 +274,7 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
           'leaderboards/${game.key}/weekly/$week/week': week,
           'leaderboards/${game.key}/weekly/$week/scores/$_me': score,
           'leaderboards/${game.key}/weekly/$week/at/$_me': serverTimestamp,
+          'leaderboards/${game.key}/weekly/$week/lines/$_me': ?lines,
         },
         idToken: token,
       );

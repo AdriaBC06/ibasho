@@ -207,7 +207,7 @@ class SettingsChannel extends ConsumerWidget {
                         spacing: 14,
                         runSpacing: 14,
                         children: [
-                          _BackdropChip(
+                          BackdropChip(
                             key: const ValueKey<String>('backdrop.none'),
                             id: null,
                             rarity: null,
@@ -220,7 +220,7 @@ class SettingsChannel extends ConsumerWidget {
                             Builder(
                               builder: (context) {
                                 final owned = gacha.owns(b.key);
-                                return _BackdropChip(
+                                return BackdropChip(
                                   key: ValueKey<String>('backdrop.${b.id}'),
                                   id: owned ? b.id : null,
                                   rarity: b.rarity,
@@ -379,8 +379,19 @@ class SettingsChannel extends ConsumerWidget {
 /// reserva para entrar desde la rejilla.
 PageRoute<void> _plainRoute(Widget child, bool reducedMotion) =>
     PageRouteBuilder<void>(
-      pageBuilder: (context, animation, secondary) =>
-          ColoredBox(color: T.shellTop, child: child),
+      pageBuilder: (context, animation, secondary) {
+        final skin = IbashoSkin.of(context);
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [skin.shellTop, skin.shellBottom],
+            ),
+          ),
+          child: child,
+        );
+      },
       transitionDuration: reducedMotion
           ? T.reduced
           : const Duration(milliseconds: 260),
@@ -411,8 +422,9 @@ PageRoute<void> _plainRoute(Widget child, bool reducedMotion) =>
 /// Una ficha del fondo del menu: su miniatura, el nombre y la rareza. Lo que
 /// no se tiene sale en silueta con «???», como los premios que se ponen a un
 /// Tama (`tama_creator_screen.dart`).
-class _BackdropChip extends StatelessWidget {
-  const _BackdropChip({
+/// Un fondo para elegir: la miniatura y su nombre. Bloqueado, «???».
+class BackdropChip extends StatelessWidget {
+  const BackdropChip({
     super.key,
     required this.id,
     required this.rarity,

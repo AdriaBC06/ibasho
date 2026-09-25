@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
@@ -834,6 +835,147 @@ class AudioService {
     }
   }
 
+  // --- Odori ----------------------------------------------------------------
+  //
+  // La cancion del juego de ritmo va por SoLoud, como el coro: el reloj de la
+  // partida se ajusta a la posicion real del audio. El volumen global de
+  // SoLoud es el de efectos, asi que la voz lleva el cociente para que la
+  // cancion suene al volumen de la musica.
+
+  AudioSource? _odoriSource;
+  SoundHandle? _odoriVoice;
+
+  /// Carga la cancion y deja una voz en pausa al principio. Devuelve su
+  /// duracion en segundos, o `null` si no hay audio.
+  Future<double?> loadOdori(String asset) async {
+    await stopOdori();
+    if (!_sfxReady) return null;
+    try {
+      final soloud = SoLoud.instance;
+      final source = await soloud.loadAsset(asset);
+      _odoriSource = source;
+      _odoriVoice = soloud.play(source, paused: true, volume: _odoriVolume);
+      return soloud.getLength(source).inMicroseconds / 1e6;
+    } catch (e) {
+      debugPrint('Ibasho: la cancion de Odori no ha cargado ($e)');
+      await stopOdori();
+      return null;
+    }
+  }
+
+  double get _odoriVolume {
+    if (_effectsVolume <= 0) return 0;
+    return (_musicVolume / _effectsVolume).clamp(0.0, 4.0);
+  }
+
+  /// Pausa o reanuda la cancion; al reanudar, salta a [at] segundos si se
+  /// da.
+  void setOdoriPaused(bool paused, {double? at}) {
+    final voice = _odoriVoice;
+    if (!_sfxReady || voice == null) return;
+    try {
+      final soloud = SoLoud.instance;
+      if (!soloud.getIsValidVoiceHandle(voice)) return;
+      if (at != null) soloud.seek(voice, Duration(microseconds: (math.max(0.0, at) * 1e6).round()));
+      soloud.setVolume(voice, _odoriVolume);
+      soloud.setPause(voice, paused);
+    } catch (_) {}
+  }
+
+  /// Segundos de la cancion que suena, o `null` si no suena.
+  double? get odoriPosition {
+    final voice = _odoriVoice;
+    if (!_sfxReady || voice == null) return null;
+    try {
+      final soloud = SoLoud.instance;
+      if (!soloud.getIsValidVoiceHandle(voice) || soloud.getPause(voice)) return null;
+      return soloud.getPosition(voice).inMicroseconds / 1e6;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> stopOdori() async {
+    final voice = _odoriVoice;
+    final source = _odoriSource;
+    _odoriVoice = null;
+    _odoriSource = null;
+    if (!_sfxReady) return;
+    try {
+      final soloud = SoLoud.instance;
+      if (voice != null && soloud.getIsValidVoiceHandle(voice)) soloud.stop(voice);
+      if (source != null) await soloud.disposeSource(source);
+    } catch (_) {}
+  }
+
+  // En el menu de Odori no suena la musica del menu: suena en bucle la
+  // instrumental de la cancion elegida.
+  AudioSource? _previewSource;
+  SoundHandle? _previewVoice;
+  String? _previewAsset;
+
+  /// Pone en bucle [asset] (la instrumental de una cancion de Odori). Si ya
+  /// sonaba esa, no hace nada.
+  Future<void> playOdoriPreview(String asset) async {
+    if (!_sfxReady || asset == _previewAsset) return;
+    await stopOdoriPreview();
+    _previewAsset = asset;
+    try {
+      final soloud = SoLoud.instance;
+      final source = await soloud.loadAsset(asset);
+      if (_previewAsset != asset) {
+        await soloud.disposeSource(source);
+        return;
+      }
+      _previewSource = source;
+      _previewVoice = soloud.play(source, looping: true, volume: _odoriVolume);
+    } catch (e) {
+      debugPrint('Ibasho: la instrumental de Odori no ha sonado ($e)');
+    }
+  }
+
+  Future<void> stopOdoriPreview() async {
+    final voice = _previewVoice;
+    final source = _previewSource;
+    _previewVoice = null;
+    _previewSource = null;
+    _previewAsset = null;
+    if (!_sfxReady) return;
+    try {
+      final soloud = SoLoud.instance;
+      if (voice != null && soloud.getIsValidVoiceHandle(voice)) soloud.stop(voice);
+      if (source != null) await soloud.disposeSource(source);
+    } catch (_) {}
+  }
+
+  /// Los soniditos de los toques de Odori, cargados una vez: son pocos y
+  /// muy cortos.
+  final Map<String, AudioSource> _odoriHits = <String, AudioSource>{};
+
+  /// Carga los que falten de [hits]. [build] solo se llama la primera vez.
+  Future<void> loadOdoriHits(Iterable<String> hits, Uint8List Function(String key) build) async {
+    if (!_sfxReady) return;
+    try {
+      final soloud = SoLoud.instance;
+      for (final key in hits) {
+        if (_odoriHits.containsKey(key)) continue;
+        _odoriHits[key] = await soloud.loadMem('odori-$key.wav', build(key));
+      }
+    } catch (e) {
+      debugPrint('Ibasho: los toques de Odori no han cargado ($e)');
+    }
+  }
+
+  /// Hace sonar un toque a [volume] del volumen de efectos.
+  void playOdoriHit(String key, double volume) {
+    if (!synthReady || volume <= 0) return;
+    final source = _odoriHits[key];
+    if (source == null) return;
+    try {
+      SoLoud.instance.play(source, volume: volume);
+    } catch (_) {}
+  }
+
   double get musicVolume => _musicVolume;
 
   double get effectsVolume => _effectsVolume;
@@ -861,6 +1003,7 @@ class AudioService {
       _sfxSources.clear();
       _chirps.clear();
       _koroNotes.clear();
+      _odoriHits.clear();
       _koroSource = null;
       _koroVoice = null;
       _liveVoices.clear();

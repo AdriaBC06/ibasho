@@ -68,6 +68,7 @@ async function seed() {
           game_minesweeper: 0,
           food_cookie: 3,
           food_candy: 3,
+          odori_kasa: 10,
         },
       },
       users: {
@@ -175,6 +176,28 @@ test('un desconocido no toca la despensa de otra cuenta', async () => {
 });
 
 // --- Juegos --------------------------------------------------------------
+
+test('una cancion de Odori se compra con su recibo, una vez y sin borrarse', async () => {
+  const buy = (coins) =>
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/shop/last`]: { item: 'odori_kasa', qty: 1, at: serverTimestamp() },
+      [`users/${ANA}/coins`]: coins,
+      [`users/${ANA}/odori/songs/kasa`]: true,
+    });
+  // Sin recibo, o con el recibo de otra cancion, no.
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/odori/songs/kasa`), true));
+  await assertFails(
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/shop/last`]: { item: 'odori_kasa', qty: 1, at: serverTimestamp() },
+      [`users/${ANA}/coins`]: 90,
+      [`users/${ANA}/odori/songs/hanabi`]: true,
+    }),
+  );
+  await assertFails(buy(95));
+  await assertSucceeds(buy(90));
+  await assertFails(buy(80));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/odori/songs/kasa`), null));
+});
 
 test('un juego sin recibo fresco no se puede regalar', async () => {
   await assertFails(
@@ -304,6 +327,21 @@ test('ganar al buscaminas cobra el premio y sube las monedas lo mismo', async ()
 
 test('sin el juego no hay premio', async () => {
   await assertFails(claim(ANA, { earned: 5, coins: 105 }));
+});
+
+test('ohirune es gratis: cobra sin tenerlo comprado, con el mismo tope', async () => {
+  await assertSucceeds(claim(ANA, { earned: 8, coins: 108, game: 'ohirune' }));
+  await earnedBefore(ANA, 'ohirune', { earned: 18 });
+  await assertFails(claim(ANA, { earned: 21, coins: 111, game: 'ohirune' }));
+  // Otro juego sin comprar sigue sin premio.
+  await assertFails(claim(ANA, { earned: 5, coins: 105, game: 'tsumiki' }));
+});
+
+test('odori es gratis y su tope es de 30 al dia', async () => {
+  await earnedBefore(ANA, 'odori', { earned: 22 });
+  await assertSucceeds(claim(ANA, { earned: 30, coins: 108, game: 'odori' }));
+  await earnedBefore(ANA, 'odori', { earned: 30 });
+  await assertFails(claim(ANA, { earned: 33, coins: 103, game: 'odori' }));
 });
 
 test('el premio solo vale 3, 5 u 8, y las monedas tienen que cuadrar', async () => {

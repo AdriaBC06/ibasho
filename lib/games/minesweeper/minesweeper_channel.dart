@@ -106,7 +106,7 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
   bool _rewardPending = false;
   Timer? _resultsTimer;
 
-  bool _flagMode = false;
+  TapMode _mode = TapMode.dig;
 
   // --- Efectos ---
   final BoardFx _fx = BoardFx();
@@ -245,7 +245,7 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
       _game = _newGame(_choice);
       _joy = .2;
       _streak = 0;
-      _flagMode = false;
+      _mode = TapMode.dig;
       _report = null;
       _showResults = false;
       _reward = null;
@@ -366,7 +366,22 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
     _kickFx();
   }
 
-  void _cellTap(int x, int y) => _flagMode ? _toggleFlag(x, y) : _reveal(x, y);
+  void _toggleQuestion(int x, int y) {
+    if (_game.isOver) return;
+    final cell = _game.cellAt(x, y);
+    if (cell.revealed) return;
+    final wasFlagged = cell.flagged;
+    _game.toggleQuestion(x, y);
+    if (wasFlagged) _fx.flags.remove(y * _game.width + x);
+    AudioService.instance.play(Sfx.tick);
+    setState(() {});
+  }
+
+  void _cellTap(int x, int y) => switch (_mode) {
+        TapMode.dig => _reveal(x, y),
+        TapMode.flag => _toggleFlag(x, y),
+        TapMode.question => _toggleQuestion(x, y),
+      };
 
   void _onWin() {
     final l = L.of(context)!;
@@ -645,10 +660,11 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
                 }),
                 const SizedBox(height: 16),
                 ModeSwitch(
-                  flagMode: _flagMode,
-                  onChanged: (v) => setState(() => _flagMode = v),
+                  mode: _mode,
+                  onChanged: (v) => setState(() => _mode = v),
                   digLabel: l.minesweeperDig,
                   flagLabel: l.minesweeperFlag,
+                  questionLabel: l.minesweeperQuestion,
                   height: 50,
                   width: 352,
                 ),
@@ -712,10 +728,11 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
         Row(
           children: [
             ModeSwitch(
-              flagMode: _flagMode,
-              onChanged: (v) => setState(() => _flagMode = v),
+              mode: _mode,
+              onChanged: (v) => setState(() => _mode = v),
               digLabel: l.minesweeperDig,
               flagLabel: l.minesweeperFlag,
+              questionLabel: l.minesweeperQuestion,
               height: 48,
               showLabels: false,
             ),

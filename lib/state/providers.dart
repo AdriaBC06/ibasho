@@ -377,10 +377,17 @@ final gachaProvider = StateNotifierProvider<GachaController, GachaState>((ref) {
   );
 });
 
+/// Tema propio de un juego mientras esta abierto (solo Odori lo tiene): el
+/// `id` de un fondo, `''` para ninguno o `null` para seguir al del menu.
+final gameThemeProvider = StateProvider<String?>((ref) => null);
+
 /// El fondo puesto en Ajustes (el `id` de `Backdrop`), o vacio. Uno que la
 /// coleccion ya no tiene (un admin que se lo ha quitado) cuenta como vacio.
+/// Con un juego de tema propio abierto, manda el del juego.
 final backdropIdProvider = Provider<String>((ref) {
-  final chosen = ref.watch(preferencesProvider.select((p) => p.backdropId));
+  final String? game = ref.watch(gameThemeProvider);
+  final String menu = ref.watch(preferencesProvider.select((p) => p.backdropId));
+  final chosen = game ?? menu;
   if (chosen.isEmpty) return '';
   final gone = ref.watch(
     gachaProvider.select((g) => g.loaded && !g.owns('bg_$chosen')),

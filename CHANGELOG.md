@@ -5,6 +5,60 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.6.3 — Odori
+
+### Añadido
+
+- **Odori, el juego de ritmo.** Es gratis y llega envuelto como regalo. Trae
+  **ocho canciones propias**: tres de regalo (Tamagoyaki, Ibasho y Yakō) y
+  cinco más a **10 monedas** cada una, en el Yatai o desde el propio Odori.
+  Cada una tiene su instrumental y versiones cantadas (Kasane Teto, y en Yakō
+  también Kiritan, Zundamon, Merrow y Sinsy), que se eligen por cantante e
+  idioma, con la **letra en pantalla** mientras suena, como en un karaoke. En
+  el menú de Odori suena la instrumental de la canción elegida. Acabar una
+  canción con rango C o mejor da monedas (3 en Easy y Normal, 5 en Hard, 8 en
+  Extreme e Impossible), hasta **30 al día**. Hay dos modos:
+  - **Taki**: las notas caen por carriles, de 1 a 7 teclas, en cualquiera de
+    las cuatro direcciones.
+  - **Butai**: las notas vuelan hacia dianas sobre un escenario de noche, con
+    4 teclas, figuras de mando o flechas, y se toca la diana en el móvil.
+
+  Hay cinco dificultades, de Easy a Impossible, notas en círculo, rayita o
+  flecha, teclas a tu gusto, velocidad, calibración del desfase y el tema del
+  juego elegido entre tus fondos. Uno de tus Tamas te acompaña y te echa una
+  mano según su personalidad; las partidas con su ayuda llevan récords
+  aparte. Odori tiene dos clasificaciones nuevas, Taki y Butai: cuentan las
+  partidas de 4 teclas sin ayuda, y las dificultades altas valen más.
+- **El gachapón tira de 1 a 9 bolas de golpe**, con − y +, además de la de
+  10 tickets que da 11.
+- **El buscaminas tiene «?»**: un tercer modo para marcar las casillas que no
+  están claras, que no protege ni cuenta como bandera.
+- Dicen que, cuando una cuenta junta **cinco Tamas**, a alguno le entra
+  sueño… Y quien ya los tenga, que eche un vistazo al menú.
+
+### Cambiado
+
+- **Las clasificaciones se cierran aunque solo haya jugado una cuenta**, que
+  se lleva el primer puesto y su premio. Antes hacían falta dos y el día se
+  quedaba sin podio. El podio sale siempre con tres huecos.
+- La clasificación de **Tsumiki** enseña, bajo la puntuación, las filas de
+  esa partida. Sigue contando solo la puntuación.
+- En Clasificaciones, el buscaminas y Odori eligen su tabla en un segundo
+  selector, junto a diaria y semanal, para que en el móvil se lea todo.
+
+### Arreglado
+
+- **Pinball**: la bola que sube con el kickback ya no rebota en las orejas de
+  arriba.
+- El podio de un día ya cerrado volvía a salir vacío al releerlo.
+- Las letras con tilde larga (ō) se ven en todas partes.
+
+### Licencias
+
+- Las canciones de Odori (`assets/odori/`) se publican bajo **CC BY-NC 4.0**,
+  aparte de la GPL, por las condiciones de las voces. Detalle en
+  `CREDITS.md` y en Créditos, dentro de la app.
+
 ## 0.6.2 — Tamakoro
 
 ### Añadido

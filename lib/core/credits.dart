@@ -35,6 +35,8 @@ String _ownMusic(L l) => l.creditNoteOwnMusic;
 String _ownSfx(L l) => l.creditNoteOwnSfx;
 String _downloaded(L l) => l.creditNoteDownloaded;
 String _timezone(L l) => l.creditNoteTimezone;
+String _odoriSongs(L l) => l.creditNoteOdoriSongs;
+String _voiceSung(L l) => l.creditNoteVoiceSung;
 
 const List<CreditEntry> fontCredits = <CreditEntry>[
   CreditEntry(
@@ -81,6 +83,42 @@ const List<CreditEntry> audioCredits = <CreditEntry>[
     license: 'CC0 1.0',
     url: 'https://opengameart.org/content/bossa-nova',
     note: _downloaded,
+  ),
+  CreditEntry(
+    title: 'Odori: Tamagoyaki · Hanabi no Ato · Neko no Basu · Ame no Hi no Kasa · '
+        'Tsukimi Dango · Kaeri Michi · Ibasho · Yakō · Hoshikuzu Dash',
+    author: _me,
+    license: 'CC BY-NC 4.0',
+    url: 'tool/odori_canciones.py',
+    note: _odoriSongs,
+  ),
+  CreditEntry(
+    title: 'NIT SONG070 F001 (Sinsy)',
+    author: 'Nagoya Institute of Technology · Sinsy · WORLD (Masanori Morise)',
+    license: 'CC BY 3.0',
+    url: 'https://sourceforge.net/projects/sinsy/files/HTS%20voice/',
+    note: _voiceSung,
+  ),
+  CreditEntry(
+    title: 'Kasane Teto 重音テト (JP · EN)',
+    author: '小山乃舞世 · 線 · TWINDRILL',
+    license: 'UTAU · NC',
+    url: 'https://kasaneteto.jp/guideline/vltu.html',
+    note: _voiceSung,
+  ),
+  CreditEntry(
+    title: 'Tohoku Kiritan 東北きりたん · Zundamon ずんだもん',
+    author: '東北ずん子・ずんだもんプロジェクト (SSS LLC.) · NEUTRINO (STUDIO NEUTRINO)',
+    license: 'zunko.jp · NC',
+    url: 'https://zunko.jp/guideline.html',
+    note: _voiceSung,
+  ),
+  CreditEntry(
+    title: 'Merrow めろう',
+    author: 'NEUTRINO (SHACHI · STUDIO NEUTRINO)',
+    license: 'NEUTRINO',
+    url: 'https://studio-neutrino.com',
+    note: _voiceSung,
   ),
 ];
 

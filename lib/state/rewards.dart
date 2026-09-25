@@ -17,6 +17,10 @@ import 'session.dart';
 /// exigen lo mismo.
 const int dailyRewardCap = 20;
 
+/// El tope de [game]: Odori llega a 30, el resto a [dailyRewardCap]. Las
+/// reglas exigen lo mismo.
+int rewardCapFor(String game) => game == 'odori' ? 30 : dailyRewardCap;
+
 /// Tiempo minimo entre dos cobros, sean del juego que sean. Las reglas exigen
 /// lo mismo.
 const Duration rewardCooldown = Duration(seconds: 15);
@@ -54,7 +58,7 @@ class RewardsState {
     return e != null && e.day == today(now) ? e.earned : 0;
   }
 
-  int leftToday(String game, [DateTime? now]) => math.max(0, dailyRewardCap - earnedToday(game, now));
+  int leftToday(String game, [DateTime? now]) => math.max(0, rewardCapFor(game) - earnedToday(game, now));
 }
 
 /// Como ha ido un cobro.

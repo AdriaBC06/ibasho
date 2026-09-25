@@ -179,6 +179,34 @@ class _BoardPainter extends CustomPainter {
     });
   }
 
+  static TextPainter? _questionMark;
+
+  TextPainter _questionPainter(double unit) {
+    final color = Color.lerp(accent, Ty.ink, .45)!;
+    final cached = _questionMark;
+    final style = cached?.text?.style;
+    if (cached != null && style?.fontSize == unit * .6 && style?.color == color) return cached;
+    return _questionMark = TextPainter(
+      text: TextSpan(
+        text: '?',
+        style: TextStyle(
+          fontFamily: Ty.round,
+          fontSize: unit * .6,
+          fontWeight: FontWeight.w800,
+          color: color,
+          height: 1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+  }
+
+  /// La duda: un «?» sobre la tapa.
+  void _question(Canvas canvas, Rect rect, double unit) {
+    final tp = _questionPainter(unit);
+    tp.paint(canvas, rect.center - Offset(tp.width / 2, tp.height / 2 + unit * .02));
+  }
+
   static double _ease(double t) => Curves.easeOutCubic.transform(t.clamp(0.0, 1.0));
   static double _back(double t) => Curves.easeOutBack.transform(t.clamp(0.0, 1.0));
 
@@ -207,7 +235,11 @@ class _BoardPainter extends CustomPainter {
 
         if (!cell.revealed || t <= 0) {
           _raised(canvas, rrect, unit, odd, hovered == i && !cell.revealed);
-          if (cell.flagged) _flag(canvas, rect, unit, i, now, wrong: false);
+          if (cell.flagged) {
+            _flag(canvas, rect, unit, i, now, wrong: false);
+          } else if (cell.questioned) {
+            _question(canvas, rect, unit);
+          }
           if (game.status == MinesweeperStatus.ready && game.start == (x, y)) {
             _startMark(canvas, rrect, unit, now);
           }

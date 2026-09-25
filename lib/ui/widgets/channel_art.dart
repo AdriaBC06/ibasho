@@ -25,6 +25,8 @@ enum ArtIcon {
   tsumiki,
   nihongo,
   tamakoro,
+  odori,
+  ohirune,
   gacha,
   pinball,
   pachinko,
@@ -75,6 +77,10 @@ class ArtPainter extends CustomPainter {
         paintNihongo(canvas);
       case ArtIcon.tamakoro:
         paintTamakoro(canvas);
+      case ArtIcon.odori:
+        paintOdori(canvas);
+      case ArtIcon.ohirune:
+        paintOhirune(canvas);
       case ArtIcon.gacha:
         paintGacha(canvas);
       case ArtIcon.pinball:
@@ -561,6 +567,136 @@ void paintTamakoro(Canvas canvas) {
       ..quadraticBezierTo(n.dx + 12, n.dy - 14, n.dx + 12, n.dy - 7),
     _edge(Art.deep(Art.capsules[4]), 3),
   );
+}
+
+/// Ohirune: un tablero de cuatro zonas de color con un Tama dormido encima y
+/// dos zetas que se le escapan.
+void paintOhirune(Canvas canvas) {
+  paintGroundShadow(canvas, const Offset(50, 91), 80);
+  canvas.save();
+  canvas.translate(46, 60);
+  canvas.rotate(-.05);
+  const side = 64.0;
+  final card = Path()
+    ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset.zero, width: side + 8, height: side + 8), const Radius.circular(12)));
+  paintPlastic(canvas, card, T.shellTop, edge: 2, shine: .6);
+  // Cuatro «paises», cada uno de un color, con su frontera marcada.
+  const colors = [Color(0xFFA8E6C4), Color(0xFFFFE08A), Color(0xFFB9D8FF), Color(0xFFFFC4D6)];
+  final half = side / 2;
+  final patches = [
+    Path()
+      ..moveTo(-half, -half)
+      ..lineTo(6, -half)
+      ..lineTo(6, -6)
+      ..lineTo(-half, -6)
+      ..close(),
+    Path()
+      ..moveTo(6, -half)
+      ..lineTo(half, -half)
+      ..lineTo(half, 10)
+      ..lineTo(6, 10)
+      ..close(),
+    Path()
+      ..moveTo(-half, -6)
+      ..lineTo(6, -6)
+      ..lineTo(6, 10)
+      ..lineTo(-10, 10)
+      ..lineTo(-10, half)
+      ..lineTo(-half, half)
+      ..close(),
+    Path()
+      ..moveTo(-10, 10)
+      ..lineTo(half, 10)
+      ..lineTo(half, half)
+      ..lineTo(-10, half)
+      ..close(),
+  ];
+  canvas.save();
+  canvas.clipRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset.zero, width: side, height: side), const Radius.circular(8)));
+  for (var i = 0; i < patches.length; i++) {
+    canvas.drawPath(patches[i], Paint()..color = colors[i]);
+    canvas.drawPath(patches[i], _edge(Art.deep(colors[i], .35), 2));
+  }
+  canvas.restore();
+  // Una X pequeña en una casilla donde no se puede dormir.
+  final cross = _edge(Art.deep(colors[1], .5), 3);
+  canvas.drawLine(const Offset(15, -24), const Offset(23, -16), cross);
+  canvas.drawLine(const Offset(23, -24), const Offset(15, -16), cross);
+  canvas.restore();
+
+  // El Tama dormido: una gota verde menta con los ojos cerrados.
+  const c = Offset(38, 62);
+  final body = Path()..addOval(Rect.fromCenter(center: c, width: 34, height: 28));
+  paintPlastic(canvas, body, Art.capsules[2], edge: 1.8);
+  final lid = _edge(Art.deep(Art.capsules[2], .7), 2.2);
+  canvas.drawArc(Rect.fromCenter(center: c + const Offset(-7, 0), width: 7, height: 5), .2, math.pi - .4, false, lid);
+  canvas.drawArc(Rect.fromCenter(center: c + const Offset(7, 0), width: 7, height: 5), .2, math.pi - .4, false, lid);
+  canvas.drawCircle(c + const Offset(0, 7), 2.2, Paint()..color = Art.deep(Art.capsules[2], .6));
+  canvas.drawCircle(c + const Offset(-11, 5), 3, Paint()..color = Art.sakura.withValues(alpha: .7));
+  canvas.drawCircle(c + const Offset(11, 5), 3, Paint()..color = Art.sakura.withValues(alpha: .7));
+
+  // Las zetas, de plastico lila, cada vez mas grandes.
+  void zed(Offset o, double s) {
+    final z = Path()
+      ..moveTo(o.dx, o.dy)
+      ..lineTo(o.dx + s, o.dy)
+      ..lineTo(o.dx, o.dy + s)
+      ..lineTo(o.dx + s, o.dy + s);
+    canvas.drawPath(z, _edge(Art.deep(Art.capsules[4], .35), s * .34 + 1.6));
+    canvas.drawPath(z, _edge(Art.capsules[4], s * .34));
+  }
+
+  zed(const Offset(60, 30), 9);
+  zed(const Offset(74, 12), 13);
+}
+
+/// Odori: un abanico abierto de cinco varillas, cada una del color de una
+/// dificultad, y una nota redonda que cae hacia el.
+void paintOdori(Canvas canvas) {
+  paintGroundShadow(canvas, const Offset(50, 91), 74);
+  const pivot = Offset(50, 80);
+  const colors = [Color(0xFF4CC38A), Color(0xFF3FA9E8), Color(0xFFF2A33A), Color(0xFFEF5B6B), Color(0xFF9B5CE0)];
+  const from = -math.pi * .88, to = -math.pi * .12;
+  const outer = 58.0, inner = 16.0;
+  final step = (to - from) / colors.length;
+  for (var i = 0; i < colors.length; i++) {
+    final a0 = from + i * step, a1 = a0 + step;
+    final leaf = Path()
+      ..moveTo(pivot.dx + math.cos(a0) * inner, pivot.dy + math.sin(a0) * inner)
+      ..lineTo(pivot.dx + math.cos(a0) * outer, pivot.dy + math.sin(a0) * outer)
+      ..arcTo(Rect.fromCircle(center: pivot, radius: outer), a0, step, false)
+      ..lineTo(pivot.dx + math.cos(a1) * inner, pivot.dy + math.sin(a1) * inner)
+      ..arcTo(Rect.fromCircle(center: pivot, radius: inner), a1, -step, false)
+      ..close();
+    paintPlastic(canvas, leaf, colors[i], edge: 1.6, shine: .8);
+  }
+  // Las varillas, de madera clara, hasta el remache.
+  final rib = Paint()
+    ..color = Art.deep(T.foodDough)
+    ..strokeWidth = 2
+    ..strokeCap = StrokeCap.round;
+  for (var i = 0; i <= colors.length; i++) {
+    final a = from + i * step;
+    canvas.drawLine(pivot, Offset(pivot.dx + math.cos(a) * (outer - 3), pivot.dy + math.sin(a) * (outer - 3)), rib);
+  }
+  paintPlastic(canvas, Path()..addOval(Rect.fromCircle(center: pivot, radius: 6)), Art.gold, edge: 1.2, shine: 1);
+  // La nota que cae, con su estela.
+  const n = Offset(78, 16);
+  canvas.drawLine(
+    n.translate(0, -12),
+    n,
+    Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [T.shellTop.withValues(alpha: 0), T.shellTop],
+      ).createShader(Rect.fromLTWH(n.dx - 5, n.dy - 12, 10, 12))
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round,
+  );
+  paintPlastic(canvas, Path()..addOval(Rect.fromCircle(center: n, radius: 8)), T.shellTop, edge: 1.6, shine: 1);
 }
 
 /// La mina: se usa en el icono y en el tablero. [spark] enciende la chispa.

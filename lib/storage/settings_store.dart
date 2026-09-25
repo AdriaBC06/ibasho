@@ -27,6 +27,8 @@ class Preferences {
     this.pinballPlayed = false,
     this.pachinkoOpened = false,
     this.koroOpened = false,
+    this.odoriOpened = false,
+    this.ohiruneOpened = false,
     this.fullscreen = false,
     this.backdropId = '',
     this.accentFollowsTheme = false,
@@ -80,6 +82,12 @@ class Preferences {
   /// El canal de Tamakoro ya se ha desenvuelto.
   final bool koroOpened;
 
+  /// El canal de Odori ya se ha desenvuelto.
+  final bool odoriOpened;
+
+  /// El canal secreto de Ohirune ya se ha desenvuelto.
+  final bool ohiruneOpened;
+
   /// Solo en escritorio: la ventana estaba en pantalla completa al cerrar.
   final bool fullscreen;
 
@@ -114,6 +122,8 @@ class Preferences {
     bool? pinballPlayed,
     bool? pachinkoOpened,
     bool? koroOpened,
+    bool? odoriOpened,
+    bool? ohiruneOpened,
     bool? fullscreen,
     String? backdropId,
     bool? accentFollowsTheme,
@@ -134,6 +144,8 @@ class Preferences {
     pinballPlayed: pinballPlayed ?? this.pinballPlayed,
     pachinkoOpened: pachinkoOpened ?? this.pachinkoOpened,
     koroOpened: koroOpened ?? this.koroOpened,
+    odoriOpened: odoriOpened ?? this.odoriOpened,
+    ohiruneOpened: ohiruneOpened ?? this.ohiruneOpened,
     fullscreen: fullscreen ?? this.fullscreen,
     backdropId: backdropId ?? this.backdropId,
     accentFollowsTheme: accentFollowsTheme ?? this.accentFollowsTheme,
@@ -156,6 +168,8 @@ class Preferences {
     'pinballPlayed': pinballPlayed,
     'pachinkoOpened': pachinkoOpened,
     'koroOpened': koroOpened,
+    'odoriOpened': odoriOpened,
+    'ohiruneOpened': ohiruneOpened,
     'fullscreen': fullscreen,
     'backdropId': backdropId,
     'accentFollowsTheme': accentFollowsTheme,
@@ -182,6 +196,8 @@ class Preferences {
       pinballPlayed: (json['pinballPlayed'] as bool?) ?? false,
       pachinkoOpened: (json['pachinkoOpened'] as bool?) ?? false,
       koroOpened: (json['koroOpened'] as bool?) ?? false,
+      odoriOpened: (json['odoriOpened'] as bool?) ?? false,
+      ohiruneOpened: (json['ohiruneOpened'] as bool?) ?? false,
       fullscreen: (json['fullscreen'] as bool?) ?? false,
       backdropId: (json['backdropId'] as String?) ?? '',
       accentFollowsTheme: (json['accentFollowsTheme'] as bool?) ?? false,

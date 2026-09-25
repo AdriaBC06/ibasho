@@ -32,6 +32,9 @@ abstract final class Ty {
   }) =>
       TextStyle(
         fontFamily: ui,
+        // Zen Kaku no trae el latin extendido (la «ō» de Yakō): lo pone la
+        // redondeada.
+        fontFamilyFallback: const [round],
         fontSize: size,
         fontWeight: weight,
         color: color ?? ink,

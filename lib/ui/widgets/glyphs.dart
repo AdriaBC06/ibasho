@@ -77,6 +77,7 @@ enum Glyph {
   gift,
   trophy,
   flag,
+  moon,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -889,6 +890,25 @@ class _GlyphPainter extends CustomPainter {
             ..lineTo(14, 9.2)
             ..lineTo(18, 13.4)
             ..lineTo(6.4, 13.4),
+          stroke,
+        );
+      case Glyph.moon:
+        // La luna de la siesta: una media luna recortada con otro circulo y
+        // una zeta pequeña arriba, sin tocarla.
+        canvas.drawPath(
+          Path.combine(
+            PathOperation.difference,
+            Path()..addOval(Rect.fromCircle(center: const Offset(10.6, 13.4), radius: 7.4)),
+            Path()..addOval(Rect.fromCircle(center: const Offset(14.8, 10), radius: 6.2)),
+          ),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(16.8, 2.6)
+            ..lineTo(20.8, 2.6)
+            ..lineTo(16.8, 6.4)
+            ..lineTo(20.8, 6.4),
           stroke,
         );
     }

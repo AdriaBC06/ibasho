@@ -36,10 +36,15 @@ void main() {
     test('un articulo por juego y uno por cada comida', () {
       expect(
         shopCatalog
-            .where((i) => i.section == ShopSection.games && i.koroTier == null)
+            .where((i) => i.section == ShopSection.games && i.koroTier == null && i.odoriSong == null)
             .map((i) => i.gameId),
         ['minesweeper', 'tsumiki', 'nihongo'],
       );
+      // Las canciones de pago de Odori, ninguna de las gratis.
+      expect(shopCatalog.where((i) => i.odoriSong != null).map((i) => i.id), [
+        for (final s in odoriPaidSongs) 'odori_$s',
+      ]);
+      expect(odoriPaidSongs.toSet().intersection(odoriFreeSongs), isEmpty);
       expect(
         shopCatalog.where((i) => i.koroTier != null).map((i) => i.koroTier),
         [1, 2, 3, 4],

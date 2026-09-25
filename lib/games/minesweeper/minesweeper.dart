@@ -36,6 +36,10 @@ class MinesweeperCell {
   bool revealed = false;
   bool flagged = false;
 
+  /// Un «?»: no se sabe si hay mina. Solo es una nota, no protege la casilla
+  /// ni cuenta como bandera.
+  bool questioned = false;
+
   /// Se marca al perder: una bandera puesta donde no habia mina.
   bool wrongFlag = false;
 }
@@ -186,6 +190,7 @@ class MinesweeperGame {
     final cell = cellAt(x, y);
     if (cell.revealed || cell.flagged) return;
     cell.revealed = true;
+    cell.questioned = false;
 
     if (cell.mine) {
       _lose(x, y);
@@ -225,7 +230,23 @@ class MinesweeperGame {
     if (cell.revealed) return;
     cell.flagged = !cell.flagged;
     flagsPlaced += cell.flagged ? 1 : -1;
-    if (cell.flagged) usedFlags = true;
+    if (cell.flagged) {
+      usedFlags = true;
+      cell.questioned = false;
+    }
+  }
+
+  /// Pone o quita el «?» de una casilla tapada. Si tenia bandera, la cambia
+  /// por el «?».
+  void toggleQuestion(int x, int y) {
+    if (isOver) return;
+    final cell = cellAt(x, y);
+    if (cell.revealed) return;
+    if (cell.flagged) {
+      cell.flagged = false;
+      flagsPlaced--;
+    }
+    cell.questioned = !cell.questioned;
   }
 
   void _lose(int x, int y) {
@@ -250,6 +271,7 @@ class MinesweeperGame {
       for (final cell in row) {
         if (cell.mine && !cell.flagged) {
           cell.flagged = true;
+          cell.questioned = false;
           flagsPlaced++;
         }
       }

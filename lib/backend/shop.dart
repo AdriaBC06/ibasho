@@ -32,6 +32,7 @@ class ShopItem {
     this.gameId,
     this.ticket,
     this.koroTier,
+    this.odoriSong,
   });
 
   /// Clave de `/shop/prices/{id}` y de `shop/last.item`. Para un juego,
@@ -55,6 +56,10 @@ class ShopItem {
   /// 1 a 4. Se vende uno a uno y solo el del tramo en el que va la cuenta.
   final int? koroTier;
 
+  /// Solo en las canciones de pago de Odori (seccion de juegos): el id de la
+  /// cancion. Se guarda en `/users/{cuenta}/odori/songs/{cancion}`.
+  final String? odoriSong;
+
   /// Si hoy se puede comprar, dado el conjunto de comidas desbloqueadas. Un
   /// articulo de comida bloqueada se ensena igual en la rejilla, hundido y
   /// con un candado, pero no se puede pedir.
@@ -64,6 +69,7 @@ class ShopItem {
   static String idForFood(TamaFood food) => 'food_${food.name}';
   static String idForGame(String gameId) => 'game_$gameId';
   static String idForKoroTier(int tier) => 'koro_slot_$tier';
+  static String idForOdoriSong(String song) => 'odori_$song';
 }
 
 /// El catalogo del Yatai, fijo en el codigo. Los juegos y una comida por
@@ -79,7 +85,16 @@ final List<ShopItem> shopCatalog = List<ShopItem>.unmodifiable(<ShopItem>[
     ShopItem(id: kind.itemId, section: ShopSection.gacha, ticket: kind),
   for (var tier = 1; tier <= 4; tier++)
     ShopItem(id: ShopItem.idForKoroTier(tier), section: ShopSection.games, koroTier: tier),
+  for (final song in odoriPaidSongs)
+    ShopItem(id: ShopItem.idForOdoriSong(song), section: ShopSection.games, odoriSong: song),
 ]);
+
+/// Las canciones de Odori que vienen gratis. El resto se compra en el Yatai
+/// (o desde el propio Odori) a 10 monedas cada una.
+const Set<String> odoriFreeSongs = {'tamagoyaki', 'ibasho', 'yako'};
+
+/// Las de pago, en el orden del selector.
+const List<String> odoriPaidSongs = ['hanabi', 'nekobasu', 'kasa', 'tsukimi', 'kaerimichi'];
 
 /// `/users/{cuenta}/shop/week`: lo que se lleva comprado de cada ticket esta
 /// semana. Una semana nueva empieza de cero, y las reglas comprueban que el

@@ -80,6 +80,27 @@ class _FlagIconPainter extends CustomPainter {
   bool shouldRepaint(_FlagIconPainter old) => false;
 }
 
+/// Un «?» de plastico para el modo de duda.
+class QuestionIcon extends StatelessWidget {
+  const QuestionIcon({super.key});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, box) => Center(
+          child: Text(
+            '?',
+            style: TextStyle(
+              fontFamily: Ty.round,
+              fontSize: box.biggest.shortestSide * .95,
+              fontWeight: FontWeight.w800,
+              color: IbashoSkin.of(context).accentDeep,
+              height: 1,
+            ),
+          ),
+        ),
+      );
+}
+
 /// Una casilla tapada con una flecha de pulsar: el modo de destapar.
 class DigIcon extends StatelessWidget {
   const DigIcon({super.key});
@@ -119,29 +140,34 @@ class _DigIconPainter extends CustomPainter {
   bool shouldRepaint(_DigIconPainter old) => old.accent != accent;
 }
 
-// --- Interruptor destapar / bandera ----------------------------------------------
+// --- Interruptor destapar / bandera / duda --------------------------------------
 
-/// Dos posiciones en un rail hundido; la elegida la tapa un pomo de plastico
+/// Que hace tocar una casilla.
+enum TapMode { dig, flag, question }
+
+/// Tres posiciones en un rail hundido; la elegida la tapa un pomo de plastico
 /// que se desliza con rebote.
 class ModeSwitch extends StatelessWidget {
   const ModeSwitch({
     super.key,
-    required this.flagMode,
+    required this.mode,
     required this.onChanged,
     required this.digLabel,
     required this.flagLabel,
+    required this.questionLabel,
     this.height = 52,
     this.showLabels = true,
     this.width,
   });
 
-  /// Ancho total. Sin el, cada mitad mide lo justo para su contenido.
+  /// Ancho total. Sin el, cada tercio mide lo justo para su contenido.
   final double? width;
 
-  final bool flagMode;
-  final ValueChanged<bool> onChanged;
+  final TapMode mode;
+  final ValueChanged<TapMode> onChanged;
   final String digLabel;
   final String flagLabel;
+  final String questionLabel;
   final double height;
   final bool showLabels;
 
@@ -149,21 +175,26 @@ class ModeSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final skin = IbashoSkin.of(context);
     final knob = height - 8;
-    final half = width != null ? (width! - 8) / 2 : (showLabels ? height * 2.5 : height * 1.25);
+    final third = width != null ? (width! - 8) / 3 : (showLabels ? height * 2.3 : height * 1.05);
 
-    Widget option(bool flag) {
-      final active = flag == flagMode;
+    Widget option(TapMode m) {
+      final active = m == mode;
+      final label = switch (m) {
+        TapMode.dig => digLabel,
+        TapMode.flag => flagLabel,
+        TapMode.question => questionLabel,
+      };
       return Pressable(
-        key: ValueKey<String>(flag ? 'minesweeper.mode.flag' : 'minesweeper.mode.dig'),
+        key: ValueKey<String>('minesweeper.mode.${m.name}'),
         cue: null,
-        semanticLabel: flag ? flagLabel : digLabel,
+        semanticLabel: label,
         onPressed: () {
           if (active) return;
           AudioService.instance.play(Sfx.tick);
-          onChanged(flag);
+          onChanged(m);
         },
         builder: (context, state) => SizedBox(
-          width: half,
+          width: third,
           height: height,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -171,13 +202,17 @@ class ModeSwitch extends StatelessWidget {
               SizedBox(
                 width: knob * (showLabels ? .62 : .8),
                 height: knob * (showLabels ? .62 : .8),
-                child: flag ? const FlagIcon() : const DigIcon(),
+                child: switch (m) {
+                  TapMode.dig => const DigIcon(),
+                  TapMode.flag => const FlagIcon(),
+                  TapMode.question => const QuestionIcon(),
+                },
               ),
               if (showLabels) ...[
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    flag ? flagLabel : digLabel,
+                    label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Ty.body.copyWith(
@@ -194,7 +229,7 @@ class ModeSwitch extends StatelessWidget {
     }
 
     return SizedBox(
-      width: half * 2 + 8,
+      width: third * 3 + 8,
       height: height,
       child: GlossSurface(
         radius: height / 2,
@@ -204,11 +239,15 @@ class ModeSwitch extends StatelessWidget {
             AnimatedAlign(
               duration: skin.motion(const Duration(milliseconds: 260)),
               curve: skin.curve(Curves.easeOutBack),
-              alignment: flagMode ? Alignment.centerRight : Alignment.centerLeft,
+              alignment: switch (mode) {
+                TapMode.dig => Alignment.centerLeft,
+                TapMode.flag => Alignment.center,
+                TapMode.question => Alignment.centerRight,
+              },
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: SizedBox(
-                  width: half,
+                  width: third,
                   height: knob,
                   child: GlossSurface(
                     radius: knob / 2,
@@ -222,7 +261,7 @@ class ModeSwitch extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(children: [option(false), option(true)]),
+              child: Row(children: [for (final m in TapMode.values) option(m)]),
             ),
           ],
         ),

@@ -168,6 +168,20 @@ test('once bolas por un ticket no cuelan', async () => {
   );
 });
 
+test('de 1 a 9 bolas cuestan un ticket cada una', async () => {
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), pull('gachaken', 5, { tickets: 7, balls: { n: 3, r: 2 } })),
+  );
+});
+
+test('9 bolas por menos de 9 tickets no cuelan', async () => {
+  await assertFails(update(ref(db(ANA), '/'), pull('gachaken', 9, { tickets: 11, balls: { n: 9 } })));
+});
+
+test('10 bolas sueltas no existen: con 10 tickets se tira la de 11', async () => {
+  await assertFails(update(ref(db(ANA), '/'), pull('gachaken', 10, { tickets: 2, balls: { n: 10 } })));
+});
+
 test('una tirada no puede dar mas bolas de las tiradas', async () => {
   await assertFails(update(ref(db(ANA), '/'), pull('gachaken', 1, { tickets: 11, balls: { ur: 2 } })));
 });

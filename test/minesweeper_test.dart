@@ -94,6 +94,54 @@ void main() {
     });
   });
 
+  group('duda', () {
+    (int, int) covered(MinesweeperGame game, {required bool mine}) {
+      for (var y = 0; y < game.height; y++) {
+        for (var x = 0; x < game.width; x++) {
+          final c = game.cellAt(x, y);
+          if (!c.revealed && c.mine == mine) return (x, y);
+        }
+      }
+      throw StateError('sin casilla');
+    }
+
+    test('el «?» no cuenta como bandera y se cambia por ella', () {
+      final game = MinesweeperGame(MinesweeperLevel.easy, seed: 1);
+      game.reveal(0, 0);
+      final (x, y) = covered(game, mine: true);
+      final before = game.minesLeft;
+      game.toggleQuestion(x, y);
+      expect(game.cellAt(x, y).questioned, isTrue);
+      expect(game.minesLeft, before);
+      game.toggleFlag(x, y);
+      expect(game.cellAt(x, y).questioned, isFalse);
+      expect(game.minesLeft, before - 1);
+      game.toggleQuestion(x, y);
+      expect(game.cellAt(x, y).flagged, isFalse);
+      expect(game.cellAt(x, y).questioned, isTrue);
+      expect(game.minesLeft, before);
+      game.toggleQuestion(x, y);
+      expect(game.cellAt(x, y).questioned, isFalse);
+    });
+
+    test('una casilla con «?» se puede destapar', () {
+      final game = MinesweeperGame(MinesweeperLevel.easy, seed: 1);
+      game.reveal(0, 0);
+      final (x, y) = covered(game, mine: false);
+      game.toggleQuestion(x, y);
+      game.reveal(x, y);
+      expect(game.cellAt(x, y).revealed, isTrue);
+      expect(game.cellAt(x, y).questioned, isFalse);
+    });
+
+    test('no se puede poner «?» en una casilla ya destapada', () {
+      final game = MinesweeperGame(MinesweeperLevel.easy, seed: 1);
+      game.reveal(0, 0);
+      game.toggleQuestion(0, 0);
+      expect(game.cellAt(0, 0).questioned, isFalse);
+    });
+  });
+
   group('chord', () {
     test('destapa las vecinas cuando el numero ya tiene sus banderas', () {
       final game = MinesweeperGame(MinesweeperLevel.easy, seed: 1);

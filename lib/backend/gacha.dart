@@ -93,7 +93,13 @@ const int singlePullBalls = 1;
 const int multiPullBalls = 11;
 const int multiPullCost = 10;
 
-int pullCost(int balls) => balls == multiPullBalls ? multiPullCost : 1;
+/// Tiradas sueltas de golpe: de 1 a [maxLoosePull] bolas, un ticket cada una.
+/// La de 10 tickets ya es la ×11 (10 + 1 de regalo).
+const int maxLoosePull = 9;
+
+bool isPullSize(int balls) => (balls >= 1 && balls <= maxLoosePull) || balls == multiPullBalls;
+
+int pullCost(int balls) => balls == multiPullBalls ? multiPullCost : balls;
 
 /// Hasta que rareza se puede pedir en el Catalogo. Las reglas exigen lo
 /// mismo.

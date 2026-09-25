@@ -7,7 +7,8 @@ toca los dos sitios.
 
 Regla de la casa: solo **CC0** o **CC BY** para audio, **SIL OFL** para
 tipografías. Nada con cláusula NC o ND (incompatible con GPL-3.0) y ningún audio
-original de Nintendo.
+original de Nintendo. **Única excepción:** las canciones de Odori, que no son
+código ni forman parte de la obra GPL y se licencian aparte (ver más abajo).
 
 ## Tamas
 
@@ -65,6 +66,51 @@ ha alterado nada más.
 |---|---|---|---|---|
 | Bossa Nova | `assets/audio/bgm/bossa.ogg` | Joth | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/bossa-nova |
 
+### Odori: canciones y voces
+
+Las nueve canciones de Odori (Tamagoyaki, Hanabi no Ato, Neko no Basu, Ame no Hi
+no Kasa, Tsukimi Dango, Kaeri Michi, Ibasho, Yakō y Hoshikuzu Dash), con su
+música, sus letras (`docs/letras/`) y sus partituras, son de Adrià Bonnin
+Catalán, generadas con `tool/gen_odori_music.py`, `tool/odori_canciones.py` y
+`tool/odori_voices.py` (esos scripts sí son GPL-3.0).
+
+**Todo lo que hay en `assets/odori/` se licencia bajo
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/), no bajo la
+GPL-3.0**, instrumentales incluidas, porque las voces de Teto, Kiritan y
+Zundamon solo permiten uso no comercial. Ibasho no se vende ni da dinero; las
+monedas del Yatai son del juego y no se compran.
+
+La licencia CC cubre la parte de Adrià. **La voz de cada versión conserva
+además las condiciones de su banco**, que siguen valiendo para quien reutilice
+los archivos:
+
+- **Teto:** nada comercial; nada que ofenda o dañe a terceros; no hacerse pasar
+  por su autora.
+- **NEUTRINO (Kiritan, Zundamon, Merrow):**
+  - prohibido usar el audio para entrenar modelos o como entrada de conversión
+    de voz;
+  - prohibido usarlo como librería de sonidos o de samples;
+  - nada político, religioso, violento ni difamatorio.
+- **Kiritan y Zundamon:** además, la guía de personajes de zunko.jp.
+
+| Voz | Autor | Licencia | Dónde sale |
+|---|---|---|---|
+| NIT SONG070 F001 (Sinsy) | Nagoya Institute of Technology (HTS Working Group) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). **Cambios:** su f0 se sustituye por una curva de la partitura y se resintetiza con WORLD; `hoshikuzu_voz_b` lleva además los formantes ×1,12. | Hoshikuzu Dash (`_voz`, `_voz_b`), `yako_*_sinsy` |
+| Kasane Teto 重音テト (JP y EN) | Voz: 小山乃舞世. Diseño del personaje: 線. Círculo oficial: ツインドリル (TWINDRILL). | [Condiciones del banco de voz](https://kasaneteto.jp/guideline/vltu.html): no comercial. Kasane Teto © TWINDRILL. | Todas las `*_teto` |
+| Tohoku Kiritan 東北きりたん | Personaje: 東北ずん子・ずんだもんプロジェクト (SSS LLC.). Banco NEUTRINO: STUDIO NEUTRINO. | [zunko.jp](https://zunko.jp/guideline.html): no comercial, sin trámite | `yako_*_kiritan` |
+| Zundamon ずんだもん | Igual que Kiritan | Igual que Kiritan | `yako_*_zundamon` |
+| Merrow めろう | STUDIO NEUTRINO | Licencia de la librería NEUTRINO: uso comercial y no comercial, crédito opcional | `yako_*_merrow` |
+
+El entrenamiento del banco de Kiritan usa el 東北きりたん歌唱データベース.
+
+**Herramientas usadas para cantar** (ninguna va dentro de la app):
+
+| Herramienta | Autor | Licencia | URL |
+|---|---|---|---|
+| NEUTRINO | SHACHI (STUDIO NEUTRINO) | Freeware; el audio que genera sigue las condiciones de cada banco | https://studio-neutrino.com |
+| Sinsy / pysinsy | Sinsy working group, Nagoya Institute of Technology | Modified BSD | https://sinsy.sourceforge.net |
+| WORLD / pyworld | Masanori Morise; pyworld, Jeremy Hsu y colaboradores | Modified BSD (WORLD), MIT (pyworld) | https://github.com/mmorise/World |
+
 ### Reservado (no se empaqueta en la app)
 
 Guardadas en `reserved/audio/bgm/` para usos futuros. No están en
@@ -93,3 +139,5 @@ Guardadas en `reserved/audio/bgm/` para usos futuros. No están en
 
 Ibasho se publica bajo la **GNU General Public License, versión 3 o posterior**.
 Ver `LICENSE`.
+Las canciones de Odori (`assets/odori/`) son la excepción: CC BY-NC 4.0, como
+se explica arriba.

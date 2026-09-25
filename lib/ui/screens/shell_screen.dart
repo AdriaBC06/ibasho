@@ -27,6 +27,7 @@ import '../widgets/gloss.dart';
 import '../widgets/panel.dart';
 import 'channel_grid.dart';
 import 'channel_route.dart';
+import '../../games/ohirune/ohirune.dart';
 import 'channels/channel.dart';
 import 'login_bonus_panel.dart';
 import 'top_panel.dart';
@@ -185,6 +186,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     final koro =
         ref.watch(tamasProvider.select((t) => t.tamas.isNotEmpty)) ||
         prefs.koroOpened;
+    // Ohirune, el canal secreto, con los Tamas del tablero facil.
+    final ohirune =
+        ref.watch(tamasProvider.select((t) => t.tamas.length >= ohiruneUnlockTamas)) ||
+        prefs.ohiruneOpened;
     final channels = channelsFor(
       isAdmin: ref.read(sessionProvider).isAdmin,
       installedGames: ref.watch(installedGamesProvider),
@@ -196,6 +201,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
       pachinkoGift: pachinko && !prefs.pachinkoOpened,
       koroUnlocked: koro,
       koroGift: koro && !prefs.koroOpened,
+      odoriGift: !prefs.odoriOpened,
+      ohiruneUnlocked: ohirune,
+      ohiruneGift: ohirune && !prefs.ohiruneOpened,
     );
     // El orden que haya elegido la cuenta manda; lo nuevo va al final y lo que
     // ya no existe se ignora (ver `applyChannelOrder`).

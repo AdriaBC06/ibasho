@@ -61,6 +61,16 @@ class PreferencesController extends StateNotifier<Preferences> {
       ? Future<void>.value()
       : _commit(state.copyWith(koroOpened: true));
 
+  /// El canal de Odori ya se ha desenvuelto.
+  Future<void> openOdori() => state.odoriOpened
+      ? Future<void>.value()
+      : _commit(state.copyWith(odoriOpened: true));
+
+  /// El canal secreto de Ohirune ya se ha desenvuelto.
+  Future<void> openOhirune() => state.ohiruneOpened
+      ? Future<void>.value()
+      : _commit(state.copyWith(ohiruneOpened: true));
+
   Future<void> setHourFormat24(bool value) =>
       _commit(state.copyWith(hourFormat24: value));
 

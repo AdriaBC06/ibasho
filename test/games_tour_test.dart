@@ -26,6 +26,7 @@ import 'package:ibasho/games/minesweeper/minesweeper_channel.dart';
 import 'package:ibasho/games/nihongo/nihongo_channel.dart';
 import 'package:ibasho/games/nihongo/nihongo_widgets.dart';
 import 'package:ibasho/games/tsumiki/tsumiki_channel.dart';
+import 'package:ibasho/state/login_bonus.dart' show bonusDay;
 import 'package:ibasho/state/providers.dart';
 import 'package:ibasho/storage/settings_store.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -176,6 +177,44 @@ Future<void> main() async {
         await settle(tester, 80);
       });
 
+      testWidgets('clasificaciones: butai de ayer con una sola cuenta', (tester) async {
+        final backend = shopBackend();
+        final me = backend.uid;
+        final day = bonusDay();
+        // Ayer solo jugo una cuenta y nadie cerro el periodo: al abrir el
+        // canal se cierra con ella sola y puede cobrar el primer puesto.
+        backend
+          ..seed('/leaderboards/odori_butai/daily/${day - 1}', {
+            'day': day - 1,
+            'scores': {me: 1200000},
+          })
+          ..seed('/leaderboards/odori_butai/daily/$day', {
+            'day': day,
+            'scores': {me: 850000},
+          });
+        await boot(tester, backend: backend);
+        await settle(tester, 100);
+        await openChannel(tester, 'leaderboards');
+        await tester.tap(find.text('odori').last);
+        await settle(tester, 40);
+        await tester.tap(find.text('butai').last);
+        await settle(tester, 60);
+        await shoot(tester, 'cl1-butai');
+        expect(backend.peek('/leaderboards/odori_butai/daily/${day - 1}/results/1'), me);
+        expect(find.byKey(const ValueKey<String>('leaderboards.resets')), findsOneWidget);
+
+        // Los resultados ya cerrados vuelven como lista, igual que en Firebase
+        // ({1: a} se lee [null, a]): al cambiar de tabla y volver, el podio
+        // tiene que seguir ahi.
+        backend.seed('/leaderboards/odori_butai/daily/${day - 1}/results', [null, me]);
+        await tester.tap(find.text('tsumiki').last);
+        await settle(tester, 40);
+        await tester.tap(find.text('odori').last);
+        await settle(tester, 60);
+        await shoot(tester, 'cl2-butai-otra-vez');
+        expect(find.text('nº 1'), findsOneWidget);
+      });
+
       testWidgets('gachapón: regalo y tirada', (tester) async {
         await boot(tester, backend: shopBackend());
         await settle(tester, 100);
@@ -208,6 +247,18 @@ Future<void> main() async {
         await shoot(tester, 'ga7-botin');
         await tester.tap(find.byKey(const ValueKey<String>('gacha.keep')));
         await settle(tester, 30);
+
+        // Quedan 2 tickets: una tirada suelta de 2 bolas los deja en 0.
+        await tester.tap(find.byKey(const ValueKey<String>('gacha.more')));
+        await settle(tester, 10);
+        await shoot(tester, 'ga7b-dos-bolas');
+        await tester.tap(find.byKey(const ValueKey<String>('gacha.pull')));
+        await settle(tester, 20);
+        await tester.tap(find.byKey(const ValueKey<String>('gacha.confirm.yes')));
+        await settle(tester, 320);
+        await tester.tap(find.byKey(const ValueKey<String>('gacha.keep')));
+        await settle(tester, 30);
+        await shoot(tester, 'ga7c-sin-tickets');
 
         await tester.tap(find.byKey(const ValueKey<String>('gacha.deposit')));
         await settle(tester, 30);

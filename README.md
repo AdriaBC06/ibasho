@@ -712,3 +712,5 @@ modificado podría ignorarlo.
 
 GPL-3.0-or-later. Ver [`LICENSE`](LICENSE). Los assets de terceros y sus
 licencias están en [`CREDITS.md`](CREDITS.md).
+Las canciones de Odori (`assets/odori/`) no son GPL: van bajo CC BY-NC 4.0,
+porque las voces solo permiten uso no comercial.

@@ -299,7 +299,7 @@ class Readout extends StatelessWidget {
 
 /// Las monedas que quedan hoy en este juego: la moneda, «8/20 hoy» y una
 /// barrita dorada que se llena. Cada juego tiene su tope de
-/// [dailyRewardCap] al dia, y esto es lo que lo deja a la vista en su menu.
+/// [rewardCapFor] al dia, y esto es lo que lo deja a la vista en su menu.
 /// Lleno, lo dice y se queda en verde.
 class DailyCoinsMeter extends ConsumerWidget {
   const DailyCoinsMeter({super.key, required this.game, this.height = 44});
@@ -312,8 +312,9 @@ class DailyCoinsMeter extends ConsumerWidget {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final earned = ref.watch(rewardsProvider.select((r) => r.earnedToday(game)));
-    final full = earned >= dailyRewardCap;
-    final t = (earned / dailyRewardCap).clamp(0.0, 1.0);
+    final cap = rewardCapFor(game);
+    final full = earned >= cap;
+    final t = (earned / cap).clamp(0.0, 1.0);
     return SizedBox(
       key: ValueKey<String>('game.coins.$game'),
       height: height,
@@ -333,7 +334,7 @@ class DailyCoinsMeter extends ConsumerWidget {
                   Row(
                     children: [
                       Text(
-                        '$earned/$dailyRewardCap',
+                        '$earned/$cap',
                         style: Ty.numeral(height * .34, color: full ? T.correct : Art.goldDark, weight: FontWeight.w700),
                       ),
                       SizedBox(width: height * .14),

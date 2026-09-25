@@ -53,9 +53,16 @@ class ShopState {
     this.prices = const <String, int>{},
     this.games = const <String, GameInstall>{},
     this.week,
+    this.odoriSongs = const <String>{},
     this.loaded = false,
     this.busy = false,
   });
+
+  /// `/users/{cuenta}/odori/songs`: las canciones de pago de Odori compradas.
+  final Set<String> odoriSongs;
+
+  /// Si la cancion [song] de Odori se puede jugar: gratis o comprada.
+  bool hasOdoriSong(String song) => odoriFreeSongs.contains(song) || odoriSongs.contains(song);
 
   /// `/shop/prices`, por id de articulo. Sin entrada, el articulo no esta a
   /// la venta.
@@ -81,12 +88,14 @@ class ShopState {
     Map<String, int>? prices,
     Map<String, GameInstall>? games,
     WeekTickets? week,
+    Set<String>? odoriSongs,
     bool? loaded,
     bool? busy,
   }) => ShopState(
     prices: prices ?? this.prices,
     games: games ?? this.games,
     week: week ?? this.week,
+    odoriSongs: odoriSongs ?? this.odoriSongs,
     loaded: loaded ?? this.loaded,
     busy: busy ?? this.busy,
   );
@@ -149,6 +158,7 @@ class ShopController extends StateNotifier<ShopState> {
         _backend.read('/shop/prices', idToken: token),
         _backend.read('/users/$_me/games', idToken: token),
         _backend.read('/users/$_me/shop/week', idToken: token),
+        _backend.read('/users/$_me/odori/songs', idToken: token),
       ]);
       _pricesTree = results[0];
       _gamesTree = results[1];
@@ -157,6 +167,7 @@ class ShopController extends StateNotifier<ShopState> {
           prices: _parsePrices(results[0]),
           games: _parseGames(results[1]),
           week: WeekTickets.fromJson(results[2]),
+          odoriSongs: _parseSongs(results[3]),
           loaded: true,
         );
       }
@@ -193,6 +204,12 @@ class ShopController extends StateNotifier<ShopState> {
       }, onError: (Object e) => debugPrint('Ibasho: stream de la semana ($e)')),
     );
   }
+
+  static Set<String> _parseSongs(Object? raw) => {
+        if (raw is Map)
+          for (final e in raw.entries)
+            if (e.value == true) '${e.key}',
+      };
 
   static Map<String, int> _parsePrices(Object? raw) {
     if (raw is! Map) return const <String, int>{};
@@ -239,6 +256,10 @@ class ShopController extends StateNotifier<ShopState> {
         (qty != 1 || slots >= koroMaxSlots || tier != koroSlotTier(slots))) {
       throw const ShopException(ShopFailure.alreadyOwned);
     }
+    final song = item.odoriSong;
+    if (song != null && (qty != 1 || state.hasOdoriSong(song))) {
+      throw const ShopException(ShopFailure.alreadyOwned);
+    }
     final price = state.prices[item.id];
     if (price == null) throw const ShopException(ShopFailure.noPrice);
     final cost = price * qty;
@@ -266,6 +287,7 @@ class ShopController extends StateNotifier<ShopState> {
             (state.week ?? WeekTickets(week: gachaWeek())).afterBuying(ticket, qty),
       },
       if (tier != null) 'users/$_me/koro/slots': slots + 1,
+      if (song != null) 'users/$_me/odori/songs/$song': true,
       // Señal para la mision «compra algo en el Yatai» (`missions.dart`).
       'users/$_me/missions/signal/buy': {'at': serverTimestamp},
     };
@@ -273,6 +295,7 @@ class ShopController extends StateNotifier<ShopState> {
     state = state.copyWith(busy: true);
     try {
       await _backend.merge('/', writes, idToken: await _session.freshToken());
+      if (song != null && mounted) state = state.copyWith(odoriSongs: {...state.odoriSongs, song});
     } on IbashoException catch (e) {
       throw ShopException(
         e.failure == IbashoFailure.network

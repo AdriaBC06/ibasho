@@ -1,7 +1,7 @@
 name: ibasho
 description: "Ibasho — 居場所, tu lugar. Un espacio de juegos multiplataforma."
 publish_to: 'none'
-version: 0.6.2+13
+version: 0.6.3+14
 
 environment:
   sdk: ^3.11.0
@@ -60,6 +60,15 @@ flutter:
     - assets/audio/sfx/
     - assets/fonts/LICENSES/
     - assets/prizes/
+    # Odori: una carpeta por cancion (audio, partitura y letra).
+    - assets/odori/hanabi/
+    - assets/odori/ibasho/
+    - assets/odori/kaerimichi/
+    - assets/odori/kasa/
+    - assets/odori/nekobasu/
+    - assets/odori/tamagoyaki/
+    - assets/odori/tsukimi/
+    - assets/odori/yako/
 
   fonts:
     # Interfaz. Gotica japonesa con kana completo (SIL OFL 1.1).

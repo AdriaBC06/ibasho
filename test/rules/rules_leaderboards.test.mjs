@@ -180,6 +180,37 @@ test('buscaminas (mas bajo mejor): un tiempo peor no sustituye al mejor', async 
   );
 });
 
+test('ohirune (tiempo, mas bajo mejor): solo mejora bajando, con el tope de una hora', async () => {
+  await seed({
+    leaderboards: { ohirune: { daily: { [day]: { day, scores: { [ANA]: 90000 } } } } },
+  });
+  await assertFails(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/ohirune/daily/${day}/scores/${ANA}`]: 95000,
+      [`leaderboards/ohirune/daily/${day}/at/${ANA}`]: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/ohirune/daily/${day}/scores/${ANA}`]: 70000,
+      [`leaderboards/ohirune/daily/${day}/at/${ANA}`]: serverTimestamp(),
+    }),
+  );
+});
+
+test('tsumiki: las filas van con la puntuacion, nunca solas', async () => {
+  await seed({});
+  await assertFails(set(ref(db(ANA), `/leaderboards/tsumiki/daily/${day}/lines/${ANA}`), 12));
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/tsumiki/daily/${day}/day`]: day,
+      [`leaderboards/tsumiki/daily/${day}/scores/${ANA}`]: 1200,
+      [`leaderboards/tsumiki/daily/${day}/at/${ANA}`]: serverTimestamp(),
+      [`leaderboards/tsumiki/daily/${day}/lines/${ANA}`]: 12,
+    }),
+  );
+});
+
 // --- No se puede jugar un periodo pasado ------------------------------------
 
 test('no se puede escribir la puntuacion de un dia que ya paso', async () => {
@@ -233,11 +264,17 @@ test('los resultados ya cerrados no se pueden reescribir', async () => {
   );
 });
 
-test('los resultados necesitan primero y segundo, sin repetir cuenta', async () => {
+test('los resultados necesitan al menos el primero, sin huecos ni cuentas repetidas', async () => {
   await assertFails(
     update(ref(db(ANA), '/'), {
       [`leaderboards/tsumiki/daily/${day - 1}/day`]: day - 1,
-      [`leaderboards/tsumiki/daily/${day - 1}/results`]: { 1: ANA },
+      [`leaderboards/tsumiki/daily/${day - 1}/results`]: { 2: ANA },
+    }),
+  );
+  await assertFails(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/tsumiki/daily/${day - 1}/day`]: day - 1,
+      [`leaderboards/tsumiki/daily/${day - 1}/results`]: { 1: ANA, 3: BEN },
     }),
   );
   await assertFails(
@@ -356,6 +393,49 @@ test('sin el recibo `leaderboardClaims/last` fresco, el ticket no sube', async (
     update(ref(db(ANA), '/'), {
       [`users/${ANA}/leaderboardClaims/tsumiki/daily/${day - 1}/gachaken`]: true,
       [`users/${ANA}/tickets/gachaken`]: 7,
+    }),
+  );
+});
+
+test('si solo jugo una cuenta, el periodo se cierra con ella sola y cobra el primer puesto', async () => {
+  await seed({
+    leaderboards: { odori: { daily: { [day - 1]: { day: day - 1, scores: { [ANA]: 1200000 } } } } },
+  });
+  await assertSucceeds(
+    update(ref(db(BEN), '/'), {
+      [`leaderboards/odori/daily/${day - 1}/results`]: { 1: ANA },
+    }),
+  );
+  await assertSucceeds(update(ref(db(ANA), '/'), claim(ANA, 'odori', 'daily', day - 1, 1, 'gachaken', 7)));
+});
+
+test('odori admite hasta 1.500.000 (millon por la dificultad) y no mas', async () => {
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/odori/daily/${day}/day`]: day,
+      [`leaderboards/odori/daily/${day}/scores/${ANA}`]: 1500000,
+      [`leaderboards/odori/daily/${day}/at/${ANA}`]: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    update(ref(db(BEN), '/'), {
+      [`leaderboards/odori/daily/${day}/day`]: day,
+      [`leaderboards/odori/daily/${day}/scores/${BEN}`]: 1500001,
+      [`leaderboards/odori/daily/${day}/at/${BEN}`]: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    update(ref(db(BEN), '/'), {
+      [`leaderboards/odori_butai/daily/${day}/day`]: day,
+      [`leaderboards/odori_butai/daily/${day}/scores/${BEN}`]: 1500000,
+      [`leaderboards/odori_butai/daily/${day}/at/${BEN}`]: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    update(ref(db(BEN), '/'), {
+      [`leaderboards/tsumiki/daily/${day}/day`]: day,
+      [`leaderboards/tsumiki/daily/${day}/scores/${BEN}`]: 1000000,
+      [`leaderboards/tsumiki/daily/${day}/at/${BEN}`]: serverTimestamp(),
     }),
   );
 });

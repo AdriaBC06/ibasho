@@ -136,6 +136,10 @@ class _GachaChannelState extends ConsumerState<GachaChannel>
   _Phase _phase = _Phase.idle;
   PullResult? _result;
 
+  /// Las bolas de la tirada suelta, de 1 a [maxLoosePull]. Con 10 tickets ya
+  /// se tira la de 11.
+  int _loose = singlePullBalls;
+
   /// Cuantas bolas se han tirado (se sabe antes que el resultado) y cuantas
   /// se han destapado ya.
   int _balls = 0;
@@ -350,7 +354,9 @@ class _GachaChannelState extends ConsumerState<GachaChannel>
       shown: _shown,
       tall: tall,
       busy: gacha.busy || _busy,
-      onPull: () => unawaited(_pull(singlePullBalls)),
+      loose: _loose,
+      onLoose: (n) => setState(() => _loose = n.clamp(1, maxLoosePull)),
+      onPull: () => unawaited(_pull(_loose)),
       onPullMulti: () => unawaited(_pull(multiPullBalls)),
       onSkip: _skip,
       onKeep: _keep,
@@ -440,6 +446,8 @@ class _MachineStage extends StatefulWidget {
     required this.shown,
     required this.tall,
     required this.busy,
+    required this.loose,
+    required this.onLoose,
     required this.onPull,
     required this.onPullMulti,
     required this.onSkip,
@@ -457,6 +465,10 @@ class _MachineStage extends StatefulWidget {
   final int shown;
   final bool tall;
   final bool busy;
+
+  /// Las bolas de la tirada suelta y como cambiarlas.
+  final int loose;
+  final ValueChanged<int> onLoose;
   final VoidCallback onPull;
   final VoidCallback onPullMulti;
   final VoidCallback onSkip;
@@ -589,26 +601,45 @@ class _MachineStageState extends State<_MachineStage>
             ),
           );
         } else {
+          // De 1 a 9 bolas sueltas con − y +; la de 10 tickets es aparte,
+          // porque da 11.
+          final loose = widget.loose;
           foot = Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              IconPill(
+                key: const ValueKey<String>('gacha.less'),
+                glyph: Glyph.minus,
+                diameter: widget.tall ? 34 : 38,
+                semanticLabel: l.gachaLess,
+                onPressed: widget.busy || loose <= 1 ? null : () => widget.onLoose(loose - 1),
+              ),
+              SizedBox(width: widget.tall ? 4 : 6),
               IbashoButton(
                 key: const ValueKey<String>('gacha.pull'),
-                label: l.gachaPull,
-                glyph: Glyph.gift,
+                label: loose == 1 ? l.gachaPull : l.gachaPullCount(loose),
+                glyph: widget.tall ? null : Glyph.gift,
                 tone: ButtonTone.accent,
                 cue: null,
                 height: buttons - 8,
-                minWidth: widget.tall ? 130 : 170,
+                minWidth: widget.tall ? 96 : 170,
                 onPressed: widget.busy ? null : widget.onPull,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: widget.tall ? 4 : 6),
+              IconPill(
+                key: const ValueKey<String>('gacha.more'),
+                glyph: Glyph.plus,
+                diameter: widget.tall ? 34 : 38,
+                semanticLabel: l.gachaMore,
+                onPressed: widget.busy || loose >= maxLoosePull ? null : () => widget.onLoose(loose + 1),
+              ),
+              SizedBox(width: widget.tall ? 8 : 16),
               IbashoButton(
                 key: const ValueKey<String>('gacha.pull11'),
                 label: l.gachaPullMulti,
                 cue: null,
                 height: buttons - 8,
-                minWidth: widget.tall ? 120 : 150,
+                minWidth: widget.tall ? 96 : 150,
                 onPressed: widget.busy ? null : widget.onPullMulti,
               ),
             ],

@@ -181,14 +181,15 @@ abstract final class PinballTable {
 
   /// Las guias sueltas del campo (las que se pintan como rieles): las de las
   /// calles de dentro hasta los flippers y las orejas de las de fuera, para
-  /// que la bola no caiga en linea recta.
+  /// que la bola no caiga en linea recta. Las orejas solo chocan desde
+  /// arriba: la bola que sube con el kickback pasa.
   static const List<Wall> guides = <Wall>[
     Wall(Offset(outlaneLeft, 592), Offset(outlaneLeft, 690), thickness: 3),
     Wall(Offset(outlaneLeft, 690), leftPivot, thickness: 3),
     Wall(Offset(outlaneRight, 592), Offset(outlaneRight, 690), thickness: 3),
     Wall(Offset(outlaneRight, 690), rightPivot, thickness: 3),
-    Wall(Offset(fieldLeft, 550), Offset(27, 570), thickness: 3),
-    Wall(Offset(fieldRight, 550), Offset(345, 570), thickness: 3),
+    Wall(Offset(fieldLeft, 550), Offset(27, 570), thickness: 3, oneWay: true),
+    Wall(Offset(345, 570), Offset(fieldRight, 550), thickness: 3, oneWay: true),
   ];
 
   /// La punta de un flipper con el angulo [angle].
@@ -1209,6 +1210,8 @@ class PinballGame {
     } else {
       return;
     }
+    // Al centro de la calle, para que suba sin rozar las paredes.
+    ball = Offset(leftSide ? (PinballTable.fieldLeft + PinballTable.outlaneLeft) / 2 : (PinballTable.outlaneRight + PinballTable.fieldRight) / 2, ball.dy);
     velocity = Offset(0, -1200);
     events.add(PinballEvent(PinballEventKind.kickback, ball));
   }

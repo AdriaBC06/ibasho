@@ -12,6 +12,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../audio/audio_service.dart';
 import '../../../backend/gacha.dart';
+import '../../../games/odori/odori_catalog.dart' show odoriTitles;
 import '../../../backend/missions.dart';
 import '../../../backend/shop.dart';
 import '../../../backend/tama.dart';
@@ -64,13 +65,17 @@ String itemName(L l, ShopItem it) => it.food != null
         ? ticketName(l, it.ticket!)
         : it.koroTier != null
             ? l.koroShopName
-            : _gameTitle(l, it.gameId!);
+            : it.odoriSong != null
+                ? l.yataiOdoriSong(odoriTitles[it.odoriSong]?.$1 ?? it.odoriSong!)
+                : _gameTitle(l, it.gameId!);
 
 ArtIcon itemArt(ShopItem it) => it.ticket != null
     ? ticketArt(it.ticket!)
     : it.koroTier != null
         ? ArtIcon.tamakoro
-        : _gameArt(it.gameId!);
+        : it.odoriSong != null
+            ? ArtIcon.odori
+            : _gameArt(it.gameId!);
 
 String _gameDesc(L l, String gameId) => switch (gameId) {
       'tsumiki' => l.yataiDescTsumiki,
@@ -217,6 +222,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     }
     final done = switch (item.section) {
       ShopSection.games when item.koroTier != null => l.koroShopDone,
+      ShopSection.games when item.odoriSong != null => l.yataiDoneOdoriSong,
       ShopSection.games => l.yataiDoneGame,
       ShopSection.gacha => l.gachaDoneTickets(qty),
       ShopSection.tamas => l.yataiDoneFood(qty, foodLabel(l, item.food!)),
@@ -484,7 +490,8 @@ class _Showcase extends StatelessWidget {
     if (it == null) return const SizedBox.shrink();
 
     final locked = it.food != null && !unlocked.contains(it.food);
-    final owned = it.gameId != null && shop.games.containsKey(it.gameId);
+    final owned = (it.gameId != null && shop.games.containsKey(it.gameId)) ||
+        (it.odoriSong != null && shop.hasOdoriSong(it.odoriSong!));
     final price = shop.prices[it.id];
     final name = itemName(l, it);
     final description = it.food != null
@@ -493,7 +500,9 @@ class _Showcase extends StatelessWidget {
             ? l.yataiGachaBody
             : it.koroTier != null
                 ? l.koroShopDesc(koroMaxSlots)
-                : _gameDesc(l, it.gameId!);
+                : it.odoriSong != null
+                    ? l.yataiDescOdoriSong
+                    : _gameDesc(l, it.gameId!);
 
     final String actionLabel;
     final bool actionEnabled;

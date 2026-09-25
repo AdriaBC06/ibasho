@@ -17,7 +17,10 @@ enum LeaderboardGame {
   minesweeperMedium,
   minesweeperHard,
   tsumiki,
-  nihongo;
+  nihongo,
+  odori,
+  odoriButai,
+  ohirune;
 
   /// La clave del juego en `/leaderboards/{clave}` y en las reglas.
   String get key => switch (this) {
@@ -26,21 +29,33 @@ enum LeaderboardGame {
         LeaderboardGame.minesweeperHard => 'minesweeper_hard',
         LeaderboardGame.tsumiki => 'tsumiki',
         LeaderboardGame.nihongo => 'nihongo',
+        LeaderboardGame.odori => 'odori',
+        LeaderboardGame.odoriButai => 'odori_butai',
+        LeaderboardGame.ohirune => 'ohirune',
       };
 
-  /// Buscaminas es por tiempo: menor es mejor. Tsumiki y Nihongo son por
-  /// puntos: mayor es mejor.
+  /// Buscaminas y Ohirune son por tiempo: menor es mejor. Tsumiki, Nihongo
+  /// y Odori (Taki y Butai) son por puntos: mayor es mejor.
   bool get lowerIsBetter => switch (this) {
         LeaderboardGame.minesweeperEasy ||
         LeaderboardGame.minesweeperMedium ||
-        LeaderboardGame.minesweeperHard =>
+        LeaderboardGame.minesweeperHard ||
+        LeaderboardGame.ohirune =>
           true,
-        LeaderboardGame.tsumiki || LeaderboardGame.nihongo => false,
+        LeaderboardGame.tsumiki ||
+        LeaderboardGame.nihongo ||
+        LeaderboardGame.odori ||
+        LeaderboardGame.odoriButai =>
+          false,
       };
 
   /// El tope que las reglas dejan escribir para este juego: milisegundos para
-  /// el buscaminas, puntos para los demas.
-  int get maxScore => lowerIsBetter ? 3600000 : 999999;
+  /// el buscaminas y Ohirune, puntos para los demas. Odori llega al millon por partida y
+  /// lo multiplica hasta ×1,5 segun la dificultad.
+  int get maxScore => switch (this) {
+        LeaderboardGame.odori || LeaderboardGame.odoriButai => 1500000,
+        _ => lowerIsBetter ? 3600000 : 999999,
+      };
 
   static LeaderboardGame? byKey(String key) {
     for (final g in values) {

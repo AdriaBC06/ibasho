@@ -152,6 +152,24 @@ void main() {
     expect(g.kickbackLeft, isFalse);
   });
 
+  test('el kickback devuelve la bola al campo por encima de la calle', () {
+    for (final left in <bool>[true, false]) {
+      final g = _game();
+      _rolling(g, Offset.zero);
+      g
+        ..kickbackLeft = left
+        ..kickbackRight = !left
+        ..ball = Offset(left ? 24 : 347, PinballTable.kickbackY + 5)
+        ..velocity = const Offset(0, 300);
+      var top = g.ball.dy;
+      for (var i = 0; i < 60; i++) {
+        _run(g, 1 / 60);
+        top = math.min(top, g.ball.dy);
+      }
+      expect(top, lessThan(500), reason: left ? 'izquierda' : 'derecha');
+    }
+  });
+
   test('la partida sigue bola a bola y acaba con la ultima', () {
     final g = _game(const [GachaBall(Rarity.n), GachaBall(Rarity.r)]);
     _rolling(g, const Offset(PinballTable.centerX, 815), velocity: const Offset(0, 600), since: ballSaverSeconds + 1);

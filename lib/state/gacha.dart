@@ -105,7 +105,8 @@ class GachaState {
   /// Una tirada en curso.
   final bool busy;
 
-  int ticketsOf(TicketKind kind) => tickets[kind] ?? 0;
+  /// Nunca menos de 0, aunque llegue algo raro de la base.
+  int ticketsOf(TicketKind kind) => math.max(0, tickets[kind] ?? 0);
 
   int ballsOf(Rarity rarity) => balls[rarity] ?? 0;
 
@@ -305,11 +306,16 @@ class GachaController extends StateNotifier<GachaState> {
     );
   }
 
-  /// Tira [balls] bolas (1 u 11) con [kind]. Devuelve lo que ha salido, ya
-  /// guardado en el deposito.
+  /// Tira [balls] bolas (de 1 a 9, u 11 por 10 tickets) con [kind].
+  /// Devuelve lo que ha salido, ya guardado en el deposito.
   Future<PullResult> pull(TicketKind kind, {int balls = singlePullBalls}) async {
+    if (!isPullSize(balls)) throw const PullException(PullFailure.rejected);
     final cost = pullCost(balls);
     if (state.ticketsOf(kind) < cost) throw const PullException(PullFailure.noTickets);
+    // Lo que queda se calcula una sola vez, antes de escribir: el stream de
+    // tickets puede traer el valor nuevo mientras se espera a la escritura, y
+    // volver a restar sobre el estado de despues lo dejaba en -1.
+    final left = state.ticketsOf(kind) - cost;
 
     final rolled = rollPull(kind: kind, balls: balls, random: _random);
 
@@ -325,7 +331,7 @@ class GachaController extends StateNotifier<GachaState> {
     final writes = <String, Object?>{
       'users/$_me/gacha/last': {'kind': kind.name, 'count': balls, 'at': serverTimestamp},
       'users/$_me/gacha/balls': newBalls,
-      'users/$_me/tickets/${kind.name}': state.ticketsOf(kind) - cost,
+      'users/$_me/tickets/${kind.name}': left,
       // Señal para la mision «tira del gachapon» (`lib/backend/missions.dart`).
       'users/$_me/missions/signal/pull': {'at': serverTimestamp},
     };
@@ -346,7 +352,7 @@ class GachaController extends StateNotifier<GachaState> {
 
     if (mounted) {
       state = state.copyWith(
-        tickets: {...state.tickets, kind: state.ticketsOf(kind) - cost},
+        tickets: {...state.tickets, kind: left},
         balls: {for (final entry in newBalls.entries) Rarity.byName(entry.key)!: entry.value},
         pulledOnce: true,
       );

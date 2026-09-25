@@ -12,6 +12,8 @@ import '../../../backend/shop.dart';
 import '../../../games/game_music.dart';
 import '../../../games/minesweeper/minesweeper_channel.dart';
 import '../../../games/nihongo/nihongo_channel.dart';
+import '../../../games/odori/odori_channel.dart';
+import '../../../games/ohirune/ohirune_channel.dart';
 import '../../../games/tsumiki/tsumiki_channel.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
@@ -132,6 +134,9 @@ List<ChannelSpec> channelsFor({
   bool pachinkoGift = false,
   bool koroUnlocked = false,
   bool koroGift = false,
+  bool odoriGift = false,
+  bool ohiruneUnlocked = false,
+  bool ohiruneGift = false,
 }) {
   // Los juegos comprados, en el orden en que se compraron. Solo entran los
   // que el registro conoce: si el backend trae un id que la app aun no sabe
@@ -269,6 +274,30 @@ List<ChannelSpec> channelsFor({
           builder: gameChannelRegistry[entry.key]!.builder,
           gift: entry.value.isGift,
           gameId: entry.key,
+        ),
+      // Odori es gratis y llega a todos envuelto hasta que se abre. Suena su
+      // propia musica en cada partida; en el selector sigue la del menu.
+      ChannelSpec(
+        id: 'odori',
+        glyph: Glyph.note,
+        art: ArtIcon.odori,
+        label: (l) => l.channelOdori,
+        builder: (_) => const OdoriChannel(),
+        gift: odoriGift,
+        onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openOdori()),
+      ),
+      // Ohirune es secreto: no sale en ningun sitio hasta que la cuenta junta
+      // los Tamas del tablero facil, y entonces llega envuelto. Quien ya lo
+      // abrio lo conserva aunque borre Tamas (sin ellos no puede jugar).
+      if (ohiruneUnlocked)
+        ChannelSpec(
+          id: 'ohirune',
+          glyph: Glyph.moon,
+          art: ArtIcon.ohirune,
+          label: (l) => l.channelOhirune,
+          builder: (_) => const OhiruneChannel(),
+          gift: ohiruneGift,
+          onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openOhirune()),
         ),
       if (isAdmin)
         ChannelSpec(

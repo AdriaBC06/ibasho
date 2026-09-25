@@ -12,6 +12,7 @@ import '../../../backend/gacha.dart' show TicketKind, gachaWeek;
 import '../../../backend/leaderboards.dart';
 import '../../../games/minesweeper/minesweeper_widgets.dart' show formatDuration, levelName;
 import '../../../games/minesweeper/minesweeper.dart' show MinesweeperLevel;
+import '../../../games/ohirune/ohirune.dart' show ohiruneUnlockTamas;
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/leaderboards.dart';
 import '../../../state/login_bonus.dart' show bonusDay;
@@ -38,14 +39,44 @@ ArtIcon _medalFor(int rank) => switch (rank) {
     };
 
 /// El nombre de [game] en el idioma en curso: reutiliza los nombres que ya
-/// tiene cada juego (nivel del buscaminas, o el titulo de Tsumiki y Nihongo).
+/// tiene cada juego (nivel del buscaminas, o el titulo de Tsumiki, Nihongo y
+/// Odori).
 String leaderboardGameName(L l, LeaderboardGame game) => switch (game) {
       LeaderboardGame.minesweeperEasy => levelName(l, MinesweeperLevel.easy),
       LeaderboardGame.minesweeperMedium => levelName(l, MinesweeperLevel.medium),
       LeaderboardGame.minesweeperHard => levelName(l, MinesweeperLevel.hard),
       LeaderboardGame.tsumiki => l.tsumikiTitle,
       LeaderboardGame.nihongo => l.nihongoTitle,
+      LeaderboardGame.odori => l.leaderboardsOdoriTaki,
+      LeaderboardGame.odoriButai => l.leaderboardsOdoriButai,
+      LeaderboardGame.ohirune => l.ohiruneDaily,
     };
+
+/// Los juegos del primer selector. Buscaminas (por nivel) y Odori (Taki o
+/// Butai) tienen varias tablas, que se eligen en un segundo selector al lado
+/// de diaria/semanal: con las siete tablas en una fila, en el movil no se
+/// leia nada.
+enum _Family {
+  minesweeper([LeaderboardGame.minesweeperEasy, LeaderboardGame.minesweeperMedium, LeaderboardGame.minesweeperHard]),
+  tsumiki([LeaderboardGame.tsumiki]),
+  nihongo([LeaderboardGame.nihongo]),
+  odori([LeaderboardGame.odori, LeaderboardGame.odoriButai]),
+  ohirune([LeaderboardGame.ohirune]);
+
+  const _Family(this.games);
+
+  final List<LeaderboardGame> games;
+
+  static _Family of(LeaderboardGame game) => values.firstWhere((f) => f.games.contains(game));
+
+  String name(L l) => switch (this) {
+        _Family.minesweeper => l.minesweeperTitle,
+        _Family.tsumiki => l.tsumikiTitle,
+        _Family.nihongo => l.nihongoTitle,
+        _Family.odori => l.channelOdori,
+        _Family.ohirune => l.channelOhirune,
+      };
+}
 
 /// El canal de Clasificaciones.
 ///
@@ -53,7 +84,7 @@ String leaderboardGameName(L l, LeaderboardGame game) => switch (game) {
 /// (ayer, o la semana pasada), con el botón para cobrar el premio cuando toca;
 /// abajo la clasificación del periodo en curso, con la ficha pública de cada
 /// cuenta. Un selector elige el juego (los tres niveles del buscaminas,
-/// Tsumiki y Nihongo) y un interruptor la cadencia (diaria o semanal).
+/// Tsumiki, Nihongo y Odori) y un interruptor la cadencia (diaria o semanal).
 class LeaderboardsChannel extends ConsumerStatefulWidget {
   const LeaderboardsChannel({super.key});
 
@@ -65,6 +96,9 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
   LeaderboardGame _game = LeaderboardGame.minesweeperEasy;
   bool _weekly = false;
   bool _loading = false;
+
+  /// La ultima tabla mirada de cada juego, para volver a ella.
+  final Map<_Family, LeaderboardGame> _lastOf = {};
   int _claimingRank = 0;
 
   int get _key => _weekly ? gachaWeek() : bonusDay();
@@ -93,9 +127,14 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
 
   void _selectGame(LeaderboardGame game) {
     if (game == _game) return;
-    setState(() => _game = game);
+    setState(() {
+      _game = game;
+      _lastOf[_Family.of(game)] = game;
+    });
     unawaited(_load());
   }
+
+  void _selectFamily(_Family family) => _selectGame(_lastOf[family] ?? family.games.first);
 
   void _setWeekly(bool weekly) {
     if (weekly == _weekly) return;
@@ -103,18 +142,15 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
     unawaited(_load());
   }
 
-  String _scoreText(int score) =>
-      _game.lowerIsBetter ? formatDuration(Duration(milliseconds: score)) : '$score';
+  Widget _fit(bool tall, int flex, Widget child) => tall ? Expanded(flex: flex, child: child) : child;
+
+  String _scoreText(int score) => _game.lowerIsBetter ? formatDuration(Duration(milliseconds: score)) : '$score';
 
   Future<void> _claim(L l, int rank, TicketKind kind) async {
     setState(() => _claimingRank = rank);
-    final ok = await ref.read(leaderboardsProvider.notifier).claim(
-          game: _game,
-          weekly: _weekly,
-          key: _prevKey,
-          rank: rank,
-          kind: kind,
-        );
+    final ok = await ref
+        .read(leaderboardsProvider.notifier)
+        .claim(game: _game, weekly: _weekly, key: _prevKey, rank: rank, kind: kind);
     if (!mounted) return;
     setState(() => _claimingRank = 0);
     showIbashoToast(context, ok ? l.leaderboardsClaimed : l.leaderboardsClaimFailed, isError: !ok);
@@ -126,6 +162,10 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
     final layout = Layout.of(context);
     final me = ref.watch(sessionProvider.select((s) => s.accountId));
     final state = ref.watch(leaderboardsProvider);
+    // Ohirune es un canal secreto: su tabla no se ve hasta tenerlo.
+    final ohirune = ref.watch(tamasProvider.select((t) => t.tamas.length >= ohiruneUnlockTamas)) ||
+        ref.watch(preferencesProvider.select((p) => p.ohiruneOpened));
+    final families = [for (final f in _Family.values) if (f != _Family.ohirune || ohirune) f];
     final current = state.periodOf(_game, _weekly, _key);
     final previous = state.periodOf(_game, _weekly, _prevKey);
 
@@ -137,22 +177,44 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
         padding: EdgeInsets.symmetric(horizontal: layout.gutter),
         child: LayoutBuilder(
           builder: (context, box) {
-            final officialHeight = layout.tall
-                ? (box.maxHeight * .34).clamp(190.0, 260.0)
-                : (box.maxHeight * .42).clamp(220.0, 300.0);
+            final officialHeight =
+                layout.tall ? (box.maxHeight * .34).clamp(190.0, 260.0) : (box.maxHeight * .42).clamp(220.0, 300.0);
             return Column(
               children: [
                 const SizedBox(height: 14),
-                IbashoSegmented<LeaderboardGame>(
-                  options: [for (final g in LeaderboardGame.values) (g, leaderboardGameName(l, g))],
-                  value: _game,
-                  onChanged: _selectGame,
+                IbashoSegmented<_Family>(
+                  options: [for (final f in families) (f, f.name(l))],
+                  value: _Family.of(_game),
+                  onChanged: _selectFamily,
                 ),
                 const SizedBox(height: 10),
-                IbashoSegmented<bool>(
-                  options: [(false, l.leaderboardsDaily), (true, l.leaderboardsWeekly)],
-                  value: _weekly,
-                  onChanged: _setWeekly,
+                // En vertical se reparten el ancho; en horizontal van a su
+                // tamano, centrados.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_Family.of(_game).games.length > 1) ...[
+                      _fit(
+                        layout.tall,
+                        _Family.of(_game).games.length,
+                        IbashoSegmented<LeaderboardGame>(
+                          options: [for (final g in _Family.of(_game).games) (g, leaderboardGameName(l, g))],
+                          value: _game,
+                          onChanged: _selectGame,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    _fit(
+                      layout.tall,
+                      2,
+                      IbashoSegmented<bool>(
+                        options: [(false, l.leaderboardsDaily), (true, l.leaderboardsWeekly)],
+                        value: _weekly,
+                        onChanged: _setWeekly,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 14),
                 SizedBox(
@@ -175,6 +237,8 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
                     child: _StandingsPanel(
                       loading: _loading,
                       weekly: _weekly,
+                      periodKey: _key,
+                      onRollover: () => unawaited(_load()),
                       game: _game,
                       period: current,
                       me: me,
@@ -222,10 +286,7 @@ class _OfficialPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            weekly ? l.leaderboardsOfficialWeekly : l.leaderboardsOfficialDaily,
-            style: Ty.lead,
-          ),
+          Text(weekly ? l.leaderboardsOfficialWeekly : l.leaderboardsOfficialDaily, style: Ty.lead),
           const SizedBox(height: 10),
           Expanded(
             child: loading
@@ -242,19 +303,24 @@ class _OfficialPanel extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            for (var i = 0; i < results.length; i++) ...[
+                            // Siempre tres huecos, aunque haya menos
+                            // puestos: uno solo no se estira a todo el ancho.
+                            for (var i = 0; i < 3; i++) ...[
                               if (i > 0) const SizedBox(width: 12),
-                              Expanded(
-                                child: _PodiumTile(
-                                  rank: i + 1,
-                                  weekly: weekly,
-                                  accountId: results[i],
-                                  mine: results[i] == me,
-                                  claiming: claimingRank == i + 1,
-                                  claimedOf: (kind) => claimedOf(i + 1, kind),
-                                  onClaim: (kind) => onClaim(i + 1, kind),
+                              if (i >= results.length)
+                                const Expanded(child: SizedBox())
+                              else
+                                Expanded(
+                                  child: _PodiumTile(
+                                    rank: i + 1,
+                                    weekly: weekly,
+                                    accountId: results[i],
+                                    mine: results[i] == me,
+                                    claiming: claimingRank == i + 1,
+                                    claimedOf: (kind) => claimedOf(i + 1, kind),
+                                    onClaim: (kind) => onClaim(i + 1, kind),
+                                  ),
                                 ),
-                              ),
                             ],
                           ],
                         ),
@@ -389,6 +455,8 @@ class _StandingsPanel extends StatelessWidget {
   const _StandingsPanel({
     required this.loading,
     required this.weekly,
+    required this.periodKey,
+    required this.onRollover,
     required this.game,
     required this.period,
     required this.me,
@@ -397,6 +465,10 @@ class _StandingsPanel extends StatelessWidget {
 
   final bool loading;
   final bool weekly;
+
+  /// El dia o la semana en curso, y que hacer cuando se acaba.
+  final int periodKey;
+  final VoidCallback onRollover;
   final LeaderboardGame game;
   final LeaderboardPeriod period;
   final String me;
@@ -408,16 +480,19 @@ class _StandingsPanel extends StatelessWidget {
     final ranked = period.ranked(game);
     final myRank = period.rankOf(game, me);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               Expanded(
-                child: Text(
-                  weekly ? l.leaderboardsStandingsWeekly : l.leaderboardsStandingsDaily,
-                  style: Ty.lead,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(weekly ? l.leaderboardsStandingsWeekly : l.leaderboardsStandingsDaily, style: Ty.lead),
+                    _ResetClock(ends: (periodKey + 1) * (weekly ? _weekMs : _dayMs), onRollover: onRollover),
+                  ],
                 ),
               ),
               if (myRank != null)
@@ -426,16 +501,13 @@ class _StandingsPanel extends StatelessWidget {
                 Text(l.leaderboardsNoScore, style: Ty.caption.copyWith(color: Ty.inkSoft)),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Expanded(
             child: loading
                 ? const SizedBox()
                 : ranked.isEmpty
                     ? Center(
-                        child: Text(
-                          l.leaderboardsStandingsEmpty,
-                          style: Ty.body.copyWith(color: Ty.inkSoft),
-                        ),
+                        child: Text(l.leaderboardsStandingsEmpty, style: Ty.body.copyWith(color: Ty.inkSoft)),
                       )
                     : IbashoScroll(
                         child: Column(
@@ -447,6 +519,9 @@ class _StandingsPanel extends StatelessWidget {
                                 accountId: ranked[i].accountId,
                                 mine: ranked[i].accountId == me,
                                 scoreText: scoreText(ranked[i].score),
+                                detail: game == LeaderboardGame.tsumiki && period.lines[ranked[i].accountId] != null
+                                    ? l.leaderboardsLines(period.lines[ranked[i].accountId]!)
+                                    : null,
                               ),
                             ],
                           ],
@@ -455,6 +530,74 @@ class _StandingsPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+const int _dayMs = 86400000;
+const int _weekMs = 604800000;
+
+/// Lo que falta para [ms]: `hh:mm:ss`, o `dd:hh:mm:ss` si queda mas de un dia.
+String resetCountdown(int ms) {
+  final total = (ms < 0 ? 0 : ms) ~/ 1000;
+  String two(int n) => n.toString().padLeft(2, '0');
+  final days = total ~/ 86400;
+  final clock = '${two(total ~/ 3600 % 24)}:${two(total ~/ 60 % 60)}:${two(total % 60)}';
+  return days > 0 ? '${two(days)}:$clock' : clock;
+}
+
+/// «se reinicia en …», con la cuenta atras al final del periodo en curso
+/// ([ends], en milisegundos UTC). Al llegar a cero avisa con [onRollover]
+/// para que el canal pase al periodo nuevo.
+class _ResetClock extends StatefulWidget {
+  const _ResetClock({required this.ends, required this.onRollover});
+
+  final int ends;
+  final VoidCallback onRollover;
+
+  @override
+  State<_ResetClock> createState() => _ResetClockState();
+}
+
+class _ResetClockState extends State<_ResetClock> {
+  late final Timer _timer;
+  bool _rolled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
+  @override
+  void didUpdateWidget(_ResetClock old) {
+    super.didUpdateWidget(old);
+    if (old.ends != widget.ends) _rolled = false;
+  }
+
+  void _tick() {
+    if (!mounted) return;
+    if (!_rolled && DateTime.now().millisecondsSinceEpoch >= widget.ends) {
+      _rolled = true;
+      widget.onRollover();
+    }
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final left = widget.ends - DateTime.now().millisecondsSinceEpoch;
+    return Text(
+      l.leaderboardsResetsIn(resetCountdown(left)),
+      key: const ValueKey<String>('leaderboards.resets'),
+      style: Ty.caption.copyWith(color: Ty.inkSoft, fontFeatures: const [FontFeature.tabularFigures()]),
     );
   }
 }
@@ -471,7 +614,10 @@ class _RankChip extends StatelessWidget {
       radius: 14,
       tint: skin.accent,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Text(text, style: Ty.caption.copyWith(color: T.onAccent, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: Ty.caption.copyWith(color: T.onAccent, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -482,7 +628,11 @@ class _StandingRow extends ConsumerWidget {
     required this.accountId,
     required this.mine,
     required this.scoreText,
+    this.detail,
   });
+
+  /// Una linea pequeña bajo la puntuacion (las filas en Tsumiki).
+  final String? detail;
 
   final int rank;
   final String accountId;
@@ -520,7 +670,17 @@ class _StandingRow extends ConsumerWidget {
               style: Ty.body.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-          Text(scoreText, style: Ty.numeral(18, color: Ty.ink, weight: FontWeight.w700)),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                scoreText,
+                style: Ty.numeral(18, color: Ty.ink, weight: FontWeight.w700),
+              ),
+              if (detail != null) Text(detail!, style: Ty.micro),
+            ],
+          ),
         ],
       ),
     );
