@@ -97,6 +97,29 @@ test('nadie puede escribir la puntuacion de otra cuenta', async () => {
   );
 });
 
+test('la cuenta de admin no puntua en ninguna tabla', async () => {
+  await assertFails(
+    update(ref(db(ADMIN), '/'), {
+      [`leaderboards/tsumiki/daily/${day}/day`]: day,
+      [`leaderboards/tsumiki/daily/${day}/scores/${ADMIN}`]: 120,
+      [`leaderboards/tsumiki/daily/${day}/at/${ADMIN}`]: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    update(ref(db(ADMIN), '/'), {
+      [`leaderboards/tsumiki/weekly/${week}/week`]: week,
+      [`leaderboards/tsumiki/weekly/${week}/scores/${ADMIN}`]: 120,
+      [`leaderboards/tsumiki/weekly/${week}/at/${ADMIN}`]: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    update(ref(db(ADMIN), '/'), {
+      [`leaderboards/hataraki/alltime/scores/${ADMIN}`]: 120,
+      [`leaderboards/hataraki/alltime/at/${ADMIN}`]: serverTimestamp(),
+    }),
+  );
+});
+
 test('sin el recibo `at` fresco, la puntuacion no cuela', async () => {
   await assertFails(
     update(ref(db(ANA), '/'), {

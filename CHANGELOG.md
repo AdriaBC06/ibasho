@@ -5,6 +5,13 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## Sin publicar
+
+### Cambiado
+
+- **La cuenta de admin ya no sale en las clasificaciones.** Las reglas le
+  niegan las puntuaciones en todas las tablas y la app ni las manda.
+
 ## 0.7.0 — Hatarakitama
 
 ### Añadido

@@ -253,8 +253,10 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
   /// cuenta lo ganado en cada periodo, que no es lo mismo el día que la semana).
   /// [allTimeScore] va a la tabla de siempre (solo Hatarakitama, sin premio);
   /// con ella, un periodo a 0 no se manda.
+  ///
+  /// La cuenta de admin no participa: las reglas le niegan las puntuaciones.
   Future<void> submitScore(LeaderboardGame game, int score, {int? lines, int? weeklyScore, int? allTimeScore}) async {
-    if (_me.isEmpty) return;
+    if (_me.isEmpty || _session.state.isAdmin) return;
     final day = bonusDay();
     final week = gachaWeek();
     final token = await _session.freshToken();

@@ -1307,6 +1307,7 @@
     // periodo es el de hoy hace falta un numero de verdad al lado. Lo manda
     // quien escribe la primera puntuacion o quien cierra el periodo, siempre
     // igual al numero de la ruta, y no se puede cambiar despues.
+    // La cuenta de admin (`/admins`) no puntua en ninguna tabla (0.7.0).
     "leaderboards": {
       "$game": {
         ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
@@ -1326,7 +1327,7 @@
             },
             "scores": {
               "$accountId": {
-                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists() && !root.child('admins').child(auth.uid).exists()",
                 ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (newData.val() >= 1 && newData.val() <= 3600000) : (newData.val() >= 0 && newData.val() <= ($game === 'odori' || $game === 'odori_butai' ? 1500000 : $game === 'hataraki' ? 999999999 : 999999))) && newData.parent().parent().child('day').val() * 86400000 <= now && newData.parent().parent().child('day').val() * 86400000 + 86400000 > now && newData.parent().parent().child('at').child($accountId).val() === now && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (!data.exists() || newData.val() < data.val()) : (!data.exists() || newData.val() > data.val()))"
               }
             },
@@ -1361,7 +1362,7 @@
             },
             "scores": {
               "$accountId": {
-                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+                ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists() && !root.child('admins').child(auth.uid).exists()",
                 ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (newData.val() >= 1 && newData.val() <= 3600000) : (newData.val() >= 0 && newData.val() <= ($game === 'odori' || $game === 'odori_butai' ? 1500000 : $game === 'hataraki' ? 999999999 : 999999))) && newData.parent().parent().child('week').val() * 604800000 <= now && newData.parent().parent().child('week').val() * 604800000 + 604800000 > now && newData.parent().parent().child('at').child($accountId).val() === now && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (!data.exists() || newData.val() < data.val()) : (!data.exists() || newData.val() > data.val()))"
               }
             },
@@ -1386,7 +1387,7 @@
         "alltime": {
           "scores": {
             "$accountId": {
-              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists() && !root.child('admins').child(auth.uid).exists()",
               ".validate": "$game === 'hataraki' && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999 && newData.parent().parent().child('at').child($accountId).val() === now && (!data.exists() || newData.val() > data.val())"
             }
           },
