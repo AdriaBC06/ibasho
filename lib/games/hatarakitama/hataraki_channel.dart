@@ -835,8 +835,8 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
               Expanded(
                 child: IbashoButton(
                   key: const ValueKey<String>('hataraki.sell.one'),
-                  label: l.hatarakiSellOne,
-                  glyph: plain ? null : Glyph.yatai,
+                  label: l.hatarakiSellOne(hSellValue(item.id)),
+                  icon: plain ? null : ArtIconView(ArtIcon.ginmon, size: IbashoButton.iconSize(48)),
                   expand: true,
                   onPressed: () => unawaited(_sell(item.id, 1)),
                 ),
@@ -846,8 +846,8 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
                 Expanded(
                   child: IbashoButton(
                     key: const ValueKey<String>('hataraki.sell.all'),
-                    label: l.hatarakiSellAll,
-                    glyph: plain ? null : Glyph.yatai,
+                    label: l.hatarakiSellMany(count, count * hSellValue(item.id)),
+                    icon: plain ? null : ArtIconView(ArtIcon.ginmon, size: IbashoButton.iconSize(48)),
                     expand: true,
                     onPressed: () => unawaited(_sell(item.id, count)),
                   ),

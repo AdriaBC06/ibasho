@@ -2799,9 +2799,26 @@
       }
     }
   },
-  "hatarakiSellOne": "vender 1",
+  "hatarakiSellOne": "vender 1 · +{mon}",
   "@hatarakiSellOne": {
-    "description": "Botón para vender una unidad del almacén."
+    "description": "Botón para vender una unidad del almacén, con lo que se gana.",
+    "placeholders": {
+      "mon": {
+        "type": "int"
+      }
+    }
+  },
+  "hatarakiSellMany": "vender {count} · +{mon}",
+  "@hatarakiSellMany": {
+    "description": "Botón para vender todas las unidades de un objeto, con cuántas son y lo que se gana.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "mon": {
+        "type": "int"
+      }
+    }
   },
   "hatarakiSellAll": "vender todo",
   "@hatarakiSellAll": {

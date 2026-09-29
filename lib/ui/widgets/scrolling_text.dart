@@ -35,6 +35,7 @@ class _ScrollingTextState extends State<ScrollingText> with SingleTickerProvider
   static const _pixelsPerSecond = 34.0;
 
   final _scroll = ScrollController();
+
   /// Solo se crea si el texto no cabe alguna vez.
   AnimationController? _clock;
   double _extent = 0;
@@ -100,16 +101,14 @@ class _ScrollingTextState extends State<ScrollingText> with SingleTickerProvider
         _configure(n.metrics.maxScrollExtent);
         return true;
       },
-      child: SingleChildScrollView(
-        controller: _scroll,
-        scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(),
-        child: Text(
-          widget.text,
-          maxLines: 1,
-          softWrap: false,
-          textAlign: widget.textAlign,
-          style: widget.style,
+      // Sin barra de desplazamiento: en escritorio saldria una debajo.
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false, overscroll: false),
+        child: SingleChildScrollView(
+          controller: _scroll,
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          child: Text(widget.text, maxLines: 1, softWrap: false, textAlign: widget.textAlign, style: widget.style),
         ),
       ),
     );

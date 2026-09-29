@@ -38,6 +38,7 @@ class IbashoButton extends StatelessWidget {
     required this.label,
     this.onPressed,
     this.glyph,
+    this.icon,
     this.tone = ButtonTone.plain,
     this.height = 48,
     this.expand = false,
@@ -49,9 +50,16 @@ class IbashoButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final Glyph? glyph;
+
+  /// Un icono pintado en lugar del glifo (el ginmon al vender, por ejemplo).
+  /// Se le da el tamaño que toca con [IbashoButton.iconSize].
+  final Widget? icon;
   final ButtonTone tone;
   final double height;
   final bool expand;
+
+  /// Lado del icono de un boton de [height] de alto.
+  static double iconSize(double height) => height * .5;
   final Sfx? cue;
   final bool autofocus;
   final double minWidth;
@@ -84,7 +92,10 @@ class IbashoButton extends StatelessWidget {
           mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (glyph != null) ...[
+            if (icon != null) ...[
+              Opacity(opacity: enabled ? 1 : .5, child: icon),
+              SizedBox(width: label.isEmpty ? 0 : height * .18),
+            ] else if (glyph != null) ...[
               GlyphIcon(glyph!, size: height * .42, color: enabled ? ink : Ty.inkSoft),
               SizedBox(width: label.isEmpty ? 0 : height * .18),
             ],
