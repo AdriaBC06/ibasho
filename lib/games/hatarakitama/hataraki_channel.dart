@@ -2647,6 +2647,10 @@ class _ZoneCard extends StatelessWidget {
           items: {for (final loot in zone.loot) loot.item: loot.max},
           size: 26,
         ),
+        // Sin grupo aún, la probabilidad del sitio con éxito completo.
+        _TreasureLine(
+          chance: zone.prizeChance * (party.isEmpty ? 1 : HState.successFor(zone, power)),
+        ),
       ],
     );
   }
@@ -2700,7 +2704,39 @@ class _TripCard extends StatelessWidget {
           items: {for (final loot in zone.loot) loot.item: loot.max},
           size: 26,
         ),
+        _TreasureLine(
+          chance: zone.prizeChance * HState.successFor(zone, expedition.power),
+        ),
       ],
+    );
+  }
+}
+
+/// El tesoro que puede traer una expedición (un ticket gachaken) y con qué
+/// probabilidad; se canjea solo, como mucho uno por hora.
+class _TreasureLine extends StatelessWidget {
+  const _TreasureLine({required this.chance});
+
+  final double chance;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          ArtIconView(ArtIcon.ticketGachaken, size: 26),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l.hatarakiTreasureChance(chance * 100),
+              maxLines: 2,
+              style: Ty.micro,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

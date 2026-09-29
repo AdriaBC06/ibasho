@@ -5,12 +5,22 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
-## Sin publicar
+## 0.7.1 — sin publicar
 
 ### Cambiado
 
 - **La cuenta de admin ya no sale en las clasificaciones.** Las reglas le
   niegan las puntuaciones en todas las tablas y la app ni las manda.
+
+### Arreglado
+
+- **Hatarakitama dice qué da tickets.** Cada expedición muestra, junto a lo
+  que puede traer, el tesoro (un ticket gachaken) y su probabilidad con el
+  grupo elegido: del 0,2 % del prado al 5 % de la luna, por el éxito. La
+  ayuda lo explica, y que se canjean solos, uno por hora.
+- **La ayuda de Hatarakitama ya no dice que la clasificación cuenta la
+  experiencia**: cuenta los ginmon ganados vendiendo (en el día, en la semana
+  y desde siempre).
 
 ## 0.7.0 — Hatarakitama
 
