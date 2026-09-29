@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../theme/tokens.dart';
+import '../../games/hatarakitama/hataraki_art.dart' show paintHataraki;
 import 'gacha_art.dart';
 
 /// Las ilustraciones a color del entorno.
@@ -27,6 +28,7 @@ enum ArtIcon {
   tamakoro,
   odori,
   ohirune,
+  hataraki,
   gacha,
   pinball,
   pachinko,
@@ -34,6 +36,7 @@ enum ArtIcon {
   ticketKinken,
   catalog,
   coin,
+  ginmon,
   medalBronze,
   medalSilver,
   medalGold,
@@ -81,6 +84,8 @@ class ArtPainter extends CustomPainter {
         paintOdori(canvas);
       case ArtIcon.ohirune:
         paintOhirune(canvas);
+      case ArtIcon.hataraki:
+        paintHataraki(canvas);
       case ArtIcon.gacha:
         paintGacha(canvas);
       case ArtIcon.pinball:
@@ -95,6 +100,8 @@ class ArtPainter extends CustomPainter {
         paintCatalog(canvas);
       case ArtIcon.coin:
         paintCoin(canvas, const Offset(50, 50), 40);
+      case ArtIcon.ginmon:
+        paintGinmon(canvas, const Offset(50, 50), 40);
       case ArtIcon.medalBronze:
         paintMedal(canvas, Art.bronze);
       case ArtIcon.medalSilver:
@@ -908,6 +915,59 @@ void paintCoin(Canvas canvas, Offset c, double r) {
   final star = _star(c.translate(0, r * .03), r * .44, r * .2);
   canvas.drawPath(star.shift(Offset(0, r * .04)), Paint()..color = Art.deep(Art.gold, .3));
   canvas.drawPath(star, _vertical(star.getBounds(), [const Color(0xFFFFF1B8), Art.gold]));
+}
+
+/// El ginmon (銀文), la moneda de plata del pueblo de Hatarakitama: redonda,
+/// con el agujero cuadrado de las monedas antiguas, un reborde alrededor y
+/// cuatro trazos grabados en vez de caracteres. Nada que ver con la moneda
+/// dorada de la estrella, que es la de Ibasho.
+void paintGinmon(Canvas canvas, Offset c, double r) {
+  final hole = Rect.fromCenter(center: c, width: r * .5, height: r * .5);
+  Path ring(Offset at, double radius) => Path()
+    ..fillType = PathFillType.evenOdd
+    ..addOval(Rect.fromCircle(center: at, radius: radius))
+    ..addRRect(RRect.fromRectAndRadius(hole.shift(at - c), Radius.circular(r * .05)));
+  canvas.drawPath(ring(c.translate(0, r * .07), r), Paint()..color = Art.silverDark);
+  final face = ring(c, r * .96);
+  paintPlastic(canvas, face, Art.silver, edge: r * .06, shine: .9);
+  // Un velo azulado de lado a lado: la plata no brilla como el oro.
+  canvas.drawPath(
+    face,
+    Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [const Color(0x00FFFFFF), const Color(0x339EC3E6), const Color(0x00FFFFFF)],
+        stops: const [.2, .55, .9],
+      ).createShader(Rect.fromCircle(center: c, radius: r)),
+  );
+  canvas.drawCircle(c, r * .8, _edge(Art.deep(Art.silver, .2), r * .045));
+  // Reborde del agujero.
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(hole.inflate(r * .09), Radius.circular(r * .08)),
+    _edge(Art.deep(Art.silver, .28), r * .06),
+  );
+  // Cuatro trazos grabados, arriba, abajo y a los lados, como los cuatro
+  // caracteres de un mon antiguo.
+  final groove = Paint()
+    ..color = Art.silverDark
+    ..strokeWidth = r * .08
+    ..strokeCap = StrokeCap.round;
+  final shine = Paint()
+    ..color = const Color(0xFFFFFFFF)
+    ..strokeWidth = r * .04
+    ..strokeCap = StrokeCap.round;
+  for (var i = 0; i < 4; i++) {
+    final a = i * math.pi / 2 - math.pi / 2;
+    final dir = Offset(math.cos(a), math.sin(a));
+    final side = Offset(-dir.dy, dir.dx);
+    final mid = c + dir * (r * .54);
+    final from = mid - side * (r * .1);
+    final to = mid + side * (r * .1);
+    canvas.drawLine(from, to, groove);
+    canvas.drawLine(from.translate(0, -r * .03), to.translate(0, -r * .03), shine);
+    canvas.drawCircle(mid + dir * (r * .08), r * .035, Paint()..color = Art.silverDark);
+  }
 }
 
 void paintMedal(Canvas canvas, Color metal) {

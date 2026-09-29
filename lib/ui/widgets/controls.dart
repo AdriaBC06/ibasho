@@ -15,6 +15,7 @@ import '../layout.dart';
 import 'glyphs.dart';
 import 'gloss.dart';
 import 'pressable.dart';
+import 'scrolling_text.dart';
 
 enum ButtonTone {
   /// Plastico blanco. Lo normal.
@@ -89,10 +90,9 @@ class IbashoButton extends StatelessWidget {
             ],
             if (label.isNotEmpty)
               Flexible(
-                child: Text(
+                // Si no cabe, se desliza para leerse entero.
+                child: ScrollingText(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: Ty.body.copyWith(
                     fontSize: height * .32,
                     fontWeight: FontWeight.w500,

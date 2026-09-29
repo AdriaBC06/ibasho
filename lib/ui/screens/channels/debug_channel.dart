@@ -145,6 +145,8 @@ class DebugChannel extends ConsumerWidget {
                 const SizedBox(height: 22),
                 const _PrizesSection(),
                 const SizedBox(height: 22),
+                const _HatarakiSection(),
+                const SizedBox(height: 22),
                 SectionCard(
                   title: l.debugEffects,
                   // En horizontal, una fila (Wrap estiraria cada boton a todo
@@ -536,6 +538,91 @@ class _AppsSectionState extends ConsumerState<_AppsSection> {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Probar Hatarakitama sin esperar: niveles, almacén lleno, mon, volver de
+/// viaje, tesoros, el resumen de «mientras no estabas», la ayuda, la música
+/// y empezar de cero. Todo sobre la partida propia.
+class _HatarakiSection extends ConsumerWidget {
+  const _HatarakiSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
+    final game = ref.watch(hatarakiProvider).game;
+    final hataraki = ref.read(hatarakiProvider.notifier);
+    final prefs = ref.read(preferencesProvider.notifier);
+    final track = ref.watch(preferencesProvider.select((p) => p.hatarakiTrack));
+    Widget button(String key, String label, Glyph glyph, VoidCallback? onPressed, {ButtonTone? tone}) =>
+        IbashoButton(
+          key: Key('debug.hataraki.$key'),
+          label: label,
+          glyph: glyph,
+          tone: tone ?? ButtonTone.plain,
+          height: 40,
+          onPressed: game == null ? null : onPressed,
+        );
+
+    return SectionCard(
+      title: l.channelHataraki,
+      padding: const EdgeInsets.fromLTRB(26, 12, 26, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l.debugHatarakiHint, style: Ty.caption),
+          const SizedBox(height: 12),
+          if (game != null) ...[
+            _InfoRow(label: l.hatarakiTotalLevel, value: '${game.totalLevel}'),
+            _InfoRow(
+              label: l.debugHatarakiMoney,
+              value: '${game.money} · ${game.dayMoney} / ${game.weekMoney} / ${game.earned}',
+            ),
+            _InfoRow(label: l.debugHatarakiTreasures, value: '${game.prizes}'),
+            const SizedBox(height: 12),
+          ],
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              button('levels', l.debugHatarakiLevels, Glyph.star, () => hataraki.debugLevels(10)),
+              button('bank', l.debugHatarakiBank, Glyph.gift, () => hataraki.debugFillBank(50)),
+              button('money', l.debugHatarakiGiveMoney, Glyph.yatai, () => hataraki.debugGiveMoney(1000)),
+              button(
+                'trip',
+                l.debugHatarakiTrip,
+                Glyph.flag,
+                game?.expedition == null ? null : hataraki.debugFinishTrip,
+              ),
+              button('treasure', l.debugHatarakiTreasure, Glyph.gift, hataraki.debugTreasure),
+              button('away', l.debugHatarakiAway, Glyph.clock, () => hataraki.debugAway(3)),
+              button('help', l.debugHatarakiHelp, Glyph.info, () => unawaited(prefs.forgetHatarakiHelp())),
+              button(
+                'music',
+                track.isEmpty ? l.hatarakiMusicCycle : describeTrack(l, MusicTrack.byId(track)),
+                Glyph.note,
+                () {
+                  // Pasa por las opciones: por turnos, asa, mizuba, yuyake.
+                  const ids = ['', 'asa', 'mizuba', 'yuyake'];
+                  unawaited(prefs.setHatarakiTrack(ids[(ids.indexOf(track) + 1) % ids.length]));
+                },
+              ),
+              button('reset', l.debugHatarakiReset, Glyph.trash, () async {
+                final ok = await askConfirmation(
+                  context,
+                  title: l.debugHatarakiReset,
+                  body: l.debugHatarakiResetBody,
+                  confirmLabel: l.debugHatarakiReset,
+                  cancelLabel: l.actionCancel,
+                  width: 440,
+                );
+                if (ok == true) hataraki.debugReset();
+              }, tone: ButtonTone.quiet),
+            ],
+          ),
         ],
       ),
     );

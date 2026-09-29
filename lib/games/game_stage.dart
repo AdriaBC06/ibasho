@@ -16,6 +16,7 @@ import '../theme/menu_theme.dart';
 import '../theme/skin.dart';
 import '../theme/tokens.dart';
 import '../theme/type.dart';
+import '../ui/widgets/scrolling_text.dart';
 import '../ui/widgets/channel_art.dart';
 import '../ui/widgets/glyphs.dart';
 import '../ui/widgets/gloss.dart';
@@ -286,7 +287,7 @@ class Readout extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Text(value, style: Ty.numeral(height * .4, color: skin.accentDeep, weight: FontWeight.w700)),
                   ),
-                  Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Ty.micro.copyWith(height: 1.1)),
+                  ScrollingText(label, style: Ty.micro.copyWith(height: 1.1)),
                 ],
               ),
             ),
@@ -339,10 +340,8 @@ class DailyCoinsMeter extends ConsumerWidget {
                       ),
                       SizedBox(width: height * .14),
                       Expanded(
-                        child: Text(
+                        child: ScrollingText(
                           full ? l.gameCoinsTodayFull : l.gameCoinsToday,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: Ty.micro,
                         ),
                       ),

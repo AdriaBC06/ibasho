@@ -202,6 +202,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
       koroUnlocked: koro,
       koroGift: koro && !prefs.koroOpened,
       odoriGift: !prefs.odoriOpened,
+      hatarakiGift: !prefs.hatarakiOpened,
       ohiruneUnlocked: ohirune,
       ohiruneGift: ohirune && !prefs.ohiruneOpened,
     );

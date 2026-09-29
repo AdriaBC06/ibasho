@@ -84,6 +84,9 @@ class UserNodeMux {
   void _disconnect() {
     unawaited(_sub?.cancel());
     _sub = null;
+    // Sin conexión el árbol se queda viejo: quien llegue después no debe
+    // recibirlo como si fuera actual.
+    _tree = null;
   }
 
   static List<String> _segmentsOf(String path) =>

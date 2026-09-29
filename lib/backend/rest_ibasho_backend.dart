@@ -11,6 +11,7 @@ import 'identity_toolkit.dart';
 import 'models.dart';
 import 'rtdb_client.dart';
 import 'rtdb_socket.dart';
+import 'shared_watch.dart';
 import 'user_mux.dart';
 
 /// Implementacion del contrato sobre las APIs REST de Firebase.
@@ -30,6 +31,7 @@ class RestIbashoBackend implements IbashoBackend {
   /// La cuenta propia y el reparto de su unica conexion. Ver `UserNodeMux`.
   String? _ownAccount;
   UserNodeMux? _mux;
+  final SharedWatches _shared = SharedWatches();
 
   /// Hasta donde se busca una generacion de credencial al iniciar sesion.
   static const int maxGeneration = 4;
@@ -141,7 +143,9 @@ class RestIbashoBackend implements IbashoBackend {
         return mux.child(path.substring(prefix.length));
       }
     }
-    return _db.watch(path, token: token, query: query);
+    // Lo demás también comparte: una conexión por ruta y consulta.
+    final key = query == null ? path : '$path?${query.orderByChild}=${query.equalTo}';
+    return _shared.watch(key, () => _db.watch(path, token: token, query: query));
   }
 
   @override

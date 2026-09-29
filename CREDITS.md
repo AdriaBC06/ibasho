@@ -48,6 +48,9 @@ Nihongo, con `python3 tool/gen_nihongo_music.py`.
 | feria (premio del gacha, SR; con ritmo a 138 bpm, bucle de 27,8 s) | `assets/audio/bgm/feria.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | abrigo (premio del gacha, UR; pad de cuerdas cálido, bucle de 88 s) | `assets/audio/bgm/abrigo.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | cenit (premio del gacha, ∞; contrapunto a dos voces, bucle de 96 s) | `assets/audio/bgm/cenit.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| asa (Hatarakitama; herramientas por síntesis modal y flauta, Re, 100 bpm, bucle de 57,6 s) | `assets/audio/bgm/asa.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| mizuba (Hatarakitama; dos kalimbas desfasadas y armónica de cristal, La, 66 bpm, bucle de 54,5 s) | `assets/audio/bgm/mizuba.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| yuyake (Hatarakitama; shamisen, coro granular y piano de juguete, Mi dórico, 88 bpm, bucle de 65,5 s) | `assets/audio/bgm/yuyake.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | tick · open · back · error · chime (efectos) | `assets/audio/sfx/*.wav` | Adrià Bonnin Catalán | CC0 1.0 |
 
 Cada pista está además en MP3 (`.mp3`, VBR calidad 2) al lado de su `.ogg`, con

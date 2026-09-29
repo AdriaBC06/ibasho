@@ -242,6 +242,12 @@
   "trackPlaza": "original con swing: marimba, piano eléctrico y bajo andante",
   "trackBossa": "bossa nova con sonido de 8 bits",
   "trackHanami": "original de Nihongo: koto, marimba y bajo con swing",
+  "trackAsa": "original de Hatarakitama: yunque y hacha afinados con flauta de bambú",
+  "trackMizuba": "original de Hatarakitama: dos kalimbas que se desfasan, cristal y gotas",
+  "trackYuyake": "original de Hatarakitama: shamisen, coro de granos y piano de juguete",
+  "@trackAsa": {"description": "Descripción de la pista asa en la lista de música."},
+  "@trackMizuba": {"description": "Descripción de la pista mizuba en la lista de música."},
+  "@trackYuyake": {"description": "Descripción de la pista yuyake en la lista de música."},
   "trackSumi": "original de Nihongo: piano eléctrico y koto en escala in",
   "trackNana": "premio del gacha: una nana en tres tiempos, mecida siempre igual",
   "trackCarrillon": "premio del gacha: una caja de música, celesta sola",
@@ -260,7 +266,7 @@
   "creditNoteDownloaded": "Convertida a Ogg Vorbis y nivelada en sonoridad.",
   "creditNoteTimezone": "Base de datos de zonas horarias IANA, embebida.",
   "settingsMenuMusic": "música del menú",
-  "settingsMenuMusicHint": "las canciones de las apps se añaden aquí la primera vez que las escuchas.",
+  "settingsMenuMusicHint": "las canciones de las apps se añaden aquí la primera vez que las escuchas; tus canciones de Tamakoro también aparecen aquí.",
   "settingsMenuMusicPending": "{count, plural, =0{ya has descubierto todas las canciones} =1{queda 1 canción por descubrir en las apps} other{quedan {count} canciones por descubrir en las apps}}",
   "@settingsMenuMusicPending": {
     "placeholders": {
@@ -2270,7 +2276,6 @@
   "channelTamakoro": "tamakoro",
   "koroTabSongs": "canciones",
   "koroTabPiano": "Tamapiano",
-  "koroTabMenu": "música del menú",
   "koroSongTitle": "Graznata n.º {number} de {owner}",
   "@koroSongTitle": {"description": "Título automático de una canción de Tamakoro.", "placeholders": {"number": {"type": "int"}, "owner": {"type": "String"}}},
   "koroSlotNumber": "hueco {number}",
@@ -2308,13 +2313,10 @@
   "koroPianoHint": "con el teclado: A S D F G H J K para las blancas, W E T Y U para las negras.",
   "koroNoteNames": "Do,Re,Mi,Fa,Sol,La,Si,Do'",
   "@koroNoteNames": {"description": "Nombres de las ocho teclas blancas del Tamapiano, separados por comas."},
-  "koroMenuHint": "lo que suena en el menú de inicio: tus canciones de Tamakoro y las que has descubierto en las apps. Aquí dentro no suena nada; se oye al salir.",
   "koroShopName": "hueco de Tamakoro",
   "koroShopDesc": "un hueco más para guardar una canción de Tamakoro. Se compran de uno en uno, hasta {max}, y cada diez suben de precio.",
   "@koroShopDesc": {"placeholders": {"max": {"type": "int"}}},
   "koroShopDone": "nuevo hueco en Tamakoro",
-  "settingsMenuMusicKoro": "una canción de Tamakoro",
-  "settingsMenuMusicFromKoro": "la música del menú se elige ahora en el canal Tamakoro, junto a tus canciones.",
   "odoriBrillo": "¡brillo!",
   "@odoriBrillo": {"description": "Juicio perfecto de Odori (±45 ms)."},
   "odoriBien": "bien",
@@ -2566,5 +2568,339 @@
   "yataiDoneOdoriSong": "¡canción lista en Odori!",
   "@yataiDoneOdoriSong": {"description": "Aviso tras comprar una cancion de Odori en el Yatai."},
   "leaderboardsLines": "{count, plural, =1{1 fila} other{{count} filas}}",
-  "@leaderboardsLines": {"description": "Filas de la partida bajo la puntuacion de Tsumiki en la clasificacion.", "placeholders": {"count": {"type": "int"}}}
+  "@leaderboardsLines": {"description": "Filas de la partida bajo la puntuacion de Tsumiki en la clasificacion.", "placeholders": {"count": {"type": "int"}}},
+  "channelHataraki": "hatarakitama",
+  "@channelHataraki": {"description": "Nombre del canal de Hatarakitama (働きたま), el juego idle."},
+  "hatarakiItemName": "{id, select, log_sugi{tronco de sugi} log_matsu{tronco de pino} log_take{caña de bambú} log_kaede{tronco de arce} log_sakura{tronco de cerezo} log_ichou{tronco de ginkgo} log_kusu{tronco de alcanforero} log_shinboku{madera sagrada} fish_iwashi{sardina} fish_aji{jurel} fish_saba{caballa} fish_tai{besugo} fish_sake{salmón} fish_unagi{anguila} fish_maguro{atún} fish_kinkoi{carpa dorada} ore_copper{cobre} ore_tin{estaño} ore_iron{hierro} ore_silver{plata} ore_gold{oro} ore_jade{jade} ore_moon{piedra lunar} ore_star{metal estelar} bar_bronze{lingote de bronce} bar_iron{lingote de hierro} bar_silver{lingote de plata} bar_gold{lingote de oro} bar_star{lingote estelar} gem_quartz{cuarzo} gem_amethyst{amatista} gem_sapphire{zafiro} gem_ruby{rubí} gem_pearl{perla} seed_rice{semilla de arroz} seed_daikon{semilla de daikon} seed_cotton{semilla de algodón} seed_soy{semilla de soja} seed_tea{semilla de té} seed_ichigo{semilla de fresa} seed_imo{semilla de boniato} seed_momo{hueso de melocotón} crop_rice{arroz} crop_daikon{daikon} crop_cotton{algodón} crop_soy{soja} crop_tea{hojas de té} crop_ichigo{fresas} crop_imo{boniato} crop_momo{melocotón} wild_tanpopo{diente de león} wild_shiitake{shiitake} wild_takenoko{brote de bambú} wild_kuri{castaña} wild_yuzu{yuzu} wild_matsutake{matsutake} wild_hasu{flor de loto} wild_kinmokusei{osmanto} plank_sugi{tabla de sugi} plank_kaede{tabla de arce} plank_sakura{tabla de cerezo} cloth_cotton{tela de algodón} cloth_silk{tela de seda} rare_feather{pluma de grulla} rare_shell{caracola} rare_amber{ámbar} rare_ember{ascua eterna} rare_cloud{jirón de nube} rare_moondust{polvo de luna} silk_thread{hilo de seda} food_onigiri{onigiri} food_iwashi{sardina asada} food_miso{sopa de miso} food_aji{jurel frito} food_saba{caballa a la sal} food_taimeshi{arroz con besugo} food_yakiimo{boniato asado} food_unadon{unadon} food_sushi{sushi de atún} food_feast{banquete dorado} tea_tanpopo{té de diente de león} tea_sencha{sencha} tea_genmai{genmaicha} tea_yuzu{té de yuzu} tea_hoji{hojicha} tea_matcha{matcha} tea_hasu{té de loto} tea_kinmoku{té de osmanto} gear_bronze_pick{pico de bronce} gear_iron_pick{pico de hierro} gear_silver_pick{pico de plata} gear_gold_pick{pico de oro} gear_star_pick{pico estelar} gear_scarf{bufanda} gear_happi{happi} gear_cloak{capa de viaje} gear_kimono{kimono de seda} gear_cloudrobe{túnica de nube} gear_basket{cesta} gear_backpack{mochila} gear_chest{baúl} gear_sakurabox{caja de cerezo} gear_shrine{santuario portátil} gear_quartz_charm{amuleto de cuarzo} gear_amethyst_ring{anillo de amatista} gear_sapphire_charm{amuleto de zafiro} gear_ruby_ring{anillo de rubí} gear_pearl_crown{corona de perlas} other{?}}",
+  "@hatarakiItemName": {"description": "Nombre de un objeto del almacén de Hatarakitama, por id.", "placeholders": {"id": {"type": "String"}}},
+  "hatarakiSkillName": "{id, select, woodcutting{tala} fishing{pesca} mining{minería} farming{huerto} foraging{recolecta} agility{agilidad} cooking{cocina} carpentry{carpintería} smithing{forja} tailoring{costura} tea{té} jewelry{joyería} expedition{expediciones} other{?}}",
+  "@hatarakiSkillName": {"description": "Nombre de un oficio de Hatarakitama.", "placeholders": {"id": {"type": "String"}}},
+  "hatarakiCourseName": "{id, select, ag_path{sendero del jardín} ag_stones{piedras del estanque} ag_bridge{puente colgante} ag_roofs{tejados} ag_falls{cascada} ag_bamboo{bosque de bambú} ag_clouds{camino de nubes} other{?}}",
+  "@hatarakiCourseName": {"description": "Recorrido de agilidad de Hatarakitama.", "placeholders": {"id": {"type": "String"}}},
+  "hatarakiZoneName": "{id, select, meadow{el prado} forest{el bosque} river{el río} mountain{la montaña} coast{la costa} onsen{las aguas termales} sky{la isla del cielo} moon{la luna} other{?}}",
+  "@hatarakiZoneName": {"description": "Sitio de expedición de Hatarakitama.", "placeholders": {"id": {"type": "String"}}},
+  "hatarakiGearSlot": "{id, select, tool{herramienta} outfit{ropa} bag{bolsa} charm{amuleto} other{?}}",
+  "@hatarakiGearSlot": {"description": "Hueco del equipo de expedición.", "placeholders": {"id": {"type": "String"}}},
+  "hatarakiTabVillage": "pueblo",
+  "@hatarakiTabVillage": {"description": "Pestaña con los Tamas trabajando."},
+  "hatarakiTabSkills": "oficios",
+  "@hatarakiTabSkills": {"description": "Pestaña de oficios y tareas."},
+  "hatarakiTabBank": "almacén",
+  "@hatarakiTabBank": {"description": "Pestaña del almacén de objetos."},
+  "hatarakiTabExpedition": "expedición",
+  "@hatarakiTabExpedition": {"description": "Pestaña de expediciones."},
+  "hatarakiTotalLevel": "nivel total",
+  "@hatarakiTotalLevel": {"description": "Etiqueta del marcador de nivel total."},
+  "hatarakiWorkers": "trabajando",
+  "@hatarakiWorkers": {"description": "Etiqueta del marcador de ranuras ocupadas (3/4)."},
+  "hatarakiLevel": "nv. {level}",
+  "@hatarakiLevel": {"description": "Nivel de un oficio, en corto.", "placeholders": {"level": {"type": "int"}}},
+  "hatarakiNeedLevel": "pide nivel {level}",
+  "@hatarakiNeedLevel": {"description": "Tarea o sitio aún bloqueado por nivel.", "placeholders": {"level": {"type": "int"}}},
+  "hatarakiSlotLocked": "nivel total {level}",
+  "@hatarakiSlotLocked": {"description": "Ranura de trabajo bloqueada: nivel total que la abre.", "placeholders": {"level": {"type": "int"}}},
+  "hatarakiSlotFree": "ranura libre",
+  "@hatarakiSlotFree": {"description": "Ranura de trabajo abierta y vacía."},
+  "hatarakiAssign": "poner a trabajar",
+  "@hatarakiAssign": {"description": "Botón de acento: poner a un Tama en la tarea elegida."},
+  "hatarakiGoJobs": "elegir tarea",
+  "@hatarakiGoJobs": {"description": "Botón: ir a los oficios para dar trabajo."},
+  "hatarakiStalled": "le faltan materiales",
+  "@hatarakiStalled": {"description": "Estado de un Tama parado por falta de materiales."},
+  "hatarakiPickTama": "¿quién se pone?",
+  "@hatarakiPickTama": {"description": "Título del diálogo para elegir Tama."},
+  "hatarakiLikes": "¡se le da bien!",
+  "@hatarakiLikes": {"description": "Chapa: la personalidad del Tama va más rápido en este oficio."},
+  "hatarakiBusy": "ocupado",
+  "@hatarakiBusy": {"description": "Chapa: el Tama ya trabaja o está de viaje."},
+  "hatarakiUses": "gasta",
+  "@hatarakiUses": {"description": "Etiqueta de lo que consume una tarea."},
+  "hatarakiMakes": "da",
+  "@hatarakiMakes": {"description": "Etiqueta de lo que produce una tarea."},
+  "hatarakiSeconds": "{seconds} s",
+  "@hatarakiSeconds": {"description": "Duración de una tarea.", "placeholders": {"seconds": {"type": "String"}}},
+  "hatarakiXp": "{xp} xp",
+  "@hatarakiXp": {"description": "Experiencia que da una tarea.", "placeholders": {"xp": {"type": "int"}}},
+  "hatarakiMastery": "maestría {level}",
+  "@hatarakiMastery": {"description": "Nivel de maestría de una tarea.", "placeholders": {"level": {"type": "int"}}},
+  "hatarakiXpToNext": "{xp} xp para el siguiente",
+  "@hatarakiXpToNext": {"description": "Lo que falta para el siguiente nivel.", "placeholders": {"xp": {"type": "String"}}},
+  "hatarakiMaxed": "¡nivel máximo!",
+  "@hatarakiMaxed": {"description": "Oficio al 99."},
+  "hatarakiDrink": "tomar té",
+  "@hatarakiDrink": {"description": "Botón: tomar un té del almacén."},
+  "hatarakiTeaFor": "+{percent} % a {skill} durante 30 min",
+  "@hatarakiTeaFor": {"description": "Lo que hace un té de un oficio.", "placeholders": {"percent": {"type": "int"}, "skill": {"type": "String"}}},
+  "hatarakiTeaAll": "+{percent} % a todo durante 30 min",
+  "@hatarakiTeaAll": {"description": "Lo que hace un té general.", "placeholders": {"percent": {"type": "int"}}},
+  "hatarakiTeaLeft": "té · {time}",
+  "@hatarakiTeaLeft": {"description": "Marcador del té en curso y lo que le queda.", "placeholders": {"time": {"type": "String"}}},
+  "hatarakiEquip": "llevar de viaje",
+  "@hatarakiEquip": {"description": "Botón: poner una pieza en el equipo de expedición."},
+  "hatarakiEquipped": "en el equipo de viaje",
+  "@hatarakiEquipped": {"description": "Chapa: la pieza ya va en el equipo."},
+  "hatarakiPower": "fuerza +{power}",
+  "@hatarakiPower": {"description": "Fuerza que suma una pieza de equipo.", "placeholders": {"power": {"type": "int"}}},
+  "hatarakiFoodValue": "alimenta {food}",
+  "@hatarakiFoodValue": {"description": "Lo que alimenta una comida en una expedición.", "placeholders": {"food": {"type": "int"}}},
+  "hatarakiBankEmpty": "el almacén está vacío: ¡a trabajar!",
+  "@hatarakiBankEmpty": {"description": "Almacén sin nada."},
+  "hatarakiGo": "¡de viaje!",
+  "@hatarakiGo": {"description": "Botón de acento: salir de expedición."},
+  "hatarakiParty": "grupo",
+  "@hatarakiParty": {"description": "Etiqueta de los Tamas que van de expedición."},
+  "hatarakiFood": "comida",
+  "@hatarakiFood": {"description": "Etiqueta de la comida de una expedición."},
+  "hatarakiStrength": "fuerza {power}/{need}",
+  "@hatarakiStrength": {"description": "Fuerza del grupo frente a la que pide el sitio.", "placeholders": {"power": {"type": "int"}, "need": {"type": "int"}}},
+  "hatarakiTripTime": "{minutes} min",
+  "@hatarakiTripTime": {"description": "Duración de una expedición.", "placeholders": {"minutes": {"type": "int"}}},
+  "hatarakiBackIn": "vuelven en {time}",
+  "@hatarakiBackIn": {"description": "Expedición en curso: cuánto falta.", "placeholders": {"time": {"type": "String"}}},
+  "hatarakiNoFood": "falta comida: cocina algo",
+  "@hatarakiNoFood": {"description": "No hay comida para la expedición."},
+  "hatarakiFoodUnits": "{units} × {food}",
+  "@hatarakiFoodUnits": {"description": "Comida que se gastará.", "placeholders": {"units": {"type": "int"}, "food": {"type": "String"}}},
+  "hatarakiAddTama": "añadir Tama",
+  "@hatarakiAddTama": {"description": "Hueco del grupo de expedición vacío."},
+  "hatarakiLoot": "puede traer",
+  "@hatarakiLoot": {"description": "Etiqueta del botín posible de un sitio."},
+  "hatarakiAwayTitle": "mientras no estabas…",
+  "@hatarakiAwayTitle": {"description": "Título del resumen del trabajo offline."},
+  "hatarakiAwayTime": "{time} de trabajo",
+  "@hatarakiAwayTime": {"description": "Tiempo simulado en el resumen.", "placeholders": {"time": {"type": "String"}}},
+  "hatarakiAwayOk": "¡genial!",
+  "@hatarakiAwayOk": {"description": "Botón que cierra el resumen."},
+  "hatarakiAwayTrip": "ha vuelto la expedición de {zone}",
+  "@hatarakiAwayTrip": {"description": "Resumen: expedición terminada.", "placeholders": {"zone": {"type": "String"}}},
+  "hatarakiTreasure": "¡han traído un tesoro del gacha!",
+  "@hatarakiTreasure": {"description": "Una expedición trae un premio del gacha."},
+  "hatarakiNoTamas": "crea un Tama para empezar",
+  "@hatarakiNoTamas": {"description": "Sin Tamas no hay quien trabaje."},
+  "hatarakiLoadFailed": "no se ha podido abrir el pueblo",
+  "@hatarakiLoadFailed": {"description": "Error al leer la partida."},
+  "hatarakiBubbleHello": "¡a trabajar!",
+  "@hatarakiBubbleHello": {"description": "Lo que dice el Tama al entrar."},
+  "hatarakiBubbleIdle": "¿me das algo que hacer?",
+  "@hatarakiBubbleIdle": {"description": "Tama sin trabajo."},
+  "hatarakiBubbleLevelUp": "¡{skill} al {level}!",
+  "@hatarakiBubbleLevelUp": {"description": "El Tama celebra una subida de nivel.", "placeholders": {"skill": {"type": "String"}, "level": {"type": "int"}}},
+  "hatarakiBubbleStalled": "¡se acabaron los materiales!",
+  "@hatarakiBubbleStalled": {"description": "Un Tama se ha parado."},
+  "hatarakiBubbleTea": "¡qué rico!",
+  "@hatarakiBubbleTea": {"description": "Al tomar un té."},
+  "hatarakiBubbleTrip": "¡hasta luego!",
+  "@hatarakiBubbleTrip": {"description": "Al salir de expedición."},
+  "hatarakiBubbleBack": "¡ya estamos aquí!",
+  "@hatarakiBubbleBack": {"description": "Al volver de expedición."},
+  "hatarakiFeed": "dar de comer",
+  "@hatarakiFeed": {"description": "Botón: el Tama se come la comida más sencilla del almacén."},
+  "hatarakiBubbleFed": "¡ñam! ¡a seguir!",
+  "@hatarakiBubbleFed": {"description": "Lo que dice el Tama al comer."},
+  "hatarakiNoMeal": "no queda comida: ¡a cocinar!",
+  "@hatarakiNoMeal": {"description": "Aviso: no hay comida en el almacén."},
+  "hatarakiHelp": "cómo se juega",
+  "@hatarakiHelp": {"description": "Título de la ayuda de Hatarakitama."},
+  "hatarakiHelpTitle": "{page, select, work{tus Tamas trabajan} level{el nivel total} likes{lo que se le da bien} stuff{materiales} trip{expediciones} coins{monedas y premios} other{?}}",
+  "@hatarakiHelpTitle": {"description": "Título de cada página de la ayuda.", "placeholders": {"page": {"type": "String"}}},
+  "hatarakiHelpBody": "{page, select, work{En «oficios» elige una tarea y el Tama que la hará. Sigue trabajando aunque cierres la app, hasta 12 horas. Cada tarea hecha da experiencia a su oficio y a veces algo más.} level{Cada oficio va del nivel 0 al 99. El nivel total es la suma de los niveles de todos tus oficios. Con él se abren más ranuras para que trabajen más Tamas a la vez: al 40, 100, 200, 350 y 550.} likes{Cada Tama tiene maña según su personalidad y va un 15 % más rápido en esos oficios. Tranquilo: pesca, huerto y té. Juguetón: agilidad, recolecta y expediciones. Tímido: costura y joyería. Descarado: minería, forja y tala. Dormilón: cocina y carpintería. Con buen ánimo también va más rápido: mímalo o dale de comer.} stuff{Tala, pesca, minería, huerto y recolecta sacan materiales. Cocina, carpintería, forja, costura, té y joyería los transforman. Si falta algo, el Tama se para y te avisa. En el almacén, cada cosa dice de dónde sale y para qué sirve.} trip{Manda de 1 a 3 Tamas libres con comida. La fuerza (el nivel de expediciones, la maña y el equipo del almacén) frente a la dificultad del sitio da el éxito. Traen cosas que no salen de otra forma y a veces un tesoro: un ticket gachaken. Puedes hacerlos volver antes, pero sin botín.} coins{Cada minuto con el canal abierto da 1 moneda, hasta 20 al día. La experiencia que ganas cuenta para la clasificación diaria y semanal.} other{?}}",
+  "@hatarakiHelpBody": {"description": "Texto de cada página de la ayuda.", "placeholders": {"page": {"type": "String"}}},
+  "hatarakiNextSlot": "otra ranura al {level}",
+  "@hatarakiNextSlot": {"description": "Nivel total que abre la siguiente ranura.", "placeholders": {"level": {"type": "int"}}},
+  "hatarakiAllSlots": "todas las ranuras",
+  "@hatarakiAllSlots": {"description": "Ya están abiertas todas las ranuras."},
+  "hatarakiSlotHave": "tienes {level}",
+  "@hatarakiSlotHave": {"description": "Nivel total que se tiene ahora.", "placeholders": {"level": {"type": "int"}}},
+  "hatarakiSlotFreeHint": "toca para elegir tarea",
+  "@hatarakiSlotFreeHint": {"description": "Pista en una ranura libre."},
+  "hatarakiPersonalityLikes": "{personality}: +15 % en",
+  "@hatarakiPersonalityLikes": {"description": "Maña por personalidad, antes de los oficios.", "placeholders": {"personality": {"type": "String"}}},
+  "hatarakiMood": "ánimo ×{speed}",
+  "@hatarakiMood": {"description": "Velocidad que da el ánimo.", "placeholders": {"speed": {"type": "String"}}},
+  "hatarakiMoodHint": "mímalo o dale de comer para que vaya más rápido",
+  "@hatarakiMoodHint": {"description": "Cómo subir el ánimo."},
+  "hatarakiPerHour": "≈ {count} por hora",
+  "@hatarakiPerHour": {"description": "Ritmo de una tarea.", "placeholders": {"count": {"type": "String"}}},
+  "hatarakiEach": "{seconds} s cada vez",
+  "@hatarakiEach": {"description": "Lo que tarda una vez.", "placeholders": {"seconds": {"type": "String"}}},
+  "hatarakiMissing": "le falta",
+  "@hatarakiMissing": {"description": "Etiqueta: materiales que faltan."},
+  "hatarakiGetWith": "se consigue con",
+  "@hatarakiGetWith": {"description": "Etiqueta: oficios o sitios que dan el material."},
+  "hatarakiStop": "parar",
+  "@hatarakiStop": {"description": "Botón: el Tama deja de trabajar."},
+  "hatarakiChange": "cambiar tarea",
+  "@hatarakiChange": {"description": "Botón: elegir otra tarea para el Tama."},
+  "hatarakiDoing": "lo hace",
+  "@hatarakiDoing": {"description": "Etiqueta: Tamas que hacen esta tarea."},
+  "hatarakiDoingNow": "hace {task}",
+  "@hatarakiDoingNow": {"description": "El Tama ya trabaja en otra tarea.", "placeholders": {"task": {"type": "String"}}},
+  "hatarakiSlotsFull": "ranuras llenas: elige a uno que ya trabaje para cambiarle la tarea",
+  "@hatarakiSlotsFull": {"description": "Aviso al elegir Tama sin ranuras libres."},
+  "hatarakiNoSlot": "sin ranura",
+  "@hatarakiNoSlot": {"description": "El Tama no puede ponerse: no hay ranuras libres."},
+  "hatarakiNeedSkillLevel": "pide {skill} nv. {level} (tienes {have})",
+  "@hatarakiNeedSkillLevel": {"description": "Tarea bloqueada por nivel.", "placeholders": {"skill": {"type": "String"}, "level": {"type": "int"}, "have": {"type": "int"}}},
+  "hatarakiSkillAbout": "{id, select, woodcutting{Saca troncos. La carpintería los convierte en tablas y cajas.} fishing{Saca pescado para cocinar.} mining{Saca minerales y a veces gemas para la forja y la joyería.} farming{Planta semillas y cosecha arroz, verduras, algodón y hojas de té.} foraging{Recoge setas, flores y frutos del bosque, y a veces semillas.} agility{Solo da experiencia: cada nivel hace a todos un 0,1 % más rápidos.} cooking{Hace comida para dar de comer a tus Tamas y para las expediciones.} carpentry{Hace tablas y bolsas para llevar de viaje.} smithing{Funde lingotes y forja herramientas para las expediciones.} tailoring{Teje telas y ropa para las expediciones.} tea{Prepara tés que aceleran el trabajo 30 minutos.} jewelry{Talla gemas y hace amuletos para las expediciones.} expedition{Sube mandando Tamas de viaje.} other{?}}",
+  "@hatarakiSkillAbout": {"description": "Para qué sirve cada oficio.", "placeholders": {"id": {"type": "String"}}},
+  "hatarakiSkillsIntro": "Toca un oficio para ver sus tareas. Un oficio sube haciendo sus tareas, y el nivel total abre más ranuras.",
+  "@hatarakiSkillsIntro": {"description": "Tarjeta de oficios sin nada elegido."},
+  "hatarakiMasteryHint": "maestría: cuanto más la hace, más rápido y más veces sale doble",
+  "@hatarakiMasteryHint": {"description": "Qué es la maestría."},
+  "hatarakiSometimes": "a veces",
+  "@hatarakiSometimes": {"description": "Etiqueta: lo que sale de vez en cuando."},
+  "hatarakiComesFrom": "sale de",
+  "@hatarakiComesFrom": {"description": "Etiqueta: dónde se consigue un objeto."},
+  "hatarakiUsedIn": "se usa en",
+  "@hatarakiUsedIn": {"description": "Etiqueta: tareas que gastan un objeto."},
+  "hatarakiFoodHint": "sirve para dar de comer y para las expediciones",
+  "@hatarakiFoodHint": {"description": "Para qué sirve la comida."},
+  "hatarakiSeedHint": "se planta en el huerto",
+  "@hatarakiSeedHint": {"description": "Para qué sirven las semillas."},
+  "hatarakiGearHint": "equipo de viaje: suma fuerza a las expediciones",
+  "@hatarakiGearHint": {"description": "Para qué sirve el equipo."},
+  "hatarakiUnequip": "quitar del equipo",
+  "@hatarakiUnequip": {"description": "Botón: quitar un objeto del equipo de viaje."},
+  "hatarakiSuccess": "éxito {percent} %",
+  "@hatarakiSuccess": {"description": "Probabilidad de éxito de una expedición.", "placeholders": {"percent": {"type": "int"}}},
+  "hatarakiKit": "equipo",
+  "@hatarakiKit": {"description": "Etiqueta: equipo de viaje puesto."},
+  "hatarakiPickParty": "elige quién va",
+  "@hatarakiPickParty": {"description": "Botón de expedición: falta el grupo."},
+  "hatarakiNeedFood": "falta comida",
+  "@hatarakiNeedFood": {"description": "Botón de expedición: no hay comida suficiente."},
+  "hatarakiTripCancel": "volver ya",
+  "@hatarakiTripCancel": {"description": "Botón: hacer volver la expedición antes de tiempo."},
+  "hatarakiTripCancelTitle": "¿volver ya?",
+  "@hatarakiTripCancelTitle": {"description": "Título de la confirmación."},
+  "hatarakiTripCancelBody": "Vuelven ahora, sin botín ni experiencia. La comida ya se ha gastado.",
+  "@hatarakiTripCancelBody": {"description": "Qué pasa al volver antes."},
+  "hatarakiKitNone": "sin equipo: se pone desde el almacén",
+  "@hatarakiKitNone": {"description": "No hay equipo de viaje puesto."},
+  "hatarakiMon": "{count} ginmon",
+  "@hatarakiMon": {
+    "description": "Cantidad de ginmon, la moneda del pueblo de Hatarakitama.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hatarakiMonLabel": "ginmon",
+  "@hatarakiMonLabel": {
+    "description": "Etiqueta del marcador con los ginmon que se tienen."
+  },
+  "hatarakiPrice": "se vende a {mon} ginmon",
+  "@hatarakiPrice": {
+    "description": "Precio de venta de una unidad en el almacén.",
+    "placeholders": {
+      "mon": {
+        "type": "int"
+      }
+    }
+  },
+  "hatarakiSellOne": "vender 1",
+  "@hatarakiSellOne": {
+    "description": "Botón para vender una unidad del almacén."
+  },
+  "hatarakiSellAll": "vender todo",
+  "@hatarakiSellAll": {
+    "description": "Botón para vender todas las unidades de un objeto."
+  },
+  "hatarakiSellTitle": "¿vender todo?",
+  "@hatarakiSellTitle": {
+    "description": "Título de la confirmación de vender todas las unidades."
+  },
+  "hatarakiSellBody": "{count} × {item} por {mon} ginmon. Lo que se vende no vuelve.",
+  "@hatarakiSellBody": {
+    "description": "Cuerpo de la confirmación de venta.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "item": {
+        "type": "String"
+      },
+      "mon": {
+        "type": "int"
+      }
+    }
+  },
+  "hatarakiSold": "¡+{mon} ginmon!",
+  "@hatarakiSold": {
+    "description": "Globito del Tama al vender algo.",
+    "placeholders": {
+      "mon": {
+        "type": "int"
+      }
+    }
+  },
+  "hatarakiMusic": "música",
+  "@hatarakiMusic": {
+    "description": "Título y botón para elegir la canción de Hatarakitama."
+  },
+  "hatarakiMusicCycle": "todas por turnos",
+  "@hatarakiMusicCycle": {
+    "description": "Opción de que suenen las tres canciones una tras otra."
+  },
+  "hatarakiMusicLocked": "sin descubrir",
+  "@hatarakiMusicLocked": {
+    "description": "Canción que aún no ha sonado nunca; se descubre por turnos."
+  },
+  "leaderboardsAllTime": "de siempre",
+  "@leaderboardsAllTime": {
+    "description": "Botón para la tabla de todos los tiempos (solo Hatarakitama)."
+  },
+  "leaderboardsStandingsAllTime": "los más ricos de siempre",
+  "@leaderboardsStandingsAllTime": {
+    "description": "Título de la tabla de todos los tiempos de Hatarakitama."
+  },
+  "debugHatarakiHint": "Atajos sobre la partida propia. La música del pueblo se oye entrando en el canal; las tres canciones están también arriba, en música.",
+  "@debugHatarakiHint": {
+    "description": "Explicación de la sección de Hatarakitama del canal de depuración."
+  },
+  "debugHatarakiMoney": "ginmon (hoy / semana / siempre)",
+  "@debugHatarakiMoney": {
+    "description": "Fila con los ginmon de Hatarakitama."
+  },
+  "debugHatarakiTreasures": "tesoros sin canjear",
+  "@debugHatarakiTreasures": {
+    "description": "Fila con los tesoros del gacha pendientes."
+  },
+  "debugHatarakiLevels": "+10 niveles",
+  "@debugHatarakiLevels": {
+    "description": "Botón que sube diez niveles cada oficio."
+  },
+  "debugHatarakiBank": "+50 de todo",
+  "@debugHatarakiBank": {
+    "description": "Botón que llena el almacén."
+  },
+  "debugHatarakiGiveMoney": "+1000 ginmon",
+  "@debugHatarakiGiveMoney": {
+    "description": "Botón que da ginmon como si se hubieran ganado vendiendo."
+  },
+  "debugHatarakiTrip": "volver de viaje ya",
+  "@debugHatarakiTrip": {
+    "description": "Botón que termina la expedición en curso con su botín."
+  },
+  "debugHatarakiTreasure": "+1 tesoro",
+  "@debugHatarakiTreasure": {
+    "description": "Botón que añade un tesoro del gacha."
+  },
+  "debugHatarakiAway": "3 h fuera",
+  "@debugHatarakiAway": {
+    "description": "Botón que simula haber salido hace tres horas (sale el resumen al entrar)."
+  },
+  "debugHatarakiHelp": "volver a ver la ayuda",
+  "@debugHatarakiHelp": {
+    "description": "Botón que olvida que la ayuda ya salió (sale en una partida nueva)."
+  },
+  "debugHatarakiReset": "empezar de cero",
+  "@debugHatarakiReset": {
+    "description": "Botón que borra la partida de Hatarakitama."
+  },
+  "debugHatarakiResetBody": "Se borran niveles, almacén, ginmon y Tamas trabajando. Los tesoros sin canjear se quedan.",
+  "@debugHatarakiResetBody": {
+    "description": "Confirmación de borrar la partida."
+  }
 }

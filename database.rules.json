@@ -315,6 +315,124 @@
             ".validate": false
           }
         },
+        // Hatarakitama (0.7.0): la partida entera, que calcula la app (como el
+        // gacha, no se puede comprobar aquí que el trabajo sea de verdad). Solo
+        // la dueña la lee y la escribe; las reglas solo cuidan la forma.
+        "hataraki": {
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".validate": "newData.hasChildren(['last', 'seed'])",
+          "xp": {
+            "$skill": {
+              ".validate": "$skill.matches(/^[a-z]{1,16}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 30000000"
+            }
+          },
+          "mastery": {
+            "$action": {
+              ".validate": "$action.matches(/^[a-z0-9_]{1,24}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 30000000"
+            }
+          },
+          "bank": {
+            "$item": {
+              ".validate": "$item.matches(/^[a-z0-9_]{1,24}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 999999999"
+            }
+          },
+          "workers": {
+            "$slot": {
+              ".validate": "$slot.matches(/^[0-5]$/) && newData.hasChildren(['tama', 'action', 'progress'])",
+              "tama": {
+                ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,40}$/)"
+              },
+              "action": {
+                ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,24}$/)"
+              },
+              "progress": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+              },
+              "stalled": {
+                ".validate": "newData.isBoolean()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "kit": {
+            "$slot": {
+              ".validate": "($slot === 'tool' || $slot === 'outfit' || $slot === 'bag' || $slot === 'charm') && newData.isString() && newData.val().matches(/^[a-z0-9_]{1,24}$/)"
+            }
+          },
+          "tea": {
+            ".validate": "newData.hasChildren(['item', 'until'])",
+            "item": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,24}$/)"
+            },
+            "until": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "expedition": {
+            ".validate": "newData.hasChildren(['zone', 'tamas', 'start', 'end', 'power'])",
+            "zone": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-z]{1,16}$/)"
+            },
+            "tamas": {
+              "$i": {
+                ".validate": "$i.matches(/^[0-2]$/) && newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,40}$/)"
+              }
+            },
+            "start": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+            },
+            "end": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+            },
+            "power": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "last": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+          },
+          "seed": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+          },
+          "prizes": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999"
+          },
+          // Canje de un tesoro por un ticket gachaken: `claimAt` pasa a `now`
+          // (como mucho una vez por hora), `prizes` baja 1 y el ticket sube 1,
+          // todo en la misma escritura (ver `tickets`). Al guardar la partida
+          // entera se reescribe igual.
+          "claimAt": {
+            ".validate": "newData.isNumber() && (newData.val() === data.val() || (newData.val() === now && (!data.exists() || now - data.val() >= 3600000) && newData.parent().child('prizes').val() === data.parent().child('prizes').val() - 1 && newData.parent().parent().child('tickets').child('gachaken').val() === (data.parent().parent().child('tickets').child('gachaken').exists() ? data.parent().parent().child('tickets').child('gachaken').val() : 0) + 1))"
+          },
+          // Experiencia ganada en el día y la semana en curso, para la
+          // clasificación (que va aparte, en `/leaderboards/hataraki`).
+          "period": {
+            ".validate": "newData.hasChildren(['day', 'dayXp', 'week', 'weekXp'])",
+            "$field": {
+              ".validate": "($field === 'day' || $field === 'dayXp' || $field === 'week' || $field === 'weekXp' || $field === 'dayMoney' || $field === 'weekMoney') && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            }
+          },
+          // Mon (la moneda del pueblo) que hay y los ganados vendiendo desde
+          // siempre. Solo cuentan para la clasificación de riqueza.
+          "money": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999999"
+          },
+          "earned": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999999"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         "music": {
           ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
@@ -422,7 +540,9 @@
         // eso se llega justo a 20; un dia nuevo empieza de cero. Hace falta
         // tener el juego y que `coins` suba exactamente lo mismo en la misma
         // escritura (Ohirune y Odori son gratis y no se compran: basta con la clave). Odori
-        // tiene un tope de 30 en vez de 20.
+        // tiene un tope de 30 en vez de 20. Hatarakitama (`hataraki`) también
+        // es gratis y paga por minuto jugado: sube de 1 en 1 y con 60 s como
+        // mínimo desde su cobro anterior.
         // `earnings/last` dice que juego cobro por ultima vez, y
         // entre dos cobros, sean del juego que sean, tienen que pasar 15 s.
         // No se puede comprobar que la partida se gano de verdad: lo que
@@ -447,7 +567,7 @@
           },
           "$game": {
             ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
-            ".validate": "$game.matches(/^[a-z0-9_]{1,32}$/) && newData.hasChildren(['day', 'earned', 'at']) && newData.child('at').val() === now && ($game === 'ohirune' || $game === 'odori' || root.child('users').child($accountId).child('games').child($game).exists()) && newData.child('day').val() * 86400000 <= now && (newData.child('day').val() + 1) * 86400000 > now && newData.parent().child('last').child('game').val() === $game && newData.parent().child('last').child('at').val() === now && ((newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 3 || (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 5 || (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 8 || (newData.child('earned').val() === ($game === 'odori' ? 30 : 20) && (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) > 0 && (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) < 8)) && newData.parent().parent().child('coins').val() === (data.parent().parent().child('coins').exists() ? data.parent().parent().child('coins').val() : 0) + (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0))",
+            ".validate": "$game.matches(/^[a-z0-9_]{1,32}$/) && newData.hasChildren(['day', 'earned', 'at']) && newData.child('at').val() === now && ($game === 'ohirune' || $game === 'odori' || $game === 'hataraki' || root.child('users').child($accountId).child('games').child($game).exists()) && newData.child('day').val() * 86400000 <= now && (newData.child('day').val() + 1) * 86400000 > now && newData.parent().child('last').child('game').val() === $game && newData.parent().child('last').child('at').val() === now && (($game === 'hataraki' && (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 1 && (!data.exists() || now - data.child('at').val() >= 60000)) || ($game !== 'hataraki' && ((newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 3 || (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 5 || (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) === 8 || (newData.child('earned').val() === ($game === 'odori' ? 30 : 20) && (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) > 0 && (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0)) < 8)))) && newData.parent().parent().child('coins').val() === (data.parent().parent().child('coins').exists() ? data.parent().parent().child('coins').val() : 0) + (newData.child('earned').val() - (data.child('day').val() === newData.child('day').val() ? data.child('earned').val() : 0))",
             "day": {
               ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
             },
@@ -600,8 +720,8 @@
         "tickets": {
           ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           "$kind": {
-            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists() && (root.child('admins').child(auth.uid).exists() || newData.parent().parent().child('shop').child('last').child('at').val() === now || newData.parent().parent().child('gacha').child('last').child('at').val() === now || newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now || newData.parent().parent().child('missions').child('claim').child('at').val() === now)",
-            ".validate": "$kind.matches(/^(gachaken|kinken)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999 && (root.child('admins').child(auth.uid).exists() || (newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'ticket_' + $kind && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val() && newData.parent().parent().child('shop').child('week').child('n').val() * 604800000 <= now && (newData.parent().parent().child('shop').child('week').child('n').val() + 1) * 604800000 > now && newData.parent().parent().child('shop').child('week').child($kind).val() === (root.child('users').child($accountId).child('shop/week').child('n').val() === newData.parent().parent().child('shop').child('week').child('n').val() ? root.child('users').child($accountId).child('shop/week').child($kind).val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val()) || (newData.parent().parent().child('gacha').child('last').child('at').val() === now && newData.parent().parent().child('gacha').child('last').child('kind').val() === $kind && data.exists() && newData.val() === data.val() - (newData.parent().parent().child('gacha').child('last').child('count').val() === 11 ? 10 : newData.parent().parent().child('gacha').child('last').child('count').val())) || (newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now && newData.parent().parent().child('leaderboardClaims').child('last').child('kind').val() === $kind && newData.val() > (data.exists() && data.val() > 0 ? data.val() : 0) && newData.val() <= (data.exists() && data.val() > 0 ? data.val() : 0) + 3) || (newData.parent().parent().child('missions').child('claim').child('at').val() === now && newData.parent().parent().child('missions').child('claim').child('ticketKind').val() === $kind && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + newData.parent().parent().child('missions').child('claim').child('amount').val()))"
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists() && (root.child('admins').child(auth.uid).exists() || newData.parent().parent().child('shop').child('last').child('at').val() === now || newData.parent().parent().child('gacha').child('last').child('at').val() === now || newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now || newData.parent().parent().child('missions').child('claim').child('at').val() === now || newData.parent().parent().child('hataraki').child('claimAt').val() === now)",
+            ".validate": "$kind.matches(/^(gachaken|kinken)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999 && (root.child('admins').child(auth.uid).exists() || ($kind === 'gachaken' && newData.parent().parent().child('hataraki').child('claimAt').val() === now && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + 1 && newData.parent().parent().child('hataraki').child('prizes').val() === root.child('users').child($accountId).child('hataraki').child('prizes').val() - 1) || (newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'ticket_' + $kind && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val() && newData.parent().parent().child('shop').child('week').child('n').val() * 604800000 <= now && (newData.parent().parent().child('shop').child('week').child('n').val() + 1) * 604800000 > now && newData.parent().parent().child('shop').child('week').child($kind).val() === (root.child('users').child($accountId).child('shop/week').child('n').val() === newData.parent().parent().child('shop').child('week').child('n').val() ? root.child('users').child($accountId).child('shop/week').child($kind).val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val()) || (newData.parent().parent().child('gacha').child('last').child('at').val() === now && newData.parent().parent().child('gacha').child('last').child('kind').val() === $kind && data.exists() && newData.val() === data.val() - (newData.parent().parent().child('gacha').child('last').child('count').val() === 11 ? 10 : newData.parent().parent().child('gacha').child('last').child('count').val())) || (newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now && newData.parent().parent().child('leaderboardClaims').child('last').child('kind').val() === $kind && newData.val() > (data.exists() && data.val() > 0 ? data.val() : 0) && newData.val() <= (data.exists() && data.val() > 0 ? data.val() : 0) + 3) || (newData.parent().parent().child('missions').child('claim').child('at').val() === now && newData.parent().parent().child('missions').child('claim').child('ticketKind').val() === $kind && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + newData.parent().parent().child('missions').child('claim').child('amount').val()))"
           }
         },
         // El gacha (0.6.0). El sorteo lo hace la app: las reglas no pueden
@@ -1207,7 +1327,7 @@
             "scores": {
               "$accountId": {
                 ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
-                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (newData.val() >= 1 && newData.val() <= 3600000) : (newData.val() >= 0 && newData.val() <= ($game === 'odori' || $game === 'odori_butai' ? 1500000 : 999999))) && newData.parent().parent().child('day').val() * 86400000 <= now && newData.parent().parent().child('day').val() * 86400000 + 86400000 > now && newData.parent().parent().child('at').child($accountId).val() === now && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (!data.exists() || newData.val() < data.val()) : (!data.exists() || newData.val() > data.val()))"
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (newData.val() >= 1 && newData.val() <= 3600000) : (newData.val() >= 0 && newData.val() <= ($game === 'odori' || $game === 'odori_butai' ? 1500000 : $game === 'hataraki' ? 999999999 : 999999))) && newData.parent().parent().child('day').val() * 86400000 <= now && newData.parent().parent().child('day').val() * 86400000 + 86400000 > now && newData.parent().parent().child('at').child($accountId).val() === now && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (!data.exists() || newData.val() < data.val()) : (!data.exists() || newData.val() > data.val()))"
               }
             },
             "at": {
@@ -1242,7 +1362,7 @@
             "scores": {
               "$accountId": {
                 ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
-                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (newData.val() >= 1 && newData.val() <= 3600000) : (newData.val() >= 0 && newData.val() <= ($game === 'odori' || $game === 'odori_butai' ? 1500000 : 999999))) && newData.parent().parent().child('week').val() * 604800000 <= now && newData.parent().parent().child('week').val() * 604800000 + 604800000 > now && newData.parent().parent().child('at').child($accountId).val() === now && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (!data.exists() || newData.val() < data.val()) : (!data.exists() || newData.val() > data.val()))"
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (newData.val() >= 1 && newData.val() <= 3600000) : (newData.val() >= 0 && newData.val() <= ($game === 'odori' || $game === 'odori_butai' ? 1500000 : $game === 'hataraki' ? 999999999 : 999999))) && newData.parent().parent().child('week').val() * 604800000 <= now && newData.parent().parent().child('week').val() * 604800000 + 604800000 > now && newData.parent().parent().child('at').child($accountId).val() === now && ($game.matches(/^minesweeper_/) || $game === 'ohirune' ? (!data.exists() || newData.val() < data.val()) : (!data.exists() || newData.val() > data.val()))"
               }
             },
             "at": {
@@ -1258,6 +1378,26 @@
             "$other": {
               ".validate": false
             }
+          }
+        },
+        // Tabla de siempre (solo Hatarakitama: los mon ganados desde
+        // siempre). Sin periodo, sin podio y sin premio; cada cuenta solo sube
+        // la suya.
+        "alltime": {
+          "scores": {
+            "$accountId": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+              ".validate": "$game === 'hataraki' && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999 && newData.parent().parent().child('at').child($accountId).val() === now && (!data.exists() || newData.val() > data.val())"
+            }
+          },
+          "at": {
+            "$accountId": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false && newData.exists()",
+              ".validate": "$game === 'hataraki' && newData.isNumber() && newData.val() === now"
+            }
+          },
+          "$other": {
+            ".validate": false
           }
         },
         "$other": {

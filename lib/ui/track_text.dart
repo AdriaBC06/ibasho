@@ -20,4 +20,7 @@ String describeTrack(L l, MusicTrack track) => switch (track) {
       MusicTrack.feria => l.trackFeria,
       MusicTrack.abrigo => l.trackAbrigo,
       MusicTrack.cenit => l.trackCenit,
+      MusicTrack.asa => l.trackAsa,
+      MusicTrack.mizuba => l.trackMizuba,
+      MusicTrack.yuyake => l.trackYuyake,
     };

@@ -180,7 +180,13 @@ enum MusicTrack {
   lofi('lofi', 'audio/bgm/lofi.ogg', 'Adrià Bonnin Catalán', 'CC0'),
   feria('feria', 'audio/bgm/feria.ogg', 'Adrià Bonnin Catalán', 'CC0'),
   abrigo('abrigo', 'audio/bgm/abrigo.ogg', 'Adrià Bonnin Catalán', 'CC0'),
-  cenit('cenit', 'audio/bgm/cenit.ogg', 'Adrià Bonnin Catalán', 'CC0');
+  cenit('cenit', 'audio/bgm/cenit.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+
+  // Hatarakitama (0.7.0): tres canciones que se turnan en el canal
+  // (`tool/gen_hataraki_music.py`).
+  asa('asa', 'audio/bgm/asa.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+  mizuba('mizuba', 'audio/bgm/mizuba.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+  yuyake('yuyake', 'audio/bgm/yuyake.ogg', 'Adrià Bonnin Catalán', 'CC0');
 
   const MusicTrack(
     this.id,
@@ -416,6 +422,24 @@ class AudioService {
   /// ese perfil esta abierto.
   MusicTrack? _guest;
 
+  /// Si la pista de invitada es una ronda: al acabar cada una suena la
+  /// siguiente, sin bucle.
+  List<MusicTrack>? _cycle;
+
+  /// Lo que queda de la vuelta de la ronda, en el orden en que va a sonar.
+  final List<MusicTrack> _cycleQueue = [];
+  final math.Random _cycleRng = math.Random();
+
+  /// La siguiente de la ronda: cada vuelta es un orden al azar con todas una
+  /// vez, y la primera de una vuelta nunca repite la ultima de la anterior.
+  MusicTrack _nextInCycle(List<MusicTrack> cycle) {
+    if (_cycleQueue.isEmpty) _cycleQueue.addAll(shuffledRound(cycle, _guest, _cycleRng));
+    return _cycleQueue.removeAt(0);
+  }
+
+  /// La pista de invitada que suena ahora; cambia sola en una ronda.
+  final ValueNotifier<MusicTrack?> guestTrack = ValueNotifier<MusicTrack?>(null);
+
   /// Fundidos al cambiar de pista cuando algo ya sonaba: salida corta, entrada
   /// algo mas larga. Solo los usa la musica de perfil; el resto de cambios de
   /// pista siguen siendo inmediatos.
@@ -521,6 +545,8 @@ class AudioService {
           await _fade(player, _effectiveMusicVolume, 0, _fadeOut);
         }
         await player.stop();
+        // En una ronda cada pista suena una vez y avisa al acabar.
+        await player.setReleaseMode(_cycle != null && _guest != null ? ReleaseMode.release : ReleaseMode.loop);
         await player.setSource(file != null ? DeviceFileSource(file) : AssetSource(wanted));
         _loadedAsset = wanted;
         fadeIn = fade;
@@ -547,6 +573,14 @@ class AudioService {
   /// si el sistema de audio falla de verdad.
   void _watchMusic(AudioPlayer player) {
     player.onPlayerStateChanged.listen((state) {
+      final cycle = _cycle;
+      if (state == PlayerState.completed && cycle != null && _guest != null) {
+        // Acaba una canción de la ronda: entra la siguiente, sin fundido.
+        // Aunque la música esté callada: así, al volver, ya toca la nueva.
+        _setGuest(_nextInCycle(cycle));
+        unawaited(_serial(_reconcileMusic));
+        return;
+      }
       if (_reconciling || !_musicWanted || _hushed > 0 || _musicVolume <= 0 || _suspended || _focusLost) {
         return;
       }
@@ -627,18 +661,41 @@ class AudioService {
   /// Pone la pista de un perfil en lugar de la de ambiente, con un fundido
   /// corto.
   Future<void> playProfileTrack(MusicTrack track) {
-    if (_guest == track) return _musicQueue;
-    _guest = track;
+    if (_guest == track && _cycle == null) return _musicQueue;
+    _cycle = null;
+    _setGuest(track);
     _fadeNext = true;
+    _loadedAsset = null;
+    return _serial(_reconcileMusic);
+  }
+
+  /// Como [playProfileTrack], pero con varias pistas que se turnan: cada una
+  /// suena entera y al acabar entra otra. Van por vueltas al azar (A→C→B,
+  /// B→A→C…) y nunca suena la misma dos veces seguidas.
+  Future<void> playProfileCycle(List<MusicTrack> tracks) {
+    if (tracks.isEmpty) return endProfileTrack();
+    if (_cycle != null && listEquals(_cycle, tracks)) return _musicQueue;
+    _cycle = List.unmodifiable(tracks);
+    _cycleQueue.clear();
+    _setGuest(_nextInCycle(tracks));
+    _fadeNext = true;
+    _loadedAsset = null;
     return _serial(_reconcileMusic);
   }
 
   /// Vuelve a la musica de ambiente, con el mismo fundido.
   Future<void> endProfileTrack() {
     if (_guest == null) return _musicQueue;
-    _guest = null;
+    _cycle = null;
+    _setGuest(null);
     _fadeNext = true;
     return _serial(_reconcileMusic);
+  }
+
+  void _setGuest(MusicTrack? track) {
+    if (track == null) _cycleQueue.clear();
+    _guest = track;
+    guestTrack.value = track;
   }
 
   /// Pista de perfil que suena ahora, si hay.
@@ -1011,4 +1068,16 @@ class AudioService {
     }
     _ready = false;
   }
+}
+
+/// Una vuelta de una ronda: todas las de [items] una vez, en orden al azar, y
+/// sin empezar por [last] (la que acaba de sonar) si hay otra con que empezar.
+List<T> shuffledRound<T>(List<T> items, T? last, math.Random rng) {
+  final round = List<T>.of(items)..shuffle(rng);
+  if (round.length > 1 && round.first == last) {
+    final swap = 1 + rng.nextInt(round.length - 1);
+    round[0] = round[swap];
+    round[swap] = last as T;
+  }
+  return round;
 }

@@ -78,6 +78,7 @@ enum Glyph {
   trophy,
   flag,
   moon,
+  pick,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -911,6 +912,16 @@ class _GlyphPainter extends CustomPainter {
             ..lineTo(20.8, 6.4),
           stroke,
         );
+      case Glyph.pick:
+        // El pico de Hatarakitama: la cabeza curva de lado a lado y el mango
+        // en diagonal, que nace en el centro de la cabeza.
+        canvas.drawPath(
+          Path()
+            ..moveTo(4, 9.6)
+            ..quadraticBezierTo(12, 2.6, 20, 9.6),
+          stroke,
+        );
+        canvas.drawLine(const Offset(12, 6.4), const Offset(12, 20.6), stroke);
     }
 
     canvas.restore();

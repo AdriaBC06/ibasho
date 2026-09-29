@@ -20,7 +20,8 @@ enum LeaderboardGame {
   nihongo,
   odori,
   odoriButai,
-  ohirune;
+  ohirune,
+  hataraki;
 
   /// La clave del juego en `/leaderboards/{clave}` y en las reglas.
   String get key => switch (this) {
@@ -32,6 +33,7 @@ enum LeaderboardGame {
         LeaderboardGame.odori => 'odori',
         LeaderboardGame.odoriButai => 'odori_butai',
         LeaderboardGame.ohirune => 'ohirune',
+        LeaderboardGame.hataraki => 'hataraki',
       };
 
   /// Buscaminas y Ohirune son por tiempo: menor es mejor. Tsumiki, Nihongo
@@ -45,7 +47,8 @@ enum LeaderboardGame {
         LeaderboardGame.tsumiki ||
         LeaderboardGame.nihongo ||
         LeaderboardGame.odori ||
-        LeaderboardGame.odoriButai =>
+        LeaderboardGame.odoriButai ||
+        LeaderboardGame.hataraki =>
           false,
       };
 
@@ -54,8 +57,13 @@ enum LeaderboardGame {
   /// lo multiplica hasta ×1,5 segun la dificultad.
   int get maxScore => switch (this) {
         LeaderboardGame.odori || LeaderboardGame.odoriButai => 1500000,
+        // Hatarakitama cuenta mon ganados vendiendo.
+        LeaderboardGame.hataraki => 999999999,
         _ => lowerIsBetter ? 3600000 : 999999,
       };
+
+  /// Si además de día y semana tiene tabla de siempre (sin premio).
+  bool get hasAllTime => this == LeaderboardGame.hataraki;
 
   static LeaderboardGame? byKey(String key) {
     for (final g in values) {

@@ -13,6 +13,7 @@ import '../../audio/tama_voice.dart';
 import '../../backend/tama.dart';
 import '../../theme/skin.dart';
 import 'tama_animator.dart';
+import 'tama_food.dart' show FoodArt;
 import 'tama_painter.dart';
 
 /// Ultima posicion conocida del puntero en toda la ventana.
@@ -57,8 +58,9 @@ class TamaViewController {
   /// Un mimo desde un boton.
   void cuddle() => _state?._cuddle();
 
-  /// Darle una chuche.
-  void feed([TamaFood food = TamaFood.cookie]) => _state?._feed(food);
+  /// Darle una chuche, o con [art] lo que se dibuje ahi (la comida de un
+  /// juego).
+  void feed([TamaFood food = TamaFood.cookie, FoodArt? art]) => _state?._feed(food, art);
 
   /// Que diga algo.
   void speak([ChirpKind kind = ChirpKind.hello]) => _state?._speak(kind);
@@ -237,8 +239,8 @@ class _TamaViewState extends State<TamaView> with SingleTickerProviderStateMixin
     unawaited(_speak(ChirpKind.happy));
   }
 
-  void _feed(TamaFood food) {
-    _animator.feed(food);
+  void _feed(TamaFood food, [FoodArt? art]) {
+    _animator.feed(food, art);
     Future<void>.delayed(const Duration(milliseconds: 900), () {
       if (mounted) unawaited(_speak(ChirpKind.munch));
     });

@@ -9,6 +9,10 @@ import 'package:flutter/widgets.dart';
 import '../../backend/tama.dart';
 import '../../theme/tokens.dart';
 
+/// Un dibujo de comida que no es una [TamaFood]: lo de comer de un juego
+/// (Hatarakitama da sus platos). Pinta centrado en `c`, dentro del radio `s`.
+typedef FoodArt = void Function(Canvas canvas, Offset c, double s);
+
 /// Pinta una comida centrada en `c`.
 ///
 /// Toda comida cabe en un circulo de radio `s` alrededor de `c` (lo comprueba

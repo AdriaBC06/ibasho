@@ -10,8 +10,8 @@ import '../../../backend/backdrops.dart';
 import '../../../backend/gacha.dart';
 import '../../../core/device.dart';
 import '../../../core/version.dart';
+import '../../../games/tamakoro/menu_music_picker.dart';
 import '../../../l10n/gen/app_localizations.dart';
-import '../../../state/koro.dart';
 import '../../../state/providers.dart';
 import '../../../theme/menu_theme.dart';
 import '../../../theme/skin.dart';
@@ -43,7 +43,6 @@ class SettingsChannel extends ConsumerWidget {
     final preferences = ref.watch(preferencesProvider);
     final controller = ref.read(preferencesProvider.notifier);
     final gacha = ref.watch(gachaProvider);
-    final currentTrack = MusicTrack.byId(preferences.musicTrack);
     final layout = Layout.of(context);
 
 
@@ -122,26 +121,7 @@ class SettingsChannel extends ConsumerWidget {
                 SectionCard(
                   title: l.settingsMenuMusic,
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Desde la 0.6.2 se elige en Tamakoro, junto a las
-                      // canciones propias: aqui solo se dice que suena.
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6, bottom: 8),
-                        child: Text(
-                          koroSlotOfTrack(preferences.musicTrack) != null
-                              ? l.settingsMenuMusicKoro
-                              : currentTrack.id,
-                          style: Ty.body,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Text(l.settingsMenuMusicFromKoro, style: Ty.caption),
-                      ),
-                    ],
-                  ),
+                  child: const MenuMusicPicker(),
                 ),
                 const SizedBox(height: 22),
                 SectionCard(

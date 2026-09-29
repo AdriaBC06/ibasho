@@ -39,6 +39,7 @@ class TamaPose {
     this.heartPhase = 0,
     this.treat = -1,
     this.food = TamaFood.cookie,
+    this.foodArt,
   });
 
   /// Pose de reposo. Es la que se ve, fija, con movimiento reducido.
@@ -98,6 +99,9 @@ class TamaPose {
 
   /// Que chuche cae.
   final TamaFood food;
+
+  /// Si no es `null`, cae esto en lugar de [food].
+  final FoodArt? foodArt;
 }
 
 /// Pinta un Tama en una caja cuadrada.
@@ -1348,7 +1352,13 @@ class TamaPainter extends CustomPainter {
       final t = Curves.easeIn.transform(treat.clamp(0.0, 1.0));
       final p = Offset.lerp(start, target, t)!;
       // Grande al caer, mas pequeña al llegar a la boca.
-      paintFood(canvas, pose.food, p, 6.2 * (1 - t * .4));
+      final size = 6.2 * (1 - t * .4);
+      final art = pose.foodArt;
+      if (art != null) {
+        art(canvas, p, size);
+      } else {
+        paintFood(canvas, pose.food, p, size);
+      }
     }
 
     if (pose.hearts <= .01) return;

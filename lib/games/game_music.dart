@@ -4,6 +4,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,10 +18,16 @@ import '../state/providers.dart';
 ///
 /// Si [track] cambia sin desmontarse (Nihongo tiene una para el menu y otra
 /// para jugar), pasa a la nueva con el mismo fundido y la desbloquea tambien.
+///
+/// Con [GameMusic.cycle] suenan varias pistas por turnos (Hatarakitama): cada
+/// una entera y luego la siguiente. Se desbloquea cada una al empezar a sonar.
 class GameMusic extends ConsumerStatefulWidget {
-  const GameMusic({super.key, required this.track, required this.child});
+  const GameMusic({super.key, required this.track, required this.child}) : cycle = const [];
+
+  GameMusic.cycle({super.key, required this.cycle, required this.child}) : track = cycle.first;
 
   final MusicTrack track;
+  final List<MusicTrack> cycle;
   final Widget child;
 
   @override
@@ -31,17 +38,43 @@ class _GameMusicState extends ConsumerState<GameMusic> {
   @override
   void initState() {
     super.initState();
-    _play(widget.track);
+    AudioService.instance.guestTrack.addListener(_onGuest);
+    if (widget.cycle.isEmpty) {
+      _play(widget.track);
+    } else {
+      _playCycle(widget.cycle);
+    }
   }
 
+  /// Puede pasar de una ronda a una pista fija y al revés (en Hatarakitama
+  /// se elige): sin desmontarse, con el mismo fundido.
   @override
   void didUpdateWidget(GameMusic old) {
     super.didUpdateWidget(old);
-    if (old.track != widget.track) _play(widget.track);
+    if (widget.cycle.isNotEmpty) {
+      if (!listEquals(old.cycle, widget.cycle)) _playCycle(widget.cycle);
+    } else if (old.track != widget.track || old.cycle.isNotEmpty) {
+      _play(widget.track);
+    }
+  }
+
+  void _playCycle(List<MusicTrack> cycle) {
+    unawaited(AudioService.instance.playProfileCycle(cycle));
+    _unlock(cycle.first);
+  }
+
+  /// En una ronda, cada pista se desbloquea cuando le toca sonar.
+  void _onGuest() {
+    final track = AudioService.instance.guestTrack.value;
+    if (track != null && widget.cycle.contains(track)) _unlock(track);
   }
 
   void _play(MusicTrack track) {
     unawaited(AudioService.instance.playProfileTrack(track));
+    _unlock(track);
+  }
+
+  void _unlock(MusicTrack track) {
     // Se lee despues del cuadro: tocar un provider durante el montaje o la
     // reconstruccion lo marca como sucio a mitad de construccion.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -60,6 +93,7 @@ class _GameMusicState extends ConsumerState<GameMusic> {
 
   @override
   void dispose() {
+    AudioService.instance.guestTrack.removeListener(_onGuest);
     unawaited(AudioService.instance.endProfileTrack());
     super.dispose();
   }

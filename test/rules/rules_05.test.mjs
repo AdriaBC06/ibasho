@@ -337,6 +337,122 @@ test('ohirune es gratis: cobra sin tenerlo comprado, con el mismo tope', async (
   await assertFails(claim(ANA, { earned: 5, coins: 105, game: 'tsumiki' }));
 });
 
+test('hataraki es gratis y paga de 1 en 1, con un minuto entre cobros', async () => {
+  await assertSucceeds(claim(ANA, { earned: 1, coins: 101, game: 'hataraki' }));
+  // Nada de 3, 5 u 8 de golpe.
+  await earnedBefore(ANA, 'hataraki', { earned: 1, lastAt: now - 120000 });
+  await assertFails(claim(ANA, { earned: 4, coins: 104, game: 'hataraki' }));
+  await assertSucceeds(claim(ANA, { earned: 2, coins: 102, game: 'hataraki' }));
+});
+
+test('hataraki no cobra dos veces en el mismo minuto', async () => {
+  await earnedBefore(ANA, 'hataraki', { earned: 5, lastAt: Date.now() - 30000 });
+  await assertFails(claim(ANA, { earned: 6, coins: 101, game: 'hataraki' }));
+});
+
+test('hataraki no pasa de 20 al día', async () => {
+  await earnedBefore(ANA, 'hataraki', { earned: 20, lastAt: now - 120000 });
+  await assertFails(claim(ANA, { earned: 21, coins: 101, game: 'hataraki' }));
+});
+
+// --- Hatarakitama: la partida (0.7.0) ---------------------------------------
+
+const hatarakiGame = {
+  xp: { woodcutting: 1200, expedition: 60 },
+  mastery: { wc_sugi: 1200 },
+  bank: { log_sugi: 120, seed_rice: 5 },
+  workers: { 0: { tama: '-Nabcdefghijklmnopqr', action: 'wc_sugi', progress: 0.4 } },
+  kit: { bag: 'gear_basket' },
+  tea: { item: 'tea_sencha', until: now + 60000 },
+  expedition: {
+    zone: 'meadow',
+    tamas: { 0: '-Nabcdefghijklmnopqs' },
+    start: now,
+    end: now + 600000,
+    power: 12,
+  },
+  last: now,
+  seed: 42,
+  prizes: 0,
+  money: 340,
+  earned: 900,
+  period: { day: 20360, dayXp: 1200, week: 2908, weekXp: 5400, dayMoney: 120, weekMoney: 900 },
+};
+
+test('hataraki: los mon no pueden ser negativos ni un campo cualquiera', async () => {
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, money: -1 }));
+  await assertFails(
+    set(ref(db(ANA), `/users/${ANA}/hataraki`), {
+      ...hatarakiGame,
+      period: { ...hatarakiGame.period, dayGold: 1 },
+    }),
+  );
+});
+
+test('hataraki: la dueña guarda y lee su partida; nadie más', async () => {
+  await assertSucceeds(set(ref(db(ANA), `/users/${ANA}/hataraki`), hatarakiGame));
+  await assertSucceeds(get(ref(db(ANA), `/users/${ANA}/hataraki`)));
+  await assertFails(get(ref(db(LUIS), `/users/${ANA}/hataraki`)));
+  await assertFails(set(ref(db(LUIS), `/users/${ANA}/hataraki`), hatarakiGame));
+});
+
+async function hatarakiWithPrizes(uid, { prizes, tickets = 3, claimAt }) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${uid}/hataraki`), {
+      ...hatarakiGame,
+      prizes,
+      ...(claimAt ? { claimAt } : {}),
+    });
+    await set(ref(context.database(), `/users/${uid}/tickets/gachaken`), tickets);
+  });
+}
+
+const redeem = (uid, { tickets, prizes, kind = 'gachaken' }) =>
+  update(ref(db(uid), '/'), {
+    [`users/${uid}/tickets/${kind}`]: tickets,
+    [`users/${uid}/hataraki/prizes`]: prizes,
+    [`users/${uid}/hataraki/claimAt`]: serverTimestamp(),
+  });
+
+test('hataraki: un tesoro se canjea por un gachaken, uno por hora', async () => {
+  await hatarakiWithPrizes(ANA, { prizes: 2 });
+  await assertFails(redeem(ANA, { tickets: 5, prizes: 1 }));
+  await assertFails(redeem(ANA, { tickets: 4, prizes: 2 }));
+  await assertFails(redeem(ANA, { tickets: 1, prizes: 1, kind: 'kinken' }));
+  await assertSucceeds(redeem(ANA, { tickets: 4, prizes: 1 }));
+  // El segundo, en la misma hora, no.
+  await assertFails(redeem(ANA, { tickets: 5, prizes: 0 }));
+});
+
+test('hataraki: sin tesoros no hay ticket, y pasada la hora vuelve a haber', async () => {
+  await hatarakiWithPrizes(ANA, { prizes: 0 });
+  await assertFails(redeem(ANA, { tickets: 4, prizes: -1 }));
+  await hatarakiWithPrizes(ANA, { prizes: 1, claimAt: now - 3700000 });
+  await assertSucceeds(redeem(ANA, { tickets: 4, prizes: 0 }));
+});
+
+test('hataraki: guardar la partida con el mismo claimAt vale', async () => {
+  await hatarakiWithPrizes(ANA, { prizes: 1, claimAt: now - 1000 });
+  await assertSucceeds(set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, prizes: 1, claimAt: now - 1000 }));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, prizes: 1, claimAt: now }));
+});
+
+test('hataraki: las reglas cuidan la forma', async () => {
+  const bad = [
+    { ...hatarakiGame, extra: 1 },
+    { ...hatarakiGame, bank: { log_sugi: -3 } },
+    { ...hatarakiGame, workers: { 6: hatarakiGame.workers[0] } },
+    { ...hatarakiGame, workers: { 0: { ...hatarakiGame.workers[0], progress: 2 } } },
+    { ...hatarakiGame, kit: { hat: 'gear_basket' } },
+    { ...hatarakiGame, seed: undefined },
+    { ...hatarakiGame, period: { ...hatarakiGame.period, month: 3 } },
+    { ...hatarakiGame, period: { ...hatarakiGame.period, dayXp: -1 } },
+  ];
+  for (const game of bad) {
+    await assertFails(set(ref(db(ANA), `/users/${ANA}/hataraki`), JSON.parse(JSON.stringify(game))));
+  }
+});
+
 test('odori es gratis y su tope es de 30 al dia', async () => {
   await earnedBefore(ANA, 'odori', { earned: 22 });
   await assertSucceeds(claim(ANA, { earned: 30, coins: 108, game: 'odori' }));

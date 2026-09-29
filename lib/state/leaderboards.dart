@@ -99,6 +99,8 @@ List<String> _ranksFromMap(Object raw) {
 String _periodKey(LeaderboardGame game, bool weekly, int key) =>
     '${game.key}|${weekly ? 'weekly' : 'daily'}|$key';
 
+String _allTimeKey(LeaderboardGame game) => '${game.key}|alltime';
+
 /// Estado del canal de clasificaciones: lo que se ha leido de cada periodo
 /// mirado, y los cobros ya hechos.
 @immutable
@@ -119,6 +121,9 @@ class LeaderboardsState {
 
   LeaderboardPeriod periodOf(LeaderboardGame game, bool weekly, int key) =>
       periods[_periodKey(game, weekly, key)] ?? const LeaderboardPeriod();
+
+  /// La tabla de siempre (solo Hatarakitama).
+  LeaderboardPeriod allTimeOf(LeaderboardGame game) => periods[_allTimeKey(game)] ?? const LeaderboardPeriod();
 
   bool claimed(LeaderboardGame game, bool weekly, int key, TicketKind kind) =>
       claims.contains('${_periodKey(game, weekly, key)}|${kind.name}');
@@ -244,11 +249,39 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
   /// reintenta la proxima vez que se gane.
   /// [lines] (solo Tsumiki) va junto a la puntuacion: las reglas solo la
   /// aceptan en la misma escritura.
-  Future<void> submitScore(LeaderboardGame game, int score, {int? lines}) async {
+  /// [weeklyScore] sustituye a [score] en la tabla semanal (Hatarakitama
+  /// cuenta lo ganado en cada periodo, que no es lo mismo el día que la semana).
+  /// [allTimeScore] va a la tabla de siempre (solo Hatarakitama, sin premio);
+  /// con ella, un periodo a 0 no se manda.
+  Future<void> submitScore(LeaderboardGame game, int score, {int? lines, int? weeklyScore, int? allTimeScore}) async {
     if (_me.isEmpty) return;
     final day = bonusDay();
     final week = gachaWeek();
     final token = await _session.freshToken();
+    if (allTimeScore != null) {
+      try {
+        await _backend.merge(
+          '/',
+          {
+            'leaderboards/${game.key}/alltime/scores/$_me': allTimeScore,
+            'leaderboards/${game.key}/alltime/at/$_me': serverTimestamp,
+          },
+          idToken: token,
+        );
+      } catch (e) {
+        debugPrint('Ibasho: puntuacion de siempre no admitida (${game.key}, $e)');
+      }
+    }
+    final skipZero = allTimeScore != null;
+    if (!skipZero || score > 0) {
+      await _submitDaily(game, day, score, lines, token);
+    }
+    if (!skipZero || (weeklyScore ?? score) > 0) {
+      await _submitWeekly(game, week, weeklyScore ?? score, lines, token);
+    }
+  }
+
+  Future<void> _submitDaily(LeaderboardGame game, int day, int score, int? lines, String token) async {
     try {
       await _backend.merge(
         '/',
@@ -267,6 +300,9 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
     } catch (e) {
       debugPrint('Ibasho: puntuacion diaria no admitida (${game.key}, $e)');
     }
+  }
+
+  Future<void> _submitWeekly(LeaderboardGame game, int week, int score, int? lines, String token) async {
     try {
       await _backend.merge(
         '/',
@@ -281,6 +317,22 @@ class LeaderboardsController extends StateNotifier<LeaderboardsState> {
     } catch (e) {
       debugPrint('Ibasho: puntuacion semanal no admitida (${game.key}, $e)');
     }
+  }
+
+  /// Lee la tabla de siempre de [game] (solo puntuaciones, sin podio).
+  Future<LeaderboardPeriod> loadAllTime(LeaderboardGame game) async {
+    Object? raw;
+    try {
+      raw = await _backend.read('/leaderboards/${game.key}/alltime', idToken: await _session.freshToken());
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido leer la tabla de siempre (${game.key}, $e)');
+      return state.allTimeOf(game);
+    }
+    final period = LeaderboardPeriod.fromJson(raw);
+    if (mounted) {
+      state = state.copyWith(periods: {...state.periods, _allTimeKey(game): period});
+    }
+    return period;
   }
 
   /// Lee lo ya cobrado de [game]/[weekly]/[key], para pintar el boton bien

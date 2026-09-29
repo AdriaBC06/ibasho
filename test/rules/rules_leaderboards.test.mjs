@@ -439,3 +439,46 @@ test('odori admite hasta 1.500.000 (millon por la dificultad) y no mas', async (
     }),
   );
 });
+
+// --- Hatarakitama (0.7.0): riqueza, hasta mil millones y tabla de siempre ---
+
+test('hataraki admite hasta 999.999.999 mon por periodo', async () => {
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/hataraki/weekly/${week}/week`]: week,
+      [`leaderboards/hataraki/weekly/${week}/scores/${ANA}`]: 999999999,
+      [`leaderboards/hataraki/weekly/${week}/at/${ANA}`]: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    update(ref(db(BEN), '/'), {
+      [`leaderboards/hataraki/daily/${day}/day`]: day,
+      [`leaderboards/hataraki/daily/${day}/scores/${BEN}`]: 1000000000,
+      [`leaderboards/hataraki/daily/${day}/at/${BEN}`]: serverTimestamp(),
+    }),
+  );
+});
+
+test('hataraki: la tabla de siempre, cada una la suya y solo hacia arriba', async () => {
+  const send = (uid, who, score) =>
+    update(ref(db(uid), '/'), {
+      [`leaderboards/hataraki/alltime/scores/${who}`]: score,
+      [`leaderboards/hataraki/alltime/at/${who}`]: serverTimestamp(),
+    });
+  await assertSucceeds(send(ANA, ANA, 5000));
+  await assertSucceeds(send(ANA, ANA, 7000));
+  await assertFails(send(ANA, ANA, 6000));
+  await assertFails(send(BEN, ANA, 9000));
+  await assertFails(
+    update(ref(db(ANA), '/'), { [`leaderboards/hataraki/alltime/scores/${ANA}`]: 8000 }),
+  );
+});
+
+test('la tabla de siempre es solo de hataraki', async () => {
+  await assertFails(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/tsumiki/alltime/scores/${ANA}`]: 10,
+      [`leaderboards/tsumiki/alltime/at/${ANA}`]: serverTimestamp(),
+    }),
+  );
+});

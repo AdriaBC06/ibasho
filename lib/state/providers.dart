@@ -7,7 +7,9 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../backend/gacha.dart' show TicketKind;
 import '../backend/ibasho_backend.dart';
+import '../backend/leaderboards.dart';
 import '../backend/rest_ibasho_backend.dart';
 import '../backend/shop.dart';
 import '../backend/tama.dart';
@@ -23,6 +25,7 @@ import 'rewards.dart';
 import 'conversation.dart';
 import 'friends.dart';
 import 'gacha.dart';
+import 'hataraki.dart';
 import 'identity.dart';
 import 'koro.dart';
 import 'leaderboards.dart';
@@ -466,6 +469,25 @@ final koroProvider = StateNotifierProvider<KoroController, KoroState>((ref) {
   return KoroController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
+  );
+});
+
+/// La partida de Hatarakitama: oficios, almacén, Tamas trabajando y
+/// expediciones.
+final hatarakiProvider = StateNotifierProvider<HatarakiController, HatarakiState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return HatarakiController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    tamasOf: () => ref.read(tamasProvider).tamas,
+    tamasLoaded: () => ref.read(tamasProvider).loaded,
+    gachakenOf: () => ref.read(gachaProvider).ticketsOf(TicketKind.gachaken),
+    onScores: (day, week, allTime) => unawaited(
+      ref
+          .read(leaderboardsProvider.notifier)
+          .submitScore(LeaderboardGame.hataraki, day, weeklyScore: week, allTimeScore: allTime),
+    ),
   );
 });
 

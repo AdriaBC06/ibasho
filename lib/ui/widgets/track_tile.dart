@@ -11,6 +11,7 @@ import '../layout.dart';
 import 'glyphs.dart';
 import 'gloss.dart';
 import 'pressable.dart';
+import 'scrolling_text.dart';
 
 /// Una pista en una lista: elegida (plastico tenido) o disponible (hueco).
 class TrackTile extends StatelessWidget {
@@ -71,10 +72,8 @@ class TrackTile extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
+                            child: ScrollingText(
                               title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               style: Ty.lead.copyWith(color: onTint ?? Ty.ink),
                             ),
                           ),

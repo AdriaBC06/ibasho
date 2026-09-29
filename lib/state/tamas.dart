@@ -277,6 +277,11 @@ class TamasController extends StateNotifier<TamasState> {
     return true;
   }
 
+  /// Una comida hecha en Hatarakitama: cuenta como comer, pero no sale de
+  /// la despensa (la ha gastado el almacén del juego).
+  Future<void> feedMeal(String id) => _care(id, 'lastFed', _lastFeedWrite, feedWriteGap,
+      (care, at) => care.copyWith(lastFed: at));
+
   Future<void> _care(
     String id,
     String field,

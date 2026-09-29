@@ -13,6 +13,7 @@ import '../../../games/game_music.dart';
 import '../../../games/minesweeper/minesweeper_channel.dart';
 import '../../../games/nihongo/nihongo_channel.dart';
 import '../../../games/odori/odori_channel.dart';
+import '../../../games/hatarakitama/hataraki_channel.dart';
 import '../../../games/ohirune/ohirune_channel.dart';
 import '../../../games/tsumiki/tsumiki_channel.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -135,6 +136,7 @@ List<ChannelSpec> channelsFor({
   bool koroUnlocked = false,
   bool koroGift = false,
   bool odoriGift = false,
+  bool hatarakiGift = false,
   bool ohiruneUnlocked = false,
   bool ohiruneGift = false,
 }) {
@@ -285,6 +287,18 @@ List<ChannelSpec> channelsFor({
         builder: (_) => const OdoriChannel(),
         gift: odoriGift,
         onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openOdori()),
+      ),
+      // Hatarakitama es gratis y llega a todos envuelto hasta que se abre.
+      ChannelSpec(
+        id: 'hataraki',
+        glyph: Glyph.pick,
+        art: ArtIcon.hataraki,
+        label: (l) => l.channelHataraki,
+        // Tres canciones por turnos (o la elegida): la mañana, el agua y el
+        // mercado.
+        builder: (_) => const HatarakiScreen(),
+        gift: hatarakiGift,
+        onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openHataraki()),
       ),
       // Ohirune es secreto: no sale en ningun sitio hasta que la cuenta junta
       // los Tamas del tablero facil, y entonces llega envuelto. Quien ya lo

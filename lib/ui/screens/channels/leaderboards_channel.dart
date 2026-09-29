@@ -50,6 +50,7 @@ String leaderboardGameName(L l, LeaderboardGame game) => switch (game) {
       LeaderboardGame.odori => l.leaderboardsOdoriTaki,
       LeaderboardGame.odoriButai => l.leaderboardsOdoriButai,
       LeaderboardGame.ohirune => l.ohiruneDaily,
+      LeaderboardGame.hataraki => l.channelHataraki,
     };
 
 /// Los juegos del primer selector. Buscaminas (por nivel) y Odori (Taki o
@@ -61,7 +62,8 @@ enum _Family {
   tsumiki([LeaderboardGame.tsumiki]),
   nihongo([LeaderboardGame.nihongo]),
   odori([LeaderboardGame.odori, LeaderboardGame.odoriButai]),
-  ohirune([LeaderboardGame.ohirune]);
+  ohirune([LeaderboardGame.ohirune]),
+  hataraki([LeaderboardGame.hataraki]);
 
   const _Family(this.games);
 
@@ -75,6 +77,7 @@ enum _Family {
         _Family.nihongo => l.nihongoTitle,
         _Family.odori => l.channelOdori,
         _Family.ohirune => l.channelOhirune,
+        _Family.hataraki => l.channelHataraki,
       };
 }
 
@@ -95,6 +98,10 @@ class LeaderboardsChannel extends ConsumerStatefulWidget {
 class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
   LeaderboardGame _game = LeaderboardGame.minesweeperEasy;
   bool _weekly = false;
+
+  /// La tabla de siempre (solo en los juegos que la tienen): sin podio ni
+  /// premio, solo quién va primero.
+  bool _allTime = false;
   bool _loading = false;
 
   /// La ultima tabla mirada de cada juego, para volver a ella.
@@ -114,6 +121,11 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
     setState(() => _loading = true);
     final notifier = ref.read(leaderboardsProvider.notifier);
     final game = _game;
+    if (_allTime && game.hasAllTime) {
+      await notifier.loadAllTime(game);
+      if (mounted && game == _game && _allTime) setState(() => _loading = false);
+      return;
+    }
     final weekly = _weekly;
     final key = _key;
     final prevKey = _prevKey;
@@ -136,15 +148,27 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
 
   void _selectFamily(_Family family) => _selectGame(_lastOf[family] ?? family.games.first);
 
-  void _setWeekly(bool weekly) {
-    if (weekly == _weekly) return;
-    setState(() => _weekly = weekly);
+  /// 0 = hoy, 1 = semana, 2 = de siempre.
+  void _setSpan(int span) {
+    final weekly = span == 1;
+    final allTime = span == 2;
+    if (weekly == _weekly && allTime == _allTime) return;
+    setState(() {
+      _weekly = weekly;
+      _allTime = allTime;
+    });
     unawaited(_load());
   }
 
+  bool get _showAllTime => _allTime && _game.hasAllTime;
+
   Widget _fit(bool tall, int flex, Widget child) => tall ? Expanded(flex: flex, child: child) : child;
 
-  String _scoreText(int score) => _game.lowerIsBetter ? formatDuration(Duration(milliseconds: score)) : '$score';
+  String _scoreText(L l, int score) => _game.lowerIsBetter
+      ? formatDuration(Duration(milliseconds: score))
+      : _game == LeaderboardGame.hataraki
+          ? l.hatarakiMon(score)
+          : '$score';
 
   Future<void> _claim(L l, int rank, TicketKind kind) async {
     setState(() => _claimingRank = rank);
@@ -166,7 +190,7 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
     final ohirune = ref.watch(tamasProvider.select((t) => t.tamas.length >= ohiruneUnlockTamas)) ||
         ref.watch(preferencesProvider.select((p) => p.ohiruneOpened));
     final families = [for (final f in _Family.values) if (f != _Family.ohirune || ohirune) f];
-    final current = state.periodOf(_game, _weekly, _key);
+    final current = _showAllTime ? state.allTimeOf(_game) : state.periodOf(_game, _weekly, _key);
     final previous = state.periodOf(_game, _weekly, _prevKey);
 
     return ChannelScaffold(
@@ -208,15 +232,20 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
                     _fit(
                       layout.tall,
                       2,
-                      IbashoSegmented<bool>(
-                        options: [(false, l.leaderboardsDaily), (true, l.leaderboardsWeekly)],
-                        value: _weekly,
-                        onChanged: _setWeekly,
+                      IbashoSegmented<int>(
+                        options: [
+                          (0, l.leaderboardsDaily),
+                          (1, l.leaderboardsWeekly),
+                          if (_game.hasAllTime) (2, l.leaderboardsAllTime),
+                        ],
+                        value: _showAllTime ? 2 : (_weekly ? 1 : 0),
+                        onChanged: _setSpan,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
+                if (!_showAllTime) ...[
                 SizedBox(
                   height: officialHeight,
                   child: ScreenPanel(
@@ -232,17 +261,19 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
                   ),
                 ),
                 const SizedBox(height: 14),
+                ],
                 Expanded(
                   child: ScreenPanel(
                     child: _StandingsPanel(
                       loading: _loading,
                       weekly: _weekly,
+                      allTime: _showAllTime,
                       periodKey: _key,
                       onRollover: () => unawaited(_load()),
                       game: _game,
                       period: current,
                       me: me,
-                      scoreText: _scoreText,
+                      scoreText: (score) => _scoreText(l, score),
                     ),
                   ),
                 ),
@@ -455,6 +486,7 @@ class _StandingsPanel extends StatelessWidget {
   const _StandingsPanel({
     required this.loading,
     required this.weekly,
+    this.allTime = false,
     required this.periodKey,
     required this.onRollover,
     required this.game,
@@ -465,6 +497,7 @@ class _StandingsPanel extends StatelessWidget {
 
   final bool loading;
   final bool weekly;
+  final bool allTime;
 
   /// El dia o la semana en curso, y que hacer cuando se acaba.
   final int periodKey;
@@ -490,8 +523,16 @@ class _StandingsPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(weekly ? l.leaderboardsStandingsWeekly : l.leaderboardsStandingsDaily, style: Ty.lead),
-                    _ResetClock(ends: (periodKey + 1) * (weekly ? _weekMs : _dayMs), onRollover: onRollover),
+                    Text(
+                      allTime
+                          ? l.leaderboardsStandingsAllTime
+                          : weekly
+                              ? l.leaderboardsStandingsWeekly
+                              : l.leaderboardsStandingsDaily,
+                      style: Ty.lead,
+                    ),
+                    if (!allTime)
+                      _ResetClock(ends: (periodKey + 1) * (weekly ? _weekMs : _dayMs), onRollover: onRollover),
                   ],
                 ),
               ),

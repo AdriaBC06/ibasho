@@ -24,6 +24,13 @@ import 'koro_song.dart';
 /// El titulo de una cancion. No se edita: sale del numero y de quien la hizo.
 String koroTitle(L l, KoroSong song, String owner) => l.koroSongTitle(song.number, owner);
 
+/// El nombre de la escala de una cancion.
+String koroScaleName(L l, KoroScale scale) => switch (scale) {
+      KoroScale.major => l.koroScaleMajor,
+      KoroScale.minor => l.koroScaleMinor,
+      KoroScale.penta => l.koroScalePenta,
+    };
+
 /// El color de tinta de cada asiento: el del cuerpo de su Tama. Si se parece
 /// mucho al de un asiento anterior, se oscurece para que se distingan en el
 /// lienzo. Un asiento vacio pinta en gris.

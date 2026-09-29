@@ -9,7 +9,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
-import '../../backend/gacha_music.dart';
 import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/koro.dart';
@@ -19,21 +18,19 @@ import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../../ui/layout.dart';
 import '../../ui/screens/channel_route.dart';
-import '../../ui/track_text.dart';
 import '../../ui/widgets/channel_art.dart';
 import '../../ui/widgets/controls.dart';
 import '../../ui/widgets/glyphs.dart';
 import '../../ui/widgets/overlays.dart';
 import '../../ui/widgets/panel.dart';
 import '../../ui/widgets/slot_tile.dart';
-import '../../ui/widgets/track_tile.dart';
 import '../game_stage.dart';
 import 'koro_editor.dart';
 import 'koro_piano.dart';
 import 'koro_song.dart';
 import 'koro_widgets.dart';
 
-enum _Tab { songs, piano, menu }
+enum _Tab { songs, piano }
 
 /// El canal de Tamakoro.
 ///
@@ -108,7 +105,6 @@ class _TamakoroChannelState extends ConsumerState<TamakoroChannel> {
                   tamas: tamas,
                   initialTamaId: ref.read(tamasProvider).profileTamaId,
                 ),
-              _Tab.menu => _menuMusic(context),
             },
           ),
         ],
@@ -131,7 +127,6 @@ class _TamakoroChannelState extends ConsumerState<TamakoroChannel> {
           for (final (tab, label, glyph) in [
             (_Tab.songs, l.koroTabSongs, Glyph.pencil),
             (_Tab.piano, l.koroTabPiano, Glyph.tama),
-            (_Tab.menu, l.koroTabMenu, Glyph.note),
           ])
             SegmentPill(
               key: ValueKey<String>('koro.tab.${tab.name}'),
@@ -262,7 +257,7 @@ class _TamakoroChannelState extends ConsumerState<TamakoroChannel> {
           if (song != null) ...[
             const SizedBox(height: 6),
             Text(
-              inMenu ? l.koroInMenu : l.koroSongFacts(song.tempo, _scaleName(l, song.scale)),
+              inMenu ? l.koroInMenu : l.koroSongFacts(song.tempo, koroScaleName(l, song.scale)),
               style: Ty.caption.copyWith(color: inMenu ? skin.accentDeep : null),
             ),
           ],
@@ -293,12 +288,6 @@ class _TamakoroChannelState extends ConsumerState<TamakoroChannel> {
     );
   }
 
-  String _scaleName(L l, KoroScale scale) => switch (scale) {
-        KoroScale.major => l.koroScaleMajor,
-        KoroScale.minor => l.koroScaleMinor,
-        KoroScale.penta => l.koroScalePenta,
-      };
-
   Future<void> _delete(KoroSong song, bool inMenu) async {
     final l = L.of(context)!;
     final slot = _selected;
@@ -313,72 +302,5 @@ class _TamakoroChannelState extends ConsumerState<TamakoroChannel> {
     // Si sonaba en el menu, el menu vuelve a la pista de serie.
     if (inMenu) await ref.read(musicLibraryProvider.notifier).select(MusicTrack.fallback);
     await ref.read(koroProvider.notifier).delete(slot);
-  }
-
-  // --- Musica del menu -------------------------------------------------------
-
-  Widget _menuMusic(BuildContext context) {
-    final l = L.of(context)!;
-    final library = ref.watch(musicLibraryProvider);
-    final gacha = ref.watch(gachaProvider);
-    final koro = ref.watch(koroProvider);
-    final current = library.menuTrack ?? ref.watch(preferencesProvider.select((p) => p.musicTrack));
-    final koroSlot = koroSlotOfTrack(current);
-
-    // Una pista tambien esta desbloqueada si es un premio del gacha ya ganado
-    // (`mu_<id>`), ademas de las de serie y las que se escuchan jugando.
-    bool unlocked(MusicTrack track) {
-      if (library.isUnlocked(track)) return true;
-      final prize = gachaMusicById(track.id);
-      return prize != null && gacha.owns(prize.key);
-    }
-
-    final tracks = MusicTrack.values.where(unlocked).toList(growable: false);
-    final pending = MusicTrack.values.length - tracks.length;
-    final songs = koro.songs.entries.where((e) => !e.value.isBlank).toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    final playing = Text(
-      l.musicPlaying,
-      style: Ty.caption.copyWith(color: T.onAccent, fontWeight: FontWeight.w500),
-    );
-
-    return IbashoScroll(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 6, bottom: 10),
-            child: Text(l.koroMenuHint, style: Ty.caption),
-          ),
-          for (final entry in songs)
-            TrackTile(
-              title: koroTitle(l, entry.value, _owner()),
-              subtitle: l.koroSongFacts(entry.value.tempo, _scaleName(l, entry.value.scale)),
-              selected: koroSlot == entry.key,
-              onPressed: () => unawaited(ref.read(musicLibraryProvider.notifier).selectKoro(entry.key)),
-              trailing: koroSlot == entry.key ? playing : null,
-            ),
-          if (songs.isNotEmpty) const SizedBox(height: 12),
-          for (final track in tracks)
-            TrackTile(
-              title: track.id,
-              subtitle: describeTrack(l, track),
-              selected: koroSlot == null && track.id == current,
-              onPressed: () async {
-                final notifier = ref.read(musicLibraryProvider.notifier);
-                // Una pista ganada en el gacha pero nunca escuchada aun no
-                // cuenta para `select`: se marca al elegirla la primera vez.
-                if (!library.isUnlocked(track)) await notifier.markHeard(track);
-                await notifier.select(track);
-              },
-              trailing: koroSlot == null && track.id == current ? playing : null,
-            ),
-          Padding(
-            padding: const EdgeInsets.only(left: 6, top: 10),
-            child: Text(l.settingsMenuMusicPending(pending), style: Ty.micro),
-          ),
-        ],
-      ),
-    );
   }
 }

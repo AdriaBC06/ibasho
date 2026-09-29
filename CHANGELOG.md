@@ -5,6 +5,49 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.7.0 — Hatarakitama
+
+### Añadido
+
+- **Hatarakitama, el pueblo donde trabajan tus Tamas.** Es gratis y llega
+  envuelto como regalo. Pon a tus Tamas a trabajar en **doce oficios**: tala,
+  pesca, minería, huerto, recolecta, agilidad, cocina, carpintería, forja,
+  costura, té y joyería. Siguen trabajando aunque cierres Ibasho, hasta
+  **12 horas**, y al volver te cuentan qué ha pasado. Cada oficio sube del 0
+  al 99, cada tarea tiene su maestría, y más nivel abre más ranuras de
+  trabajo. Cada personalidad tiene maña para algunos oficios, y un Tama
+  contento (mimado y bien comido) trabaja más rápido. Manda grupos de hasta
+  tres Tamas de **expedición**, con comida y el equipo que hayas fabricado, a
+  ocho sitios, del prado a la luna; a veces vuelven con un tesoro que se
+  cambia por un ticket del gacha. Con el canal abierto ganas **una moneda
+  por minuto**, hasta 20 al día. Lo del almacén se **vende por ginmon**
+  (銀文), la moneda de plata del pueblo, con su propio icono, y la clasificación es de riqueza: quién ha ganado más
+  hoy, esta semana y **desde siempre**. Tiene **tres canciones propias**
+  (asa, mizuba y yuyake) que suenan por turnos, en vueltas al azar sin
+  repetir nunca la misma dos veces seguidas; cada una se desbloquea al oírla
+  y, una vez descubierta, se puede dejar fija. Una **ayuda** explica cómo se juega (sale sola solo
+  la primera vez). Cada cosa dice de dónde sale, para qué
+  sirve y qué le falta a un Tama parado, y las expediciones se pueden hacer
+  volver antes de tiempo.
+
+### Cambiado
+
+- La **música del menú** vuelve a elegirse en la **configuración**, como
+  antes de la 0.6.2, con tus canciones de Tamakoro incluidas. Tamakoro se
+  queda con sus canciones y el Tamapiano.
+
+### Arreglado
+
+- Los textos que no caben en un botón, en el nombre de una pista o en un
+  marcador ya no se cortan con puntos suspensivos: se deslizan despacio para
+  leerse enteros (salvo con el movimiento reducido).
+- Las conexiones en tiempo real ya no se acumulan: una que se cancelaba
+  mientras se abría se quedaba abierta para siempre. Además, cada ruta
+  comparte una sola conexión, y los amigos solo abren la suya si se ven en
+  la página.
+- En el canal de amigos, las ranuras de la segunda página y siguientes no se
+  podían tocar.
+
 ## 0.6.3 — Odori
 
 ### Añadido

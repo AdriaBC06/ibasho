@@ -7,6 +7,7 @@ import 'dart:ui' show Offset;
 
 import '../../backend/tama.dart';
 import 'tama_painter.dart';
+import 'tama_food.dart' show FoodArt;
 
 /// Ritmos propios de cada personalidad.
 class TamaTraits {
@@ -214,6 +215,7 @@ class TamaAnimator {
 
   double _treat = -1;
   TamaFood _food = TamaFood.cookie;
+  FoodArt? _foodArt;
   double _chewHold = 0;
 
   bool _petting = false;
@@ -278,8 +280,11 @@ class TamaAnimator {
   }
 
   /// Cae una chuche y se la come.
-  void feed([TamaFood food = TamaFood.cookie]) {
+  ///
+  /// Con [art], lo que cae es ese dibujo y no la chuche.
+  void feed([TamaFood food = TamaFood.cookie, FoodArt? art]) {
     _food = food;
+    _foodArt = art;
     _treat = 0;
     _doze = 0;
     _dozeHold = 0;
@@ -560,6 +565,7 @@ class TamaAnimator {
       heartPhase: _heartPhase,
       treat: treat,
       food: _food,
+      foodArt: _foodArt,
     );
   }
 }

@@ -136,6 +136,7 @@ tool/
   bootstrap_admin.dart   crea la primera cuenta de administración, con su código de amigo
   dev_seed.dart          cuentas y amistades de prueba en los emuladores
   gen_audio.py           genera la música propia y los efectos
+  gen_hataraki_music.py  las tres canciones de Hatarakitama (asa, mizuba, yuyake)
   test_rules.sh          lanza los tests de reglas con el emulador
   test_e2e.sh            lanza el e2e con los emuladores
 assets/                  audio (bgm, sfx) y fuentes con sus licencias
@@ -675,6 +676,11 @@ silencio.
 - `playProfileTrack(MusicTrack)` / `endProfileTrack()`: pone la pista de un
   perfil encima de la de ambiente y la quita. Si algo sonaba, sale en 260 ms y
   entra en 900 ms (rampas de volumen de 18 pasos). `profileTrack` dice cuál suena.
+- `playProfileCycle(List<MusicTrack>)`: igual, pero con varias pistas por
+  turnos (Hatarakitama): el reproductor va en `ReleaseMode.release`, al
+  acabar una entra la siguiente y `guestTrack` (un `ValueNotifier`) avisa de
+  cuál suena. `GameMusic.cycle` la usa y desbloquea cada pista al empezar;
+  `GameMusic` pasa de ronda a pista fija y al revés sin desmontarse.
 
 Las operaciones van en una cola serie y reconcilian el reproductor con la
 intención (`_musicWanted`, `_guest ?? _track`). Si el reproductor se para solo, se
@@ -837,6 +843,14 @@ coincide con su uid).
     prizes/$key          number entero ≥ 1: copias de cada premio; solo sube de 1 en 1 con un gacha/turn que lo nombre
     pantry/$food         number entero 0–9999 ($food: uno de los diez TamaFood)
     games/$gameId        { state: 'gift' | 'open', at }  ($gameId ^[a-z0-9_]{1,32}$)
+    hataraki             la partida de Hatarakitama (ver docs/HATARAKITAMA.md):
+        xp/$skill, mastery/$action, bank/$item   enteros (bank ≥ 1)
+        workers/$0-5         { tama, action, progress 0–1, stalled? }
+        kit/$slot            tool | outfit | bag | charm → id de objeto
+        tea?                 { item, until }
+        expedition?          { zone, tamas/$0-2, start, end, power }
+        period               { day, dayXp, week, weekXp }
+        last, seed, prizes, claimAt?   (obligatorios: last, seed; claimAt: último tesoro canjeado por un gachaken, uno por hora)
     rewards              { game, day, earned, at }  (day = floor(now / 86400000); earned ≤ 20)
     inbox/$fromId        { at: number > 0 y ≤ now }  ← lo escribe quien manda
     reads
@@ -968,7 +982,8 @@ coincide con su uid).
 | `…/shop/last` | la dueña | la dueña: `at === now`, el artículo tiene precio y, si no es gratis, el saldo baja exactamente lo que cuesta |
 | `…/pantry/$food` | la dueña | la dueña, sin borrar: el stock inicial (5, una vez, solo galleta y caramelo), −1 al comer, o + `qty` con un recibo fresco de esa comida |
 | `…/games/$gameId` | la dueña | la dueña, sin borrar: crear en `gift` con un recibo fresco de ese juego y `qty` 1; después solo `gift` → `open`. Un admin, en su propia cuenta, sin recibo y pudiendo borrar (canal de depuración) |
-| `…/earnings/$game` | la dueña | la dueña, sin borrar: `at === now`, tener el juego, `day` de hoy, `earnings/last` apuntando a este juego en la misma escritura, subir `earned` en 3, 5 u 8 (o hasta 20 justo), y `coins` sube lo mismo |
+| `…/earnings/$game` | la dueña | la dueña, sin borrar: `at === now`, tener el juego (Ohirune, Odori y Hatarakitama no se compran), `day` de hoy, `earnings/last` apuntando a este juego en la misma escritura, subir `earned` en 3, 5 u 8 (o hasta 20 justo; `hataraki`, solo de 1 en 1 y con 60 s desde su cobro anterior), y `coins` sube lo mismo |
+| `…/hataraki` | la dueña | la dueña: solo la forma (la partida la calcula la app, como el gacha) |
 | `…/earnings/last` | la dueña | la dueña, sin borrar: `at === now`, el juego que nombra se escribe a la vez, y 15 s desde el anterior cobro |
 | `…/login/last` | la dueña | la dueña: `at === now`, `day` de hoy y posterior al último, su `days/{day}` a la vez, y `coins` sube justo `loginBonusFor(day)`. Un admin puede borrar todo su `login` (depuración) |
 | `…/tickets/$kind` | la dueña | la dueña: comprando (recibo fresco de `ticket_$kind`, y `shop/week` sube en la misma escritura) o tirando (`gacha/last` fresco de ese ticket, bajando 1 u 10). Un admin, en su cuenta, a pelo |

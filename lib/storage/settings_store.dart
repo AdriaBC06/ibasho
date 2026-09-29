@@ -28,6 +28,9 @@ class Preferences {
     this.pachinkoOpened = false,
     this.koroOpened = false,
     this.odoriOpened = false,
+    this.hatarakiOpened = false,
+    this.hatarakiHelpSeen = false,
+    this.hatarakiTrack = '',
     this.ohiruneOpened = false,
     this.fullscreen = false,
     this.backdropId = '',
@@ -85,6 +88,16 @@ class Preferences {
   /// El canal de Odori ya se ha desenvuelto.
   final bool odoriOpened;
 
+  /// El canal de Hatarakitama ya se ha desenvuelto.
+  final bool hatarakiOpened;
+
+  /// La ayuda de Hatarakitama ya ha salido sola una vez.
+  final bool hatarakiHelpSeen;
+
+  /// La canción elegida para Hatarakitama (id de pista); vacío = todas por
+  /// turnos.
+  final String hatarakiTrack;
+
   /// El canal secreto de Ohirune ya se ha desenvuelto.
   final bool ohiruneOpened;
 
@@ -123,6 +136,9 @@ class Preferences {
     bool? pachinkoOpened,
     bool? koroOpened,
     bool? odoriOpened,
+    bool? hatarakiOpened,
+    bool? hatarakiHelpSeen,
+    String? hatarakiTrack,
     bool? ohiruneOpened,
     bool? fullscreen,
     String? backdropId,
@@ -145,6 +161,9 @@ class Preferences {
     pachinkoOpened: pachinkoOpened ?? this.pachinkoOpened,
     koroOpened: koroOpened ?? this.koroOpened,
     odoriOpened: odoriOpened ?? this.odoriOpened,
+    hatarakiOpened: hatarakiOpened ?? this.hatarakiOpened,
+    hatarakiHelpSeen: hatarakiHelpSeen ?? this.hatarakiHelpSeen,
+    hatarakiTrack: hatarakiTrack ?? this.hatarakiTrack,
     ohiruneOpened: ohiruneOpened ?? this.ohiruneOpened,
     fullscreen: fullscreen ?? this.fullscreen,
     backdropId: backdropId ?? this.backdropId,
@@ -169,6 +188,9 @@ class Preferences {
     'pachinkoOpened': pachinkoOpened,
     'koroOpened': koroOpened,
     'odoriOpened': odoriOpened,
+    'hatarakiOpened': hatarakiOpened,
+    'hatarakiHelpSeen': hatarakiHelpSeen,
+    'hatarakiTrack': hatarakiTrack,
     'ohiruneOpened': ohiruneOpened,
     'fullscreen': fullscreen,
     'backdropId': backdropId,
@@ -197,6 +219,9 @@ class Preferences {
       pachinkoOpened: (json['pachinkoOpened'] as bool?) ?? false,
       koroOpened: (json['koroOpened'] as bool?) ?? false,
       odoriOpened: (json['odoriOpened'] as bool?) ?? false,
+      hatarakiOpened: (json['hatarakiOpened'] as bool?) ?? false,
+      hatarakiHelpSeen: (json['hatarakiHelpSeen'] as bool?) ?? false,
+      hatarakiTrack: (json['hatarakiTrack'] as String?) ?? '',
       ohiruneOpened: (json['ohiruneOpened'] as bool?) ?? false,
       fullscreen: (json['fullscreen'] as bool?) ?? false,
       backdropId: (json['backdropId'] as String?) ?? '',

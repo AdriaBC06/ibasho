@@ -66,6 +66,22 @@ class PreferencesController extends StateNotifier<Preferences> {
       ? Future<void>.value()
       : _commit(state.copyWith(odoriOpened: true));
 
+  /// El canal de Hatarakitama ya se ha desenvuelto.
+  Future<void> openHataraki() => state.hatarakiOpened
+      ? Future<void>.value()
+      : _commit(state.copyWith(hatarakiOpened: true));
+
+  /// La ayuda de Hatarakitama ya ha salido sola.
+  Future<void> seeHatarakiHelp() => state.hatarakiHelpSeen
+      ? Future<void>.value()
+      : _commit(state.copyWith(hatarakiHelpSeen: true));
+
+  /// Elige la canción de Hatarakitama ('' = todas por turnos).
+  Future<void> setHatarakiTrack(String id) => _commit(state.copyWith(hatarakiTrack: id));
+
+  /// Vuelve a enseñar la ayuda de Hatarakitama (canal de depuración).
+  Future<void> forgetHatarakiHelp() => _commit(state.copyWith(hatarakiHelpSeen: false));
+
   /// El canal secreto de Ohirune ya se ha desenvuelto.
   Future<void> openOhirune() => state.ohiruneOpened
       ? Future<void>.value()

@@ -172,6 +172,8 @@ class RtdbClient {
     late StreamController<DatabaseEvent> controller;
     var cancelled = false;
     StreamSubscription<String>? sub;
+    // Cierra el intento en curso (si lo hay) al cancelar el último oyente.
+    void Function()? abort;
     var backoff = const Duration(seconds: 1);
 
     Future<void> connect() async {
@@ -188,6 +190,12 @@ class RtdbClient {
             ..headers['Accept'] = 'text/event-stream'
             ..followRedirects = true;
           final response = await _client.send(request).timeout(_timeout);
+          if (cancelled) {
+            // Se canceló mientras se abría: sin esto la conexión quedaba
+            // abierta para siempre, porque nadie escuchaba su cuerpo.
+            unawaited(response.stream.listen((_) {}).cancel());
+            return;
+          }
           if (response.statusCode != 200) {
             throw IbashoException(
               response.statusCode == 401 || response.statusCode == 403
@@ -199,6 +207,9 @@ class RtdbClient {
           backoff = const Duration(seconds: 1);
 
           final done = Completer<void>();
+          abort = () {
+            if (!done.isCompleted) done.complete();
+          };
           void finish([Object? error]) {
             if (done.isCompleted) return;
             error == null ? done.complete() : done.completeError(error);
@@ -257,6 +268,7 @@ class RtdbClient {
       onListen: () => unawaited(connect()),
       onCancel: () async {
         cancelled = true;
+        abort?.call();
         await sub?.cancel();
       },
     );
