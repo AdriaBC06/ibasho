@@ -7,8 +7,18 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ibasho/backend/gacha.dart';
+import 'package:ibasho/ui/screens/channels/gacha_channel.dart' show oddsPercent;
 
 void main() {
+  test('la tabla de probabilidades ensena las tasas en porcentaje', () {
+    expect(oddsPercent(5999), '59.99 %');
+    expect(oddsPercent(2700), '27 %');
+    expect(oddsPercent(30), '0.3 %');
+    expect(oddsPercent(1), '0.01 %');
+    expect(oddsPercent(0), '—');
+    expect(oddsPercent(30, decimal: ','), '0,3 %');
+  });
+
   test('las tasas de cada ticket suman 10000 diezmilesimas', () {
     for (final kind in TicketKind.values) {
       final odds = gachaOdds[kind]!;

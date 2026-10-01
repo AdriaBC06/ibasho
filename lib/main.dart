@@ -44,8 +44,8 @@ Future<void> main() async {
   await AudioService.instance.init();
   await restoreKoroMenuMusic(preferences.musicTrack);
   await AudioService.instance.setTrack(preferences.musicTrack);
-  await AudioService.instance.setMusicVolume(preferences.musicVolume);
-  await AudioService.instance.setEffectsVolume(preferences.effectsVolume);
+  await AudioService.instance.setMusicVolume(preferences.musicLevel);
+  await AudioService.instance.setEffectsVolume(preferences.effectsLevel);
 
   runApp(
     ProviderScope(

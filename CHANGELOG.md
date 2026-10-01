@@ -5,15 +5,130 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
-## 0.7.1 — sin publicar
+## 0.8.0 — El pueblo crece
+
+### Añadido
+
+- **Música y sonidos en la barra de estado**: junto al botón de idioma hay
+  una nota (música) y un altavoz (sonidos). Tocarlos silencia o devuelve el
+  sonido sin perder el volumen, y la rueda del ratón o arrastrar arriba y
+  abajo lo sube y lo baja de 5 en 5, enseñando la cifra. Con teclado, `+`/`-`
+  o Re Pág/Av Pág; con lector de pantalla, subir y bajar. El silencio se
+  recuerda al volver a abrir.
+- **Volumen de la canción en Odori**: en las opciones, con su propio
+  deslizador (suena un momento la instrumental para oírlo). Va igual que la
+  música del menú, silencio incluido, hasta que se cambia; «como el menú» lo
+  vuelve a enlazar. Los sonidos al tocar siguen con el suyo.
+- **Siete oficios nuevos en Hatarakitama**: cerámica, tintes, construcción,
+  escritura, brebajes, magia y estudio, con más de 60 objetos nuevos. Hay
+  arcilla, añil, artemisa y agua de manantial para empezar, y todo se enlaza
+  con lo de antes: el horno da hollín para la tinta, los frascos van a los
+  brebajes y los libros se leen para estudiar.
+- **Cebos, abonos y mechas**: se le ponen a un Tama que pesca, planta o mina,
+  y gasta uno cada vez. Si se acaban, sigue trabajando sin ellos.
+- **Ocho ranuras de trabajo**: se abren dos más con 800 y 1100 de nivel
+  total.
+- **La maña se reparte**: cada personalidad es buena en cuatro oficios.
+- Con una **tetera** en el almacén, los tés duran 45 minutos. La **ropa
+  teñida** da más fuerza en los sitios de su color.
+- **El pueblo de Hatarakitama**: una pestaña nueva con nueve edificios que se
+  construyen y mejoran (del 1 al 5) con ginmon y piezas de construcción. El
+  taller, el horno, el muelle, el invernadero y la torre aceleran oficios; la
+  biblioteca y la torre abren los libros, mapas y runas buenos, y la posada
+  ahorra comida y deja viajar a cuatro Tamas.
+- **La tienda del pueblo**: cada día vende unas cosas distintas (semillas,
+  cebos, tés y materiales), las mismas para todos, a 4 veces lo que se paga
+  por ellas y con existencias limitadas.
+- **La lonja**: cada día, igual para todos y aunque no tengas lonja, se paga
+  mejor por unas cosas y peor por otras; la lonja te dice cuáles (más cuanto
+  más nivel, y a nivel 3 la de mañana). El almacén y el botón de vender dicen el precio del día.
+  Gastar ginmon no baja en la clasificación, que cuenta lo ganado.
+- **Expediciones con mapa**: cada sitio tiene un mapa al día, el mismo para
+  todos, de 4 a 6 columnas. Antes de salir se elige la ruta: botín,
+  recolecta rara, peligros (piden fuerza o una poción de cura), descansos que
+  no gastan comida y cofres con más probabilidad de tesoro. Algunas casillas
+  tienen niebla, que quitan un mapa, una poción de vista o un guía. Con el
+  canal abierto se ve al grupo avanzar y cada casilla dice lo que ha salido.
+- **Pociones, mapas y runas en los viajes**: se elige una poción o un mapa y
+  una runa al salir. **Servicios** en ginmon: guía (el mapa entero del día),
+  porteador (más botín) y carro (un 25 % menos de tiempo). Con la posada a
+  nivel 5, **dos viajes a la vez**.
+- **El tablón de encargos**: cada día 3 encargos (hasta 5 mejorando el
+  tablón) de cosas que ya sabes hacer, que pagan más ginmon que venderlas y a
+  veces experiencia o algo raro. Además, un **gran encargo** al día que paga
+  un **ticket gachaken**; a veces pide un paquete de la casilla de encargo que
+  hay en cada mapa. Una vez al día se puede cambiar un encargo pagando. Lo
+  cobrado cuenta para la clasificación de riqueza.
+- **El pueblo, pintado**: la pestaña del pueblo es un mapa con caminos, el
+  río y cada edificio en su parcela. Cada nivel se nota: el suelo pasa de
+  tierra a grava y a losas, y salen macetas, un farol de piedra, un árbol y,
+  a nivel 5, su estandarte.
+- **Habitaciones en la posada**: cada Tama puede tener su habitación en la
+  posada, de 6×6 casillas con suelo, pared y muebles (la primera es barata). Hay 29
+  **muebles** de cinco estilos (rústico, marino, elegante, mágico y floral)
+  que se hacen en carpintería, cerámica, tintes, costura, escritura y magia o
+  se compran en la tienda; se ponen, se mueven y se giran. La mayoría pide un
+  **plano**, que vende la tienda (uno o dos al día) o regalan los encargos.
+- **Comodidad**: sale de cuántos muebles hay, de si combinan y de si el
+  estilo le gusta al Tama según su personalidad. Con habitación, el Tama descansa y
+  en Hatarakitama trabaja con un ánimo de al menos el 25 %, hasta el 80 % con
+  la habitación más cómoda. Su ánimo en Ibasho no cambia.
+- **Visitas**: desde el perfil de un amigo o con el botón de amigos del mapa
+  del pueblo se visita su pueblo, solo para mirar: sus edificios con su
+  nivel, sus Tamas y lo que hacen, sus habitaciones por dentro, sus mejores
+  oficios y su riqueza. Se ve como lo dejó la última vez que jugó.
+- **La maña, con dibujos**: la ayuda enseña una tabla con cada personalidad y
+  los dibujos de sus oficios, y al crear un Tama se ve en qué irá más rápido
+  en Hatarakitama. La ayuda tiene páginas nuevas para la lonja y las visitas.
+- **El creador de Tamas, con más del doble de piezas**: 8 cuerpos nuevos
+  (cuadradito, nube, campana, flan, onigiri, cacahuete, cápsula y fantasma),
+  8 ojos (corazones, remolinos, apretados, de anime, de gato, con pestañas,
+  guiño y alargados), 8 bocas (en D, ondulada, de conejo, piquito, morrito,
+  vampiro, puntito y dientes), 8 coronillas (orejas de gato, brote, de osito, cresta,
+  orejas caídas, cuerno de unicornio, penacho y orejas de ratón), 7 dibujos
+  (corazón, estrella, lunares, mitad, antifaz, zigzag y sandía), 5 brazos
+  (aletas, garritas, alas de murciélago, hojitas y manos flotantes), 5 pies
+  (de pato, botitas, almohadillas, piernas largas y de pájaro) y 4 mejillas
+  (corazones, remolinos, estrellitas y pegatina). Las piernas largas suben el
+  Tama y lo hacen algo más bajito de cuerpo.
+- **Color del dibujo y de los ojos**: el dibujo se elige con el mismo
+  selector que el cuerpo (paleta o HEX libre), o en «automático», a juego con
+  el cuerpo y con su tono, como hasta ahora. Los ojos con iris o reflejo
+  (brillantes, estrella, corazones, de anime, de gato, guiño y alargados)
+  también pueden ir de otro color.
+- **Un corazón pixelado** en el gacha, de UR: todo rojo, como una vida de
+  videojuego, flotando arriba a su derecha.
+- **Una caquita para el Tama** en el Yatai, en la sección de Tamas, por 1
+  moneda: pequeñita y sonriente, en el suelo a su lado (no salta con él). Va
+  con los accesorios del creador, en un sitio propio («suelo»), y se compra
+  una vez. No sale en el gacha.
+- **Las probabilidades del gachapon**, junto al depósito: una tabla con la
+  tasa de cada bola (N a ∞) con gachaken y con kinken, y la bola asegurada de
+  la tirada de 11 de cada uno.
+- **El pinball puede jugar sin premios de música.** Al cargar las bolas, un
+  interruptor quita el agujero de música (y sus dianas) de la mesa; las bolas
+  caen en los otros tres. Se recuerda en el dispositivo y la partida guardada
+  conserva su mesa.
 
 ### Cambiado
 
+- **El gorro «brote»** (verde y otoñal) tiene el dibujo de la coronilla brote
+  del creador: un tallo con dos hojitas iguales.
+- **Volver antes de una expedición** ya no lo pierde todo: se trae lo de las
+  casillas ya pasadas.
 - **La cuenta de admin ya no sale en las clasificaciones.** Las reglas le
   niegan las puntuaciones en todas las tablas y la app ni las manda.
+- **Los efectos llevan el volumen en cada voz** en lugar del volumen global
+  del mezclador: callar los sonidos ya no calla la canción de Odori.
 
 ### Arreglado
 
+- **En Hatarakitama, un Tama sin material vuelve solo al trabajo.** Antes, si
+  al que hace cestas se le acababa la caña de bambú, se quedaba parado hasta
+  cambiarle la tarea a mano, aunque otro Tama siguiera talando. Ahora sigue en
+  cuanto hay, con la app abierta y offline: con material de otro Tama, de la
+  tienda o de un viaje (la expedición vuelve en su hora dentro de lo simulado).
+  Mientras espera dice qué le falta («espera caña de bambú»).
 - **Hatarakitama dice qué da tickets.** Cada expedición muestra, junto a lo
   que puede traer, el tesoro (un ticket gachaken) y su probabilidad con el
   grupo elegido: del 0,2 % del prado al 5 % de la luna, por el éxito. La
@@ -21,6 +136,15 @@ versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dar
 - **La ayuda de Hatarakitama ya no dice que la clasificación cuenta la
   experiencia**: cuenta los ginmon ganados vendiendo (en el día, en la semana
   y desde siempre).
+- Los puntos de páginas de la ayuda de Hatarakitama ya no se salen en
+  pantallas estrechas.
+- **El dibujo de la agilidad parecía una bufanda**: ahora es una sandalia de
+  paja con su tira roja y un ala.
+- **En el creador, al tocar una voz sonaba la anterior** hasta tocarla otra
+  vez o darle a escuchar: ahora suena la nueva a la primera (también al
+  cambiar de personalidad).
+- **El escudo del pinball sale encendido con las bolas doradas, arcoíris y
+  dirigidas**, que el Tama salva siempre; antes se veía apagado.
 
 ## 0.7.0 — Hatarakitama
 

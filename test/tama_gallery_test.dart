@@ -14,9 +14,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ibasho/backend/prizes.dart';
 import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/theme/tokens.dart';
 import 'package:ibasho/ui/tama/tama_food.dart';
+import 'package:ibasho/ui/tama/tama_outfit.dart';
 import 'package:ibasho/ui/tama/tama_painter.dart';
 import 'package:ibasho/ui/widgets/glyphs.dart';
 
@@ -138,6 +140,36 @@ void main() {
         (base.withPart(TamaPart.mouth, m).withPart(TamaPart.pattern, 0), const TamaPose(joy: -1)),
       ],
     ], columns: 4, cell: 260, zoom: 2.2);
+  });
+
+  testWidgets('caca al lado', (tester) async {
+    await tester.runAsync(() => PrizeArt.instance.preload([prizeItem('poop_brown')!]));
+    final poop = base.withOutfit(const TamaOutfit(accessories: ['poop_brown']));
+    await sheet(tester, 'g8-caca', [
+      for (final body in const [0, 4, 5, 12])
+        (poop.withPart(TamaPart.body, body).withDial(TamaDial.bodyWidth, body == 4 ? 100 : 50), TamaPose.rest),
+      (poop, const TamaPose(hop: 10, tilt: .2)),
+      (poop.withPart(TamaPart.feet, 7), TamaPose.rest),
+    ], cell: 260);
+  });
+
+  testWidgets('colores propios', (tester) async {
+    await tester.runAsync(() => PrizeArt.instance
+        .preload([prizeItem('leaf_green')!, prizeItem('leaf_orange')!, prizeItem('pixel_heart_red')!]));
+    await sheet(tester, 'g9-colores', [
+      for (final eyes in tintableEyes)
+        (base.withPart(TamaPart.eyes, eyes).withTint(TamaTint.eyes, '#F47AA6'), TamaPose.rest),
+      for (final pattern in const [1, 5, 7, 11])
+        (base.withPart(TamaPart.pattern, pattern).withTint(TamaTint.pattern, '#FFD23F'), TamaPose.rest),
+      (base.withPart(TamaPart.crown, 7), TamaPose.rest),
+      (base.withPart(TamaPart.crown, 0).withOutfit(const TamaOutfit(hat: 'leaf_green')), TamaPose.rest),
+      (base.withPart(TamaPart.crown, 0).withOutfit(const TamaOutfit(hat: 'leaf_orange')), TamaPose.rest),
+      for (final body in const [0, 4, 12])
+        (
+          base.withPart(TamaPart.body, body).withOutfit(const TamaOutfit(accessories: ['pixel_heart_red'])),
+          TamaPose.rest,
+        ),
+    ], columns: 4, cell: 260);
   });
 
   testWidgets('comida', (tester) async {

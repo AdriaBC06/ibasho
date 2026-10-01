@@ -264,6 +264,14 @@ void main() {
     expect(const OdoriPrefs().butaiTouch, ButaiTouch.targets);
     expect(const OdoriPrefs().hitVolume, greaterThan(0));
     expect(const OdoriPrefs().butaiMark, ButaiMark.arrows);
+
+    // El volumen de la cancion sigue al del menu hasta que se cambia.
+    expect(const OdoriPrefs().musicVolume, isNull);
+    data.prefs = data.prefs.copyWith(musicVolume: () => .35);
+    final loud = OdoriData.fromJson(jsonDecode(jsonEncode(data.toJson())) as Map<String, Object?>).prefs;
+    expect(loud.musicVolume, .35);
+    expect(loud.copyWith(musicVolume: () => null).musicVolume, isNull);
+    expect(loud.copyWith(hitVolume: .1).musicVolume, .35);
   });
 
   test('Butai: las dianas caben en el escenario, salen igual y no se pisan', () {

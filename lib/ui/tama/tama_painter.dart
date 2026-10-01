@@ -159,6 +159,8 @@ class TamaPainter extends CustomPainter {
     final color = look.bodyColor;
 
     if (shadow) _groundShadow(canvas, body);
+    // Lo que esta en el suelo (la caca) no salta ni se inclina con el.
+    paintOutfit(canvas, look, body, const {PrizeSlot.ground});
 
     // Todo lo que es la criatura se mueve junto: salto, inclinacion y
     // aplastamiento, con el punto de apoyo como pivote.
@@ -210,6 +212,7 @@ class TamaPainter extends CustomPainter {
         ..color = rim.withValues(alpha: .5),
     );
     _specular(canvas, body);
+    _crownFront(canvas, body, rim, color);
 
     _feetFront(canvas, body, color, rim);
     paintOutfit(canvas, look, body, const {PrizeSlot.feet});
@@ -323,9 +326,11 @@ class TamaPainter extends CustomPainter {
 
   // --- Dibujo del cuerpo ----------------------------------------------------
 
-  static Color patternColor(Color base, double tone) {
-    if (tone < .5) return Color.lerp(base, T.shellTop, .74 - tone * .9)!;
-    return Color.lerp(base, T.dusk, .12 + (tone - .5) * .62)!;
+  /// El color del dibujo cuando no tiene uno propio: el del cuerpo, aclarado
+  /// u oscurecido segun [tone].
+  static Color patternColor(Color body, double tone) {
+    if (tone < .5) return Color.lerp(body, T.shellTop, .74 - tone * .9)!;
+    return Color.lerp(body, T.dusk, .12 + (tone - .5) * .62)!;
   }
 
   void _pattern(Canvas canvas, TamaBody body, Color color) {
@@ -333,7 +338,11 @@ class TamaPainter extends CustomPainter {
     if (variant == 0) return;
     final r = body.bounds;
     final paint = Paint()
-      ..color = patternColor(color, look.unit(TamaDial.patternTone));
+      ..color =
+          look.tint(TamaTint.pattern) ??
+          patternColor(color, look.unit(TamaDial.patternTone));
+    // Lo que va en la barriga, a la altura de la barriga.
+    final belly = Offset(r.center.dx, r.top + r.height * .72);
     switch (variant) {
       case 1: // Barriga.
         canvas.drawOval(
@@ -399,7 +408,115 @@ class TamaPainter extends CustomPainter {
         }
         path.close();
         canvas.drawPath(path, paint);
+      case 5: // Corazon en la barriga.
+        _heart(canvas, belly + Offset(0, r.height * .1), r.width * .46, paint);
+      case 6: // Estrella en la barriga.
+        _star5(canvas, belly, r.width * .22, paint);
+      case 7: // Lunares por todo.
+        final step = r.width * .2;
+        var row = 0;
+        for (var y = r.top + step * .4; y < r.bottom + step; y += step * .86) {
+          final shift = row.isOdd ? step / 2 : 0.0;
+          for (var x = r.left - step + shift; x < r.right + step; x += step) {
+            canvas.drawCircle(Offset(x, y), r.width * .045, paint);
+          }
+          row++;
+        }
+      case 8: // Medio y medio.
+        canvas.drawRect(
+          Rect.fromLTRB(r.left - 2, r.top - 2, r.center.dx, r.bottom + 2),
+          paint,
+        );
+      case 9: // Antifaz de mapache.
+        final f = TamaFace.of(look, body);
+        final h = f.eyeR * 3.1;
+        final band = Path()
+          ..moveTo(r.left - 2, f.eyeY - h * .3)
+          ..quadraticBezierTo(
+            f.centre.dx,
+            f.eyeY - h * .62,
+            r.right + 2,
+            f.eyeY - h * .3,
+          )
+          ..lineTo(r.right + 2, f.eyeY + h * .38)
+          ..quadraticBezierTo(
+            f.centre.dx + f.eyeDx * .5,
+            f.eyeY + h * .55,
+            f.centre.dx,
+            f.eyeY + h * .12,
+          )
+          ..quadraticBezierTo(
+            f.centre.dx - f.eyeDx * .5,
+            f.eyeY + h * .55,
+            r.left - 2,
+            f.eyeY + h * .38,
+          )
+          ..close();
+        canvas.drawPath(band, paint);
+      case 10: // Zigzag por la cintura.
+        final top = r.top + r.height * .68;
+        final h = r.height * .12;
+        const teeth = 6;
+        final step = (r.width + 4) / teeth;
+        final zig = Path()..moveTo(r.left - 2, top);
+        for (var i = 0; i < teeth; i++) {
+          zig.lineTo(r.left - 2 + step * (i + .5), top - h * .45);
+          zig.lineTo(r.left - 2 + step * (i + 1), top);
+        }
+        zig.lineTo(r.right + 2, top + h);
+        for (var i = teeth; i > 0; i--) {
+          zig.lineTo(r.left - 2 + step * (i - .5), top + h * 1.45);
+          zig.lineTo(r.left - 2 + step * (i - 1), top + h);
+        }
+        zig.close();
+        canvas.drawPath(zig, paint);
+      case 11: // Rayas de sandia, de arriba abajo.
+        final stroke = Paint()
+          ..color = paint.color
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = r.width * .07;
+        for (final k in const [-.66, -.33, 0.0, .33, .66]) {
+          final x = r.center.dx + k * r.width / 2;
+          canvas.drawPath(
+            Path()
+              ..moveTo(r.center.dx + k * r.width * .2, r.top - 2)
+              ..quadraticBezierTo(
+                x + k * r.width * .22,
+                r.center.dy,
+                r.center.dx + k * r.width * .34,
+                r.bottom + 2,
+              ),
+            stroke,
+          );
+        }
     }
+  }
+
+  /// Estrella de cinco puntas, algo redondeada.
+  void _star5(Canvas canvas, Offset c, double radius, Paint paint) {
+    final path = Path();
+    for (var i = 0; i < 10; i++) {
+      final a = -math.pi / 2 + i * math.pi / 5;
+      final rad = i.isEven ? radius : radius * .48;
+      final p = c + Offset(math.cos(a) * rad, math.sin(a) * rad);
+      i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+    }
+    path.close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = paint.color
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = paint.color
+        ..style = PaintingStyle.stroke
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = radius * .22,
+    );
   }
 
   void _crownBehind(
@@ -559,7 +676,245 @@ class TamaPainter extends CustomPainter {
             hair..strokeWidth = 2.1,
           );
           canvas.restore();
+        case 6: // Orejas de gato, en punta.
+          final baseY = r.top + r.height * .15;
+          final baseX = r.center.dx + side * body.halfWidthAt(baseY) * .58;
+          canvas.save();
+          canvas.translate(baseX, baseY);
+          canvas.rotate(side * (.12 + pose.sway * .5));
+          final w = r.width * .15 * k;
+          final h = r.height * .4 * k;
+          // Triangulo recto, con la punta hacia fuera: el de las orejitas es
+          // redondo y ladeado.
+          Path tri(double s) => Path()
+            ..moveTo(-w * s, h * .3)
+            ..lineTo(side * w * .35 * s, -h * s)
+            ..lineTo(w * s, h * .3)
+            ..close();
+          canvas.drawPath(tri(1), skin);
+          canvas.drawPath(tri(1), outline);
+          canvas.drawPath(
+            tri(.56),
+            Paint()..color = Color.lerp(color, T.tamaBlush, .62)!,
+          );
+          canvas.restore();
+        case 7: // Brote: dos hojitas en un tallo.
+          if (side > 0) break;
+          final base = Offset(r.center.dx, r.top + 2);
+          canvas.save();
+          canvas.translate(base.dx, base.dy);
+          canvas.rotate(pose.sway * .8);
+          final stemTop = Offset(0, -9 * k);
+          canvas.drawPath(
+            Path()
+              ..moveTo(0, 2)
+              ..quadraticBezierTo(1.2 * k, -4 * k, stemTop.dx, stemTop.dy),
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeCap = StrokeCap.round
+              ..strokeWidth = 1.7
+              ..color = Color.lerp(T.tamaSprout, T.dusk, .3)!,
+          );
+          for (final dir in const [-1.0, 1.0]) {
+            final leaf = Path()
+              ..moveTo(stemTop.dx, stemTop.dy)
+              ..quadraticBezierTo(
+                dir * 5 * k,
+                stemTop.dy - 6.5 * k,
+                dir * 10 * k,
+                stemTop.dy - 2 * k,
+              )
+              ..quadraticBezierTo(
+                dir * 5 * k,
+                stemTop.dy + 2.6 * k,
+                stemTop.dx,
+                stemTop.dy,
+              )
+              ..close();
+            final leafRect = leaf.getBounds();
+            canvas.drawPath(
+              leaf,
+              Paint()
+                ..shader = LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color.lerp(T.tamaSprout, T.shellTop, .3)!,
+                    T.tamaSprout,
+                  ],
+                ).createShader(leafRect),
+            );
+            canvas.drawPath(
+              leaf,
+              Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = .9
+                ..color = Color.lerp(T.tamaSprout, T.dusk, .35)!,
+            );
+          }
+          canvas.restore();
+        case 8: // Orejitas de oso, redondas y pequeñas.
+          final baseY = r.top + r.height * .13;
+          final c = Offset(
+            r.center.dx + side * body.halfWidthAt(baseY) * .7,
+            baseY - r.height * .02,
+          );
+          final rad = r.width * .12 * k;
+          canvas.drawCircle(c, rad, skin);
+          canvas.drawCircle(c, rad, outline);
+          canvas.drawCircle(
+            c + Offset(0, rad * .12),
+            rad * .55,
+            Paint()..color = Color.lerp(color, T.tamaBlush, .55)!,
+          );
+        case 9: // Cresta de dinosaurio, por el lomo.
+          if (side > 0) break;
+          final spike = Paint()..color = Color.lerp(color, T.dusk, .16)!;
+          for (final (dx, s) in const [(-.24, .7), (0.0, 1.0), (.24, .7)]) {
+            final x = r.center.dx + dx * r.width;
+            final y = r.top + r.height * (.03 + 1.6 * dx * dx);
+            final w = r.width * .1;
+            final h = r.height * .2 * k * s;
+            final tooth = Path()
+              ..moveTo(x - w, y + 3)
+              ..quadraticBezierTo(x - w * .5, y - h * .5, x, y - h)
+              ..quadraticBezierTo(x + w * .5, y - h * .5, x + w, y + 3)
+              ..close();
+            canvas.drawPath(tooth, spike);
+            canvas.drawPath(tooth, outline);
+          }
+        case 11: // Cuerno de unicornio.
+          if (side > 0) break;
+          final base = Offset(r.center.dx, r.top + r.height * .06);
+          final h = r.height * .36 * k;
+          final w = r.width * .075 * k;
+          final horn = Path()
+            ..moveTo(base.dx - w, base.dy + 2)
+            ..lineTo(base.dx - w * .12, base.dy - h)
+            ..quadraticBezierTo(
+              base.dx,
+              base.dy - h - 1,
+              base.dx + w * .12,
+              base.dy - h,
+            )
+            ..lineTo(base.dx + w, base.dy + 2)
+            ..close();
+          final hornRect = horn.getBounds();
+          canvas.drawPath(
+            horn,
+            Paint()
+              ..shader = LinearGradient(
+                colors: [
+                  Color.lerp(T.tamaHorn, T.shellTop, .5)!,
+                  T.tamaHorn,
+                  Color.lerp(T.tamaHorn, T.dusk, .15)!,
+                ],
+                stops: const [0, .45, 1],
+              ).createShader(hornRect),
+          );
+          canvas.save();
+          canvas.clipPath(horn);
+          final spiral = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = Color.lerp(T.tamaHorn, T.dusk, .3)!;
+          for (var i = 1; i < 4; i++) {
+            final y = base.dy - h * i / 4;
+            canvas.drawLine(
+              Offset(base.dx - w, y + w * .6),
+              Offset(base.dx + w, y - w * .2),
+              spiral,
+            );
+          }
+          canvas.restore();
+          canvas.drawPath(
+            horn,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1
+              ..strokeJoin = StrokeJoin.round
+              ..color = Color.lerp(T.tamaHorn, T.dusk, .38)!,
+          );
+        case 12: // Penacho de codorniz: un tallo curvo con su gota.
+          if (side > 0) break;
+          final base = Offset(r.center.dx - r.width * .04, r.top + 2);
+          canvas.save();
+          canvas.translate(base.dx, base.dy);
+          canvas.rotate(pose.sway * 1.2);
+          final tip = Offset(5.5 * k, -11 * k);
+          canvas.drawPath(
+            Path()
+              ..moveTo(0, 2)
+              ..cubicTo(-1.5 * k, -6 * k, 1 * k, -10 * k, tip.dx, tip.dy),
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeCap = StrokeCap.round
+              ..strokeWidth = 1.6
+              ..color = rim,
+          );
+          canvas.save();
+          canvas.translate(tip.dx, tip.dy);
+          canvas.rotate(.9);
+          final drop = Path()
+            ..moveTo(0, 0)
+            ..quadraticBezierTo(3.4 * k, 1.2 * k, 2.6 * k, 4 * k)
+            ..quadraticBezierTo(0, 6.4 * k, -2.6 * k, 4 * k)
+            ..quadraticBezierTo(-3.4 * k, 1.2 * k, 0, 0)
+            ..close();
+          canvas.drawPath(
+            drop,
+            Paint()..color = Color.lerp(color, T.dusk, .2)!,
+          );
+          canvas.drawPath(drop, outline);
+          canvas.restore();
+          canvas.restore();
+        case 13: // Orejas de raton, grandes y redondas.
+          final baseY = r.top + r.height * .2;
+          final c = Offset(
+            r.center.dx + side * (body.halfWidthAt(baseY) * .8 + r.width * .02),
+            r.top + r.height * .02,
+          );
+          final rad = r.width * .2 * k;
+          canvas.drawCircle(c, rad, skin);
+          canvas.drawCircle(c, rad, outline);
+          canvas.drawCircle(
+            c + Offset(-side * rad * .06, rad * .06),
+            rad * .66,
+            Paint()..color = Color.lerp(color, T.tamaBlush, .55)!,
+          );
       }
+    }
+  }
+
+  /// Lo de la coronilla que cae por delante del cuerpo: las orejas caidas de
+  /// perrito, a los lados de la cabeza.
+  void _crownFront(Canvas canvas, TamaBody body, Color rim, Color color) {
+    if (look.part(TamaPart.crown) != 10) return;
+    final r = body.bounds;
+    final k = .72 + .62 * look.unit(TamaDial.crownSize);
+    final ear = Paint()..color = Color.lerp(color, T.dusk, .14)!;
+    final outline = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1
+      ..color = rim.withValues(alpha: .55);
+    for (final side in const [-1.0, 1.0]) {
+      final y = r.top + r.height * .12;
+      final x = r.center.dx + side * (body.halfWidthAt(y) + 1);
+      canvas.save();
+      canvas.translate(x, y);
+      // Cuelgan hacia fuera, por el costado: nunca encima de los ojos.
+      canvas.rotate(-side * (.5 + pose.sway * .6));
+      final w = r.width * .15 * k;
+      final h = r.height * .36 * k;
+      final flap = Path()
+        ..moveTo(-w * .4, 0)
+        ..quadraticBezierTo(-w * .7, h * .7, 0, h)
+        ..quadraticBezierTo(w * .7, h * .7, w * .5, 0)
+        ..quadraticBezierTo(0, -h * .1, -w * .4, 0)
+        ..close();
+      canvas.drawPath(flap, ear);
+      canvas.drawPath(flap, outline);
+      canvas.restore();
     }
   }
 
@@ -718,6 +1073,8 @@ class TamaPainter extends CustomPainter {
         canvas.drawOval(arm, skin);
         canvas.drawOval(arm, outline);
         canvas.restore();
+      } else if (variant > 3) {
+        _armMore(canvas, body, skin, outline, color, side, variant);
       } else {
         // Alitas.
         final y = r.top + r.height * .46;
@@ -757,6 +1114,159 @@ class TamaPainter extends CustomPainter {
     }
   }
 
+  /// Los brazos de la 0.8.0: aletas, garritas, alas de murcielago, hojitas
+  /// y manos flotantes.
+  void _armMore(
+    Canvas canvas,
+    TamaBody body,
+    Paint skin,
+    Paint outline,
+    Color color,
+    double side,
+    int variant,
+  ) {
+    final r = body.bounds;
+    switch (variant) {
+      case 4: // Aletas de pingüino.
+        final y = r.top + r.height * .5;
+        final x = r.center.dx + side * (body.halfWidthAt(y) - 1.2);
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(-side * (.45 + pose.armWave * .9));
+        final w = r.width * .13;
+        final h = r.height * .42;
+        final fin = Path()
+          ..moveTo(-w * .5, 0)
+          ..quadraticBezierTo(-w * .7, h * .6, side * w * .1, h)
+          ..quadraticBezierTo(w * .8, h * .55, w * .5, 0)
+          ..close();
+        canvas.drawPath(fin, Paint()..color = Color.lerp(color, T.dusk, .1)!);
+        canvas.drawPath(fin, outline);
+        canvas.restore();
+      case 5: // Garritas: bracito con tres uñas.
+        final y = r.top + r.height * .62;
+        final x = r.center.dx + side * (body.halfWidthAt(y) + .4);
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(side * (.5 + pose.armWave * 1.1));
+        final arm = Rect.fromCenter(
+          center: const Offset(0, 3.4),
+          width: r.width * .14,
+          height: r.height * .26,
+        );
+        canvas.drawOval(arm, skin);
+        canvas.drawOval(arm, outline);
+        // Las uñas, por delante del bracito, en abanico.
+        final claw = Paint()..color = Color.lerp(T.shellTop, color, .1)!;
+        final clawEdge = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = .7
+          ..strokeJoin = StrokeJoin.round
+          ..color = outline.color;
+        for (final a in const [-.5, 0.0, .5]) {
+          final base = Offset(math.sin(a) * arm.width * .4, arm.bottom - 1.6);
+          final tip = base + Offset(math.sin(a) * 2.6, 3.2);
+          final nail = Path()
+            ..moveTo(base.dx - 1.3, base.dy)
+            ..quadraticBezierTo(tip.dx - .6, tip.dy - 1, tip.dx, tip.dy)
+            ..quadraticBezierTo(
+              tip.dx + .4,
+              tip.dy - 1.4,
+              base.dx + 1.3,
+              base.dy,
+            )
+            ..close();
+          canvas.drawPath(nail, claw);
+          canvas.drawPath(nail, clawEdge);
+        }
+        canvas.restore();
+      case 6: // Alas de murcielago, con el borde en ondas.
+        final y = r.top + r.height * .44;
+        final x = r.center.dx + side * (body.halfWidthAt(y) - 2.5);
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(side * (-.18 - pose.armWave * .6));
+        final w = r.width * .3;
+        final h = r.height * .3;
+        final wing = Path()
+          ..moveTo(0, h * .25)
+          ..lineTo(side * w * .2, -h * .2)
+          ..quadraticBezierTo(side * w * .6, -h * .55, side * w, -h * .4)
+          ..quadraticBezierTo(side * w * .9, -h * .05, side * w * .95, h * .3)
+          ..quadraticBezierTo(side * w * .78, h * .12, side * w * .62, h * .34)
+          ..quadraticBezierTo(side * w * .46, h * .14, side * w * .3, h * .38)
+          ..quadraticBezierTo(side * w * .16, h * .2, 0, h * .25)
+          ..close();
+        canvas.drawPath(wing, Paint()..color = Color.lerp(color, T.dusk, .3)!);
+        canvas.drawPath(wing, outline);
+        final bone = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = .8
+          ..color = Color.lerp(color, T.dusk, .45)!;
+        for (final t in const [.62, .3]) {
+          canvas.drawLine(
+            Offset(side * w * .2, -h * .2),
+            Offset(side * w * t, h * .3),
+            bone,
+          );
+        }
+        canvas.restore();
+      case 7: // Hojitas.
+        final y = r.top + r.height * .58;
+        final x = r.center.dx + side * (body.halfWidthAt(y) - 1);
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(-side * (1.1 + pose.armWave * 1.1));
+        final w = r.width * .12;
+        final h = r.height * .36;
+        final leaf = Path()
+          ..moveTo(0, 0)
+          ..quadraticBezierTo(-w, h * .45, 0, h)
+          ..quadraticBezierTo(w, h * .45, 0, 0)
+          ..close();
+        canvas.drawPath(
+          leaf,
+          Paint()..color = Color.lerp(color, T.shellTop, .2)!,
+        );
+        canvas.drawPath(leaf, outline);
+        canvas.drawLine(
+          Offset(0, h * .08),
+          Offset(0, h * .82),
+          Paint()
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = .8
+            ..color = outline.color,
+        );
+        canvas.restore();
+      case 8: // Manos flotantes, sin brazo, que suben al saludar.
+        final y = r.top + r.height * (.64 - pose.armWave * .22);
+        final x =
+            r.center.dx +
+            side * (body.halfWidthAt(r.top + r.height * .64) + r.width * .1);
+        final rad = r.width * .085;
+        final hand = Paint()..color = Color.lerp(color, T.shellTop, .3)!;
+        final c = Offset(x, y);
+        canvas.drawCircle(c, rad, hand);
+        canvas.drawCircle(c, rad, outline);
+        canvas.drawCircle(
+          c + Offset(-side * rad * .1, -rad * .9),
+          rad * .42,
+          hand,
+        );
+        canvas.drawCircle(
+          c + Offset(-side * rad * .1, -rad * .9),
+          rad * .42,
+          outline,
+        );
+        canvas.drawCircle(
+          c + Offset(-rad * .3, -rad * .3),
+          rad * .22,
+          Paint()..color = T.glintSoft,
+        );
+    }
+  }
+
   void _feetBehind(
     Canvas canvas,
     TamaBody body,
@@ -765,8 +1275,8 @@ class TamaPainter extends CustomPainter {
     Color color,
   ) {
     final variant = look.part(TamaPart.feet);
-    if (variant == 2) {
-      _legs(canvas, body, rim, color);
+    if (variant == 2 || variant == 7) {
+      _legs(canvas, body, rim, color, long: variant == 7);
       return;
     }
     if (variant != 0 || hidesFeet(look)) return;
@@ -791,30 +1301,33 @@ class TamaPainter extends CustomPainter {
 
   /// Piernecitas: dos patas cortas con zapatito redondo. El cuerpo va algo mas
   /// alto para que se vean (ver [TamaBody.legLift]).
-  void _legs(Canvas canvas, TamaBody body, Color rim, Color color) {
+  /// Con [long], las piernas largas: mas finas y con un pie redondo.
+  void _legs(
+    Canvas canvas,
+    TamaBody body,
+    Color rim,
+    Color color, {
+    bool long = false,
+  }) {
     final r = body.bounds;
+    final half = r.width * (long ? .04 : .055);
     final legColor = Color.lerp(color, T.dusk, .12)!;
     final outline = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.1
       ..color = rim.withValues(alpha: .55);
     for (final side in const [-1.0, 1.0]) {
-      final x = r.center.dx + side * r.width * .17;
+      final x = r.center.dx + side * r.width * (long ? .14 : .17);
       final leg = RRect.fromRectAndRadius(
-        Rect.fromLTRB(
-          x - r.width * .055,
-          r.bottom - 4,
-          x + r.width * .055,
-          floor - 2.5,
-        ),
-        Radius.circular(r.width * .055),
+        Rect.fromLTRB(x - half, r.bottom - 4, x + half, floor - 2.5),
+        Radius.circular(half),
       );
       canvas.drawRRect(leg, Paint()..color = legColor);
       canvas.drawRRect(leg, outline);
       final shoe = Rect.fromCenter(
         center: Offset(x + side * r.width * .03, floor - 2.2),
-        width: r.width * .21,
-        height: 5.2,
+        width: r.width * (long ? .17 : .21),
+        height: long ? 5.6 : 5.2,
       );
       canvas.drawOval(shoe, Paint()..color = Color.lerp(color, T.dusk, .28)!);
       canvas.drawOval(shoe, outline);
@@ -830,7 +1343,13 @@ class TamaPainter extends CustomPainter {
   }
 
   void _feetFront(Canvas canvas, TamaBody body, Color color, Color rim) {
-    if (look.part(TamaPart.feet) != 1 || hidesFeet(look)) return;
+    if (hidesFeet(look)) return;
+    final variant = look.part(TamaPart.feet);
+    if (variant > 3 && variant != 7) {
+      _feetMore(canvas, body, color, rim, variant);
+      return;
+    }
+    if (variant != 1) return;
     // Zarpitas delante, con sus deditos.
     final r = body.bounds;
     final pawColor = Color.lerp(color, T.shellTop, .22)!;
@@ -856,6 +1375,132 @@ class TamaPainter extends CustomPainter {
           Offset(c.dx + dx * paw.width, c.dy + 3.4),
           toe,
         );
+      }
+    }
+  }
+
+  /// Los pies de la 0.8.0, delante del cuerpo: de pato, botitas,
+  /// almohadillas y de pajaro.
+  void _feetMore(
+    Canvas canvas,
+    TamaBody body,
+    Color color,
+    Color rim,
+    int variant,
+  ) {
+    final r = body.bounds;
+    final outline = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1
+      ..strokeJoin = StrokeJoin.round
+      ..color = rim.withValues(alpha: .6);
+    for (final side in const [-1.0, 1.0]) {
+      switch (variant) {
+        case 4: // De pato: palmeadas, con tres deditos.
+          final c = Offset(r.center.dx + side * r.width * .21, floor - 2.4);
+          final w = r.width * .15;
+          final foot = Path()
+            ..moveTo(c.dx - w * .5, c.dy - 3.4)
+            ..quadraticBezierTo(c.dx - w * 1.15, c.dy, c.dx - w, c.dy + 2.4)
+            ..quadraticBezierTo(
+              c.dx - w * .66,
+              c.dy + 1.2,
+              c.dx - w * .34,
+              c.dy + 2.6,
+            )
+            ..quadraticBezierTo(c.dx, c.dy + 1.4, c.dx + w * .34, c.dy + 2.6)
+            ..quadraticBezierTo(
+              c.dx + w * .66,
+              c.dy + 1.2,
+              c.dx + w,
+              c.dy + 2.4,
+            )
+            ..quadraticBezierTo(
+              c.dx + w * 1.15,
+              c.dy,
+              c.dx + w * .5,
+              c.dy - 3.4,
+            )
+            ..close();
+          canvas.drawPath(foot, Paint()..color = T.tamaBeak);
+          canvas.drawPath(
+            foot,
+            outline..color = Color.lerp(T.tamaBeak, T.dusk, .4)!,
+          );
+        case 5: // Botitas con su vuelta.
+          final c = Offset(r.center.dx + side * r.width * .2, floor - 3.6);
+          final boot = RRect.fromRectAndCorners(
+            Rect.fromCenter(center: c, width: r.width * .24, height: 8),
+            topLeft: const Radius.circular(3),
+            topRight: const Radius.circular(3),
+            bottomLeft: const Radius.circular(4),
+            bottomRight: const Radius.circular(4),
+          );
+          final bootColor = Color.lerp(color, T.dusk, .3)!;
+          canvas.drawRRect(boot, Paint()..color = bootColor);
+          final cuff = RRect.fromRectAndRadius(
+            Rect.fromLTWH(boot.left - .6, boot.top - .6, boot.width + 1.2, 3),
+            const Radius.circular(1.5),
+          );
+          canvas.drawRRect(
+            cuff,
+            Paint()..color = Color.lerp(color, T.shellTop, .55)!,
+          );
+          canvas.drawRRect(
+            boot,
+            outline..color = Color.lerp(bootColor, T.dusk, .3)!,
+          );
+          canvas.drawOval(
+            Rect.fromCenter(
+              center: c + Offset(-r.width * .05, 1),
+              width: 2.6,
+              height: 1.5,
+            ),
+            Paint()..color = T.glintSoft,
+          );
+        case 6: // Patitas con almohadillas rosas.
+          final c = Offset(r.center.dx + side * r.width * .2, floor - 3);
+          final paw = Rect.fromCenter(
+            center: c,
+            width: r.width * .26,
+            height: 8.8,
+          );
+          canvas.drawOval(
+            paw,
+            Paint()..color = Color.lerp(color, T.shellTop, .25)!,
+          );
+          canvas.drawOval(paw, outline..color = rim.withValues(alpha: .6));
+          final pad = Paint()..color = T.tamaBlush;
+          canvas.drawOval(
+            Rect.fromCenter(
+              center: c + Offset(0, 1.4),
+              width: paw.width * .42,
+              height: 3.4,
+            ),
+            pad,
+          );
+          for (final dx in const [-.28, 0.0, .28]) {
+            canvas.drawCircle(
+              c + Offset(dx * paw.width, -1.8 - (dx == 0 ? .5 : 0)),
+              1.05,
+              pad,
+            );
+          }
+        case 8: // De pajaro: tres deditos finos.
+          final c = Offset(r.center.dx + side * r.width * .17, floor - 1.6);
+          final toe = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = 1.6
+            ..color = Color.lerp(T.tamaBeak, T.dusk, .12)!;
+          canvas.drawLine(c + const Offset(0, -1.8), c, toe);
+          for (final a in const [-.95, 0.0, .95]) {
+            canvas.drawLine(
+              c,
+              c + Offset(math.sin(a) * 4.6, math.cos(a) * 1.4 + .6),
+              toe,
+            );
+          }
       }
     }
   }
@@ -928,6 +1573,67 @@ class TamaPainter extends CustomPainter {
               line,
             );
           }
+        case 4: // Corazoncitos.
+          _heart(
+            canvas,
+            c + Offset(0, f.eyeR * .2),
+            f.eyeR * 1.15,
+            Paint()
+              ..color = T.tamaBlush.withValues(alpha: math.min(1.0, base + .2)),
+          );
+        case 5: // Remolinos.
+          final swirl = Path();
+          for (var i = 0; i <= 28; i++) {
+            final t = i / 28;
+            final a = side * t * math.pi * 3.2;
+            final rad = f.eyeR * (.08 + .5 * t);
+            final p = c + Offset(math.cos(a) * rad, math.sin(a) * rad * .8);
+            i == 0 ? swirl.moveTo(p.dx, p.dy) : swirl.lineTo(p.dx, p.dy);
+          }
+          canvas.drawPath(
+            swirl,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeCap = StrokeCap.round
+              ..strokeJoin = StrokeJoin.round
+              ..strokeWidth = f.eyeR * .14
+              ..color = T.tamaBlush.withValues(alpha: math.min(1.0, base + .2)),
+          );
+        case 6: // Estrellitas.
+          final star = Paint()
+            ..color = T.tamaSparkle.withValues(
+              alpha: math.min(1.0, base + .25),
+            );
+          _star(canvas, c + Offset(side * f.eyeR * .1, 0), f.eyeR * 1.3, star);
+          _star(
+            canvas,
+            c + Offset(side * f.eyeR * .62, -f.eyeR * .5),
+            f.eyeR * .6,
+            star,
+          );
+        case 7: // Pegatina: un circulo de rubor con su brillo.
+          final disc = Rect.fromCenter(
+            center: c,
+            width: f.eyeR * 1.5,
+            height: f.eyeR * 1.2,
+          );
+          canvas.drawOval(
+            disc,
+            Paint()
+              ..color = Color.lerp(
+                T.tamaBlush,
+                color,
+                .15,
+              )!.withValues(alpha: math.min(1.0, base + .25)),
+          );
+          canvas.drawOval(
+            Rect.fromCenter(
+              center: disc.center + Offset(-disc.width * .2, -disc.height * .2),
+              width: disc.width * .3,
+              height: disc.height * .22,
+            ),
+            Paint()..color = T.glintStrong,
+          );
       }
     }
   }
@@ -938,10 +1644,17 @@ class TamaPainter extends CustomPainter {
     final ink = Paint()..color = T.tamaInk;
     final white = Paint()..color = T.shellTop;
     // Los ojos que ya estan cerrados (sonrientes, soñolientos) no parpadean.
-    final alreadyClosed = variant == 2 || variant == 3;
+    // El guiño cierra solo el de su izquierda.
+    final winking = variant == 12 && side < 0;
+    final alreadyClosed =
+        variant == 2 || variant == 3 || variant == 8 || winking;
     final closed = alreadyClosed ? 0.0 : pose.blink.clamp(0.0, 1.0);
     final happy = pose.happyEyes.clamp(0.0, 1.0);
     final pupil = Offset(gaze.dx * r * .26, gaze.dy * r * .2);
+    // El color propio de los ojos, en los que tienen iris o reflejo.
+    final tint = tintableEyes.contains(variant)
+        ? look.tint(TamaTint.eyes)
+        : null;
 
     // Ojos cerrados: de gusto (arco hacia arriba) o de parpadeo (linea suave).
     if (happy > .5 || closed > .82) {
@@ -978,6 +1691,60 @@ class TamaPainter extends CustomPainter {
     canvas.translate(c.dx, c.dy);
     canvas.scale(1, 1 - closed * .9);
 
+    // Ojo brillante, con dos brillos o con destello de estrella.
+    void shiny({bool star = false}) {
+      final eye = Rect.fromCenter(
+        center: pupil * .5,
+        width: r * 1.7,
+        height: r * 2.06,
+      );
+      canvas.drawOval(
+        eye,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            // Con color propio el iris se ve entero, no solo un reflejo.
+            colors: tint == null
+                ? [
+                    T.tamaInk,
+                    T.tamaInk,
+                    Color.lerp(T.tamaInk, look.bodyColor, .5)!,
+                  ]
+                : [
+                    T.tamaInk,
+                    Color.lerp(T.tamaInk, tint, .45)!,
+                    Color.lerp(T.tamaInk, tint, .9)!,
+                  ],
+            stops: const [0, .5, 1],
+          ).createShader(eye),
+      );
+      if (!star) {
+        canvas.drawCircle(pupil + Offset(-r * .3, -r * .42), r * .34, white);
+        canvas.drawCircle(pupil + Offset(r * .3, r * .4), r * .14, white);
+      } else {
+        _star(canvas, pupil + Offset(-r * .22, -r * .34), r * .5, white);
+        canvas.drawCircle(pupil + Offset(r * .34, r * .42), r * .12, white);
+      }
+    }
+
+    // Arco cerrado de contento (^), como los sonrientes.
+    void arc() => canvas.drawPath(
+      Path()
+        ..moveTo(-r * .74 + pupil.dx * .5, r * .3)
+        ..quadraticBezierTo(
+          pupil.dx * .5,
+          -r * .62,
+          r * .74 + pupil.dx * .5,
+          r * .3,
+        ),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = r * .34
+        ..color = T.tamaInk,
+    );
+
     switch (variant) {
       case 0: // Puntitos.
         canvas.drawOval(
@@ -990,49 +1757,11 @@ class TamaPainter extends CustomPainter {
           white,
         );
       case 1: // Brillantes.
+        shiny();
       case 4: // Con destello de estrella.
-        final eye = Rect.fromCenter(
-          center: pupil * .5,
-          width: r * 1.7,
-          height: r * 2.06,
-        );
-        canvas.drawOval(
-          eye,
-          Paint()
-            ..shader = LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                T.tamaInk,
-                T.tamaInk,
-                Color.lerp(T.tamaInk, look.bodyColor, .5)!,
-              ],
-              stops: const [0, .5, 1],
-            ).createShader(eye),
-        );
-        if (variant == 1) {
-          canvas.drawCircle(pupil + Offset(-r * .3, -r * .42), r * .34, white);
-          canvas.drawCircle(pupil + Offset(r * .3, r * .4), r * .14, white);
-        } else {
-          _star(canvas, pupil + Offset(-r * .22, -r * .34), r * .5, white);
-          canvas.drawCircle(pupil + Offset(r * .34, r * .42), r * .12, white);
-        }
+        shiny(star: true);
       case 2: // Sonrientes (^ ^).
-        canvas.drawPath(
-          Path()
-            ..moveTo(-r * .74 + pupil.dx * .5, r * .3)
-            ..quadraticBezierTo(
-              pupil.dx * .5,
-              -r * .62,
-              r * .74 + pupil.dx * .5,
-              r * .3,
-            ),
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round
-            ..strokeWidth = r * .34
-            ..color = T.tamaInk,
-        );
+        arc();
       case 3: // Soñolientos: cerrados en paz, con dos pestañitas.
         final lid = Paint()
           ..style = PaintingStyle.stroke
@@ -1071,14 +1800,195 @@ class TamaPainter extends CustomPainter {
         final p = Offset(gaze.dx * r * .42, gaze.dy * r * .36 + r * .06);
         canvas.drawCircle(p, r * .52, ink);
         canvas.drawCircle(p + Offset(-r * .18, -r * .2), r * .16, white);
+      case 6: // Corazones.
+        final s = r * 2.7;
+        _heart(
+          canvas,
+          pupil * .5 + Offset(0, s * .13),
+          s,
+          Paint()..color = tint ?? T.tamaHeart,
+        );
+        canvas.drawCircle(
+          pupil * .5 + Offset(-r * .5, -r * .42),
+          r * .26,
+          white,
+        );
+      case 7: // Remolinos, de mareo.
+        final swirl = Path();
+        for (var i = 0; i <= 36; i++) {
+          final t = i / 36;
+          final a = side * t * math.pi * 4.2;
+          final rad = r * (.06 + .9 * t);
+          final p = pupil * .3 + Offset(math.cos(a) * rad, math.sin(a) * rad);
+          i == 0 ? swirl.moveTo(p.dx, p.dy) : swirl.lineTo(p.dx, p.dy);
+        }
+        canvas.drawPath(
+          swirl,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeJoin = StrokeJoin.round
+            ..strokeWidth = r * .2
+            ..color = T.tamaInk,
+        );
+      case 8: // Apretados (> <).
+        final dx = side * r * .1;
+        canvas.drawPath(
+          Path()
+            ..moveTo(side * r * .62 + dx, -r * .55)
+            ..lineTo(-side * r * .5 + dx, 0)
+            ..lineTo(side * r * .62 + dx, r * .55),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeJoin = StrokeJoin.round
+            ..strokeWidth = r * .3
+            ..color = T.tamaInk,
+        );
+      case 9: // De anime: grandes, con el iris del color del Tama (o el suyo).
+        final eye = Rect.fromCenter(
+          center: pupil * .4,
+          width: r * 1.8,
+          height: r * 2.4,
+        );
+        canvas.drawOval(eye, ink);
+        final iris = eye.deflate(r * .16);
+        canvas.drawOval(
+          iris,
+          Paint()
+            ..shader = LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                T.tamaInk,
+                Color.lerp(tint ?? look.bodyColor, T.dusk, .3)!,
+                Color.lerp(tint ?? look.bodyColor, T.shellTop, .35)!,
+              ],
+              stops: const [0, .45, 1],
+            ).createShader(iris),
+        );
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: pupil * .6 + Offset(0, r * .1),
+            width: r * .7,
+            height: r * 1,
+          ),
+          ink,
+        );
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: pupil + Offset(-r * .32, -r * .55),
+            width: r * .62,
+            height: r * .74,
+          ),
+          white,
+        );
+        canvas.drawCircle(pupil + Offset(r * .34, r * .5), r * .16, white);
+        canvas.drawCircle(pupil + Offset(r * .4, -r * .2), r * .09, white);
+      case 10: // De gato: iris verde (o el suyo) y pupila en rendija.
+        final eye = Rect.fromCenter(
+          center: Offset.zero,
+          width: r * 1.8,
+          height: r * 1.9,
+        );
+        canvas.drawOval(
+          eye,
+          Paint()
+            ..shader = RadialGradient(
+              colors: [
+                Color.lerp(tint ?? T.tamaCatEye, T.shellTop, .35)!,
+                tint ?? T.tamaCatEye,
+              ],
+            ).createShader(eye),
+        );
+        canvas.drawOval(
+          eye,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = r * .16
+            ..color = T.tamaInk,
+        );
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(gaze.dx * r * .3, gaze.dy * r * .15),
+            width: r * .34,
+            height: r * 1.45,
+          ),
+          ink,
+        );
+        canvas.drawCircle(Offset(-r * .36, -r * .4), r * .16, white);
+      case 11: // Puntitos con pestañas.
+        canvas.drawOval(
+          Rect.fromCenter(center: pupil * .6, width: r * 1.1, height: r * 1.46),
+          ink,
+        );
+        canvas.drawCircle(
+          pupil * .6 + Offset(-r * .2, -r * .32),
+          r * .22,
+          white,
+        );
+        final lash = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = r * .16
+          ..color = T.tamaInk;
+        // Tres pestañas en la parte de fuera de arriba, hacia fuera.
+        final centre = pupil * .6;
+        for (final a in const [.45, .9, 1.3]) {
+          final dir = Offset(side * math.sin(a), -math.cos(a));
+          final from = centre + Offset(dir.dx * r * .55, dir.dy * r * .73);
+          canvas.drawLine(from, from + dir * (r * .42), lash);
+        }
+      case 12: // Guiño: el de su izquierda cerrado, el otro brillante.
+        if (winking) {
+          arc();
+        } else {
+          shiny();
+        }
+      case 13: // Alargados, con brillo arriba y el color del Tama abajo.
+        final eye = Rect.fromCenter(
+          center: pupil * .5,
+          width: r * 1.0,
+          height: r * 2.1,
+        );
+        canvas.drawOval(
+          eye,
+          Paint()
+            ..shader = LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                T.tamaInk,
+                T.tamaInk,
+                Color.lerp(
+                  T.tamaInk,
+                  tint ?? look.bodyColor,
+                  tint != null ? .85 : .7,
+                )!,
+              ],
+              stops: const [0, .55, 1],
+            ).createShader(eye),
+        );
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: pupil * .5 + Offset(0, -r * .5),
+            width: r * .6,
+            height: r * .8,
+          ),
+          white,
+        );
     }
     canvas.restore();
 
     // La linea del parpado mide lo que el ojo a esa altura: si aun no lo toca,
     // no se pinta.
     final (halfW, halfH) = switch (variant) {
-      0 => (r * .55, r * .73),
+      0 || 11 => (r * .55, r * .73),
       5 => (r * 1.02, r * 1.02),
+      6 => (r * 1.25, r * 1.0),
+      7 || 10 => (r * .92, r * .96),
+      9 => (r * .9, r * 1.2),
+      13 => (r * .5, r * 1.05),
       _ => (r * .85, r * 1.03),
     };
     final dy = (lidY - c.dy) / (halfH * (1 - closed * .9));
@@ -1175,7 +2085,10 @@ class TamaPainter extends CustomPainter {
     // pintada antes para quedar detras. Boquita y lengüita la sacan desde
     // dentro de su propia boca abierta (ver sus casos).
     final tongue = pose.tongue.clamp(0.0, 1.0);
-    if (tongue > .05 && variant != 2 && variant != 4) {
+    // Las bocas abiertas (boquita, lengüita, la D) la sacan desde dentro; el
+    // pico, el morrito y la de dientes apretados, no.
+    const ownTongue = {2, 4, 5, 8, 9, 12};
+    if (tongue > .05 && !ownTongue.contains(variant)) {
       // El labio de cada boca, y la zona que queda por debajo de el: la lengua
       // se recorta a esa zona para que nunca asome por encima de la linea (en
       // la gatuna se colaba entre los dos arcos de la ω).
@@ -1300,6 +2213,208 @@ class TamaPainter extends CustomPainter {
           reach: h * .45,
           width: w * 1.05,
         );
+      case 5: // Sonrisa en D, abierta de oreja a oreja.
+        final w = m * 1.05;
+        final h = m * (.9 + .4 * math.max(0, joy));
+        final d = Path()
+          ..moveTo(c.dx - w, c.dy - m * .1)
+          ..lineTo(c.dx + w, c.dy - m * .1)
+          ..quadraticBezierTo(c.dx + w, c.dy + h * 1.1, c.dx, c.dy + h)
+          ..quadraticBezierTo(c.dx - w, c.dy + h * 1.1, c.dx - w, c.dy - m * .1)
+          ..close();
+        canvas.drawPath(d, Paint()..color = T.tamaMouth);
+        canvas.save();
+        canvas.clipPath(d);
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(c.dx, c.dy + h * (1 - tongue * .1)),
+            width: w * 1.3,
+            height: h * (.9 + tongue * .4),
+          ),
+          Paint()..color = T.tamaTongue,
+        );
+        canvas.restore();
+        canvas.drawPath(d, line..strokeWidth = math.max(.8, m * .2));
+      case 6: // Ondulada.
+        final wave = depth * .6;
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - m * 1.1, c.dy)
+            ..cubicTo(
+              c.dx - m * .8,
+              c.dy - m * .35,
+              c.dx - m * .45,
+              c.dy - m * .35,
+              c.dx - m * .3,
+              c.dy + wave * .3,
+            )
+            ..cubicTo(
+              c.dx - m * .15,
+              c.dy + m * .35 + wave,
+              c.dx + m * .15,
+              c.dy + m * .35 + wave,
+              c.dx + m * .3,
+              c.dy + wave * .3,
+            )
+            ..cubicTo(
+              c.dx + m * .45,
+              c.dy - m * .35,
+              c.dx + m * .8,
+              c.dy - m * .35,
+              c.dx + m * 1.1,
+              c.dy,
+            ),
+          line,
+        );
+      case 7: // Dientes de conejo.
+        final y = c.dy + depth;
+        final tooth = Paint()..color = T.shellTop;
+        final edge = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(.5, m * .1)
+          ..color = T.tamaInk.withValues(alpha: .7);
+        for (final dx in const [-1.0, 1.0]) {
+          final t = RRect.fromRectAndCorners(
+            Rect.fromLTWH(
+              dx < 0 ? c.dx - m * .42 : c.dx,
+              y - m * .04,
+              m * .42,
+              m * .62,
+            ),
+            bottomLeft: Radius.circular(m * .1),
+            bottomRight: Radius.circular(m * .1),
+          );
+          canvas.drawRRect(t, tooth);
+          canvas.drawRRect(t, edge);
+        }
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - m, c.dy)
+            ..quadraticBezierTo(c.dx, c.dy + depth * 2, c.dx + m, c.dy),
+          line,
+        );
+      case 8: // Piquito.
+        final w = m * .85;
+        final h = m * (.95 + .2 * math.max(0, joy));
+        final beak = Path()
+          ..moveTo(c.dx - w, c.dy - m * .2)
+          ..quadraticBezierTo(c.dx, c.dy - m * .5, c.dx + w, c.dy - m * .2)
+          ..quadraticBezierTo(c.dx + w * .4, c.dy + h * .5, c.dx, c.dy + h)
+          ..quadraticBezierTo(
+            c.dx - w * .4,
+            c.dy + h * .5,
+            c.dx - w,
+            c.dy - m * .2,
+          )
+          ..close();
+        canvas.drawPath(beak, Paint()..color = T.tamaBeak);
+        canvas.drawLine(
+          Offset(c.dx - w * .6, c.dy + h * .1),
+          Offset(c.dx + w * .6, c.dy + h * .1),
+          Paint()
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = math.max(.5, m * .1)
+            ..color = Color.lerp(T.tamaBeak, T.dusk, .35)!,
+        );
+        canvas.drawPath(
+          beak,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeJoin = StrokeJoin.round
+            ..strokeWidth = math.max(.6, m * .14)
+            ..color = Color.lerp(T.tamaBeak, T.dusk, .4)!,
+        );
+        canvas.drawCircle(
+          Offset(c.dx - w * .35, c.dy - m * .12),
+          m * .12,
+          Paint()..color = T.glintStrong,
+        );
+      case 9: // Morrito (un 3 de lado).
+        final s = m * .55;
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - s * .3, c.dy - s * .9)
+            ..quadraticBezierTo(
+              c.dx + s * .9,
+              c.dy - s * .95,
+              c.dx + s * .1,
+              c.dy - s * .05,
+            )
+            ..quadraticBezierTo(
+              c.dx + s * .9,
+              c.dy + s * .85,
+              c.dx - s * .3,
+              c.dy + s * .8,
+            ),
+          line..strokeWidth = math.max(.8, m * .24),
+        );
+      case 10: // Dos colmillos.
+        for (final dx in const [-1.0, 1.0]) {
+          canvas.drawPath(
+            Path()
+              ..moveTo(c.dx + dx * m * .22, c.dy + depth * .95)
+              ..lineTo(c.dx + dx * m * .56, c.dy + depth * .7)
+              ..lineTo(c.dx + dx * m * .4, c.dy + depth * .7 + m * .55)
+              ..close(),
+            Paint()..color = T.shellTop,
+          );
+        }
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - m, c.dy)
+            ..quadraticBezierTo(c.dx, c.dy + depth * 2, c.dx + m, c.dy),
+          line,
+        );
+      case 11: // Puntito.
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: c + Offset(0, depth * .4),
+            width: m * .55,
+            height: m * (.42 + .1 * math.max(0, joy)),
+          ),
+          Paint()..color = T.tamaInk,
+        );
+      case 12: // Dientes: sonrisa enseñando las dos filas, apretadas.
+        final w = m * 1.12;
+        final h = m * (.8 + .25 * math.max(0, joy));
+        final top = c.dy - m * .12;
+        final grin = Path()
+          ..moveTo(c.dx - w, top)
+          ..quadraticBezierTo(c.dx, top + m * .22, c.dx + w, top)
+          ..cubicTo(
+            c.dx + w * .92,
+            top + h * 1.25,
+            c.dx - w * .92,
+            top + h * 1.25,
+            c.dx - w,
+            top,
+          )
+          ..close();
+        canvas.drawPath(grin, Paint()..color = T.shellTop);
+        canvas.save();
+        canvas.clipPath(grin);
+        final gap = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = math.max(.45, m * .09)
+          ..color = T.tamaInk.withValues(alpha: .55);
+        // Donde se juntan las dos filas, y la separacion de cada diente.
+        final bite = top + h * .5;
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - w, bite - m * .04)
+            ..quadraticBezierTo(c.dx, bite + m * .12, c.dx + w, bite - m * .04),
+          gap,
+        );
+        for (final dx in const [-.62, -.3, 0.0, .3, .62]) {
+          canvas.drawLine(
+            Offset(c.dx + dx * w, top - m * .1),
+            Offset(c.dx + dx * w * .96, top + h * 1.1),
+            gap,
+          );
+        }
+        canvas.restore();
+        canvas.drawPath(grin, line..strokeWidth = math.max(.8, m * .2));
     }
   }
 
@@ -1453,6 +2568,14 @@ class TamaBody {
   /// Cuanto sube el cuerpo cuando tiene piernecitas.
   static const double legLift = 7;
 
+  /// Cuanto sube el cuerpo con unos pies [feet]: las piernecitas y las
+  /// piernas largas lo levantan para que se vean.
+  static double liftFor(int feet) => switch (feet) {
+    2 => legLift,
+    7 => 11,
+    _ => 0,
+  };
+
   /// Semiancho del cuerpo a una altura dada.
   double halfWidthAt(double y) {
     if (y <= _right.first.dy) return 0;
@@ -1471,7 +2594,9 @@ class TamaBody {
     final key = TamaLook(
       parts: {
         TamaPart.body: look.part(TamaPart.body),
-        TamaPart.feet: look.part(TamaPart.feet) == 2 ? 2 : 0,
+        TamaPart.feet: liftFor(look.part(TamaPart.feet)) > 0
+            ? look.part(TamaPart.feet)
+            : 0,
       },
       dials: {
         TamaDial.bodyWidth: look.dial(TamaDial.bodyWidth),
@@ -1492,7 +2617,9 @@ class TamaBody {
   static TamaBody _build(TamaLook look) {
     final shape = look.part(TamaPart.body);
     final wf = .82 + .36 * look.unit(TamaDial.bodyWidth);
-    final hf = .82 + .36 * look.unit(TamaDial.bodyHeight);
+    // Con piernas largas el cuerpo es algo mas bajo: lo alto lo ponen ellas.
+    final legs = look.part(TamaPart.feet) == 7 ? .88 : 1.0;
+    final hf = (.82 + .36 * look.unit(TamaDial.bodyHeight)) * legs;
 
     // Exponente de superelipse (2 es un circulo), radios y deformaciones.
     final (n, rx, ry) = switch (shape) {
@@ -1501,7 +2628,15 @@ class TamaBody {
       2 => (2.1, .9, 1.06), // huevo
       3 => (2.25, .95, 1.02), // pera
       4 => (2.6, 1.18, .9), // mochi
-      _ => (2.05, .98, 1.0), // gota
+      5 => (2.05, .98, 1.0), // gota
+      6 => (4.0, 1.0, .92), // cuadradito
+      7 => (2.2, 1.04, .9), // nube
+      8 => (2.3, 1.0, 1.0), // campana
+      9 => (3.8, 1.08, .88), // flan
+      10 => (2.4, 1.14, .98), // onigiri
+      11 => (2.1, .96, 1.04), // cacahuete
+      12 => (2.9, .86, 1.04), // capsula
+      _ => (2.2, .96, 1.04), // fantasma
     };
 
     const count = 72;
@@ -1532,6 +2667,39 @@ class TamaBody {
           } else if (y > .6) {
             y = .6 + (y - .6) * .75;
           }
+        case 6:
+          if (y > .6) y = .6 + (y - .6) * .7;
+        case 7:
+          // Borreguitos en la mitad de arriba; la de abajo, lisa para apoyar.
+          final bump = 1 + .09 * math.cos(t * 10) * (1 - _smooth(.15, .6, y));
+          x *= bump;
+          y *= bump;
+          if (y > .5) y = .5 + (y - .5) * .7;
+        case 8:
+          // Estrecha arriba y con vuelo abajo.
+          x *= .66 + .46 * math.pow((y + 1) / 2, 1.6).toDouble();
+          if (y > .62) y = .62 + (y - .62) * .6;
+        case 9:
+          // Mas estrecho arriba, con la tapa plana, como un flan desmoldado.
+          x *= .66 + .38 * (y + 1) / 2;
+          if (y > .5) y = .5 + (y - .5) * .7;
+        case 10:
+          x *= .4 + .6 * math.pow((y + 1) / 2, .8).toDouble();
+          if (y > .55) y = .55 + (y - .55) * .6;
+        case 11:
+          // Cintura y la bola de arriba algo mas pequeña.
+          x *= 1 - .2 * math.exp(-math.pow((y + .08) / .24, 2)).toDouble();
+          if (y < 0) x *= .9;
+          if (y > .7) y = .7 + (y - .7) * .7;
+        case 12:
+          if (y > .7) y = .7 + (y - .7) * .75;
+        case 13:
+          // Cabeza redonda, faldon recto y el borde de abajo en ondas.
+          if (y > 0) x *= 1 + .07 * y;
+          if (y > .7) {
+            final hem = _smooth(.7, .95, y);
+            y = .7 + (y - .7) * .6 + .05 * math.cos(x * math.pi * 3) * hem;
+          }
       }
       raw.add(Offset(x * rx * wf, y * ry * hf));
     }
@@ -1541,8 +2709,7 @@ class TamaBody {
       maxY = math.max(maxY, p.dy);
     }
     // El cuerpo apoya justo encima del suelo, o sobre sus piernecitas.
-    final bottom =
-        TamaPainter.floor - 1.2 - (look.part(TamaPart.feet) == 2 ? legLift : 0);
+    final bottom = TamaPainter.floor - 1.2 - liftFor(look.part(TamaPart.feet));
     final points = [
       for (final p in raw)
         Offset(

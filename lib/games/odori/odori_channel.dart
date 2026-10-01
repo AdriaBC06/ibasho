@@ -183,6 +183,7 @@ class _OdoriChannelState extends ConsumerState<OdoriChannel> with OdoriTheme {
   @override
   void dispose() {
     dropOdoriTheme();
+    AudioService.instance.setOdoriMusicVolume(null);
     unawaited(AudioService.instance.stopOdoriPreview());
     unawaited(AudioService.instance.unhushMusic());
     super.dispose();
@@ -214,6 +215,7 @@ class _OdoriChannelState extends ConsumerState<OdoriChannel> with OdoriTheme {
         _store = store;
       });
       applyOdoriTheme(store.data.prefs.themeId);
+      AudioService.instance.setOdoriMusicVolume(store.data.prefs.musicVolume);
       _preview();
       for (final s in songs) {
         for (final v in s.versions) {
@@ -234,6 +236,7 @@ class _OdoriChannelState extends ConsumerState<OdoriChannel> with OdoriTheme {
     final before = store.data.prefs.themeId;
     setState(() => store.data.prefs = change(store.data.prefs));
     if (store.data.prefs.themeId != before) applyOdoriTheme(store.data.prefs.themeId);
+    AudioService.instance.setOdoriMusicVolume(store.data.prefs.musicVolume);
     unawaited(store.save());
   }
 
@@ -348,6 +351,7 @@ class _OdoriChannelState extends ConsumerState<OdoriChannel> with OdoriTheme {
       context,
       (_) => OdoriOptionsPage(
         prefs: store.data.prefs,
+        songAsset: (_song.versions.where((v) => v.instrumental).firstOrNull ?? _song.versions.first).audioAsset,
         onChanged: (p) => _update((_) => p),
       ),
     ));

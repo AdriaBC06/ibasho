@@ -39,6 +39,10 @@ enum PrizeSlot {
 
   /// A su izquierda: el mando, el globo, el farolillo y lo que se come.
   left,
+
+  /// En el suelo, a su lado: la caca (0.8.0). No salta ni se inclina con el
+  /// Tama: se queda quieta donde esta.
+  ground,
 }
 
 /// Un premio: un dibujo con una o varias variantes de color. Cada variante es
@@ -49,14 +53,18 @@ enum PrizeSlot {
 /// `<clave>_front.svg` delante (las correas de la mochila, la mitad de
 /// delante del flotador, las hadas que pasan por delante).
 @immutable
+///
+/// Si [shop], no sale en el gacha: se compra en el Yatai, como articulo
+/// `prize_<clave>` (`ShopItem.idForPrize`).
 class Prize {
-  const Prize(this.id, this.rarity, this.slot, this.variants, {this.front = false});
+  const Prize(this.id, this.rarity, this.slot, this.variants, {this.front = false, this.shop = false});
 
   final String id;
   final Rarity rarity;
   final PrizeSlot slot;
   final List<String> variants;
   final bool front;
+  final bool shop;
 
   GachaCategory get category => slot == PrizeSlot.head ? GachaCategory.hats : GachaCategory.accessories;
 
@@ -148,9 +156,18 @@ const List<Prize> wearablePrizes = <Prize>[
   Prize('controller', Rarity.ur, PrizeSlot.left, ['blue']),
   Prize('fairies', Rarity.ur, PrizeSlot.aura, ['light'], front: true),
   Prize('angel_wings', Rarity.ur, PrizeSlot.back, ['white', 'black']),
+  Prize('pixel_heart', Rarity.ur, PrizeSlot.aura, ['red']),
   Prize('rgb_shades', Rarity.mu, PrizeSlot.eyes, ['rainbow']),
   Prize('rgb_wings', Rarity.mu, PrizeSlot.back, ['rainbow']),
+  // Del Yatai, no del gacha (0.8.0).
+  Prize('poop', Rarity.n, PrizeSlot.ground, ['brown'], shop: true),
 ];
+
+/// Los que se compran en el Yatai, en el orden del catalogo.
+List<PrizeItem> get shopPrizeItems => [
+      for (final p in wearablePrizes)
+        if (p.shop) ...p.items,
+    ];
 
 final Map<String, PrizeItem> _byKey = <String, PrizeItem>{
   for (final p in wearablePrizes)
@@ -167,8 +184,9 @@ List<PrizeItem> prizeItems(GachaCategory category) => [
         if (p.category == category) ...p.items,
     ];
 
-/// Las variantes de [category] con [rarity], en el orden del catalogo.
+/// Las variantes de [category] con [rarity] que da el gacha, en el orden del
+/// catalogo. Las del Yatai no salen.
 List<PrizeItem> prizeItemsOf(GachaCategory category, Rarity rarity) => [
       for (final p in wearablePrizes)
-        if (p.category == category && p.rarity == rarity) ...p.items,
+        if (!p.shop && p.category == category && p.rarity == rarity) ...p.items,
     ];

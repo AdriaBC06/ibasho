@@ -81,7 +81,7 @@ Todo vive en `lib/games/odori/`:
 - **Final:** los resultados salen tras la última nota, y el audio sigue sonando debajo.
 - **Sin audio** (tests o fallo de SoLoud) se juega igual, sin música.
 
-**Audio:** `AudioService.loadOdori`, `setOdoriPaused`, `odoriPosition` y `stopOdori`. La voz lleva volumen = música/efectos (hasta ×4), y la pantalla hace `hushMusic`.
+**Audio:** `AudioService.loadOdori`, `setOdoriPaused`, `odoriPosition` y `stopOdori`. La voz lleva el volumen de música (el del menú o `OdoriPrefs.musicVolume`, ver `setOdoriMusicVolume`), y la pantalla hace `hushMusic`.
 
 **Tests:**
 - `test/odori_test.dart`: charter, juicio, rangos y catálogo.
@@ -171,7 +171,7 @@ Todo vive en `lib/games/odori/`:
 ## Diseño del motor (fase 1)
 
 - **Audio:** con SoLoud, como `playKoro`.
-  - El volumen de la canción es el de música o efectos, porque el volumen global de SoLoud es el de efectos.
+  - El volumen de la canción es el de la música del menú (silencio incluido) hasta que se elige otro en opciones (`OdoriPrefs.musicVolume`, 0.8.0; `null` sigue al menú). El canal lo pasa con `setOdoriMusicVolume` y lo suelta al salir.
   - Se usa `hushMusic` para callar la música de fondo.
 - **Reloj:**
   - Un cronómetro que se acerca poco a poco a `getPosition`, y se resincroniza de golpe si se separan más de 80 ms. Se le suma el desfase que calibre el usuario.

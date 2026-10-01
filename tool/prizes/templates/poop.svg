@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 44">
+  <!-- Caquita, en el suelo a su lado: tres rollitos con su punta rizada, una
+       carita contenta y dos coloretes. Apoya en y = 42, centrada en x = 24. -->
+  <defs>
+    <linearGradient id="roll" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".55" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+  </defs>
+  <!-- Sombrita de contacto -->
+  <ellipse cx="24" cy="42" rx="18" ry="2" fill="#0B2230" fill-opacity=".14"/>
+  <!-- Punta rizada -->
+  <path d="M22 13 C20 8 24 3 28 4 C26 6 26 8 28 10 C29 12 27 14 25 14 Z"
+        fill="url(#roll)" stroke="{main.edge}" stroke-width="1.6" stroke-linejoin="round"/>
+  <!-- Rollito de arriba -->
+  <rect x="14" y="11" width="20" height="10" rx="5" fill="url(#roll)" stroke="{main.edge}" stroke-width="1.6"/>
+  <!-- Rollito del medio -->
+  <rect x="9" y="19" width="30" height="11" rx="5.5" fill="url(#roll)" stroke="{main.edge}" stroke-width="1.6"/>
+  <!-- Rollito de abajo -->
+  <rect x="4" y="28" width="40" height="13" rx="6.5" fill="url(#roll)" stroke="{main.edge}" stroke-width="1.6"/>
+  <!-- Brillos -->
+  <path d="M18 14 Q21 13 24 13.4" fill="none" stroke="#FFFFFF" stroke-opacity=".75" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M13 22.4 Q17 21.4 21 21.6" fill="none" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M8.5 31.6 Q13 30.4 18 30.6" fill="none" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- Carita -->
+  <ellipse cx="18.5" cy="33.4" rx="1.9" ry="2.4" fill="#2B2230"/>
+  <ellipse cx="29.5" cy="33.4" rx="1.9" ry="2.4" fill="#2B2230"/>
+  <circle cx="17.9" cy="32.5" r=".7" fill="#FFFFFF"/>
+  <circle cx="28.9" cy="32.5" r=".7" fill="#FFFFFF"/>
+  <path d="M22 36.2 Q24 38.2 26 36.2" fill="none" stroke="#2B2230" stroke-width="1.3" stroke-linecap="round"/>
+  <ellipse cx="14" cy="36.4" rx="2.4" ry="1.3" fill="#FF8FA3" fill-opacity=".75"/>
+  <ellipse cx="34" cy="36.4" rx="2.4" ry="1.3" fill="#FF8FA3" fill-opacity=".75"/>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 32" shape-rendering="crispEdges">
+  <!-- Corazon de pixeles, de 9 x 8 cuadros de 4: todo de un rojo, sin brillo
+       ni borde, como una vida de videojuego. Flota junto a su cabeza. -->
+  <path fill="{main}" d="M4 0h8v4h-8z M24 0h8v4h-8z M0 4h16v4h-16z M20 4h16v4h-16z M0 8h36v8h-36z M4 16h28v4h-28z M8 20h20v4h-20z M12 24h12v4h-12z M16 28h4v4h-4z"/>
+</svg>

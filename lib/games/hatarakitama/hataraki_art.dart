@@ -9,6 +9,14 @@ import 'package:flutter/widgets.dart';
 import '../../theme/tokens.dart';
 import '../../ui/widgets/channel_art.dart';
 import 'hataraki_data.dart';
+import 'hataraki_home.dart';
+import 'hataraki_map.dart';
+import 'hataraki_town.dart';
+
+part 'hataraki_art_crafts.dart';
+part 'hataraki_art_home.dart';
+part 'hataraki_art_map.dart';
+part 'hataraki_art_town.dart';
 
 /// Un objeto pintado a mano: cada uno tiene su dibujo (la caña de bambú no es
 /// un tronco de otro color, ni el salmón una sardina rosa). Todo sobre un
@@ -121,6 +129,7 @@ const Map<String, Color> _tones = {
   'rare_cloud': Color(0xFFEAF4FF),
   'rare_moondust': Color(0xFFC9B8FF),
   'silk_thread': Color(0xFFF5C4E2),
+  'parcel': Color(0xFF6C8FD6),
   'food_onigiri': Color(0xFFFAF7EE),
   'food_iwashi': Color(0xFF8FA8BF),
   'food_miso': Color(0xFFC9914A),
@@ -178,7 +187,7 @@ Color hatarakiItemColor(String id) {
   if (id.startsWith('seed_')) {
     return _tones['crop_${id.substring(5)}'] ?? T.shellTop;
   }
-  return _tones[id] ?? T.shellTop;
+  return _tones[id] ?? _craftTones[id] ?? _furnitureTones[id] ?? T.shellTop;
 }
 
 // --- Utilidades ---------------------------------------------------------------
@@ -1440,6 +1449,34 @@ void _rare(Canvas c, String id, Color color) {
   }
 }
 
+/// Un furoshiki atado: el paquete de los encargos.
+void _parcel(Canvas c, Color color) {
+  final bundle = Path()
+    ..moveTo(22, 50)
+    ..quadraticBezierTo(20, 84, 50, 86)
+    ..quadraticBezierTo(80, 84, 78, 50)
+    ..quadraticBezierTo(50, 40, 22, 50)
+    ..close();
+  paintPlastic(c, bundle, color, edge: 2);
+  // Lunares del estampado.
+  for (final (x, y) in const [(34.0, 62.0), (50.0, 74.0), (64.0, 60.0)]) {
+    c.drawCircle(Offset(x, y), 3.4, _fill(Art.light(color, .5)));
+  }
+  // El nudo con las dos orejas.
+  for (final dir in const [-1.0, 1.0]) {
+    paintPlastic(
+      c,
+      Path()
+        ..moveTo(50, 46)
+        ..quadraticBezierTo(50 + dir * 26, 20, 50 + dir * 12, 44)
+        ..close(),
+      Art.deep(color, .1),
+      edge: 1.4,
+    );
+  }
+  paintPlastic(c, _circle(50, 46, 7), Art.deep(color, .18), edge: 1.4);
+}
+
 void _cloud(Canvas c, double x, double y, double k, Color color) {
   final p = Path()
     ..addOval(
@@ -1817,7 +1854,7 @@ void _outfit(Canvas c, String id, Color color) {
           );
         });
       }
-    case 'gear_cloak':
+    case 'gear_cloak' || 'gear_beni_cloak':
       final cape = Path()
         ..moveTo(40, 22)
         ..lineTo(60, 22)
@@ -1830,7 +1867,7 @@ void _outfit(Canvas c, String id, Color color) {
       paintPlastic(c, _circle(50, 34, 4.5), Art.gold, edge: 1.2);
     default:
       // Happi y kimono: mangas colgando detrás, cuerpo y cuello cruzado.
-      final happi = id == 'gear_happi';
+      final happi = id == 'gear_happi' || id == 'gear_ai_happi';
       final hem = happi ? 76.0 : 86.0;
       for (final x in const [12.0, 62.0]) {
         paintPlastic(
@@ -1884,7 +1921,18 @@ void _outfit(Canvas c, String id, Color color) {
         _cloud(c, 22, 46, .18, T.shellTop);
         _cloud(c, 76, 50, .18, T.shellTop);
       }
-      if (id == 'gear_kimono') {
+      if (id == 'gear_ai_happi') {
+        for (final (x, y) in const [(34.0, 40.0), (66.0, 62.0), (36.0, 68.0)]) {
+          c.drawArc(
+            Rect.fromCircle(center: Offset(x, y), radius: 5),
+            math.pi,
+            math.pi,
+            false,
+            _line(T.shellTop, 1.4),
+          );
+        }
+      }
+      if (id == 'gear_kimono' || id == 'gear_kin_kimono') {
         _blossom(c, 40, 74, 5, T.shellTop);
         _blossom(c, 60, 80, 4, T.shellTop);
         _blossom(c, 22, 48, 4, T.shellTop);
@@ -2120,6 +2168,11 @@ void _shape(Canvas c, String id) {
     }
     return;
   }
+  if (def?.kind == HItemKind.furniture) {
+    _furniture(c, id, color);
+    return;
+  }
+  if (_craftTones.containsKey(id) && _craft(c, id, color)) return;
   switch (id.split('_').first) {
     case 'log':
       id == 'log_take' ? _bamboo(c, color) : _log(c, id, color);
@@ -2145,6 +2198,8 @@ void _shape(Canvas c, String id) {
       _spool(c, color);
     case 'rare':
       _rare(c, id, color);
+    case 'parcel':
+      _parcel(c, color);
     case 'food':
       _food(c, id, color);
     case 'tea':
@@ -2280,28 +2335,46 @@ void _paintSkill(Canvas c, HSkill skill) {
         );
       });
     case HSkill.agility:
-      // Sandalia con alitas.
-      for (final dir in const [-1.0, 1.0]) {
-        final wing = Path()
-          ..moveTo(50, 50)
-          ..quadraticBezierTo(50 + dir * 30, 22, 50 + dir * 40, 36)
-          ..quadraticBezierTo(50 + dir * 30, 40, 50 + dir * 34, 50)
-          ..quadraticBezierTo(50 + dir * 22, 50, 50, 56)
-          ..close();
-        paintPlastic(c, wing, T.shellTop, edge: 1.6);
+      // Una sandalia de paja (waraji) vista desde arriba, ladeada, con su
+      // tira roja en V y un ala en el talón: que no se confunda con una
+      // bufanda.
+      c
+        ..save()
+        ..translate(50, 52)
+        ..rotate(.42)
+        ..translate(-50, -52);
+      final wing = Path()
+        ..moveTo(62, 70)
+        ..quadraticBezierTo(84, 56, 92, 64)
+        ..quadraticBezierTo(84, 66, 88, 74)
+        ..quadraticBezierTo(78, 74, 80, 82)
+        ..quadraticBezierTo(70, 80, 62, 80)
+        ..close();
+      paintPlastic(c, wing, T.shellTop, edge: 1.6);
+      final sole = RRect.fromRectAndCorners(
+        const Rect.fromLTRB(34, 10, 66, 92),
+        topLeft: const Radius.circular(16),
+        topRight: const Radius.circular(16),
+        bottomLeft: const Radius.circular(13),
+        bottomRight: const Radius.circular(13),
+      );
+      paintPlastic(c, Path()..addRRect(sole), const Color(0xFFE2BE7A), edge: 2);
+      // El trenzado de la paja.
+      final weave = _line(Art.deep(const Color(0xFFE2BE7A), .28), 1.6);
+      for (var y = 20.0; y < 88; y += 8) {
+        c.drawLine(Offset(38, y), Offset(62, y), weave);
       }
-      paintPlastic(
-        c,
-        _rrect(26, 62, 48, 14, 7),
-        const Color(0xFFD9A86A),
-        edge: 2,
-      );
-      c.drawPath(
-        Path()
-          ..moveTo(34, 64)
-          ..quadraticBezierTo(50, 42, 66, 64),
-        _line(const Color(0xFFE8475F), 4),
-      );
+      // La tira: del dedo a los dos lados.
+      final strap = _line(const Color(0xFFE8475F), 4.4);
+      c
+        ..drawLine(const Offset(50, 26), const Offset(36, 52), strap)
+        ..drawLine(const Offset(50, 26), const Offset(64, 52), strap)
+        ..drawCircle(
+          const Offset(50, 26),
+          3.6,
+          Paint()..color = const Color(0xFFB8303F),
+        )
+        ..restore();
     case HSkill.cooking:
       // Olla nabe con tapa y vapor.
       _steam(c, 50, 22);
@@ -2401,6 +2474,14 @@ void _paintSkill(Canvas c, HSkill skill) {
     case HSkill.jewelry:
       _charm(c, 'gear_ruby_ring', _tones['gem_ruby']!);
       paintTwinkle(c, const Offset(80, 26), 6, Art.spark);
+    case HSkill.pottery ||
+        HSkill.dyeing ||
+        HSkill.construction ||
+        HSkill.writing ||
+        HSkill.brewing ||
+        HSkill.magic ||
+        HSkill.study:
+      _paintCraftSkill(c, skill);
     case HSkill.expedition:
       final paper = Path()
         ..moveTo(14, 34)

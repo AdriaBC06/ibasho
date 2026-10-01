@@ -619,7 +619,6 @@ class AudioService {
         _sfxSources[sfx] = await soloud.loadAsset('assets/${sfx.asset}');
         _liveVoices[sfx] = <SoundHandle>[];
       }
-      soloud.setGlobalVolume(_effectsVolume);
       _sfxReady = true;
     } catch (e) {
       // Sin efectos no se cae nada: la musica va por otro camino.
@@ -751,7 +750,7 @@ class AudioService {
         soloud.scheduleStop(oldest, _voiceFade);
       }
 
-      final handle = soloud.play(source);
+      final handle = soloud.play(source, volume: _effectsVolume);
       live.add(handle);
     } catch (e) {
       debugPrint('Ibasho: efecto ${sfx.name} fallido ($e)');
@@ -761,8 +760,8 @@ class AudioService {
   // --- Voces de Tama -------------------------------------------------------
   //
   // Los graznidos se sintetizan en `tama_voice.dart` y se cargan en SoLoud
-  // desde memoria. Van por el mismo motor que los efectos, asi que obedecen al
-  // volumen de efectos sin hacer nada mas: es el volumen global de SoLoud.
+  // desde memoria. Van por el mismo motor que los efectos y suenan a su
+  // volumen.
 
   /// Graznidos ya cargados, por clave. Se guardan unos pocos: cada Tama tiene
   /// cuatro frases y se repiten mucho.
@@ -808,7 +807,7 @@ class AudioService {
         soloud.fadeVolume(previous, 0, _voiceFade);
         soloud.scheduleStop(previous, _voiceFade);
       }
-      _chirpVoice = soloud.play(source);
+      _chirpVoice = soloud.play(source, volume: _effectsVolume);
       return seconds;
     } catch (e) {
       debugPrint('Ibasho: graznido fallido ($e)');
@@ -836,7 +835,7 @@ class AudioService {
     try {
       final soloud = SoLoud.instance;
       final source = await soloud.loadMem('koro-loop.wav', wav);
-      final handle = soloud.play(source, looping: true);
+      final handle = soloud.play(source, looping: true, volume: _effectsVolume);
       if (from > 0) soloud.seek(handle, Duration(microseconds: (from * 1e6).round()));
       await stopKoro();
       _koroSource = source;
@@ -886,7 +885,7 @@ class AudioService {
         }
         source = _koroNotes[key] = await soloud.loadMem('koro-$key.wav', build());
       }
-      soloud.play(source);
+      soloud.play(source, volume: _effectsVolume);
     } catch (e) {
       debugPrint('Ibasho: la tecla no ha sonado ($e)');
     }
@@ -895,9 +894,8 @@ class AudioService {
   // --- Odori ----------------------------------------------------------------
   //
   // La cancion del juego de ritmo va por SoLoud, como el coro: el reloj de la
-  // partida se ajusta a la posicion real del audio. El volumen global de
-  // SoLoud es el de efectos, asi que la voz lleva el cociente para que la
-  // cancion suene al volumen de la musica.
+  // partida se ajusta a la posicion real del audio. Suena al volumen de la
+  // musica del menu hasta que en las opciones de Odori se elige otro (0.8.0).
 
   AudioSource? _odoriSource;
   SoundHandle? _odoriVoice;
@@ -920,9 +918,22 @@ class AudioService {
     }
   }
 
-  double get _odoriVolume {
-    if (_effectsVolume <= 0) return 0;
-    return (_musicVolume / _effectsVolume).clamp(0.0, 4.0);
+  /// El volumen de musica propio de Odori; `null`, el del menu.
+  double? _odoriMusic;
+
+  double get _odoriVolume => _odoriMusic ?? _musicVolume;
+
+  /// Pone el volumen de musica de Odori ([v] `null` vuelve al del menu) y lo
+  /// aplica en el acto a la cancion o la instrumental que suene.
+  void setOdoriMusicVolume(double? v) {
+    _odoriMusic = v?.clamp(0.0, 1.0);
+    if (!_sfxReady) return;
+    try {
+      final soloud = SoLoud.instance;
+      for (final voice in [_odoriVoice, _previewVoice]) {
+        if (voice != null && soloud.getIsValidVoiceHandle(voice)) soloud.setVolume(voice, _odoriVolume);
+      }
+    } catch (_) {}
   }
 
   /// Pausa o reanuda la cancion; al reanudar, salta a [at] segundos si se
@@ -1029,7 +1040,7 @@ class AudioService {
     final source = _odoriHits[key];
     if (source == null) return;
     try {
-      SoLoud.instance.play(source, volume: volume);
+      SoLoud.instance.play(source, volume: volume * _effectsVolume);
     } catch (_) {}
   }
 
@@ -1039,16 +1050,24 @@ class AudioService {
 
   /// A volumen cero la musica se pausa, para no dejar un decodificador
   /// girando en vano; al subirlo vuelve a sonar donde estaba.
+  ///
+  /// La cancion de Odori, si sigue al menu, cambia con ella.
   Future<void> setMusicVolume(double v) {
     _musicVolume = v.clamp(0, 1);
+    setOdoriMusicVolume(_odoriMusic);
     return _serial(_reconcileMusic);
   }
 
+  /// Cada voz de efectos lleva el volumen al sonar (no el global de SoLoud,
+  /// que tambien lleva la cancion de Odori); el coro de Tamakoro, que suena
+  /// en bucle, se ajusta en el acto.
   Future<void> setEffectsVolume(double v) async {
     _effectsVolume = v.clamp(0, 1);
     if (!_sfxReady) return;
     try {
-      SoLoud.instance.setGlobalVolume(_effectsVolume);
+      final soloud = SoLoud.instance;
+      final koro = _koroVoice;
+      if (koro != null && soloud.getIsValidVoiceHandle(koro)) soloud.setVolume(koro, _effectsVolume);
     } catch (_) {}
   }
 

@@ -69,6 +69,7 @@ async function seed() {
           food_cookie: 3,
           food_candy: 3,
           odori_kasa: 10,
+          prize_poop_brown: 1,
         },
       },
       users: {
@@ -197,6 +198,30 @@ test('una cancion de Odori se compra con su recibo, una vez y sin borrarse', asy
   await assertSucceeds(buy(90));
   await assertFails(buy(80));
   await assertFails(set(ref(db(ANA), `/users/${ANA}/odori/songs/kasa`), null));
+});
+
+test('la caca del Yatai se compra con su recibo y entra en la coleccion', async () => {
+  const buy = (coins, copies = 1, item = 'prize_poop_brown', key = 'poop_brown') =>
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/shop/last`]: { item, qty: 1, at: serverTimestamp() },
+      [`users/${ANA}/coins`]: coins,
+      [`users/${ANA}/prizes/${key}`]: copies,
+    });
+  // Sin recibo no se crea, y un recibo de la caca no da otro premio.
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/prizes/poop_brown`), 1));
+  await assertFails(buy(99, 1, 'prize_poop_brown', 'crown_gold'));
+  // Ni gratis, ni de dos en dos.
+  await assertFails(buy(100));
+  await assertFails(buy(99, 2));
+  await assertSucceeds(buy(99));
+  // Y a otra cuenta no se la compra nadie.
+  await assertFails(
+    update(ref(db(LUIS), '/'), {
+      [`users/${LUIS}/shop/last`]: { item: 'prize_poop_brown', qty: 1, at: serverTimestamp() },
+      [`users/${LUIS}/coins`]: 1,
+      [`users/${ANA}/prizes/poop_brown`]: 2,
+    }),
+  );
 });
 
 test('un juego sin recibo fresco no se puede regalar', async () => {
@@ -396,6 +421,73 @@ test('hataraki: la dueña guarda y lee su partida; nadie más', async () => {
   await assertFails(set(ref(db(LUIS), `/users/${ANA}/hataraki`), hatarakiGame));
 });
 
+test('hataraki: hasta 8 ranuras de trabajo, con su cebo, abono o mecha', async () => {
+  const worker = { tama: '-Nabcdefghijklmnopqr', action: 'fi_iwashi', progress: 0, boost: 'bait_worm' };
+  await assertSucceeds(
+    set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, workers: { 0: worker, 7: worker } }),
+  );
+  await assertFails(
+    set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, workers: { 8: worker } }),
+  );
+  await assertFails(
+    set(ref(db(ANA), `/users/${ANA}/hataraki`), {
+      ...hatarakiGame,
+      workers: { 0: { ...worker, boost: 'Cebo Gordo!' } },
+    }),
+  );
+});
+
+test('hataraki: el pueblo (niveles 1–5), la tienda del día y viajes de cuatro', async () => {
+  const save = (extra) => set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, ...extra });
+  await assertSucceeds(
+    save({
+      town: { workshop: 1, market: 5 },
+      shop: { day: 20500, bought: { seed_rice: 12 } },
+      expedition: { zone: 'meadow', tamas: { 0: 'a', 1: 'b', 2: 'c', 3: 'd' }, start: 1, end: 2, power: 10 },
+    }),
+  );
+  await assertFails(save({ town: { workshop: 6 } }));
+  await assertFails(save({ town: { workshop: 0 } }));
+  await assertFails(save({ town: { workshop: 1.5 } }));
+  await assertFails(save({ town: { Taller: 1 } }));
+  await assertFails(save({ shop: { bought: { seed_rice: 1 } } }));
+  await assertFails(save({ shop: { day: 1, bought: { seed_rice: 0 } } }));
+  await assertFails(save({ shop: { day: 1, stock: 3 } }));
+  await assertFails(
+    save({ expedition: { zone: 'meadow', tamas: { 4: 'e' }, start: 1, end: 2, power: 10 } }),
+  );
+});
+
+test('hataraki: viajes con mapa (dos a la vez) y guías del día', async () => {
+  const save = (extra) => set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, ...extra });
+  const trip = {
+    zone: 'forest',
+    tamas: { 0: 'a', 1: 'b' },
+    start: 1,
+    end: 5,
+    power: 30,
+    day: 20500,
+    route: { 0: 1, 1: 2, 2: 1, 3: 0 },
+    at: { 0: 2, 1: 3, 2: 4, 3: 5 },
+    fails: { 0: 2 },
+    done: 2,
+    porter: true,
+    luck: 1.5,
+    log: { 0: { log_matsu: 4 }, 1: { rare_feather: 1, prize: 1 } },
+  };
+  await assertSucceeds(
+    save({ expedition: null, expeditions: { 0: trip, 1: { ...trip, zone: 'meadow' } }, guides: { forest: 20500 } }),
+  );
+  await assertFails(save({ expeditions: { 2: trip } }));
+  await assertFails(save({ expeditions: { 0: { ...trip, route: { 0: 3 } } } }));
+  await assertFails(save({ expeditions: { 0: { ...trip, route: { 6: 1 } } } }));
+  await assertFails(save({ expeditions: { 0: { ...trip, done: 7 } } }));
+  await assertFails(save({ expeditions: { 0: { ...trip, luck: 9 } } }));
+  await assertFails(save({ expeditions: { 0: { ...trip, log: { 0: { log_matsu: 0 } } } } }));
+  await assertFails(save({ expeditions: { 0: { ...trip, cheat: true } } }));
+  await assertFails(save({ guides: { forest: 'hoy' } }));
+});
+
 async function hatarakiWithPrizes(uid, { prizes, tickets = 3, claimAt }) {
   await testEnv.withSecurityRulesDisabled(async (context) => {
     await set(ref(context.database(), `/users/${uid}/hataraki`), {
@@ -437,11 +529,112 @@ test('hataraki: guardar la partida con el mismo claimAt vale', async () => {
   await assertFails(set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, prizes: 1, claimAt: now }));
 });
 
+const orderToday = today();
+
+async function hatarakiWithOrderDay(uid, { orderDay, tickets = 3 }) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${uid}/hataraki`), {
+      ...hatarakiGame,
+      ...(orderDay ? { orderDay } : {}),
+    });
+    await set(ref(context.database(), `/users/${uid}/tickets/gachaken`), tickets);
+  });
+}
+
+const claimOrder = (uid, { tickets, day = orderToday, kind = 'gachaken' }) =>
+  update(ref(db(uid), '/'), {
+    [`users/${uid}/tickets/${kind}`]: tickets,
+    [`users/${uid}/hataraki/orderDay`]: day,
+  });
+
+test('hataraki: el gran encargo da un gachaken, uno al día', async () => {
+  await hatarakiWithOrderDay(ANA, {});
+  await assertFails(claimOrder(ANA, { tickets: 5 }));
+  await assertFails(claimOrder(ANA, { tickets: 4, day: orderToday + 1 }));
+  await assertFails(claimOrder(ANA, { tickets: 4, day: orderToday - 1 }));
+  await assertFails(claimOrder(ANA, { tickets: 1, kind: 'kinken' }));
+  await assertSucceeds(claimOrder(ANA, { tickets: 4 }));
+  // El segundo, el mismo día, no.
+  await assertFails(claimOrder(ANA, { tickets: 5 }));
+  // Ni borrando el día al guardar la partida.
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/hataraki`), hatarakiGame));
+  await assertSucceeds(set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, orderDay: orderToday }));
+  // El ticket no sube solo con cambiar el día.
+  await hatarakiWithOrderDay(ANA, { orderDay: orderToday - 1 });
+  await assertFails(update(ref(db(ANA), `/users/${ANA}/hataraki`), { orderDay: orderToday }));
+  await assertSucceeds(claimOrder(ANA, { tickets: 4 }));
+});
+
+test('hataraki: el tablón de encargos', async () => {
+  const save = (orders) => set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, orders });
+  const order = { wants: { log_sugi: 120, parcel: 1 }, money: 900, skill: 'woodcutting', xp: 40, gift: 'rare_feather', giftN: 2 };
+  await assertSucceeds(
+    save({ day: orderToday, swap: orderToday, ticket: true, list: { 0: { ...order, big: true, done: true }, 1: order, 5: order } }),
+  );
+  await assertFails(save({ list: { 0: order } }));
+  await assertFails(save({ day: orderToday, list: { 6: order } }));
+  await assertFails(save({ day: orderToday, list: { 0: { money: 3 } } }));
+  await assertFails(save({ day: orderToday, list: { 0: { ...order, wants: { log_sugi: 0 } } } }));
+  await assertFails(save({ day: orderToday, list: { 0: { ...order, giftN: 0 } } }));
+  await assertFails(save({ day: orderToday, list: { 0: { ...order, cheat: 1 } } }));
+  await assertFails(save({ day: orderToday, extra: 1 }));
+});
+
+test('hataraki: casas con sus muebles y planos sabidos', async () => {
+  const save = (extra) => set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, ...extra });
+  const house = {
+    floor: 'rustic',
+    wall: 'floral',
+    items: { 0: { id: 'fu_stool', x: 0, y: 0, r: 0 }, 35: { id: 'fu_orrery', x: 4, y: 4, r: 3 } },
+  };
+  await assertSucceeds(save({ houses: { 'tama-1': house, t2: { floor: 'magic', wall: 'marine' } }, plans: { fu_boat: true } }));
+  await assertFails(save({ houses: { 'tama-1': { ...house, floor: 'gold' } } }));
+  await assertFails(save({ houses: { 'tama-1': { wall: 'floral' } } }));
+  await assertFails(save({ houses: { 'tama-1': { ...house, items: { 36: { id: 'fu_stool', x: 0, y: 0, r: 0 } } } } }));
+  await assertFails(save({ houses: { 'tama-1': { ...house, items: { 0: { id: 'fu_stool', x: 6, y: 0, r: 0 } } } } }));
+  await assertFails(save({ houses: { 'tama-1': { ...house, items: { 0: { id: 'fu_stool', x: 0, y: 0, r: 4 } } } } }));
+  await assertFails(save({ houses: { 'tama-1': { ...house, items: { 0: { id: 'log_sugi', x: 0, y: 0, r: 0 } } } } }));
+  await assertFails(save({ houses: { 'tama-1': { ...house, items: { 0: { id: 'fu_stool', x: 0, y: 0 } } } } }));
+  await assertFails(save({ houses: { 'tama-1': { ...house, roof: 'red' } } }));
+  await assertFails(save({ houses: { 'ta ma': house } }));
+  await assertFails(save({ plans: { fu_boat: false } }));
+  await assertFails(save({ plans: { gear_scarf: true } }));
+  const order = { wants: { log_sugi: 120 }, money: 900, plan: 'fu_boat' };
+  await assertSucceeds(save({ orders: { day: orderToday, list: { 1: order } } }));
+  await assertFails(save({ orders: { day: orderToday, list: { 1: { ...order, plan: 'gear_scarf' } } } }));
+});
+
+test('hataraki: los amigos visitan el pueblo (solo leer) con la ficha de sus Tamas', async () => {
+  const look = { body: 2, eyes: 1, bodyWidth: 55, color: '#5BC8F5', colorMode: 'palette', hat: 'hat_straw', acc: { a: 'acc_bell' } };
+  const visit = { tamas: { '-Nabcdefghijklmnopqr': { name: 'Mochi', personality: 'shy', look } } };
+  const save = (extra) => set(ref(db(ANA), `/users/${ANA}/hataraki`), { ...hatarakiGame, ...extra });
+  await assertSucceeds(save({ visit }));
+  // Sin ser amigos no se lee.
+  await assertFails(get(ref(db(LUIS), `/users/${ANA}/hataraki`)));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/friends/${LUIS}`), { since: now });
+  });
+  await assertSucceeds(get(ref(db(LUIS), `/users/${ANA}/hataraki`)));
+  await assertFails(set(ref(db(LUIS), `/users/${ANA}/hataraki`), hatarakiGame));
+  await assertFails(set(ref(db(LUIS), `/users/${ANA}/hataraki/visit`), visit));
+  // La ficha solo lleva nombre, personalidad y aspecto.
+  const tama = visit.tamas['-Nabcdefghijklmnopqr'];
+  const one = (t) => save({ visit: { tamas: { '-Nabcdefghijklmnopqr': t } } });
+  await assertFails(one({ ...tama, care: { food: 1 } }));
+  await assertFails(one({ ...tama, name: '' }));
+  await assertFails(one({ ...tama, personality: 'grumpy' }));
+  await assertFails(one({ name: 'Mochi', personality: 'shy' }));
+  await assertFails(one({ ...tama, look: { ...look, body: 101 } }));
+  await assertFails(one({ ...tama, look: { ...look, acc: { d: 'acc_bell' } } }));
+  await assertFails(save({ visit: { tamas: { 'ta ma': tama } } }));
+  await assertFails(save({ visit: { ...visit, money: 1 } }));
+});
+
 test('hataraki: las reglas cuidan la forma', async () => {
   const bad = [
     { ...hatarakiGame, extra: 1 },
     { ...hatarakiGame, bank: { log_sugi: -3 } },
-    { ...hatarakiGame, workers: { 6: hatarakiGame.workers[0] } },
+    { ...hatarakiGame, workers: { 8: hatarakiGame.workers[0] } },
     { ...hatarakiGame, workers: { 0: { ...hatarakiGame.workers[0], progress: 2 } } },
     { ...hatarakiGame, kit: { hat: 'gear_basket' } },
     { ...hatarakiGame, seed: undefined },

@@ -108,6 +108,7 @@ class OdoriPrefs {
     this.butaiMark = ButaiMark.arrows,
     this.butaiTouch = ButaiTouch.targets,
     this.hitVolume = odoriHitDefault,
+    this.musicVolume,
     this.butaiDouble = false,
     this.butaiAlt = butaiAltDefault,
     this.flow = TakiFlow.down,
@@ -134,6 +135,10 @@ class OdoriPrefs {
 
   /// Volumen de los soniditos de cada toque; 0, sin ellos.
   final double hitVolume;
+
+  /// Volumen de la cancion (0.8.0); `null` sigue al de la musica del menu,
+  /// silencio incluido.
+  final double? musicVolume;
 
   /// Si cada figura de Butai tiene ademas una segunda tecla, [butaiAlt].
   final bool butaiDouble;
@@ -174,6 +179,7 @@ class OdoriPrefs {
     ButaiMark? butaiMark,
     ButaiTouch? butaiTouch,
     double? hitVolume,
+    double? Function()? musicVolume,
     bool? butaiDouble,
     List<PhysicalKeyboardKey>? butaiAlt,
     TakiFlow? flow,
@@ -194,6 +200,7 @@ class OdoriPrefs {
         butaiMark: butaiMark ?? this.butaiMark,
         butaiTouch: butaiTouch ?? this.butaiTouch,
         hitVolume: hitVolume ?? this.hitVolume,
+        musicVolume: musicVolume != null ? musicVolume() : this.musicVolume,
         butaiDouble: butaiDouble ?? this.butaiDouble,
         butaiAlt: butaiAlt ?? this.butaiAlt,
         flow: flow ?? this.flow,
@@ -232,6 +239,7 @@ class OdoriPrefs {
       butaiMark: _byName(ButaiMark.values, j['butaiMark'], ButaiMark.arrows),
       butaiTouch: _byName(ButaiTouch.values, j['butaiTouch'], ButaiTouch.targets),
       hitVolume: ((j['hitLevel'] as num?)?.toDouble() ?? odoriHitDefault).clamp(0.0, odoriHitMax),
+      musicVolume: (j['musicLevel'] as num?)?.toDouble().clamp(0.0, 1.0),
       butaiDouble: j['butaiDouble'] == true,
       butaiAlt: rawAlt is List && rawAlt.length == 4
           ? [for (final k in rawAlt) PhysicalKeyboardKey(readInt(k))]
@@ -256,6 +264,7 @@ class OdoriPrefs {
         'butaiMark': butaiMark.name,
         'butaiTouch': butaiTouch.name,
         'hitLevel': hitVolume,
+        'musicLevel': musicVolume,
         'butaiDouble': butaiDouble,
         'butaiAlt': [for (final k in butaiAlt) k.usbHidUsage],
         'flow': flow.name,

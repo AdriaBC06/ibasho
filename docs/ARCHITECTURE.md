@@ -696,7 +696,15 @@ reanuda como mucho una vez cada 2 s.
   Separación mínima entre disparos del mismo efecto: `tick` 45 ms, `open` y
   `back` 90 ms, `error` 150 ms, `chime` 500 ms.
 - `enum Sfx`: `tick`, `open`, `back`, `error`, `chime` (`assets/audio/sfx/*.wav`).
-- `setEffectsVolume(double)`: fija el volumen global de SoLoud; `effectsVolume`.
+- `setEffectsVolume(double)`: el volumen de efectos; `effectsVolume`. Desde la
+  0.8.0 cada voz (efectos, graznidos, Tamakoro, toques de Odori) lo lleva al
+  sonar y el volumen global de SoLoud se queda en 1; el coro en bucle se
+  ajusta en el acto.
+- Silencio (0.8.0): `Preferences.musicMuted`/`effectsMuted` guardan el
+  silencio aparte del volumen; `musicLevel`/`effectsLevel` es lo que se pasa
+  al servicio. Lo ponen los botones de la barra de estado (`_VolumeButton` en
+  `status_bar.dart`: tocar, rueda, arrastre, `+`/`-`, semántica de subir y
+  bajar); mover un volumen quita el silencio.
 
 `linux/CMakeLists.txt` compila `flutter_soloud_plugin` con `-w`.
 

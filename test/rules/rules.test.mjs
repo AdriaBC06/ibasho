@@ -500,6 +500,20 @@ test('solo el creador edita el aspecto de un Tama', async () => {
       updatedAt: now,
     }),
   );
+  // Las piezas de la 0.8.0 y el color del dibujo, hasta su tope y no mas.
+  await assertSucceeds(
+    set(
+      ref(member, `${traveller}/look`),
+      tamaLook({
+        body: 13, eyes: 13, mouth: 12, crown: 13, cheeks: 7, pattern: 11, arms: 8, feet: 8,
+        patternColor: '#FF8800', patternColorMode: 'hex', eyesColor: '#4FA3F0', eyesColorMode: 'palette',
+      }),
+    ),
+  );
+  await assertFails(set(ref(member, `${traveller}/look`), tamaLook({ body: 14 })));
+  await assertFails(set(ref(member, `${traveller}/look`), tamaLook({ feet: 9 })));
+  await assertFails(set(ref(member, `${traveller}/look`), tamaLook({ mouth: 13 })));
+  await assertFails(set(ref(member, `${traveller}/look`), tamaLook({ eyesColor: 'verde' })));
   await assertFails(set(ref(member, `${traveller}/care/lastFed`), now));
 
   // Nadie cambia quien lo creo, quien lo cuida ni cuando nacio.
@@ -516,16 +530,26 @@ test('cada campo del Tama valida tipo, rango y lista cerrada', async () => {
   const ok = (path, value) => assertSucceeds(set(ref(member, `${home}/${path}`), value));
   const bad = (path, value) => assertFails(set(ref(member, `${home}/${path}`), value));
 
-  await ok('look/body', 5);
-  await bad('look/body', 6);
+  // Topes de la 0.8.0 (antes 5, 4, 3, 3 y 3).
+  await ok('look/body', 13);
+  await bad('look/body', 14);
   await bad('look/body', -1);
-  await bad('look/mouth', 5);
-  await ok('look/cheeks', 3);
-  await bad('look/cheeks', 4);
-  await ok('look/arms', 3);
-  await bad('look/arms', 4);
-  await ok('look/feet', 3);
-  await bad('look/feet', 4);
+  await ok('look/mouth', 12);
+  await bad('look/mouth', 13);
+  await ok('look/cheeks', 7);
+  await bad('look/cheeks', 8);
+  await ok('look/arms', 8);
+  await bad('look/arms', 9);
+  await ok('look/feet', 8);
+  await bad('look/feet', 9);
+  await ok('look/patternColor', '#abcdef');
+  await bad('look/patternColor', '#12345');
+  await ok('look/patternColorMode', 'hex');
+  await bad('look/patternColorMode', 'rgb');
+  await ok('look/eyesColor', '#ABCDEF');
+  await bad('look/eyesColor', 5);
+  await bad('look/eyesColorMode', 'auto');
+  await bad('look/patternHue', 50);
   await ok('look/bodyWidth', 100);
   await bad('look/bodyWidth', 101);
   await bad('look/eyeSize', 50.5);

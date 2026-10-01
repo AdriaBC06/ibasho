@@ -455,8 +455,10 @@ class _BoardPainter extends CustomPainter {
     }
 
     // El salvabolas: un escudo entre los flippers que parpadea al acabarse.
+    // Con una bola guardada (UR, ∞ o dirigida) se queda encendido: el Tama
+    // la salva siempre.
     final saver = game.saverLeft;
-    final blink = saver > 0 && (saver > 2.5 || (now * 6).floor().isEven);
+    final blink = game.guarded || (saver > 0 && (saver > 2.5 || (now * 6).floor().isEven));
     final c = Offset(PinballTable.centerX, PinballTable.leftPivot.dy - 22);
     final shield = Path()
       ..moveTo(c.dx, c.dy - 8)

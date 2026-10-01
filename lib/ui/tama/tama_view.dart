@@ -62,8 +62,10 @@ class TamaViewController {
   /// juego).
   void feed([TamaFood food = TamaFood.cookie, FoodArt? art]) => _state?._feed(food, art);
 
-  /// Que diga algo.
-  void speak([ChirpKind kind = ChirpKind.hello]) => _state?._speak(kind);
+  /// Que diga algo. Con [voice], con esa voz en vez de la del widget: el
+  /// creador la pasa al cambiarla, porque el widget aun no se ha
+  /// reconstruido con la nueva y sonaria la de antes.
+  void speak([ChirpKind kind = ChirpKind.hello, TamaVoice? voice]) => _state?._speak(kind, voice);
 
   /// Un saltito, sin decir nada: para reaccionar a lo que pasa en un juego.
   void hop() => _state?._animator.poke();
@@ -220,10 +222,10 @@ class _TamaViewState extends State<TamaView> with SingleTickerProviderStateMixin
     _pose.value = _animator.tick(dt);
   }
 
-  Future<void> _speak(ChirpKind kind) async {
+  Future<void> _speak(ChirpKind kind, [TamaVoice? voice]) async {
     final seconds = await AudioService.instance.chirp(
       name: widget.name,
-      voice: widget.voice,
+      voice: voice ?? widget.voice,
       kind: kind,
     );
     if (mounted && seconds > 0) _animator.speak(seconds);

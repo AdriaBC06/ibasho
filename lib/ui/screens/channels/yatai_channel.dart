@@ -11,9 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../audio/audio_service.dart';
-import '../../../backend/gacha.dart';
 import '../../../games/odori/odori_catalog.dart' show odoriTitles;
 import '../../../backend/missions.dart';
+import '../../../backend/prizes.dart';
 import '../../../backend/shop.dart';
 import '../../../backend/tama.dart';
 import '../../../games/tamakoro/koro_song.dart';
@@ -35,6 +35,7 @@ import '../../widgets/gloss.dart';
 import '../../widgets/pedestal.dart';
 import '../../widgets/overlays.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/prize_view.dart';
 import '../../widgets/slot_tile.dart';
 import '../channel_route.dart';
 import 'gacha_channel.dart';
@@ -61,13 +62,26 @@ String _gameTitle(L l, String gameId) => switch (gameId) {
 /// juego o ticket del gachapon.
 String itemName(L l, ShopItem it) => it.food != null
     ? foodLabel(l, it.food!)
-    : it.ticket != null
+    : it.prize != null
+        ? l.prizeName(it.prize!)
+        : it.ticket != null
         ? ticketName(l, it.ticket!)
         : it.koroTier != null
             ? l.koroShopName
             : it.odoriSong != null
                 ? l.yataiOdoriSong(odoriTitles[it.odoriSong]?.$1 ?? it.odoriSong!)
                 : _gameTitle(l, it.gameId!);
+
+/// El dibujo de un articulo a [size]: la comida, lo que se pone el Tama o el
+/// icono de juego o ticket.
+Widget _itemArtView(ShopItem it, double size) {
+  final prize = prizeItem(it.prize);
+  if (it.food != null) {
+    return CustomPaint(size: Size.square(size), painter: TamaFoodPainter(it.food!, fill: .44));
+  }
+  if (prize != null) return PrizeView(prize, size: size);
+  return ArtIconView(itemArt(it), size: size);
+}
 
 ArtIcon itemArt(ShopItem it) => it.ticket != null
     ? ticketArt(it.ticket!)
@@ -225,6 +239,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
       ShopSection.games when item.odoriSong != null => l.yataiDoneOdoriSong,
       ShopSection.games => l.yataiDoneGame,
       ShopSection.gacha => l.gachaDoneTickets(qty),
+      ShopSection.tamas when item.prize != null => l.yataiDonePrize(l.prizeName(item.prize!)),
       ShopSection.tamas => l.yataiDoneFood(qty, foodLabel(l, item.food!)),
     };
     showIbashoToast(context, done);
@@ -265,6 +280,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     final coins = ref.watch(coinsProvider);
     final unlocked = ref.watch(unlockedFoodsProvider);
     final pantry = ref.watch(pantryProvider);
+    final gacha = ref.watch(gachaProvider);
     // `_items` lee los huecos de Tamakoro: si cambian, el mostrador tambien.
     ref.watch(koroProvider.select((k) => k.slots));
 
@@ -287,6 +303,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
                 coins: coins,
                 unlocked: unlocked,
                 pantry: pantry,
+                ownsPrize: gacha.owns,
                 onBuy: selected == null ? null : () => unawaited(_buy(selected)),
               );
 
@@ -298,6 +315,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
             shop: shop,
             unlocked: unlocked,
             pantry: pantry,
+            ownsPrize: gacha.owns,
             onSelect: _select,
           );
 
@@ -471,6 +489,7 @@ class _Showcase extends StatelessWidget {
     required this.coins,
     required this.unlocked,
     required this.pantry,
+    required this.ownsPrize,
     required this.onBuy,
   });
 
@@ -479,6 +498,7 @@ class _Showcase extends StatelessWidget {
   final int coins;
   final Set<TamaFood> unlocked;
   final Map<TamaFood, int> pantry;
+  final bool Function(String key) ownsPrize;
   final VoidCallback? onBuy;
 
   @override
@@ -491,12 +511,15 @@ class _Showcase extends StatelessWidget {
 
     final locked = it.food != null && !unlocked.contains(it.food);
     final owned = (it.gameId != null && shop.games.containsKey(it.gameId)) ||
-        (it.odoriSong != null && shop.hasOdoriSong(it.odoriSong!));
+        (it.odoriSong != null && shop.hasOdoriSong(it.odoriSong!)) ||
+        (it.prize != null && ownsPrize(it.prize!));
     final price = shop.prices[it.id];
     final name = itemName(l, it);
     final description = it.food != null
         ? l.yataiDescFood
-        : it.ticket != null
+        : it.prize != null
+            ? l.yataiDescPrize
+            : it.ticket != null
             ? l.yataiGachaBody
             : it.koroTier != null
                 ? l.koroShopDesc(koroMaxSlots)
@@ -520,12 +543,7 @@ class _Showcase extends StatelessWidget {
       actionEnabled = !shop.busy;
     }
 
-    Widget art(double s) => it.food != null
-        ? Opacity(
-            opacity: locked ? .45 : 1,
-            child: CustomPaint(size: Size.square(s), painter: TamaFoodPainter(it.food!, fill: .44)),
-          )
-        : ArtIconView(itemArt(it), size: s);
+    Widget art(double s) => Opacity(opacity: locked ? .45 : 1, child: _itemArtView(it, s));
 
     final button = IbashoButton(
       key: const ValueKey<String>('yatai.buy'),
@@ -809,6 +827,7 @@ class _Shelf extends StatelessWidget {
     required this.shop,
     required this.unlocked,
     required this.pantry,
+    required this.ownsPrize,
     required this.onSelect,
   });
 
@@ -819,6 +838,7 @@ class _Shelf extends StatelessWidget {
   final ShopState shop;
   final Set<TamaFood> unlocked;
   final Map<TamaFood, int> pantry;
+  final bool Function(String key) ownsPrize;
   final ValueChanged<ShopItem> onSelect;
 
   @override
@@ -847,6 +867,7 @@ class _Shelf extends StatelessWidget {
                       shop: shop,
                       unlocked: unlocked,
                       pantry: pantry,
+                      ownsPrize: ownsPrize,
                       onPressed: () => onSelect(items[r * columns + c]),
                     )
                   else
@@ -871,6 +892,7 @@ class _ShopTile extends StatelessWidget {
     required this.shop,
     required this.unlocked,
     required this.pantry,
+    required this.ownsPrize,
     required this.onPressed,
   });
 
@@ -881,6 +903,7 @@ class _ShopTile extends StatelessWidget {
   final ShopState shop;
   final Set<TamaFood> unlocked;
   final Map<TamaFood, int> pantry;
+  final bool Function(String key) ownsPrize;
   final VoidCallback onPressed;
 
   @override
@@ -888,7 +911,8 @@ class _ShopTile extends StatelessWidget {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final locked = item.food != null && !unlocked.contains(item.food);
-    final owned = item.gameId != null && shop.games.containsKey(item.gameId);
+    final owned = (item.gameId != null && shop.games.containsKey(item.gameId)) ||
+        (item.prize != null && ownsPrize(item.prize!));
     final name = itemName(l, item);
     final price = shop.prices[item.id];
     final art = height * .5;
@@ -910,9 +934,7 @@ class _ShopTile extends StatelessWidget {
                     child: Center(
                       child: Opacity(
                         opacity: locked ? .35 : 1,
-                        child: item.food != null
-                            ? CustomPaint(size: Size.square(art), painter: TamaFoodPainter(item.food!, fill: .44))
-                            : ArtIconView(itemArt(item), size: art),
+                        child: _itemArtView(item, art),
                       ),
                     ),
                   ),
@@ -1191,8 +1213,7 @@ class _PurchaseDialogState extends State<_PurchaseDialog> with SingleTickerProvi
                         ],
                       )
                     : _FoodDrop(
-                        food: widget.item.food,
-                        ticket: widget.item.ticket,
+                        item: widget.item,
                         qty: widget.qty,
                         t: t,
                       ),
@@ -1213,12 +1234,11 @@ class _PurchaseDialogState extends State<_PurchaseDialog> with SingleTickerProvi
 
 /// Las chuches cayendo una a una en la bolsa de papel.
 class _FoodDrop extends StatelessWidget {
-  const _FoodDrop({required this.food, this.ticket, required this.qty, required this.t});
+  const _FoodDrop({required this.item, required this.qty, required this.t});
 
-  final TamaFood? food;
-
-  /// Un ticket del gachapon cae a la bolsa igual que la comida.
-  final TicketKind? ticket;
+  /// La comida; un ticket del gachapon o lo que se pone el Tama caen a la
+  /// bolsa igual.
+  final ShopItem item;
   final int qty;
   final double t;
 
@@ -1240,9 +1260,7 @@ class _FoodDrop extends StatelessWidget {
                 offset: Offset(dx, 0),
                 child: Opacity(
                   opacity: t > start ? 1 : 0,
-                  child: food != null
-                      ? CustomPaint(size: const Size.square(56), painter: TamaFoodPainter(food!, fill: .44))
-                      : ArtIconView(ticketArt(ticket!), size: 56),
+                  child: _itemArtView(item, 56),
                 ),
               ),
             );

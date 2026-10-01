@@ -15,12 +15,14 @@ import '../../backend/missions.dart';
 import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/hataraki.dart';
+import '../../state/people.dart' show cardOfProvider;
 import '../../state/providers.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
 import '../../ui/layout.dart';
 import '../../ui/screens/channel_route.dart';
+import '../../ui/social/social_widgets.dart' show CardTama;
 import '../../ui/tama/tama_painter.dart';
 import '../../ui/track_text.dart';
 import '../../ui/tama/tama_text.dart';
@@ -38,12 +40,27 @@ import '../game_stage.dart';
 import 'hataraki_art.dart';
 import 'hataraki_data.dart';
 import 'hataraki_engine.dart';
+import 'hataraki_home.dart';
+import 'hataraki_map.dart';
+import 'hataraki_orders.dart';
+import 'hataraki_town.dart';
 
-/// Las cuatro partes del pueblo.
-enum HTab { village, skills, bank, expedition }
+part 'hataraki_channel_home.dart';
+part 'hataraki_channel_orders.dart';
+part 'hataraki_channel_town.dart';
+part 'hataraki_channel_trip.dart';
+part 'hataraki_channel_visit.dart';
+
+/// Las cinco partes del canal: los Tamas trabajando, los edificios, los
+/// oficios, el almacén y las expediciones.
+enum HTab { village, town, skills, bank, expedition }
 
 /// Las canciones del pueblo: la mañana, el agua y el mercado al atardecer.
-const List<MusicTrack> hatarakiTracks = [MusicTrack.asa, MusicTrack.mizuba, MusicTrack.yuyake];
+const List<MusicTrack> hatarakiTracks = [
+  MusicTrack.asa,
+  MusicTrack.mizuba,
+  MusicTrack.yuyake,
+];
 
 /// El canal con su música: las tres por turnos, o la que se haya elegido.
 class HatarakiScreen extends ConsumerWidget {
@@ -65,10 +82,25 @@ String hSkillName(L l, HSkill s) => l.hatarakiSkillName(s.name);
 
 String hItemName(L l, String id) => l.hatarakiItemName(id);
 
-/// Nombre de una tarea: lo que da (o el recorrido, en agilidad).
-String hActionName(L l, HAction a) => a.skill == HSkill.agility
-    ? l.hatarakiCourseName(a.id)
-    : hItemName(l, a.outputs.keys.first);
+/// El primer material que le falta a [action] en el almacén, si falta alguno.
+String? _firstMissing(HState game, HAction action) => action.inputs.entries
+    .where((e) => game.count(e.key) < e.value)
+    .firstOrNull
+    ?.key;
+
+/// Nombre de una tarea: lo que da (el recorrido, en agilidad; el libro, en
+/// estudio).
+String hActionName(L l, HAction a) => switch (a.skill) {
+  HSkill.agility => l.hatarakiCourseName(a.id),
+  HSkill.study => l.hatarakiRead(hItemName(l, a.inputs.keys.first)),
+  _ => hItemName(l, a.outputs.keys.first),
+};
+
+/// El objeto con el que se dibuja una tarea: lo que da, o el libro que se
+/// lee. Null en agilidad, que va con el icono del oficio.
+String? hActionItem(HAction a) =>
+    a.outputs.keys.firstOrNull ??
+    (a.skill == HSkill.study ? a.inputs.keys.firstOrNull : null);
 
 String hZoneName(L l, String id) => l.hatarakiZoneName(id);
 
@@ -155,6 +187,31 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
   String _zone = hZones.first.id;
   List<String> _party = const [];
   String? _food;
+
+  /// Sitio cuyo mapa se ve (en lugar de la rejilla de sitios).
+  String? _mapZone;
+
+  /// La ruta elegida en cada sitio (para el mapa de hoy).
+  final Map<String, List<int>> _routes = {};
+  String? _supply;
+  String? _rune;
+  bool _porter = false;
+  bool _cart = false;
+  HBuilding _building = HBuilding.workshop;
+
+  /// Dentro de la tienda o la lonja (en lugar de ver los edificios).
+  HBuilding? _inside;
+  String? _offer;
+  int _order = 0;
+  bool _tomorrow = false;
+
+  /// Las habitaciones de la posada: dentro de la lista, el Tama elegido y,
+  /// dentro de su habitación, el mueble por poner o el puesto elegido.
+  bool _inHomes = false;
+  String? _homeTamaId;
+  bool _inRoom = false;
+  String? _piece;
+  int? _placed;
   final Map<HTab, int> _pages = {};
 
   final TamaViewController _tama = TamaViewController();
@@ -266,7 +323,8 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
     }
     // Con la ventana minimizada o la app detrás, el pueblo sigue trabajando
     // pero en silencio: ni campanitas ni la voz del Tama.
-    final audible = _foreground &&
+    final audible =
+        _foreground &&
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     if (report.levelUps.isNotEmpty) {
       final up = report.levelUps.entries.first;
@@ -280,6 +338,10 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
         report.prizes > 0 ? l.hatarakiTreasure : l.hatarakiBubbleBack,
         hold: const Duration(seconds: 4),
       );
+      _tama.hop();
+    } else if (report.nodes.isNotEmpty) {
+      if (audible) AudioService.instance.play(Sfx.tick);
+      _say(l.hatarakiNodeDone(_nodeWhat(report.nodes.last)));
       _tama.hop();
     } else if (report.stalledTamas.isNotEmpty) {
       _say(l.hatarakiBubbleStalled);
@@ -361,6 +423,11 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
     }
   }
 
+  /// Lo que se paga hoy por [item], con la lonja.
+  int _price(String item) =>
+      ref.read(hatarakiProvider).game?.priceOf(item, _controller.today) ??
+      hSellValue(item);
+
   /// Vende [n] de [item]; con más de uno, pregunta antes.
   Future<void> _sell(String item, int n) async {
     final l = L.of(context)!;
@@ -368,7 +435,7 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
       final ok = await askConfirmation(
         context,
         title: l.hatarakiSellTitle,
-        body: l.hatarakiSellBody(n, hItemName(l, item), n * hSellValue(item)),
+        body: l.hatarakiSellBody(n, hItemName(l, item), n * _price(item)),
         confirmLabel: l.hatarakiSellAll,
         cancelLabel: l.actionCancel,
         width: 440,
@@ -380,13 +447,181 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
     if (got > 0) _say(l.hatarakiSold(got));
   }
 
+  void _build(HBuilding b) {
+    final l = L.of(context)!;
+    final ok = ref.read(hatarakiProvider.notifier).build(b);
+    AudioService.instance.play(ok ? Sfx.chime : Sfx.error);
+    if (!ok) return;
+    final level = ref.read(hatarakiProvider).game?.townLevel(b) ?? 1;
+    _say(l.hatarakiBuilt(l.hatarakiBuildingName(b.name), level));
+    _tama.hop();
+  }
+
+  void _buy(String item, int n) {
+    final l = L.of(context)!;
+    final plan =
+        ref.read(hatarakiProvider).game?.plans.contains(item) == false &&
+        hFurniture[item]?.plan == true;
+    final got = ref.read(hatarakiProvider.notifier).buy(item, n);
+    AudioService.instance.play(got > 0 ? Sfx.pop : Sfx.error);
+    if (got > 0) {
+      _say(
+        l.hatarakiBought(
+          got,
+          plan ? l.hatarakiPlanOf(hItemName(l, item)) : hItemName(l, item),
+        ),
+      );
+    }
+  }
+
+  void _deliver(int i) {
+    final l = L.of(context)!;
+    final game = ref.read(hatarakiProvider).game;
+    final big = game != null && i < game.orders.length && game.orders[i].big;
+    if (!ref.read(hatarakiProvider.notifier).deliver(i)) {
+      AudioService.instance.play(Sfx.error);
+      return;
+    }
+    AudioService.instance.play(Sfx.pop);
+    _say(big ? l.hatarakiOrderThanksBig : l.hatarakiOrderThanks);
+  }
+
+  void _swapOrder(int i) {
+    final l = L.of(context)!;
+    if (ref.read(hatarakiProvider.notifier).swapOrder(i)) {
+      AudioService.instance.play(Sfx.tick);
+      _say(l.hatarakiOrderSwapped);
+    } else {
+      AudioService.instance.play(Sfx.error);
+    }
+  }
+
+  // --- Casas ------------------------------------------------------------------
+
+  void _buildHouse(Tama tama) {
+    final ok = ref.read(hatarakiProvider.notifier).buildHouse(tama.id);
+    AudioService.instance.play(ok ? Sfx.chime : Sfx.error);
+    if (!ok) return;
+    _say(L.of(context)!.hatarakiBuiltHouse(tama.name));
+    _tama.hop();
+    setState(() {
+      _tamaId = tama.id;
+      _enterRoom();
+    });
+  }
+
+  void _enterRoom() {
+    _inRoom = true;
+    _piece = null;
+    _placed = null;
+  }
+
+  /// Tocar una casilla de la habitación: poner lo elegido, mover lo puesto
+  /// o elegir lo que hay.
+  void _roomCell(int x, int y) {
+    final id = _homeTamaId;
+    final game = ref.read(hatarakiProvider).game;
+    final house = id == null ? null : game?.houses[id];
+    if (house == null) return;
+    final hit = house.at(x, y);
+    final notifier = ref.read(hatarakiProvider.notifier);
+    // La esquina que deja [item] (con giro [r]) tocando la casilla, si cabe
+    // de alguna forma.
+    (int, int)? corner(String item, int r, {int? skip}) {
+      final (w, h) = hFurniture[item]!.size(r);
+      for (final (cx, cy) in [
+        (x, y),
+        (x - w + 1, y),
+        (x, y - h + 1),
+        (x - w + 1, y - h + 1),
+      ]) {
+        if (house.fits(item, cx, cy, r, skip: skip)) return (cx, cy);
+      }
+      return null;
+    }
+
+    if (_piece != null) {
+      final at = hit == null ? corner(_piece!, 0) : null;
+      if (at != null && notifier.placeFurniture(id!, _piece!, at.$1, at.$2)) {
+        AudioService.instance.play(Sfx.pop);
+        setState(() {
+          if (game!.count(_piece!) == 0) _piece = null;
+        });
+      } else if (hit != null) {
+        AudioService.instance.play(Sfx.tick);
+        setState(() {
+          _piece = null;
+          _placed = hit;
+        });
+      } else {
+        AudioService.instance.play(Sfx.error);
+      }
+      return;
+    }
+    if (_placed != null && hit != _placed) {
+      if (hit != null) {
+        AudioService.instance.play(Sfx.tick);
+        setState(() => _placed = hit);
+        return;
+      }
+      final p = house.items[_placed!];
+      final at = corner(p.id, p.r, skip: _placed);
+      final ok =
+          at != null && notifier.moveFurniture(id!, _placed!, at.$1, at.$2);
+      AudioService.instance.play(ok ? Sfx.pop : Sfx.error);
+      return;
+    }
+    AudioService.instance.play(Sfx.tick);
+    setState(() => _placed = hit == _placed ? null : hit);
+  }
+
+  void _pickPiece(String item) {
+    AudioService.instance.play(Sfx.tick);
+    setState(() {
+      _piece = _piece == item ? null : item;
+      _placed = null;
+    });
+  }
+
+  void _rotatePiece() {
+    final ok = ref
+        .read(hatarakiProvider.notifier)
+        .rotateFurniture(_homeTamaId!, _placed!);
+    AudioService.instance.play(ok ? Sfx.tick : Sfx.error);
+  }
+
+  void _storePiece() {
+    if (ref
+        .read(hatarakiProvider.notifier)
+        .storeFurniture(_homeTamaId!, _placed!)) {
+      AudioService.instance.play(Sfx.back);
+      setState(() => _placed = null);
+    }
+  }
+
+  /// El siguiente suelo o la siguiente pared.
+  void _decorate({bool floor = false}) {
+    final house = ref.read(hatarakiProvider).game?.houses[_homeTamaId];
+    if (house == null) return;
+    HStyle next(HStyle s) =>
+        HStyle.values[(s.index + 1) % HStyle.values.length];
+    ref
+        .read(hatarakiProvider.notifier)
+        .decorate(
+          _homeTamaId!,
+          floor: floor ? next(house.floor) : null,
+          wall: floor ? null : next(house.wall),
+        );
+    AudioService.instance.play(Sfx.tick);
+  }
+
   void _unequip(HGearSlot slot) {
     if (ref.read(hatarakiProvider.notifier).unequip(slot)) {
       AudioService.instance.play(Sfx.back);
     }
   }
 
-  Future<void> _cancelTrip() async {
+  Future<void> _cancelTrip(String zone) async {
     final l = L.of(context)!;
     final ok = await askConfirmation(
       context,
@@ -397,7 +632,7 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
       width: 440,
     );
     if (!ok || !mounted) return;
-    if (ref.read(hatarakiProvider.notifier).cancelExpedition()) {
+    if (ref.read(hatarakiProvider.notifier).cancelExpedition(zone)) {
       AudioService.instance.play(Sfx.back);
       _say(l.hatarakiBubbleBack);
     }
@@ -417,13 +652,20 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
     if (picked != null && mounted) setState(() => _party = [..._party, picked]);
   }
 
-  void _go(HZone zone, String food) {
+  void _go(HTripPlan plan) {
     final ok = ref
         .read(hatarakiProvider.notifier)
-        .startExpedition(zone.id, _party, food);
+        .startExpedition(plan, _party);
     AudioService.instance.play(ok ? Sfx.chime : Sfx.error);
     if (ok) {
-      setState(() => _party = const []);
+      setState(() {
+        _party = const [];
+        _supply = null;
+        _rune = null;
+        _porter = false;
+        _cart = false;
+        _mapZone = plan.zone;
+      });
       _say(L.of(context)!.hatarakiBubbleTrip);
       _tama.hop();
     }
@@ -533,12 +775,14 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
     final l = L.of(context)!;
     String label(HTab t) => switch (t) {
       HTab.village => l.hatarakiTabVillage,
+      HTab.town => l.hatarakiTabTown,
       HTab.skills => l.hatarakiTabSkills,
       HTab.bank => l.hatarakiTabBank,
       HTab.expedition => l.hatarakiTabExpedition,
     };
     Glyph glyph(HTab t) => switch (t) {
       HTab.village => Glyph.tama,
+      HTab.town => Glyph.house,
       HTab.skills => Glyph.pick,
       HTab.bank => Glyph.gift,
       HTab.expedition => Glyph.flag,
@@ -561,7 +805,12 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
 
   /// En vertical, en vez de las ranuras (que ya se ven en el pueblo), las
   /// monedas del día: allí no hay otro sitio para ellas.
-  Widget _readouts(HState game, {required double height, bool coins = false, bool money = false}) {
+  Widget _readouts(
+    HState game, {
+    required double height,
+    bool coins = false,
+    bool money = false,
+  }) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final next = hSlotThresholds.where((t) => t > game.totalLevel).firstOrNull;
@@ -573,21 +822,21 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
               ? _money(game, height)
               // Tocarlo explica qué es y para qué sirve.
               : Pressable(
-            key: const ValueKey<String>('hataraki.totalLevel'),
-            semanticLabel: l.hatarakiTotalLevel,
-            onPressed: () => unawaited(_help('level')),
-            builder: (context, _) => Readout(
-              icon: GlyphIcon(
-                Glyph.star,
-                size: height * .5,
-                color: skin.accentDeep,
-                strokeWidth: 2.2,
-              ),
-              value: '${game.totalLevel}',
-              label: l.hatarakiTotalLevel,
-              height: height,
-            ),
-          ),
+                  key: const ValueKey<String>('hataraki.totalLevel'),
+                  semanticLabel: l.hatarakiTotalLevel,
+                  onPressed: () => unawaited(_help('level')),
+                  builder: (context, _) => Readout(
+                    icon: GlyphIcon(
+                      Glyph.star,
+                      size: height * .5,
+                      color: skin.accentDeep,
+                      strokeWidth: 2.2,
+                    ),
+                    value: '${game.totalLevel}',
+                    label: l.hatarakiTotalLevel,
+                    height: height,
+                  ),
+                ),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -639,6 +888,70 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
         },
         onFree: () => _pickTab(HTab.skills),
       ),
+      HTab.town when _inRoom && _roomTama(game, tamas) != null => _RoomView(
+        game: game,
+        tama: _roomTama(game, tamas)!,
+        clock: _clock,
+        piece: _piece,
+        placed: _placed,
+        onCell: _roomCell,
+        onPiece: _pickPiece,
+        onBack: () {
+          AudioService.instance.play(Sfx.back);
+          setState(() => _inRoom = false);
+        },
+      ),
+      HTab.town when _inHomes => _HomesGrid(
+        game: game,
+        tamas: tamas,
+        selected: _homeTamaId,
+        tall: tall,
+        page: page,
+        onPage: onPage,
+        onPick: (id) {
+          AudioService.instance.play(Sfx.tick);
+          setState(() => _homeTamaId = id);
+        },
+        onBack: () {
+          AudioService.instance.play(Sfx.back);
+          setState(() {
+            _inHomes = false;
+            _pages[HTab.town] = 0;
+          });
+        },
+      ),
+      HTab.town => _TownGrid(
+        game: game,
+        today: _controller.today,
+        selected: _building,
+        rooms: tamas.where((t) => game.houses.containsKey(t.id)).length,
+        inside: _inside,
+        offer: _offer,
+        order: _order,
+        tomorrow: _tomorrow,
+        tall: tall,
+        page: page,
+        onPage: onPage,
+        onPick: (b) {
+          AudioService.instance.play(Sfx.tick);
+          setState(() => _building = b);
+        },
+        onOffer: (item) {
+          AudioService.instance.play(Sfx.tick);
+          setState(() => _offer = item);
+        },
+        onOrder: (i) {
+          AudioService.instance.play(Sfx.tick);
+          setState(() => _order = i);
+        },
+        onBack: () {
+          AudioService.instance.play(Sfx.back);
+          setState(() {
+            _inside = null;
+            _pages[HTab.town] = 0;
+          });
+        },
+      ),
       HTab.skills => _SkillsGrid(
         game: game,
         skill: _skill,
@@ -679,6 +992,7 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
           setState(() => _item = id);
         },
       ),
+      HTab.expedition when _mapZone != null => _zoneMap(game, tamas),
       HTab.expedition => _ZoneGrid(
         game: game,
         page: page,
@@ -687,7 +1001,10 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
         tall: tall,
         onPick: (id) {
           AudioService.instance.play(Sfx.tick);
-          setState(() => _zone = id);
+          setState(() {
+            _zone = id;
+            _mapZone = id;
+          });
         },
       ),
     };
@@ -733,6 +1050,10 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
             tama: tama,
             worker: worker,
             hTama: hTama,
+            onBoost: (item) {
+              AudioService.instance.play(Sfx.tick);
+              ref.read(hatarakiProvider.notifier).setBoost(tama.id, item);
+            },
             onChange: () {
               final action = hAction(worker.actionId);
               AudioService.instance.play(Sfx.tick);
@@ -770,17 +1091,29 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
             ],
           ),
         );
+      case HTab.town:
+        return _townShowcase(game, tamas);
       case HTab.skills:
         final action = _action == null ? null : hAction(_action!);
         if (action == null) {
           return (_SkillCard(game: game, skill: _skill), null);
         }
-        final open = game.levelOf(action.skill) >= action.level;
+        final open = game.canDo(action);
+        final gate = game.missingGate(action);
         return (
           _ActionCard(game: game, action: action, tamas: tamas),
           IbashoButton(
             key: const ValueKey<String>('hataraki.assign'),
-            label: open ? l.hatarakiAssign : l.hatarakiNeedLevel(action.level),
+            label: open
+                ? l.hatarakiAssign
+                : game.levelOf(action.skill) < action.level
+                ? l.hatarakiNeedLevel(action.level)
+                : gate == null
+                ? l.hatarakiNeedPlan
+                : l.hatarakiNeedBuilding(
+                    l.hatarakiBuildingName(gate.$1.name),
+                    gate.$2,
+                  ),
             glyph: open ? Glyph.tama : Glyph.lock,
             tone: open ? ButtonTone.accent : ButtonTone.plain,
             expand: true,
@@ -825,7 +1158,7 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
         final count = game.count(item.id);
         final plain = button != null;
         return (
-          _ItemCard(game: game, item: item),
+          _ItemCard(game: game, item: item, today: _controller.today),
           Row(
             children: [
               if (button != null) ...[
@@ -835,8 +1168,13 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
               Expanded(
                 child: IbashoButton(
                   key: const ValueKey<String>('hataraki.sell.one'),
-                  label: l.hatarakiSellOne(hSellValue(item.id)),
-                  icon: plain ? null : ArtIconView(ArtIcon.ginmon, size: IbashoButton.iconSize(48)),
+                  label: l.hatarakiSellOne(_price(item.id)),
+                  icon: plain
+                      ? null
+                      : ArtIconView(
+                          ArtIcon.ginmon,
+                          size: IbashoButton.iconSize(48),
+                        ),
                   expand: true,
                   onPressed: () => unawaited(_sell(item.id, 1)),
                 ),
@@ -846,8 +1184,13 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
                 Expanded(
                   child: IbashoButton(
                     key: const ValueKey<String>('hataraki.sell.all'),
-                    label: l.hatarakiSellMany(count, count * hSellValue(item.id)),
-                    icon: plain ? null : ArtIconView(ArtIcon.ginmon, size: IbashoButton.iconSize(48)),
+                    label: l.hatarakiSellMany(count, count * _price(item.id)),
+                    icon: plain
+                        ? null
+                        : ArtIconView(
+                            ArtIcon.ginmon,
+                            size: IbashoButton.iconSize(48),
+                          ),
                     expand: true,
                     onPressed: () => unawaited(_sell(item.id, count)),
                   ),
@@ -857,86 +1200,436 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
           ),
         );
       case HTab.expedition:
-        final exp = game.expedition;
-        if (exp != null) {
-          return (
-            _TripCard(game: game, expedition: exp, tamas: tamas),
-            IbashoButton(
-              key: const ValueKey<String>('hataraki.tripCancel'),
-              label: l.hatarakiTripCancel,
-              glyph: Glyph.undo,
-              expand: true,
-              onPressed: () => unawaited(_cancelTrip()),
-            ),
-          );
-        }
-        final zone = hZoneById[_zone]!;
-        final foods =
-            game.bank.keys
-                .where((id) => hItem(id)?.kind == HItemKind.food)
-                .toList()
-              ..sort((a, b) => hItem(a)!.food.compareTo(hItem(b)!.food));
-        final food = foods.contains(_food) ? _food : foods.lastOrNull;
-        final party = [
-          for (final id in _party)
-            if (tamas.any((t) => t.id == id) && !game.isBusy(id)) id,
-        ];
-        final hParty = [
-          for (final t in tamas)
-            if (party.contains(t.id)) HTama(t.id, t.personality, .5),
-        ];
-        final units = food == null || party.isEmpty
-            ? 0
-            : (HState.foodNeeded(zone, party.length) / hItem(food)!.food)
-                  .ceil();
-        final open = game.levelOf(HSkill.expedition) >= zone.level;
-        final fed = food != null && game.count(food) >= units;
-        final ready = party.isNotEmpty && fed && open;
-        // El botón dice qué falta, en vez de apagarse sin más.
-        final goLabel = !open
-            ? l.hatarakiNeedLevel(zone.level)
-            : party.isEmpty
-            ? l.hatarakiPickParty
-            : !fed
-            ? l.hatarakiNeedFood
-            : l.hatarakiGo;
-        return (
-          _ZoneCard(
-            game: game,
-            zone: zone,
-            party: party,
-            tamas: tamas,
-            power: game.partyPower(hParty),
-            food: food,
-            units: units,
-            onAdd: party.length < hMaxParty
-                ? () => unawaited(_addToParty())
-                : null,
-            onRemove: (id) => setState(() => _party = [..._party]..remove(id)),
-            onFood: foods.length < 2
-                ? null
-                : () {
-                    AudioService.instance.play(Sfx.tick);
-                    final i = food == null
-                        ? 0
-                        : (foods.indexOf(food) + 1) % foods.length;
-                    setState(() => _food = foods[i]);
-                  },
-          ),
-          IbashoButton(
-            key: const ValueKey<String>('hataraki.go'),
-            label: goLabel,
-            glyph: open ? Glyph.flag : Glyph.lock,
-            tone: ready ? ButtonTone.accent : ButtonTone.plain,
-            expand: true,
-            onPressed: ready
-                ? () => _go(zone, food)
-                : (open && party.isEmpty
-                      ? () => unawaited(_addToParty())
-                      : null),
-          ),
-        );
+        return _tripShowcase(game, tamas);
     }
+  }
+
+  /// La ruta elegida en [zone] para el mapa de hoy.
+  List<int> _routeFor(String zone) {
+    final map = hZoneMap(zone, _controller.today);
+    final route = _routes[zone];
+    return route != null && map.isValid(route) ? route : map.defaultRoute;
+  }
+
+  /// Lo elegido para salir a [zone] y lo que falta.
+  _TripDraft _draft(HState game, List<Tama> tamas, String zone) {
+    final today = _controller.today;
+    List<String> owned(bool Function(HItem i) test) =>
+        game.bank.keys.where((id) => test(hItem(id)!)).toList()
+          ..sort((a, b) => hSellValue(a).compareTo(hSellValue(b)));
+    final foods = owned((i) => i.kind == HItemKind.food)
+      ..sort((a, b) => hItem(a)!.food.compareTo(hItem(b)!.food));
+    final supplies = owned(
+      (i) => i.kind == HItemKind.potion || i.kind == HItemKind.map,
+    );
+    final runes = owned((i) => i.kind == HItemKind.rune);
+    final food = foods.contains(_food) ? _food : foods.lastOrNull;
+    final party = [
+      for (final id in _party)
+        if (tamas.any((t) => t.id == id) && !game.isBusy(id)) id,
+    ];
+    final hParty = _controller.partyOf(party);
+    final plan = food == null
+        ? null
+        : HTripPlan(
+            zone: zone,
+            route: _routeFor(zone),
+            food: food,
+            supply: supplies.contains(_supply) ? _supply : null,
+            rune: runes.contains(_rune) ? _rune : null,
+            porter: _porter,
+            cart: _cart,
+          );
+    return _TripDraft(
+      plan: plan,
+      party: party,
+      hParty: hParty,
+      foods: foods,
+      supplies: supplies,
+      runes: runes,
+      revealed: game.guided(zone, today) || (plan?.reveals ?? false),
+      problem: plan == null ? 'food' : game.tripProblem(plan, hParty, today),
+    );
+  }
+
+  /// El siguiente de [options] tras [current], pasando por «nada».
+  String? _cycle(List<String> options, String? current) {
+    if (current == null) return options.firstOrNull;
+    final i = options.indexOf(current);
+    return i < 0 || i + 1 >= options.length ? null : options[i + 1];
+  }
+
+  Widget _zoneMap(HState game, List<Tama> tamas) {
+    final zone = _mapZone!;
+    final trip = game.tripTo(zone);
+    final map = trip?.map ?? hZoneMap(zone, _controller.today);
+    final draft = trip == null ? _draft(game, tamas, zone) : null;
+    final l = L.of(context)!;
+    return _ZoneMap(
+      game: game,
+      map: map,
+      route: trip?.route ?? _routeFor(zone),
+      revealed: trip != null || draft!.revealed,
+      trip: trip,
+      tamas: tamas,
+      clock: _clock,
+      onNode: trip != null
+          ? null
+          : (n) {
+              AudioService.instance.play(Sfx.tick);
+              final shown = _nodeKindName(n, revealed: draft!.revealed);
+              _say(l.hatarakiNodeAbout(shown, n.threat));
+              setState(
+                () => _routes[zone] = map.routeThrough(
+                  _routeFor(zone),
+                  n.col,
+                  n.row,
+                ),
+              );
+            },
+      onBack: () {
+        AudioService.instance.play(Sfx.back);
+        setState(() => _mapZone = null);
+      },
+    );
+  }
+
+  (Widget, Widget?) _tripShowcase(HState game, List<Tama> tamas) {
+    final l = L.of(context)!;
+    final zone = hZoneById[_zone]!;
+    final trip = game.tripTo(zone.id);
+    if (trip != null) {
+      return (
+        _TripCard(expedition: trip, tamas: tamas),
+        IbashoButton(
+          key: const ValueKey<String>('hataraki.tripCancel'),
+          label: l.hatarakiTripCancel,
+          glyph: Glyph.undo,
+          expand: true,
+          onPressed: () => unawaited(_cancelTrip(zone.id)),
+        ),
+      );
+    }
+    final draft = _draft(game, tamas, zone.id);
+    final plan = draft.plan;
+    final problem = draft.problem;
+    // El botón dice qué falta, en vez de apagarse sin más.
+    final goLabel = switch (problem) {
+      null => l.hatarakiGo,
+      'level' => l.hatarakiNeedLevel(zone.level),
+      'trips' => l.hatarakiTripsFull,
+      'party' || 'busy' => l.hatarakiPickParty,
+      'money' => l.hatarakiNeedMoney(plan!.price - game.money),
+      _ => l.hatarakiNeedFood,
+    };
+    final open = problem != 'level';
+    return (
+      _ZoneCard(
+        game: game,
+        zone: zone,
+        draft: draft,
+        today: _controller.today,
+        tamas: tamas,
+        porter: _porter,
+        cart: _cart,
+        onAdd: draft.party.length < game.maxParty
+            ? () => unawaited(_addToParty())
+            : null,
+        onRemove: (id) => setState(() => _party = [..._party]..remove(id)),
+        onFood: draft.foods.length < 2
+            ? null
+            : () {
+                AudioService.instance.play(Sfx.tick);
+                final foods = draft.foods;
+                final i = plan == null
+                    ? 0
+                    : (foods.indexOf(plan.food) + 1) % foods.length;
+                setState(() => _food = foods[i]);
+              },
+        onSupply: () {
+          AudioService.instance.play(Sfx.tick);
+          setState(() => _supply = _cycle(draft.supplies, plan?.supply));
+        },
+        onRune: () {
+          AudioService.instance.play(Sfx.tick);
+          setState(() => _rune = _cycle(draft.runes, plan?.rune));
+        },
+        onService: (what) {
+          _say(l.hatarakiServiceAbout(what));
+          if (what == 'guide') {
+            if (game.guided(zone.id, _controller.today)) return;
+            final ok = _controller.hireGuide(zone.id);
+            AudioService.instance.play(ok ? Sfx.chime : Sfx.error);
+            if (ok) setState(() => _mapZone = zone.id);
+            return;
+          }
+          AudioService.instance.play(Sfx.tick);
+          setState(() {
+            if (what == 'porter') _porter = !_porter;
+            if (what == 'cart') _cart = !_cart;
+          });
+        },
+      ),
+      IbashoButton(
+        key: const ValueKey<String>('hataraki.go'),
+        label: goLabel,
+        glyph: open ? Glyph.flag : Glyph.lock,
+        tone: problem == null ? ButtonTone.accent : ButtonTone.plain,
+        expand: true,
+        onPressed: problem == null
+            ? () => _go(plan!)
+            : (problem == 'party' && draft.party.isEmpty
+                  ? () => unawaited(_addToParty())
+                  : null),
+      ),
+    );
+  }
+
+  /// Escaparate del pueblo: el edificio elegido o, dentro, lo de la tienda
+  /// o la lonja.
+  /// El Tama de la habitación abierta, si sigue teniendo casa.
+  Tama? _roomTama(HState game, List<Tama> tamas) => tamas
+      .where((t) => t.id == _homeTamaId && game.houses.containsKey(t.id))
+      .firstOrNull;
+
+  (Widget, Widget?) _townShowcase(HState game, List<Tama> tamas) {
+    final l = L.of(context)!;
+    final today = _controller.today;
+    final tama = _inRoom ? _roomTama(game, tamas) : null;
+    if (tama != null) {
+      final house = game.houses[tama.id]!;
+      final placed = _placed != null && _placed! < house.items.length
+          ? _placed
+          : null;
+      final style = l.hatarakiStyleName;
+      return (
+        _RoomCard(game: game, tama: tama, piece: _piece, placed: placed),
+        placed != null
+            ? Row(
+                children: [
+                  Expanded(
+                    child: IbashoButton(
+                      key: const ValueKey<String>('hataraki.room.rotate'),
+                      label: l.hatarakiRotate,
+                      glyph: Glyph.refresh,
+                      tone: ButtonTone.accent,
+                      expand: true,
+                      cue: null,
+                      onPressed: _rotatePiece,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: IbashoButton(
+                      key: const ValueKey<String>('hataraki.room.store'),
+                      label: l.hatarakiStore,
+                      glyph: Glyph.arrowLeft,
+                      expand: true,
+                      cue: null,
+                      onPressed: _storePiece,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(
+                    child: IbashoButton(
+                      key: const ValueKey<String>('hataraki.room.floor'),
+                      label: '${l.hatarakiFloor}: ${style(house.floor.name)}',
+                      expand: true,
+                      cue: null,
+                      onPressed: () => _decorate(floor: true),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: IbashoButton(
+                      key: const ValueKey<String>('hataraki.room.wall'),
+                      label: '${l.hatarakiWall}: ${style(house.wall.name)}',
+                      expand: true,
+                      cue: null,
+                      onPressed: _decorate,
+                    ),
+                  ),
+                ],
+              ),
+      );
+    }
+    if (_inHomes) {
+      final tama =
+          tamas.where((t) => t.id == _homeTamaId).firstOrNull ??
+          tamas.firstOrNull;
+      if (tama == null) return (_Notice(text: l.hatarakiNoTamas), null);
+      final has = game.houses.containsKey(tama.id);
+      final can = game.canBuildHouse(tama.id);
+      return (
+        _HomeCard(game: game, tama: tama),
+        IbashoButton(
+          key: const ValueKey<String>('hataraki.home.go'),
+          label: has ? l.hatarakiEnter : l.hatarakiBuildHouse,
+          glyph: has ? Glyph.arrowRight : (can ? Glyph.house : Glyph.lock),
+          tone: has || can ? ButtonTone.accent : ButtonTone.plain,
+          expand: true,
+          onPressed: has
+              ? () => setState(() {
+                  _homeTamaId = tama.id;
+                  _enterRoom();
+                })
+              : can
+              ? () => _buildHouse(tama)
+              : null,
+        ),
+      );
+    }
+    if (_inside == HBuilding.shop) {
+      final offers = game.shop(today);
+      final offer =
+          offers.where((o) => o.item == _offer).firstOrNull ??
+          offers.firstOrNull;
+      if (offer == null) return (_Notice(text: l.hatarakiShopHint), null);
+      final left = game.stockLeft(offer, today);
+      final most = math.min(left, game.money ~/ offer.price);
+      Widget buy(int n, String key) => IbashoButton(
+        key: ValueKey<String>(key),
+        label: l.hatarakiBuy(n, n * offer.price),
+        tone: ButtonTone.accent,
+        expand: true,
+        onPressed: most >= n ? () => _buy(offer.item, n) : null,
+      );
+      return (
+        _OfferCard(game: game, offer: offer, left: left),
+        left <= 0
+            ? IbashoButton(
+                label: l.hatarakiSoldOut,
+                glyph: Glyph.lock,
+                expand: true,
+              )
+            : Row(
+                children: [
+                  Expanded(child: buy(1, 'hataraki.buy.one')),
+                  if (most > 1) ...[
+                    const SizedBox(width: 8),
+                    Expanded(child: buy(most, 'hataraki.buy.all')),
+                  ],
+                ],
+              ),
+      );
+    }
+    if (_inside == HBuilding.board) {
+      final orders = game.orders;
+      if (orders.isEmpty) return (_Notice(text: l.hatarakiOrderHint), null);
+      final i = _order.clamp(0, orders.length - 1);
+      final o = orders[i];
+      final swappable = i > 0 && !o.done && game.swapDay != today;
+      // Con los dos botones en fila, sin dibujo para que quepan.
+      final deliver = IbashoButton(
+        key: const ValueKey<String>('hataraki.deliver'),
+        label: o.done ? l.hatarakiOrderDone : l.hatarakiDeliver,
+        glyph: swappable
+            ? null
+            : o.done
+            ? Glyph.check
+            : game.canDeliver(i)
+            ? Glyph.gift
+            : Glyph.lock,
+        tone: game.canDeliver(i) ? ButtonTone.accent : ButtonTone.plain,
+        expand: true,
+        onPressed: game.canDeliver(i) ? () => _deliver(i) : null,
+      );
+      return (
+        _OrderCard(game: game, order: o, ticketToday: game.orderDay >= today),
+        swappable
+            ? Row(
+                children: [
+                  Expanded(child: deliver),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: IbashoButton(
+                      key: const ValueKey<String>('hataraki.swap'),
+                      label: l.hatarakiSwap(o.swapPrice),
+                      expand: true,
+                      onPressed: game.canSwap(i, today)
+                          ? () => _swapOrder(i)
+                          : null,
+                    ),
+                  ),
+                ],
+              )
+            : deliver,
+      );
+    }
+    if (_inside == HBuilding.market) {
+      final level = game.townLevel(HBuilding.market);
+      return (
+        _MarketCard(game: game, today: today, tomorrow: _tomorrow),
+        level < hMarketTomorrow
+            ? null
+            : IbashoButton(
+                key: const ValueKey<String>('hataraki.market.when'),
+                label: l.hatarakiMarketWhen(_tomorrow ? 'today' : 'tomorrow'),
+                glyph: Glyph.clock,
+                expand: true,
+                onPressed: () => setState(() => _tomorrow = !_tomorrow),
+              ),
+      );
+    }
+    final b = _building;
+    final level = game.townLevel(b);
+    final cost = game.nextBuildCost(b);
+    final upgrade = IbashoButton(
+      key: const ValueKey<String>('hataraki.build'),
+      label: cost == null
+          ? l.hatarakiTownMax
+          : level == 0
+          ? l.hatarakiBuild
+          : l.hatarakiUpgrade(level + 1),
+      glyph: cost == null
+          ? Glyph.star
+          : game.canBuild(b)
+          ? Glyph.house
+          : Glyph.lock,
+      tone: game.canBuild(b) ? ButtonTone.accent : ButtonTone.plain,
+      expand: true,
+      onPressed: game.canBuild(b) ? () => _build(b) : null,
+    );
+    // A las habitaciones de la posada se entra aunque aún no esté hecha.
+    final enter =
+        b == HBuilding.inn ||
+        (level > 0 &&
+            (b == HBuilding.shop ||
+                b == HBuilding.market ||
+                b == HBuilding.board));
+    return (
+      _BuildingCard(game: game, building: b, tamas: tamas),
+      enter
+          ? Row(
+              children: [
+                Expanded(
+                  child: IbashoButton(
+                    key: const ValueKey<String>('hataraki.enter'),
+                    label: l.hatarakiEnter,
+                    glyph: Glyph.arrowRight,
+                    tone: ButtonTone.accent,
+                    expand: true,
+                    onPressed: () => setState(() {
+                      if (b == HBuilding.inn) {
+                        _inHomes = true;
+                        _homeTamaId ??= tamas.firstOrNull?.id;
+                      } else {
+                        _inside = b;
+                        _tomorrow = false;
+                      }
+                      _pages[HTab.town] = 0;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: upgrade),
+              ],
+            )
+          : upgrade,
+    );
   }
 
   Widget _wideLayout(BuildContext context, HState game, List<Tama> tamas) {
@@ -1024,64 +1717,72 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
         : TamaMoodReading.of(tama, ref.watch(moodClockProvider)).joy;
     final (card, button) = _showcase(game, tamas, tall: true);
     final stageSize = small ? 64.0 : 84.0;
+    // En la habitación, el Tama ya sale dentro: sin escenario, cabe más.
+    final room = _tab == HTab.town && _inRoom && _roomTama(game, tamas) != null;
     return Column(
       children: [
         SizedBox(height: small ? 6 : 10),
-        SizedBox(
-          height: small ? 92 : 124,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              SizedBox(
-                width: stageSize + 30,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: StageLight(
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          child: _stage(tama, stageSize, joy),
+        if (!room)
+          SizedBox(
+            height: small ? 92 : 124,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                SizedBox(
+                  width: stageSize + 30,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: StageLight(
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: _stage(tama, stageSize, joy),
+                          ),
                         ),
                       ),
-                    ),
-                    Positioned(left: 0, top: 0, child: _teaChip(game)),
-                  ],
+                      Positioned(left: 0, top: 0, child: _teaChip(game)),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Flexible(
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: SpeechBubble(text: _bubble, maxWidth: 200),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Align(
+                          alignment: Alignment.bottomLeft,
+                          child: SpeechBubble(text: _bubble, maxWidth: 200),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    _readouts(
-                      game,
-                      height: small ? 44 : 48,
-                      coins: true,
-                      money: _tab == HTab.bank,
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      _readouts(
+                        game,
+                        height: small ? 44 : 48,
+                        coins: true,
+                        money: _tab == HTab.bank,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        SizedBox(height: small ? 8 : 12),
+        if (!room) SizedBox(height: small ? 8 : 12),
         _tabs(height: 48, labels: false),
         SizedBox(height: small ? 8 : 12),
         Expanded(child: _content(game, tamas, tall: true)),
         SizedBox(height: small ? 6 : 10),
         SizedBox(
           // Preparar una expedición pide más sitio que el resto.
+          // Con el mapa abierto, el mapa se queda con algo más.
           height: _tab == HTab.expedition
-              ? (small ? 206 : (layout.height > 840 ? 300 : 244))
+              ? (small
+                    ? (_mapZone == null ? 206 : 160)
+                    : (layout.height > 840 ? 300 : 244))
+              : room
+              ? (small ? 96 : 150)
               : (small ? 104 : (layout.height > 840 ? 210 : 150)),
           child: card,
         ),
@@ -1661,10 +2362,13 @@ class _VillageGrid extends StatelessWidget {
                           ),
                         ),
                       ),
-                      HatarakiItemIcon(
-                        action.outputs.keys.firstOrNull ?? 'gear_scarf',
-                        size: math.min(34, h * .22),
-                      ),
+                      if (hActionItem(action) case final item?)
+                        HatarakiItemIcon(item, size: math.min(34, h * .22))
+                      else
+                        HatarakiSkillIcon(
+                          action.skill,
+                          size: math.min(34, h * .22),
+                        ),
                     ],
                   ),
                 ),
@@ -1675,7 +2379,11 @@ class _VillageGrid extends StatelessWidget {
                   style: Ty.body.copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  worker.stalled ? l.hatarakiStalled : hActionName(l, action),
+                  worker.stalled
+                      ? l.hatarakiStalled(
+                          hItemName(l, _firstMissing(game, action) ?? ''),
+                        )
+                      : hActionName(l, action),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Ty.micro.copyWith(
@@ -1700,6 +2408,7 @@ class _WorkerCard extends StatelessWidget {
     required this.worker,
     required this.hTama,
     required this.onChange,
+    this.onBoost,
   });
 
   final HState game;
@@ -1709,6 +2418,9 @@ class _WorkerCard extends StatelessWidget {
   /// Personalidad y ánimo de ahora, para el ritmo.
   final HTama? hTama;
   final VoidCallback onChange;
+
+  /// Le pone (o quita, con null) un cebo, abono o mecha.
+  final ValueChanged<String?>? onBoost;
 
   @override
   Widget build(BuildContext context) {
@@ -1721,7 +2433,9 @@ class _WorkerCard extends StatelessWidget {
             for (final e in action.inputs.entries)
               if (game.count(e.key) < e.value) e.key: e.value,
           };
-    final mood = hTama == null ? null : 0.8 + 0.4 * hTama!.mood.clamp(0, 1);
+    // El ánimo con el que trabaja aquí: el suyo o el descanso de su casa.
+    final mood = hTama == null ? null : 0.8 + 0.4 * game.moodFor(hTama!);
+    final comfort = hTama == null ? null : game.comfortOf(hTama!);
     return _Card(
       icon: action == null
           ? HatarakiSkillIcon(likes.first, size: 40)
@@ -1744,7 +2458,43 @@ class _WorkerCard extends StatelessWidget {
             _Label(l.hatarakiMissing),
             _ItemRow(items: missing, have: game, counts: true),
             _Sources(items: missing.keys),
+            const SizedBox(height: 4),
+            Text(l.hatarakiResumes, style: Ty.caption),
           ],
+          if (onBoost != null)
+            if (hItems.where((i) => i.boostSkill == action.skill).toList()
+                case final boosts when boosts.isNotEmpty) ...[
+              _Label(l.hatarakiBoostTitle(action.skill.name)),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _BoostChip(
+                    key: const ValueKey<String>('hataraki.boost.none'),
+                    text: l.hatarakiBoostNone,
+                    on: worker!.boost == null,
+                    onPressed: () => onBoost!(null),
+                  ),
+                  for (final b in boosts)
+                    _BoostChip(
+                      key: ValueKey<String>('hataraki.boost.${b.id}'),
+                      item: b.id,
+                      text: '${hItemName(l, b.id)} · ${game.count(b.id)}',
+                      on: worker!.boost == b.id,
+                      onPressed: game.count(b.id) > 0 || worker!.boost == b.id
+                          ? () => onBoost!(b.id)
+                          : null,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                worker!.boost != null && game.count(worker!.boost!) == 0
+                    ? l.hatarakiBoostOut
+                    : l.hatarakiBoostHint,
+                style: Ty.micro,
+              ),
+            ],
           const SizedBox(height: 8),
           _LinkChip(
             key: const ValueKey<String>('hataraki.change'),
@@ -1770,6 +2520,11 @@ class _WorkerCard extends StatelessWidget {
         if (mood != null) ...[
           _Label(l.hatarakiMood(mood.toStringAsFixed(2))),
           Text(l.hatarakiMoodHint, style: Ty.micro),
+          if (comfort != null)
+            Text(
+              l.hatarakiRestMood((hRestMood(comfort.value) * 100).round()),
+              style: Ty.micro,
+            ),
         ],
       ],
     );
@@ -1888,6 +2643,38 @@ class _LinkChip extends StatelessWidget {
   }
 }
 
+/// Un cebo, abono o mecha para elegir: el puesto va con el acento.
+class _BoostChip extends StatelessWidget {
+  const _BoostChip({
+    super.key,
+    required this.text,
+    required this.on,
+    required this.onPressed,
+    this.item,
+  });
+
+  final String text;
+  final bool on;
+  final VoidCallback? onPressed;
+  final String? item;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = item == null ? null : HatarakiItemIcon(item!, size: 16);
+    return Opacity(
+      opacity: onPressed == null ? .5 : 1,
+      child: Pressable(
+        onPressed: on ? null : onPressed,
+        semanticLabel: text,
+        builder: (context, state) => Transform.scale(
+          scale: 1 - .04 * state.press,
+          child: ResultChip(text: text, accent: on, icon: icon),
+        ),
+      ),
+    );
+  }
+}
+
 // --- Oficios ------------------------------------------------------------------
 
 class _SkillsGrid extends StatelessWidget {
@@ -1930,7 +2717,7 @@ class _SkillsGrid extends StatelessWidget {
           final sk = skills[i];
           final xp = game.xp[sk] ?? 0;
           final busy = sk == HSkill.expedition
-              ? (game.expedition?.tamaIds.length ?? 0)
+              ? game.expeditions.fold(0, (n, e) => n + e.tamaIds.length)
               : game.workers
                     .where((wk) => hAction(wk.actionId)?.skill == sk)
                     .length;
@@ -2019,7 +2806,8 @@ class _SkillsGrid extends StatelessWidget {
             onPage: onPage,
             builder: (i, w, h) {
               final a = actions[i];
-              final open = level >= a.level;
+              final open = game.canDo(a);
+              final gate = game.missingGate(a);
               final short = a.inputs.entries.any(
                 (e) => game.count(e.key) < e.value,
               );
@@ -2041,12 +2829,9 @@ class _SkillsGrid extends StatelessWidget {
                         children: [
                           Expanded(
                             child: FittedBox(
-                              child: a.outputs.isEmpty
+                              child: hActionItem(a) == null
                                   ? HatarakiSkillIcon(s, size: 48)
-                                  : HatarakiItemIcon(
-                                      a.outputs.keys.first,
-                                      size: 48,
-                                    ),
+                                  : HatarakiItemIcon(hActionItem(a)!, size: 48),
                             ),
                           ),
                           Text(
@@ -2069,7 +2854,16 @@ class _SkillsGrid extends StatelessWidget {
                               Flexible(
                                 child: Text(
                                   !open
-                                      ? l.hatarakiLevel(a.level)
+                                      ? (level < a.level
+                                            ? l.hatarakiLevel(a.level)
+                                            : gate == null
+                                            ? l.hatarakiNeedPlan
+                                            : l.hatarakiNeedBuilding(
+                                                l.hatarakiBuildingName(
+                                                  gate.$1.name,
+                                                ),
+                                                gate.$2,
+                                              ))
                                       : short
                                       ? l.hatarakiMissing
                                       : l.hatarakiMastery(game.masteryOf(a.id)),
@@ -2158,9 +2952,9 @@ class _ActionCard extends StatelessWidget {
           tamas?.where((t) => t.id == w.tamaId).firstOrNull?.name,
     ].whereType<String>().toList();
     return _Card(
-      icon: a.outputs.isEmpty
+      icon: hActionItem(a) == null
           ? HatarakiSkillIcon(a.skill, size: 40)
-          : HatarakiItemIcon(a.outputs.keys.first, size: 40),
+          : HatarakiItemIcon(hActionItem(a)!, size: 40),
       title: hActionName(l, a),
       subtitle:
           '${l.hatarakiSeconds(_seconds(a.seconds))} · ${l.hatarakiXp(a.xp)} · ${l.hatarakiMastery(game.masteryOf(a.id))}',
@@ -2168,6 +2962,16 @@ class _ActionCard extends StatelessWidget {
         if (level < a.level)
           Text(
             l.hatarakiNeedSkillLevel(hSkillName(l, a.skill), a.level, level),
+            style: Ty.caption.copyWith(color: T.warn),
+          ),
+        if (game.missingGate(a) case (final b, final n))
+          Text(
+            l.hatarakiNeedBuilding(l.hatarakiBuildingName(b.name), n),
+            style: Ty.caption.copyWith(color: T.warn),
+          ),
+        if (game.missingPlan(a) != null)
+          Text(
+            '${l.hatarakiNeedPlan} · ${l.hatarakiPlanHint}',
             style: Ty.caption.copyWith(color: T.warn),
           ),
         if (doing.isNotEmpty)
@@ -2291,14 +3095,21 @@ String _compact(int n) {
 }
 
 class _ItemCard extends StatelessWidget {
-  const _ItemCard({required this.game, required this.item});
+  const _ItemCard({
+    required this.game,
+    required this.item,
+    required this.today,
+  });
 
   final HState game;
   final HItem item;
+  final int today;
 
   @override
   Widget build(BuildContext context) {
     final l = L.of(context)!;
+    final base = hSellValue(item.id);
+    final price = game.priceOf(item.id, today);
     final lines = <Widget>[];
     switch (item.kind) {
       case HItemKind.food:
@@ -2315,8 +3126,12 @@ class _ItemCard extends StatelessWidget {
         lines.add(
           Text(
             item.teaSkill == null
-                ? l.hatarakiTeaAll(pct)
-                : l.hatarakiTeaFor(pct, hSkillName(l, item.teaSkill!)),
+                ? l.hatarakiTeaAll(pct, game.teaDuration.inMinutes)
+                : l.hatarakiTeaFor(
+                    pct,
+                    hSkillName(l, item.teaSkill!),
+                    game.teaDuration.inMinutes,
+                  ),
             style: Ty.caption,
           ),
         );
@@ -2329,13 +3144,56 @@ class _ItemCard extends StatelessWidget {
             ),
           )
           ..add(Text(l.hatarakiGearHint, style: Ty.micro));
+        if (item.zones.isNotEmpty) {
+          lines.add(
+            Text(
+              l.hatarakiZoneBonus(
+                item.zonePower,
+                item.zones.map((z) => hZoneName(l, z)).join(', '),
+              ),
+              style: Ty.caption,
+            ),
+          );
+        }
         if (game.kit[item.slot] == item.id) {
           lines
             ..add(const SizedBox(height: 6))
             ..add(ResultChip(text: l.hatarakiEquipped, accent: true));
         }
+      case HItemKind.boost:
+        lines
+          ..add(
+            Text(
+              l.hatarakiBoostEffect(
+                item.boostSkill!.name,
+                item.boostSkill == HSkill.fishing
+                    ? (item.boost * 100).round()
+                    : item.boostSkill == HSkill.mining
+                    ? (item.boost + 1).round()
+                    : item.boost.round(),
+              ),
+              style: Ty.caption,
+            ),
+          )
+          ..add(Text(l.hatarakiBoostHint, style: Ty.micro));
+      case HItemKind.potion || HItemKind.rune || HItemKind.map:
+        lines.add(
+          Text(
+            [
+              if (item.power > 0) l.hatarakiPower(item.power),
+              if (item.effect != null) l.hatarakiTripEffect(item.effect!),
+            ].join(' · '),
+            style: Ty.caption,
+          ),
+        );
+      case HItemKind.furniture:
+        lines
+          ..add(Text(_furnitureInfo(l, item.id), style: Ty.caption))
+          ..add(Text(l.hatarakiFurnitureUse, style: Ty.micro));
       default:
-        break;
+        if (item.id == 'pot_teapot') {
+          lines.add(Text(l.hatarakiTeapotHint, style: Ty.caption));
+        }
     }
     // Dónde se usa: las tareas que lo gastan.
     final uses = [
@@ -2345,7 +3203,8 @@ class _ItemCard extends StatelessWidget {
     return _Card(
       icon: HatarakiItemIcon(item.id, size: 44),
       title: hItemName(l, item.id),
-      subtitle: '×${game.count(item.id)} · ${l.hatarakiPrice(hSellValue(item.id))}',
+      subtitle:
+          '×${game.count(item.id)} · ${price == base ? l.hatarakiPrice(base) : '${l.hatarakiPriceToday(price)} ${price > base ? '▲' : '▼'}'}',
       children: [
         ...lines,
         _Sources(items: [item.id], label: l.hatarakiComesFrom),
@@ -2369,348 +3228,6 @@ class _ItemCard extends StatelessWidget {
 }
 
 // --- Expediciones -------------------------------------------------------------
-
-class _ZoneGrid extends StatelessWidget {
-  const _ZoneGrid({
-    required this.game,
-    required this.page,
-    required this.onPage,
-    required this.selected,
-    required this.tall,
-    required this.onPick,
-  });
-
-  final HState game;
-  final int page;
-  final ValueChanged<int> onPage;
-  final String selected;
-  final bool tall;
-  final ValueChanged<String> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    final level = game.levelOf(HSkill.expedition);
-    return _Pager(
-      count: hZones.length,
-      columns: tall ? 2 : 4,
-      rows: tall ? 4 : 2,
-      page: page,
-      onPage: onPage,
-      builder: (i, w, h) {
-        final z = hZones[i];
-        final open = level >= z.level;
-        final away = game.expedition?.zone == z.id;
-        return SlotTile(
-          key: ValueKey<String>('hataraki.zone.${z.id}'),
-          width: w,
-          height: h,
-          selected: z.id == selected,
-          semanticLabel: hZoneName(l, z.id),
-          onPressed: () => onPick(z.id),
-          child: _Badged(
-            count: away ? game.expedition!.tamaIds.length : 0,
-            child: Opacity(
-              opacity: open ? 1 : .55,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: FittedBox(child: HatarakiZoneIcon(z.id, size: 48)),
-                    ),
-                    Text(
-                      hZoneName(l, z.id),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Ty.caption.copyWith(color: Ty.ink),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        GlyphIcon(
-                          open ? Glyph.clock : Glyph.lock,
-                          size: 12,
-                          color: Ty.inkSoft,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          open
-                              ? l.hatarakiTripTime(z.minutes)
-                              : l.hatarakiLevel(z.level),
-                          style: Ty.micro,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ZoneCard extends StatelessWidget {
-  const _ZoneCard({
-    required this.game,
-    required this.zone,
-    required this.party,
-    required this.tamas,
-    required this.power,
-    required this.food,
-    required this.units,
-    required this.onAdd,
-    required this.onRemove,
-    required this.onFood,
-  });
-
-  final HState game;
-  final HZone zone;
-  final List<String> party;
-  final List<Tama> tamas;
-  final int power;
-  final String? food;
-  final int units;
-  final VoidCallback? onAdd;
-  final ValueChanged<String> onRemove;
-  final VoidCallback? onFood;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    final skin = IbashoSkin.of(context);
-    final open = game.levelOf(HSkill.expedition) >= zone.level;
-    final success = (HState.successFor(zone, power) * 100).round();
-    final kitPower = game.kit.values
-        .where((item) => game.count(item) > 0)
-        .fold(0, (sum, item) => sum + (hItem(item)?.power ?? 0));
-    return _Card(
-      icon: HatarakiZoneIcon(zone.id, size: 40),
-      title: hZoneName(l, zone.id),
-      subtitle: open
-          ? '${l.hatarakiTripTime(zone.minutes)} · ${party.isEmpty ? l.hatarakiStrength(power, zone.difficulty) : l.hatarakiSuccess(success)}'
-          : l.hatarakiNeedSkillLevel(
-              hSkillName(l, HSkill.expedition),
-              zone.level,
-              game.levelOf(HSkill.expedition),
-            ),
-      children: [
-        _Bar(
-          value: power / zone.difficulty,
-          color: power >= zone.difficulty ? T.correct : null,
-        ),
-        const SizedBox(height: 4),
-        Text(l.hatarakiStrength(power, zone.difficulty), style: Ty.micro),
-        _Label(l.hatarakiParty),
-        Row(
-          children: [
-            for (var i = 0; i < hMaxParty; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
-              if (i < party.length)
-                Pressable(
-                  onPressed: () => onRemove(party[i]),
-                  semanticLabel: tamas
-                      .where((t) => t.id == party[i])
-                      .firstOrNull
-                      ?.name,
-                  builder: (context, state) => SizedBox.square(
-                    dimension: 48,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned.fill(
-                          child: GlossSurface(
-                            radius: 14,
-                            sink: state.press,
-                            child: CustomPaint(
-                              painter: TamaPainter(
-                                look: tamas
-                                    .firstWhere((t) => t.id == party[i])
-                                    .look,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Se saca del grupo tocándolo: la cruz lo dice.
-                        Positioned(
-                          right: -4,
-                          top: -4,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: T.shellTop,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: skin.hairline),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(3),
-                              child: GlyphIcon(
-                                Glyph.cross,
-                                size: 10,
-                                color: Ty.inkSoft,
-                                strokeWidth: 2.4,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Pressable(
-                  key: ValueKey<String>('hataraki.party.add.$i'),
-                  onPressed: i == party.length ? onAdd : null,
-                  semanticLabel: l.hatarakiAddTama,
-                  builder: (context, state) => SizedBox.square(
-                    dimension: 48,
-                    child: GlossSurface(
-                      radius: 14,
-                      recessed: true,
-                      child: i == party.length
-                          ? Center(
-                              child: GlyphIcon(
-                                Glyph.plus,
-                                size: 20,
-                                color: skin.accentDeep,
-                                strokeWidth: 2.4,
-                              ),
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
-            ],
-          ],
-        ),
-        _Label(l.hatarakiFood),
-        if (food == null)
-          Text(l.hatarakiNoFood, style: Ty.caption.copyWith(color: T.warn))
-        else
-          Pressable(
-            key: const ValueKey<String>('hataraki.food'),
-            onPressed: onFood,
-            semanticLabel: hItemName(l, food!),
-            builder: (context, state) => GlossSurface(
-              radius: 16,
-              sink: state.press,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  HatarakiItemIcon(food!, size: 30),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      l.hatarakiFoodUnits(units, hItemName(l, food!)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Ty.caption.copyWith(
-                        color: game.count(food!) < units ? T.warn : Ty.ink,
-                      ),
-                    ),
-                  ),
-                  if (onFood != null) ...[
-                    const SizedBox(width: 6),
-                    GlyphIcon(Glyph.refresh, size: 14, color: Ty.inkSoft),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        // El equipo, en una línea: lo que suma y desde dónde se cambia.
-        _Label(l.hatarakiKit),
-        Row(
-          children: [
-            for (final item in game.kit.values)
-              if (game.count(item) > 0)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: _Labelled(
-                    label: hItemName(l, item),
-                    child: HatarakiItemIcon(item, size: 26),
-                  ),
-                ),
-            Flexible(
-              child: Text(
-                kitPower > 0 ? l.hatarakiPower(kitPower) : l.hatarakiKitNone,
-                maxLines: 2,
-                style: Ty.micro,
-              ),
-            ),
-          ],
-        ),
-        _Label(l.hatarakiLoot),
-        _ItemRow(
-          items: {for (final loot in zone.loot) loot.item: loot.max},
-          size: 26,
-        ),
-        // Sin grupo aún, la probabilidad del sitio con éxito completo.
-        _TreasureLine(
-          chance: zone.prizeChance * (party.isEmpty ? 1 : HState.successFor(zone, power)),
-        ),
-      ],
-    );
-  }
-}
-
-class _TripCard extends StatelessWidget {
-  const _TripCard({
-    required this.game,
-    required this.expedition,
-    required this.tamas,
-  });
-
-  final HState game;
-  final HExpedition expedition;
-  final List<Tama> tamas;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = L.of(context)!;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final total = expedition.endsAt - expedition.startedAt;
-    final left = Duration(milliseconds: math.max(0, expedition.endsAt - now));
-    final zone = hZoneById[expedition.zone]!;
-    return _Card(
-      icon: HatarakiZoneIcon(zone.id, size: 40),
-      title: hZoneName(l, zone.id),
-      subtitle: l.hatarakiBackIn(hDuration(left)),
-      children: [
-        _Bar(value: total <= 0 ? 1 : 1 - left.inMilliseconds / total),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            for (final id in expedition.tamaIds)
-              if (tamas.where((t) => t.id == id).firstOrNull case final tama?)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: SizedBox.square(
-                    dimension: 48,
-                    child: CustomPaint(
-                      painter: TamaPainter(
-                        look: tama.look,
-                        pose: const TamaPose(hop: 4, joy: .8),
-                      ),
-                    ),
-                  ),
-                ),
-          ],
-        ),
-        _Label(l.hatarakiLoot),
-        _ItemRow(
-          items: {for (final loot in zone.loot) loot.item: loot.max},
-          size: 26,
-        ),
-        _TreasureLine(
-          chance: zone.prizeChance * HState.successFor(zone, expedition.power),
-        ),
-      ],
-    );
-  }
-}
 
 /// El tesoro que puede traer una expedición (un ticket gachaken) y con qué
 /// probabilidad; se canjea solo, como mucho uno por hora.
@@ -2830,8 +3347,7 @@ class _TamaPickerState extends ConsumerState<_TamaPicker> {
                   .where((x) => x.tamaId == t.id)
                   .firstOrNull;
               final working = job != null;
-              final away =
-                  widget.game.expedition?.tamaIds.contains(t.id) ?? false;
+              final away = widget.game.isTraveling(t.id);
               final blocked =
                   away ||
                   widget.exclude.contains(t.id) ||
@@ -3010,7 +3526,9 @@ class _MusicDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context)!;
-    final chosen = ref.watch(preferencesProvider.select((p) => p.hatarakiTrack));
+    final chosen = ref.watch(
+      preferencesProvider.select((p) => p.hatarakiTrack),
+    );
     final library = ref.watch(musicLibraryProvider);
     final prefs = ref.read(preferencesProvider.notifier);
     Widget option(String id, String label, {bool locked = false}) => Padding(
@@ -3053,6 +3571,68 @@ class _MusicDialog extends ConsumerWidget {
   }
 }
 
+/// Lo que se le da bien a cada personalidad, con los dibujos de sus oficios:
+/// una fila por personalidad.
+class HatarakiLikesTable extends StatelessWidget {
+  const HatarakiLikesTable({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    return Column(
+      children: [
+        for (final p in TamaPersonality.values)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 84,
+                  child: Text(
+                    personalityLabel(l, p),
+                    style: Ty.caption.copyWith(
+                      color: Ty.ink,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Expanded(child: HatarakiLikes(personality: p)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Los oficios en los que [personality] va más rápido: dibujo y nombre.
+class HatarakiLikes extends StatelessWidget {
+  const HatarakiLikes({super.key, required this.personality, this.icon = 22});
+
+  final TamaPersonality personality;
+  final double icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 2,
+      children: [
+        for (final s in hAffinities[personality] ?? const <HSkill>{})
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              HatarakiSkillIcon(s, size: icon),
+              const SizedBox(width: 2),
+              Text(hSkillName(l, s), style: Ty.micro.copyWith(color: Ty.ink)),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
 /// «Cómo se juega»: seis páginas cortas, con flechas, que se abren solas la
 /// primera vez y desde el botón de información (o tocando el nivel total).
 class _HelpDialog extends StatefulWidget {
@@ -3071,8 +3651,21 @@ class _HelpDialogState extends State<_HelpDialog> {
     ('likes', HSkill.farming),
     ('stuff', HSkill.smithing),
     ('trip', HSkill.expedition),
+    ('map', HSkill.writing),
+    ('orders', HSkill.study),
+    ('town', HSkill.construction),
+    ('market', HSkill.dyeing),
+    ('homes', HSkill.carpentry),
+    ('visit', HSkill.foraging),
     ('coins', HSkill.jewelry),
   ];
+
+  /// Las páginas que van con un edificio en vez de un oficio.
+  static const Map<String, HBuilding> _buildings = {
+    'market': HBuilding.market,
+    'homes': HBuilding.inn,
+    'visit': HBuilding.board,
+  };
 
   late int _page = math.max(0, _pages.indexWhere((p) => p.$1 == widget.start));
 
@@ -3099,8 +3692,14 @@ class _HelpDialogState extends State<_HelpDialog> {
           onNext: () => _go(_page + 1),
           child: Column(
             children: [
-              HatarakiSkillIcon(skill, size: tall ? 64 : 72),
-              const SizedBox(height: 8),
+              // En la de la maña manda la tabla: sin dibujo grande.
+              if (id != 'likes') ...[
+                if (_buildings[id] case final b?)
+                  HatarakiBuildingIcon(b, size: tall ? 64 : 72)
+                else
+                  HatarakiSkillIcon(skill, size: tall ? 64 : 72),
+                const SizedBox(height: 8),
+              ],
               Text(
                 l.hatarakiHelpTitle(id),
                 textAlign: TextAlign.center,
@@ -3109,10 +3708,18 @@ class _HelpDialogState extends State<_HelpDialog> {
               const SizedBox(height: 8),
               Expanded(
                 child: SingleChildScrollView(
-                  child: Text(
-                    l.hatarakiHelpBody(id),
-                    textAlign: TextAlign.center,
-                    style: Ty.body.copyWith(color: Ty.inkSoft),
+                  child: Column(
+                    children: [
+                      Text(
+                        l.hatarakiHelpBody(id),
+                        textAlign: TextAlign.center,
+                        style: Ty.body.copyWith(color: Ty.inkSoft),
+                      ),
+                      if (id == 'likes') ...[
+                        const SizedBox(height: 10),
+                        const HatarakiLikesTable(),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -3126,23 +3733,37 @@ class _HelpDialogState extends State<_HelpDialog> {
                     semanticLabel: '←',
                     onPressed: _page > 0 ? () => _go(_page - 1) : null,
                   ),
-                  const SizedBox(width: 14),
-                  for (var p = 0; p < _pages.length; p++)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: AnimatedContainer(
-                        duration: skin.motion(
-                          const Duration(milliseconds: 200),
-                        ),
-                        width: p == _page ? 18 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: p == _page ? skin.accent : skin.hairline,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                  const SizedBox(width: 10),
+                  // Con muchas páginas, los puntos se encogen para caber.
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        children: [
+                          for (var p = 0; p < _pages.length; p++)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: AnimatedContainer(
+                                duration: skin.motion(
+                                  const Duration(milliseconds: 200),
+                                ),
+                                width: p == _page ? 18 : 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: p == _page
+                                      ? skin.accent
+                                      : skin.hairline,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                  const SizedBox(width: 14),
+                  ),
+                  const SizedBox(width: 10),
                   IconPill(
                     key: const ValueKey<String>('hataraki.help.next'),
                     glyph: Glyph.arrowRight,

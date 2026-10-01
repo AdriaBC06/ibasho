@@ -49,9 +49,14 @@ void main() {
         shopCatalog.where((i) => i.koroTier != null).map((i) => i.koroTier),
         [1, 2, 3, 4],
       );
-      final foods = shopCatalog.where((i) => i.section == ShopSection.tamas).toList();
+      final foods = shopCatalog.where((i) => i.section == ShopSection.tamas && i.prize == null).toList();
       expect(foods.length, TamaFood.values.length);
       expect(foods.map((i) => i.food).toSet(), TamaFood.values.toSet());
+      // Y lo que se pone el Tama y se compra (0.8.0): la caca.
+      expect(
+        shopCatalog.where((i) => i.prize != null).map((i) => (i.id, i.section)),
+        [('prize_poop_brown', ShopSection.tamas)],
+      );
     });
 
     test('los ids siguen el patron game_/food_', () {

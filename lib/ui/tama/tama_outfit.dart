@@ -340,6 +340,22 @@ final Map<String, _Place> _places = <String, _Place>{
   'angel_wings': _wings,
   'rgb_wings': _wings,
   'fairies': _wings,
+  // Flotando arriba a su derecha, como una vida de videojuego.
+  'pixel_heart': (look, body) {
+    final r = body.bounds;
+    final w = (r.width * .26).clamp(10.0, 14.0);
+    final h = w * 32 / 36;
+    final x = math.min(99 - w, r.right - w * .1);
+    final y = math.max(1.0, r.top + h * .1);
+    return _one(Rect.fromLTWH(x, y, w, h));
+  },
+  // En el suelo, a su izquierda y pequeñita: apoya en y = 42 del SVG.
+  'poop': (look, body) {
+    final r = body.bounds;
+    final k = (r.width * .3).clamp(12.0, 16.0) / 48;
+    final x = math.max(1.0, r.left - 1 - 44 * k);
+    return _one(Rect.fromLTWH(x, TamaPainter.floor + 1.4 - 42 * k, 48 * k, 44 * k));
+  },
 };
 
 /// Las cajas que ocupa [item] en un Tama con este aspecto.

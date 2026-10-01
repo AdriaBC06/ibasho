@@ -16,6 +16,7 @@ import '../../../backend/tama.dart';
 import '../../../core/birthday.dart';
 import '../../../core/clock_format.dart';
 import '../../../core/timezones.dart';
+import '../../../games/hatarakitama/hataraki_channel.dart' show openHatarakiVisit;
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/people.dart';
 import '../../../state/profile.dart';
@@ -131,6 +132,16 @@ class _FriendProfileScreenState extends ConsumerState<FriendProfileScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (friendship != null && !layout.tall) ...[
+            IbashoButton(
+              key: const ValueKey<String>('friend.hataraki'),
+              label: l.hatarakiVisit,
+              glyph: Glyph.house,
+              height: 40,
+              onPressed: () => openHatarakiVisit(context, account),
+            ),
+            const SizedBox(width: 6),
+          ],
           if (friendship != null && !layout.tall)
             IbashoButton(
               key: const ValueKey<String>('friend.unfriend'),
@@ -227,6 +238,15 @@ class _Body extends ConsumerWidget {
             ),
             if (onUnfriend != null) ...[
               const SizedBox(height: 14),
+              IbashoButton(
+                key: const ValueKey<String>('friend.hataraki'),
+                label: l.hatarakiVisit,
+                glyph: Glyph.house,
+                tone: ButtonTone.accent,
+                expand: true,
+                onPressed: () => openHatarakiVisit(context, accountId),
+              ),
+              const SizedBox(height: 10),
               Center(
                 child: IbashoButton(
                   key: const ValueKey<String>('friend.unfriend'),

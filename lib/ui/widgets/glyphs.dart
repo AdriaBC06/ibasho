@@ -79,6 +79,8 @@ enum Glyph {
   flag,
   moon,
   pick,
+  house,
+  noteOff,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -922,6 +924,41 @@ class _GlyphPainter extends CustomPainter {
           stroke,
         );
         canvas.drawLine(const Offset(12, 6.4), const Offset(12, 20.6), stroke);
+      case Glyph.house:
+        // Una casa del pueblo: el tejado con aleros y las paredes en un solo
+        // trazo, y la puerta dentro, con aire hasta el tejado.
+        canvas.drawPath(
+          Path()
+            ..moveTo(3.4, 11.4)
+            ..lineTo(12, 4)
+            ..lineTo(20.6, 11.4)
+            ..moveTo(6, 9.4)
+            ..lineTo(6, 20)
+            ..lineTo(18, 20)
+            ..lineTo(18, 9.4),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(10, 20)
+            ..lineTo(10, 15)
+            ..lineTo(14, 15)
+            ..lineTo(14, 20),
+          stroke,
+        );
+      case Glyph.noteOff:
+        // La musica silenciada: una corchea sola a la izquierda y el aspa de
+        // [speakerOff] a la derecha, a la altura de la cabeza.
+        canvas.drawCircle(const Offset(7.4, 17), 3, stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(10.4, 17)
+            ..lineTo(10.4, 4.2)
+            ..quadraticBezierTo(11.2, 7.8, 14.6, 9),
+          stroke,
+        );
+        canvas.drawLine(const Offset(15.4, 12.6), const Offset(20.4, 17.6), stroke);
+        canvas.drawLine(const Offset(20.4, 12.6), const Offset(15.4, 17.6), stroke);
     }
 
     canvas.restore();

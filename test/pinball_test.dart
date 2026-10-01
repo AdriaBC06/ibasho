@@ -209,6 +209,20 @@ void main() {
     expect(back.layout.holes, g.layout.holes);
   });
 
+  test('sin premios de musica la mesa no tiene agujero ni dianas de musica', () {
+    for (var seed = 0; seed < 100; seed++) {
+      final l = PinballLayout.generate(seed, music: false);
+      expect(l.holes.keys, isNot(contains(GachaCategory.music)), reason: 'seed $seed');
+      expect(l.holes.length, GachaCategory.values.length - 1);
+      expect(l.targets.where((t) => t.category == GachaCategory.music), isEmpty);
+    }
+    final g = PinballGame(queue: const [GachaBall(Rarity.sr)], seed: 5, music: false);
+    final back = PinballGame.fromJson(g.toJson())!;
+    expect(back.music, isFalse);
+    expect(back.layout.holes, g.layout.holes);
+    expect(PinballGame.fromJson(_game().toJson())!.music, isTrue);
+  });
+
   test('una partida guardada sin semilla sale con mesa nueva y sin lo tumbado', () {
     final json = _game().toJson()
       ..remove('seed')

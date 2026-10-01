@@ -385,7 +385,8 @@ Future<void> main() async {
     }
     await tester.tap(find.byKey(const ValueKey<String>('creator.tab.color')));
     await settle(tester, 8);
-    await tester.tap(find.text('HEX libre'));
+    await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey<String>('creator.colorMode')), matching: find.text('HEX libre')));
     await settle(tester, 12);
     await shoot(tester, '19-creador-color-hex');
   });

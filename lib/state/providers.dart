@@ -25,6 +25,7 @@ import 'rewards.dart';
 import 'conversation.dart';
 import 'friends.dart';
 import 'gacha.dart';
+import '../games/hatarakitama/hataraki_engine.dart' show HState;
 import 'hataraki.dart';
 import 'identity.dart';
 import 'koro.dart';
@@ -367,6 +368,7 @@ final shopProvider = StateNotifierProvider<ShopController, ShopState>((ref) {
     unlockedFoodsOf: () => ref.read(unlockedFoodsProvider),
     ticketsOf: (kind) => ref.read(gachaProvider).ticketsOf(kind),
     koroSlotsOf: () => ref.read(koroProvider).slots,
+    prizeCopiesOf: (key) => ref.read(gachaProvider).copiesOf(key),
   );
 });
 
@@ -488,6 +490,22 @@ final hatarakiProvider = StateNotifierProvider<HatarakiController, HatarakiState
           .read(leaderboardsProvider.notifier)
           .submitScore(LeaderboardGame.hataraki, day, weeklyScore: week, allTimeScore: allTime),
     ),
+  );
+});
+
+/// El pueblo de Hatarakitama de otra cuenta (o de la propia), para
+/// visitarlo: una lectura puntual de `hataraki`, sin conexion en tiempo real.
+/// `null` si no ha jugado nunca.
+final hatarakiVisitProvider =
+    FutureProvider.autoDispose.family<HatarakiVisit?, String>((ref, accountId) async {
+  final session = ref.read(sessionProvider.notifier);
+  final raw = await ref
+      .read(backendProvider)
+      .read('/users/$accountId/hataraki', idToken: await session.freshToken());
+  if (raw is! Map) return null;
+  return HatarakiVisit(
+    game: HState.fromJson(raw, DateTime.now().millisecondsSinceEpoch),
+    tamas: hatarakiVisitTamas(raw['visit'], accountId),
   );
 });
 

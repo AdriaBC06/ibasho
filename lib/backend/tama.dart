@@ -87,15 +87,19 @@ enum TamaTimbre {
 ///
 /// El numero es el tope que validan las reglas: si se anade una variante hay
 /// que tocar tambien `database.rules.json`.
+///
+/// La 0.8.0 amplio el catalogo (antes 6, 6, 5, 6, 4, 5, 4 y 4). Las variantes
+/// nuevas van siempre al final: un numero guardado no cambia de dibujo, y una
+/// version vieja que recibe uno que no conoce pinta la ultima que sabe.
 enum TamaPart {
-  body(6),
-  eyes(6),
-  mouth(5),
-  crown(6),
-  cheeks(4),
-  pattern(5),
-  arms(4),
-  feet(4);
+  body(14),
+  eyes(14),
+  mouth(13),
+  crown(14),
+  cheeks(8),
+  pattern(12),
+  arms(9),
+  feet(9);
 
   const TamaPart(this.variants);
 
@@ -205,6 +209,24 @@ enum TamaDial {
   patternTone,
 }
 
+/// Las piezas que pueden llevar un color propio, aparte del cuerpo (0.8.0).
+///
+/// Sin color propio, cada una saca el de siempre: el dibujo, el del cuerpo con
+/// su tono; los ojos, su tinta y el reflejo del cuerpo. Los Tamas de antes no
+/// lo tienen y se ven igual.
+enum TamaTint {
+  pattern,
+  eyes;
+
+  /// Donde se guarda en `look`: `patternColor` y `patternColorMode`.
+  String get colorKey => '${name}Color';
+  String get modeKey => '${name}ColorMode';
+}
+
+/// Las variantes de ojos que tienen iris o reflejo que pintar de otro color.
+/// Las demas son tinta y nada mas.
+const Set<int> tintableEyes = {1, 4, 6, 9, 10, 12, 13};
+
 /// `#RRGGBB` a color. `null` si no es valido.
 Color? colorFromHex(String hex) {
   final clean = hex.startsWith('#') ? hex.substring(1) : hex;
@@ -235,6 +257,7 @@ class TamaLook {
     this.color = '#5BC8F5',
     this.colorMode = TamaColorMode.palette,
     this.outfit = TamaOutfit.none,
+    this.tints = const <TamaTint, (String, TamaColorMode)>{},
   });
 
   final Map<TamaPart, int> parts;
@@ -248,6 +271,10 @@ class TamaLook {
   /// Lo que lleva puesto. Viaja con el aspecto: lo ven los amigos y se va con
   /// el Tama si se transfiere.
   final TamaOutfit outfit;
+
+  /// Los colores propios de las piezas que lo tienen: `#RRGGBB` y como se
+  /// eligio. La que no esta, va con su color de siempre.
+  final Map<TamaTint, (String, TamaColorMode)> tints;
 
   static const Map<TamaDial, int> defaultDials = <TamaDial, int>{
     TamaDial.bodyWidth: 50,
@@ -273,37 +300,54 @@ class TamaLook {
 
   Color get bodyColor => colorFromHex(color) ?? T.tamaPalette.first;
 
-  TamaLook withPart(TamaPart p, int value) => TamaLook(
-        parts: {...parts, p: value.clamp(0, p.variants - 1)},
-        dials: dials,
-        color: color,
-        colorMode: colorMode,
-        outfit: outfit,
+  /// El color propio de [t], o `null` si va con el de siempre.
+  Color? tint(TamaTint t) {
+    final hex = tints[t]?.$1;
+    return hex == null ? null : colorFromHex(hex);
+  }
+
+  /// Como se eligio el color propio de [t]; `null` si no tiene.
+  TamaColorMode? tintMode(TamaTint t) => tints[t]?.$2;
+
+  TamaLook _copy({
+    Map<TamaPart, int>? parts,
+    Map<TamaDial, int>? dials,
+    String? color,
+    TamaColorMode? colorMode,
+    TamaOutfit? outfit,
+    Map<TamaTint, (String, TamaColorMode)>? tints,
+  }) =>
+      TamaLook(
+        parts: parts ?? this.parts,
+        dials: dials ?? this.dials,
+        color: color ?? this.color,
+        colorMode: colorMode ?? this.colorMode,
+        outfit: outfit ?? this.outfit,
+        tints: tints ?? this.tints,
       );
 
-  TamaLook withDial(TamaDial d, int value) => TamaLook(
-        parts: parts,
-        dials: {...dials, d: value.clamp(0, 100)},
-        color: color,
-        colorMode: colorMode,
-        outfit: outfit,
-      );
+  TamaLook withPart(TamaPart p, int value) =>
+      _copy(parts: {...parts, p: value.clamp(0, p.variants - 1)});
 
-  TamaLook withColor(String hex, TamaColorMode mode) => TamaLook(
-        parts: parts,
-        dials: dials,
+  TamaLook withDial(TamaDial d, int value) =>
+      _copy(dials: {...dials, d: value.clamp(0, 100)});
+
+  TamaLook withColor(String hex, TamaColorMode mode) => _copy(
         color: _hexPattern.hasMatch(hex) ? hex.toUpperCase() : color,
         colorMode: mode,
-        outfit: outfit,
       );
 
-  TamaLook withOutfit(TamaOutfit value) => TamaLook(
-        parts: parts,
-        dials: dials,
-        color: color,
-        colorMode: colorMode,
-        outfit: value,
-      );
+  /// Pone a [t] un color propio, o se lo quita con [hex] `null`.
+  TamaLook withTint(TamaTint t, String? hex, [TamaColorMode mode = TamaColorMode.palette]) {
+    if (hex != null && !_hexPattern.hasMatch(hex)) return this;
+    return _copy(tints: {
+      for (final e in tints.entries)
+        if (e.key != t) e.key: e.value,
+      if (hex != null) t: (hex.toUpperCase(), mode),
+    });
+  }
+
+  TamaLook withOutfit(TamaOutfit value) => _copy(outfit: value);
 
   /// Un aspecto al azar, siempre con un color de la paleta: barajar tiene que
   /// dar un Tama bonito, no un experimento.
@@ -330,6 +374,12 @@ class TamaLook {
       },
       color: hexFromColor(palette[rng.nextInt(palette.length)]),
       colorMode: TamaColorMode.palette,
+      // Casi siempre el dibujo va a juego con el cuerpo; a veces, de otro
+      // color de la paleta.
+      tints: {
+        if (rng.nextInt(3) == 0)
+          TamaTint.pattern: (hexFromColor(palette[rng.nextInt(palette.length)]), TamaColorMode.palette),
+      },
     );
   }
 
@@ -350,6 +400,11 @@ class TamaLook {
           : '#5BC8F5',
       colorMode: TamaColorMode.byName(raw['colorMode']),
       outfit: TamaOutfit.fromJson(raw['hat'], raw['acc']),
+      tints: {
+        for (final t in TamaTint.values)
+          if (raw[t.colorKey] is String && _hexPattern.hasMatch(raw[t.colorKey] as String))
+            t: ((raw[t.colorKey] as String).toUpperCase(), TamaColorMode.byName(raw[t.modeKey])),
+      },
     );
   }
 
@@ -361,6 +416,10 @@ class TamaLook {
         // Solo si lleva algo: un Tama sin premios se guarda como siempre.
         if (outfit.hat != null) 'hat': outfit.hat,
         'acc': ?outfit.accJson,
+        for (final MapEntry(key: t, value: (hex, mode)) in tints.entries) ...{
+          t.colorKey: hex,
+          t.modeKey: mode.name,
+        },
       };
 
   @override
@@ -369,6 +428,7 @@ class TamaLook {
       other.color == color &&
       other.colorMode == colorMode &&
       other.outfit == outfit &&
+      mapEquals(other.tints, tints) &&
       TamaPart.values.every((p) => other.part(p) == part(p)) &&
       TamaDial.values.every((d) => other.dial(d) == dial(d));
 
@@ -377,6 +437,7 @@ class TamaLook {
         color,
         colorMode,
         outfit,
+        Object.hashAll(TamaTint.values.map((t) => tints[t])),
         Object.hashAll(TamaPart.values.map(part)),
         Object.hashAll(TamaDial.values.map(dial)),
       );

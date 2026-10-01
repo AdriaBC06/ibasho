@@ -98,11 +98,11 @@ los archivos:
 
 | Voz | Autor | Licencia | Dónde sale |
 |---|---|---|---|
-| NIT SONG070 F001 (Sinsy) | Nagoya Institute of Technology (HTS Working Group) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). **Cambios:** su f0 se sustituye por una curva de la partitura y se resintetiza con WORLD; `hoshikuzu_voz_b` lleva además los formantes ×1,12. | Hoshikuzu Dash (`_voz`, `_voz_b`), `yako_*_sinsy` |
+| NIT SONG070 F001 (Sinsy) | Nagoya Institute of Technology (HTS Working Group) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). **Cambios:** su f0 se sustituye por una curva de la partitura y se resintetiza con WORLD; `hoshikuzu_voz_b` lleva además los formantes ×1,12. | Hoshikuzu Dash (`_voz`, `_voz_b`), todas las `*_sinsy` |
 | Kasane Teto 重音テト (JP y EN) | Voz: 小山乃舞世. Diseño del personaje: 線. Círculo oficial: ツインドリル (TWINDRILL). | [Condiciones del banco de voz](https://kasaneteto.jp/guideline/vltu.html): no comercial. Kasane Teto © TWINDRILL. | Todas las `*_teto` |
-| Tohoku Kiritan 東北きりたん | Personaje: 東北ずん子・ずんだもんプロジェクト (SSS LLC.). Banco NEUTRINO: STUDIO NEUTRINO. | [zunko.jp](https://zunko.jp/guideline.html): no comercial, sin trámite | `yako_*_kiritan` |
-| Zundamon ずんだもん | Igual que Kiritan | Igual que Kiritan | `yako_*_zundamon` |
-| Merrow めろう | STUDIO NEUTRINO | Licencia de la librería NEUTRINO: uso comercial y no comercial, crédito opcional | `yako_*_merrow` |
+| Tohoku Kiritan 東北きりたん | Personaje: 東北ずん子・ずんだもんプロジェクト (SSS LLC.). Banco NEUTRINO: STUDIO NEUTRINO. | [zunko.jp](https://zunko.jp/guideline.html): no comercial, sin trámite | Todas las `*_kiritan` |
+| Zundamon ずんだもん | Igual que Kiritan | Igual que Kiritan | Todas las `*_zundamon` |
+| Merrow めろう | STUDIO NEUTRINO | Licencia de la librería NEUTRINO: uso comercial y no comercial, crédito opcional | Todas las `*_merrow` |
 
 El entrenamiento del banco de Kiritan usa el 東北きりたん歌唱データベース.
 

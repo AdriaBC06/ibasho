@@ -179,6 +179,15 @@ abstract final class T {
   /// Rubor de las mejillas y el interior de las orejas.
   static const Color tamaBlush = Color(0xFFF7849B);
 
+  /// Piezas del creador que no son del color del Tama (0.8.0): el pico y las
+  /// patas de pato o de pajaro, el brote de la coronilla, el cuerno de
+  /// unicornio, las estrellitas de las mejillas y los ojos de gato.
+  static const Color tamaBeak = Color(0xFFF5A447);
+  static const Color tamaSprout = Color(0xFF7CCB6B);
+  static const Color tamaHorn = Color(0xFFF7D774);
+  static const Color tamaSparkle = Color(0xFFFFD45C);
+  static const Color tamaCatEye = Color(0xFFB9DA55);
+
   /// Comida de los Tamas. Colores de pasteleria: se tienen que reconocer de
   /// un vistazo a 30 px.
   static const Color foodDough = Color(0xFFE9B97C);

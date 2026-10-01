@@ -103,6 +103,7 @@ accesorios, **uno por sitio**: uno nuevo sustituye al que ocupe el suyo.
 | `neck` | Pajarita, bufanda, collar | Sobre la cara |
 | `right` | Bebidas en el suelo, lo que empuña (espada, pico, micro) y el cursor | Lo último |
 | `left` | Lo que sujeta (globo, taco, farolillo, abanico, kendama) y el mando | Lo último |
+| `ground` | En el suelo a su izquierda: la caca (0.8.0) | Antes del cuerpo y **fuera de su movimiento**: no salta ni se inclina |
 
 Las piernecitas (pies variante 2) no se quitan: las zapatillas las calzan. El
 gorrito del cumpleaños solo sale si no lleva gorro.
@@ -114,6 +115,13 @@ viewBox**, la de delante; en el catálogo lleva `front: true`. Las dos usan la
 misma caja. La parte de delante se pinta justo después del cuerpo y los pies,
 antes de la cara, así que no debe pasar por encima de ojos ni boca. Hoy solo
 se pinta la parte de delante de los sitios `back`, `waist` y `aura`.
+
+**Premios del Yatai.** Un premio con `shop: true` en el catálogo no sale en
+el gacha ni en el Catálogo: se vende en la sección de Tamas del Yatai como
+`prize_<clave>` (precio en `tool/seed_shop.dart` y en `/shop/prices`) y se
+compra una vez. La compra escribe `prizes/<clave>` con el recibo fresco de
+`shop/last`, que las reglas aceptan igual que la jugada del pinball. En el
+creador sale con su nombre aunque no se tenga. El primero es la caca.
 
 **Sitio nuevo**: añádelo a `PrizeSlot`, ponlo en su capa en `_paintUnit` de
 `tama_painter.dart` (y en la llamada con `front: true` si puede ir en dos

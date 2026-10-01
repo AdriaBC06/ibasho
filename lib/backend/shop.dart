@@ -5,6 +5,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'gacha.dart';
+import 'prizes.dart';
 import 'tama.dart';
 
 /// Unidades del stock inicial de una comida de serie. Las reglas exigen
@@ -33,6 +34,7 @@ class ShopItem {
     this.ticket,
     this.koroTier,
     this.odoriSong,
+    this.prize,
   });
 
   /// Clave de `/shop/prices/{id}` y de `shop/last.item`. Para un juego,
@@ -60,6 +62,11 @@ class ShopItem {
   /// cancion. Se guarda en `/users/{cuenta}/odori/songs/{cancion}`.
   final String? odoriSong;
 
+  /// Solo en lo que se pone un Tama (seccion de Tamas, 0.8.0): la clave del
+  /// premio (`poop_brown`). Se guarda en `/users/{cuenta}/prizes/{clave}`,
+  /// como lo que da el gacha, y se compra una sola vez.
+  final String? prize;
+
   /// Si hoy se puede comprar, dado el conjunto de comidas desbloqueadas. Un
   /// articulo de comida bloqueada se ensena igual en la rejilla, hundido y
   /// con un candado, pero no se puede pedir.
@@ -70,6 +77,7 @@ class ShopItem {
   static String idForGame(String gameId) => 'game_$gameId';
   static String idForKoroTier(int tier) => 'koro_slot_$tier';
   static String idForOdoriSong(String song) => 'odori_$song';
+  static String idForPrize(String key) => 'prize_$key';
 }
 
 /// El catalogo del Yatai, fijo en el codigo. Los juegos y una comida por
@@ -81,6 +89,8 @@ final List<ShopItem> shopCatalog = List<ShopItem>.unmodifiable(<ShopItem>[
   const ShopItem(id: 'game_nihongo', section: ShopSection.games, gameId: 'nihongo'),
   for (final food in TamaFood.values)
     ShopItem(id: ShopItem.idForFood(food), section: ShopSection.tamas, food: food),
+  for (final item in shopPrizeItems)
+    ShopItem(id: ShopItem.idForPrize(item.key), section: ShopSection.tamas, prize: item.key),
   for (final kind in TicketKind.values)
     ShopItem(id: kind.itemId, section: ShopSection.gacha, ticket: kind),
   for (var tier = 1; tier <= 4; tier++)

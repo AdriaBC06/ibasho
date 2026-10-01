@@ -185,7 +185,9 @@ Future<void> main() async {
     // HEX libre, con un color que la paleta no tiene y sin limites.
     await tapKey(tester, 'tama.edit', 40);
     await tapKey(tester, 'creator.tab.color', 12);
-    await tester.tap(find.text('HEX libre'));
+    // El del cuerpo: el dibujo tiene otro selector igual mas abajo.
+    await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey<String>('creator.colorMode')), matching: find.text('HEX libre')));
     await settle(tester, 10);
     await tester.enterText(
       find.descendant(
@@ -583,6 +585,27 @@ Future<void> main() async {
       }
       expect(T.tamaPalette.map(hexFromColor), contains(look.color));
     }
+  });
+
+  test('el color propio del dibujo y de los ojos se guarda solo si lo hay', () {
+    const plain = TamaLook();
+    expect(plain.toJson().keys, isNot(contains('patternColor')));
+    expect(plain.tint(TamaTint.eyes), isNull);
+
+    final tinted = plain
+        .withTint(TamaTint.pattern, '#ff8800', TamaColorMode.hex)
+        .withTint(TamaTint.eyes, '#4FA3F0');
+    final json = tinted.toJson();
+    expect(json['patternColor'], '#FF8800');
+    expect(json['patternColorMode'], 'hex');
+    expect(json['eyesColor'], '#4FA3F0');
+    expect(json['eyesColorMode'], 'palette');
+    expect(TamaLook.fromJson(json), tinted);
+    expect(tinted == plain, isFalse);
+
+    // Volver al automatico lo quita; un HEX que no vale no cambia nada.
+    expect(tinted.withTint(TamaTint.pattern, null).withTint(TamaTint.eyes, null), plain);
+    expect(plain.withTint(TamaTint.eyes, 'verde'), plain);
   });
 
   test('cada personalidad tiene su ritmo', () {

@@ -75,6 +75,8 @@ class PinballLoadCard extends StatelessWidget {
     required this.onRemove,
     required this.onPlay,
     required this.onCatalog,
+    required this.music,
+    required this.onMusic,
   });
 
   final GachaState gacha;
@@ -87,6 +89,10 @@ class PinballLoadCard extends StatelessWidget {
   final ValueChanged<int> onRemove;
   final VoidCallback onPlay;
   final VoidCallback onCatalog;
+
+  /// Si la mesa lleva agujero de musica.
+  final bool music;
+  final ValueChanged<bool> onMusic;
 
   int _queued(GachaBall b) => queue.where((q) => q.rarity == b.rarity && q.category == b.category).length;
 
@@ -179,6 +185,27 @@ class PinballLoadCard extends StatelessWidget {
                       ),
                   ],
                 ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  IbashoToggle(
+                    key: const ValueKey<String>('pinball.music'),
+                    value: music,
+                    width: 50,
+                    onChanged: busy ? null : onMusic,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.pinballMusicPrizes, style: Ty.body.copyWith(fontWeight: FontWeight.w600)),
+                        Text(music ? l.pinballMusicPrizesOn : l.pinballMusicPrizesOff, style: Ty.micro),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               if (error != null) ...[
                 const SizedBox(height: 8),
                 Text(error!, textAlign: TextAlign.center, style: Ty.caption.copyWith(color: T.wrong)),

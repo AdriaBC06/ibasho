@@ -316,6 +316,11 @@ class _GachaChannelState extends ConsumerState<GachaChannel>
         (context) => const _DepositDialog(),
       ));
 
+  void _openOdds() {
+    AudioService.instance.play(Sfx.tick);
+    unawaited(showIbashoModal<void>(context, (context) => const _OddsDialog()));
+  }
+
   void _choose(TicketKind kind) {
     if (kind == _kind || _busy) return;
     AudioService.instance.play(Sfx.tick);
@@ -342,7 +347,13 @@ class _GachaChannelState extends ConsumerState<GachaChannel>
         ),
     ];
 
-    final deposit = _DepositCard(balls: gacha.totalBalls, onPressed: _openDeposit);
+    final deposit = Row(
+      children: [
+        Expanded(child: _DepositCard(balls: gacha.totalBalls, onPressed: _openDeposit)),
+        const SizedBox(width: 10),
+        _OddsCard(onPressed: _openOdds),
+      ],
+    );
 
     final machine = _MachineStage(
       phase: _phase,
@@ -949,6 +960,35 @@ class _DepositCard extends StatelessWidget {
   }
 }
 
+/// El boton de la tabla de probabilidades, al lado del deposito.
+class _OddsCard extends StatelessWidget {
+  const _OddsCard({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    return _Tap(
+      key: const ValueKey<String>('gacha.odds'),
+      onPressed: onPressed,
+      semanticLabel: l.gachaOdds,
+      child: GlossSurface(
+        radius: 18,
+        padding: const EdgeInsets.fromLTRB(12, 9, 14, 9),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GlyphIcon(Glyph.dice, size: 22, color: Ty.inkSoft),
+            const SizedBox(width: 7),
+            Text(l.gachaOdds, style: Ty.micro.copyWith(color: Ty.inkSoft)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Lo que se va a gastar, antes de gastarlo: tickets a la izquierda, bolas a
 /// la derecha y lo que queda debajo.
 class _ConfirmPull extends StatelessWidget {
@@ -1108,6 +1148,110 @@ class _DepositDialog extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           Text(l.gachaDepositSoon, style: Ty.micro.copyWith(color: Ty.inkSoft)),
+        ],
+      ),
+      actions: [
+        IbashoButton(
+          label: l.actionClose,
+          tone: ButtonTone.accent,
+          cue: Sfx.back,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
+  }
+}
+
+// --- Las probabilidades ---------------------------------------------------
+
+/// Una tasa en diezmilesimas como porcentaje, sin ceros que sobren y con
+/// la coma o el punto de cada idioma.
+String oddsPercent(int tenThousandths, {String decimal = '.'}) {
+  if (tenThousandths == 0) return '—';
+  final text = (tenThousandths / 100).toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
+  return '${text.replaceFirst('.', decimal)} %';
+}
+
+/// La tabla de [gachaOdds]: una fila por rareza y una columna por ticket,
+/// con la garantia de la tirada de 11 de cada uno debajo.
+class _OddsDialog extends StatelessWidget {
+  const _OddsDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final skin = IbashoSkin.of(context);
+    final decimal = Localizations.localeOf(context).languageCode == 'es' ? ',' : '.';
+
+    Widget cell(Widget child) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Center(child: child),
+        );
+
+    return IbashoDialog(
+      title: l.gachaOdds,
+      width: 420,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Table(
+            key: const ValueKey<String>('gacha.odds.table'),
+            columnWidths: const <int, TableColumnWidth>{0: IntrinsicColumnWidth()},
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            border: TableBorder(horizontalInside: BorderSide(color: skin.hairline)),
+            children: [
+              TableRow(
+                children: [
+                  const SizedBox.shrink(),
+                  for (final kind in TicketKind.values)
+                    cell(Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ArtIconView(ticketArt(kind), size: 30),
+                        const SizedBox(height: 2),
+                        Text(
+                          ticketName(l, kind),
+                          style: Ty.micro.copyWith(color: Ty.inkSoft),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    )),
+                ],
+              ),
+              for (final rarity in Rarity.values)
+                TableRow(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 5, 14, 5),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GachaBallView(rarity, size: 24, shadow: false),
+                          const SizedBox(width: 6),
+                          RarityBadge(rarity, height: 18),
+                        ],
+                      ),
+                    ),
+                    for (final kind in TicketKind.values)
+                      cell(Text(
+                        oddsPercent(gachaOdds[kind]![rarity] ?? 0, decimal: decimal),
+                        key: ValueKey<String>('gacha.odds.${kind.name}.${rarity.name}'),
+                        style: Ty.numeral(15, weight: FontWeight.w700),
+                      )),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final kind in TicketKind.values)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                '${ticketName(l, kind)}: ${l.gachaOddsGuaranteed(guaranteedRarity(kind).label)}',
+                style: Ty.micro.copyWith(color: Ty.inkSoft),
+              ),
+            ),
         ],
       ),
       actions: [

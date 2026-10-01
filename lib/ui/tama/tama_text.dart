@@ -93,6 +93,8 @@ String variantLabel(L l, TamaPart part, int v) {
     TamaPart.arms => [l.tamaArmsNubs, l.tamaArmsWings, l.tamaArmsMittens, l.tamaArmsNone],
     TamaPart.feet => [l.tamaFeetBeans, l.tamaFeetPaws, l.tamaFeetLegs, l.tamaFeetNone],
   };
+  // Las de la 0.8.0 van todas en un mismo mensaje, por pieza y numero.
+  if (v >= names.length && v < part.variants) return l.tamaVariantName('${part.name}$v');
   return names[v.clamp(0, names.length - 1)];
 }
 

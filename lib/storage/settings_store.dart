@@ -14,6 +14,8 @@ class Preferences {
   const Preferences({
     this.musicVolume = .55,
     this.effectsVolume = .8,
+    this.musicMuted = false,
+    this.effectsMuted = false,
     this.localeCode = 'es',
     this.reducedMotion = false,
     this.lastUsername = '',
@@ -40,6 +42,15 @@ class Preferences {
 
   final double musicVolume;
   final double effectsVolume;
+
+  /// Silencio puesto desde la barra de estado (0.8.0). El volumen se guarda
+  /// aparte para que al quitarlo vuelva a sonar como estaba.
+  final bool musicMuted;
+  final bool effectsMuted;
+
+  /// Lo que de verdad suena: el volumen, o nada si esta silenciado.
+  double get musicLevel => musicMuted ? 0 : musicVolume;
+  double get effectsLevel => effectsMuted ? 0 : effectsVolume;
 
   /// `es` o `en`.
   final String localeCode;
@@ -122,6 +133,8 @@ class Preferences {
   Preferences copyWith({
     double? musicVolume,
     double? effectsVolume,
+    bool? musicMuted,
+    bool? effectsMuted,
     String? localeCode,
     bool? reducedMotion,
     String? lastUsername,
@@ -147,6 +160,8 @@ class Preferences {
   }) => Preferences(
     musicVolume: musicVolume ?? this.musicVolume,
     effectsVolume: effectsVolume ?? this.effectsVolume,
+    musicMuted: musicMuted ?? this.musicMuted,
+    effectsMuted: effectsMuted ?? this.effectsMuted,
     localeCode: localeCode ?? this.localeCode,
     reducedMotion: reducedMotion ?? this.reducedMotion,
     lastUsername: lastUsername ?? this.lastUsername,
@@ -174,6 +189,8 @@ class Preferences {
   Map<String, Object?> toJson() => {
     'musicVolume': musicVolume,
     'effectsVolume': effectsVolume,
+    'musicMuted': musicMuted,
+    'effectsMuted': effectsMuted,
     'localeCode': localeCode,
     'reducedMotion': reducedMotion,
     'lastUsername': lastUsername,
@@ -203,6 +220,8 @@ class Preferences {
     return Preferences(
       musicVolume: (json['musicVolume'] as num?)?.toDouble() ?? .55,
       effectsVolume: (json['effectsVolume'] as num?)?.toDouble() ?? .8,
+      musicMuted: (json['musicMuted'] as bool?) ?? false,
+      effectsMuted: (json['effectsMuted'] as bool?) ?? false,
       localeCode: (json['localeCode'] as String?) ?? 'es',
       reducedMotion: (json['reducedMotion'] as bool?) ?? false,
       lastUsername: (json['lastUsername'] as String?) ?? '',

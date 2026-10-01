@@ -24,6 +24,7 @@ import 'dart:io';
 /// candado ya se pueden comprar (empiezan a 0 unidades, sin regalo inicial).
 /// Desde la 0.6.2, los huecos de Tamakoro: 10, 20, 30 y 40 monedas segun el
 /// tramo (del 11 al 20, del 21 al 30...).
+/// Desde la 0.8.0, la caca para el Tama: 1 moneda.
 /// Ampliar el catalogo es anadir aqui su precio, nada mas.
 const Map<String, int> _prices = <String, int>{
   'game_minesweeper': 0,
@@ -45,6 +46,7 @@ const Map<String, int> _prices = <String, int>{
   'koro_slot_2': 20,
   'koro_slot_3': 30,
   'koro_slot_4': 40,
+  'prize_poop_brown': 1,
 };
 
 Future<int> main() async {

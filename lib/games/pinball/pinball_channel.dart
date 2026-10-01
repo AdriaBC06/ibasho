@@ -72,6 +72,9 @@ class _PinballChannelState extends ConsumerState<PinballChannel>
   GameStore? _store;
   int _best = 0;
 
+  /// Si la mesa lleva el agujero de musica. Se guarda en el dispositivo.
+  bool _music = true;
+
   final math.Random _random = math.Random();
   String? _tamaId;
   final TamaViewController _tama = TamaViewController();
@@ -125,6 +128,7 @@ class _PinballChannelState extends ConsumerState<PinballChannel>
     setState(() {
       _store = store;
       _best = readInt(json['best']);
+      _music = json['music'] != false;
       if (saved != null && (!saved.isOver || saved.hasUnsaved)) {
         // Una partida a medias: vuelve en pausa, con la bola en el lanzador.
         // Una acabada con bolas sin guardar vuelve a los resultados.
@@ -139,6 +143,7 @@ class _PinballChannelState extends ConsumerState<PinballChannel>
     final game = _game;
     unawaited(_store?.save(<String, Object?>{
       'best': _best,
+      if (!_music) 'music': false,
       if (game != null && (!game.isOver || game.hasUnsaved)) 'game': game.toJson(),
     }));
   }
@@ -312,7 +317,7 @@ class _PinballChannelState extends ConsumerState<PinballChannel>
     }
     if (!mounted) return;
     _fx.clear();
-    final game = PinballGame(queue: List<GachaBall>.of(_queue));
+    final game = PinballGame(queue: List<GachaBall>.of(_queue), music: _music);
     _fx.follow(game, 0, snap: true);
     setState(() {
       _game = game;
@@ -857,6 +862,12 @@ class _PinballChannelState extends ConsumerState<PinballChannel>
           if (_queue.length < pinballQueueMax) _queue.add(b);
         }),
         onRemove: (i) => setState(() => _queue.removeAt(i)),
+        music: _music,
+        onMusic: (on) {
+          AudioService.instance.play(Sfx.tick);
+          setState(() => _music = on);
+          _save();
+        },
         onPlay: _play,
         onCatalog: _openCatalog,
       );

@@ -111,6 +111,7 @@ class ShopController extends StateNotifier<ShopState> {
     required Set<TamaFood> Function() unlockedFoodsOf,
     required int Function(TicketKind kind) ticketsOf,
     required int Function() koroSlotsOf,
+    int Function(String key)? prizeCopiesOf,
   }) : _backend = backend,
        _session = session,
        _coinsOf = coinsOf,
@@ -118,6 +119,7 @@ class ShopController extends StateNotifier<ShopState> {
        _unlockedFoodsOf = unlockedFoodsOf,
        _ticketsOf = ticketsOf,
        _koroSlotsOf = koroSlotsOf,
+       _prizeCopiesOf = prizeCopiesOf ?? ((_) => 0),
        super(const ShopState()) {
     if (_me.isNotEmpty && session.state.phase == SessionPhase.active) {
       unawaited(_start());
@@ -131,6 +133,7 @@ class ShopController extends StateNotifier<ShopState> {
   final Set<TamaFood> Function() _unlockedFoodsOf;
   final int Function(TicketKind kind) _ticketsOf;
   final int Function() _koroSlotsOf;
+  final int Function(String key) _prizeCopiesOf;
 
   final List<StreamSubscription<DatabaseEvent>> _watches =
       <StreamSubscription<DatabaseEvent>>[];
@@ -233,7 +236,7 @@ class ShopController extends StateNotifier<ShopState> {
 
   /// Compra un articulo. Escritura multi-ruta unica: el recibo, y ademas las
   /// monedas (si el precio no es 0), la despensa o el juego regalado, segun
-  /// el articulo. Lanza [ShopException] si no se puede pedir.
+  /// el articulo (o el premio de la coleccion). Lanza [ShopException] si no se puede pedir.
   Future<void> buy(ShopItem item, int qty) async {
     if (qty < 1 || qty > maxPurchaseQty) {
       throw const ShopException(ShopFailure.rejected);
@@ -258,6 +261,11 @@ class ShopController extends StateNotifier<ShopState> {
     }
     final song = item.odoriSong;
     if (song != null && (qty != 1 || state.hasOdoriSong(song))) {
+      throw const ShopException(ShopFailure.alreadyOwned);
+    }
+    // Lo que se pone un Tama se compra una vez: con una copia basta.
+    final prize = item.prize;
+    if (prize != null && (qty != 1 || _prizeCopiesOf(prize) > 0)) {
       throw const ShopException(ShopFailure.alreadyOwned);
     }
     final price = state.prices[item.id];
@@ -288,6 +296,7 @@ class ShopController extends StateNotifier<ShopState> {
       },
       if (tier != null) 'users/$_me/koro/slots': slots + 1,
       if (song != null) 'users/$_me/odori/songs/$song': true,
+      if (prize != null) 'users/$_me/prizes/$prize': _prizeCopiesOf(prize) + 1,
       // Señal para la mision «compra algo en el Yatai» (`missions.dart`).
       'users/$_me/missions/signal/buy': {'at': serverTimestamp},
     };

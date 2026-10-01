@@ -11,9 +11,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../audio/tama_voice.dart' show ChirpKind;
 import '../../../backend/gacha.dart';
 import '../../../backend/prizes.dart';
 import '../../../backend/tama.dart';
+import '../../../games/hatarakitama/hataraki_channel.dart' show HatarakiLikes;
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
 import '../../../state/tamas.dart';
@@ -21,6 +23,7 @@ import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
 import '../../tama/accent_prompt.dart';
+import '../../tama/tama_painter.dart' show TamaPainter;
 import '../../tama/tama_text.dart';
 import '../../tama/tama_view.dart';
 import '../../tama/tama_widgets.dart';
@@ -90,7 +93,6 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
   final math.Random _rng = math.Random();
   final TamaViewController _view = TamaViewController();
   final TextEditingController _name = TextEditingController();
-  final TextEditingController _hex = TextEditingController();
   final List<_Draft> _undo = <_Draft>[];
 
   late _Draft _draft;
@@ -99,14 +101,12 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
   bool _seeded = false;
   bool _saving = false;
   String? _nameError;
-  String? _hexError;
 
   bool get _isNew => widget.tamaId == null;
 
   @override
   void dispose() {
     _name.dispose();
-    _hex.dispose();
     super.dispose();
   }
 
@@ -129,7 +129,6 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
     }
     _saved = _draft;
     _name.text = _draft.name;
-    _hex.text = _draft.look.color;
     _seeded = true;
   }
 
@@ -144,11 +143,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
 
   void _apply(_Draft next, {bool checkpoint = true}) {
     if (checkpoint) _checkpoint();
-    setState(() {
-      _draft = next;
-      if (_hex.text.toUpperCase() != next.look.color) _hex.text = next.look.color;
-      _hexError = null;
-    });
+    setState(() => _draft = next);
   }
 
   void _undoLast() {
@@ -158,15 +153,19 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
     setState(() {
       _draft = previous;
       _name.text = previous.name;
-      _hex.text = previous.look.color;
     });
   }
 
   void _shuffle() {
     AudioService.instance.play(Sfx.tick);
     _apply(_draft.copyWith(look: TamaLook.random(_rng)));
-    _view.speak();
+    _speak();
   }
+
+  /// Que diga algo con la voz del borrador tal como esta ahora, no con la del
+  /// escenario: al tocar un timbre el escenario aun lleva la de antes hasta
+  /// el siguiente frame, y se oia la voz anterior.
+  void _speak() => _view.speak(ChirpKind.hello, _draft.voice);
 
   bool get _dirty => !_draft.sameAs(_saved);
 
@@ -445,6 +444,20 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
               checkpoint: false),
         );
 
+    // El color propio de una pieza: «automático» la deja con el de siempre;
+    // al pasar a paleta o HEX se empieza por el que tiene ahora, [current].
+    Widget tintPick(TamaTint t, Color current) => _ColorPick(
+          keyPrefix: 'creator.${t.colorKey}',
+          value: look.tints[t]?.$1,
+          mode: look.tintMode(t) ?? TamaColorMode.palette,
+          automatic: hexFromColor(current),
+          onChangeStart: _checkpoint,
+          onChanged: (hex, mode, {checkpoint = true}) => _apply(
+            _draft.copyWith(look: _draft.look.withTint(t, hex, mode)),
+            checkpoint: checkpoint,
+          ),
+        );
+
     Widget heading(String text) => Padding(
           padding: const EdgeInsets.only(bottom: 12, top: 4),
           child: Text(text, style: Ty.label.copyWith(fontSize: 14)),
@@ -461,80 +474,33 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
           dial(TamaDial.bodyHeight, l.tamaHeight),
         ],
       CreatorTab.color => [
-          IbashoSegmented<TamaColorMode>(
-            key: const ValueKey<String>('creator.colorMode'),
-            options: [
-              (TamaColorMode.palette, l.tamaColorPalette),
-              (TamaColorMode.hex, l.tamaColorHex),
-            ],
-            value: look.colorMode,
-            onChanged: (mode) => _apply(_draft.copyWith(look: look.withColor(look.color, mode))),
-          ),
-          const SizedBox(height: 18),
-          if (look.colorMode == TamaColorMode.palette)
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                for (final (i, c) in T.tamaPalette.indexed)
-                  ColorChip(
-                    key: ValueKey<String>('creator.palette.$i'),
-                    color: c,
-                    diameter: 44,
-                    selected: hexFromColor(c) == look.color,
-                    onPressed: () => _apply(_draft.copyWith(
-                        look: look.withColor(hexFromColor(c), TamaColorMode.palette))),
-                  ),
-              ],
-            )
-          else
-            _Wrapped(
-              children: [
-                LayoutBuilder(
-                  builder: (context, box) => HsvColorPicker(
-                    value: look.bodyColor,
-                    width: math.min(330, box.maxWidth),
-                    height: 170,
-                    onChangeStart: _checkpoint,
-                    onChanged: (c) => _apply(
-                      _draft.copyWith(look: _draft.look.withColor(hexFromColor(c), TamaColorMode.hex)),
-                      checkpoint: false,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: IbashoTextField(
-                    key: const ValueKey<String>('creator.hex'),
-                    controller: _hex,
-                    label: l.tamaColorHexField,
-                    hint: '#RRGGBB',
-                    maxLength: 7,
-                    error: _hexError,
-                    formatters: [FilteringTextInputFormatter.allow(RegExp('[#0-9A-Fa-f]'))],
-                    onChanged: (text) {
-                      final clean = text.startsWith('#') ? text : '#$text';
-                      if (colorFromHex(clean) != null && clean.length == 7) {
-                        _apply(_draft.copyWith(look: look.withColor(clean, TamaColorMode.hex)));
-                      }
-                    },
-                    onSubmitted: (text) {
-                      final clean = text.startsWith('#') ? text : '#$text';
-                      if (colorFromHex(clean) == null || clean.length != 7) {
-                        AudioService.instance.play(Sfx.error);
-                        setState(() => _hexError = l.tamaColorHexError);
-                      }
-                    },
-                  ),
-                ),
-              ],
+          _ColorPick(
+            keyPrefix: 'creator',
+            value: look.color,
+            mode: look.colorMode,
+            onChangeStart: _checkpoint,
+            onChanged: (hex, mode, {checkpoint = true}) => _apply(
+              _draft.copyWith(look: _draft.look.withColor(hex!, mode)),
+              checkpoint: checkpoint,
             ),
+          ),
           const SizedBox(height: 22),
           const Hairline(),
           const SizedBox(height: 16),
           heading(l.tamaPattern),
           parts(TamaPart.pattern),
           const SizedBox(height: 18),
-          dial(TamaDial.patternTone, l.tamaPatternTone),
+          // Sin dibujo no hay nada que pintar.
+          if (look.part(TamaPart.pattern) != 0) ...[
+          const SizedBox(height: 18),
+          heading(l.tamaPatternColor),
+          tintPick(TamaTint.pattern, TamaPainter.patternColor(look.bodyColor, look.unit(TamaDial.patternTone))),
+          // El tono solo cambia el color a juego con el cuerpo.
+          if (look.tint(TamaTint.pattern) == null) ...[
+            const SizedBox(height: 14),
+            dial(TamaDial.patternTone, l.tamaPatternTone),
+          ],
+          ],
         ],
       CreatorTab.eyes => [
           heading(l.tamaStyle),
@@ -543,6 +509,14 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
           dial(TamaDial.eyeSize, l.tamaSize),
           dial(TamaDial.eyeSpacing, l.tamaSpacing),
           dial(TamaDial.eyeHeight, l.tamaHeight),
+          // Solo los que tienen iris o reflejo pueden ir de otro color.
+          if (tintableEyes.contains(look.part(TamaPart.eyes))) ...[
+            const SizedBox(height: 22),
+            const Hairline(),
+            const SizedBox(height: 16),
+            heading(l.tamaEyeColor),
+            tintPick(TamaTint.eyes, _eyeColorOf(look)),
+          ],
         ],
       CreatorTab.mouth => [
           heading(l.tamaStyle),
@@ -593,6 +567,14 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
     );
   }
 
+  /// El color que llevan los ojos sin color propio, para empezar por el al
+  /// elegir uno.
+  static Color _eyeColorOf(TamaLook look) => switch (look.part(TamaPart.eyes)) {
+        6 => T.tamaHeart,
+        10 => T.tamaCatEye,
+        _ => look.bodyColor,
+      };
+
   /// Los premios de [category] que se puede poner, cada uno en una ficha con
   /// el Tama ya puesto. La primera ficha lo quita todo.
   Widget _outfitChips(L l, GachaCategory category) {
@@ -633,7 +615,8 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
               return TamaStyleChip(
                 key: ValueKey<String>('creator.prize.${item.key}'),
                 look: look,
-                label: '???',
+                // Lo del Yatai no es sorpresa: se ve su nombre.
+                label: item.prize.shop ? l.prizeName(item.key) : '???',
                 wash: RarityArt.of(item.prize.rarity),
                 selected: false,
                 art: PrizeView(item, size: 60, locked: true),
@@ -699,7 +682,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
                   ? null
                   : () {
                       _apply(_draft.copyWith(personality: p));
-                      _view.speak();
+                      _speak();
                     },
               semanticLabel: personalityLabel(l, p),
               builder: (context, state) {
@@ -739,6 +722,15 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
             ),
         ],
       ),
+      // La maña en Hatarakitama, para elegir la personalidad sabiendo en qué
+      // oficios irá más rápido.
+      const SizedBox(height: 12),
+      Text(l.tamaHatarakiLikes, style: Ty.micro),
+      const SizedBox(height: 4),
+      HatarakiLikes(
+        key: const ValueKey<String>('creator.likes'),
+        personality: _draft.personality,
+      ),
       const SizedBox(height: 22),
       const Hairline(),
       const SizedBox(height: 16),
@@ -752,7 +744,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
             glyph: Glyph.wave,
             height: 40,
             cue: null,
-            onPressed: () => _view.speak(),
+            onPressed: _speak,
           ),
         ],
       ),
@@ -789,7 +781,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
                 if (_draft.voice.timbre != t) {
                   _apply(_draft.copyWith(voice: _draft.voice.copyWith(timbre: t)));
                 }
-                _view.speak();
+                _speak();
               },
               semanticLabel: timbreLabel(l, t),
               builder: (context, state) {
@@ -1159,6 +1151,156 @@ class GlossSurfaceCard extends StatelessWidget {
 
 /// En horizontal, una fila; en vertical, una columna. Para los bloques del
 /// creador que en escritorio van uno al lado del otro.
+/// Como se elige un color en [_ColorPick].
+enum _PickMode { automatic, palette, hex }
+
+/// Para cuando cambia el color: `null` es volver al automatico. Mientras se
+/// arrastra por la rueda llega con [checkpoint] a `false`, para que deshacer
+/// no apile cada paso.
+typedef _ColorChanged = void Function(String? hex, TamaColorMode mode, {bool checkpoint});
+
+/// Elegir un color como el del cuerpo: los tonos de la casa o cualquiera con
+/// la rueda y el `#RRGGBB`. El del cuerpo, el del dibujo y el de los ojos son
+/// este mismo.
+///
+/// Con [automatic] hay una opcion mas, la primera, para ir con el color de
+/// siempre ([value] `null`); [automatic] es ese color, y por el se empieza al
+/// pasar a la paleta o al HEX.
+class _ColorPick extends StatefulWidget {
+  const _ColorPick({
+    required this.keyPrefix,
+    required this.value,
+    required this.mode,
+    required this.onChanged,
+    required this.onChangeStart,
+    this.automatic,
+  });
+
+  final String keyPrefix;
+  final String? value;
+  final TamaColorMode mode;
+  final String? automatic;
+  final _ColorChanged onChanged;
+  final VoidCallback onChangeStart;
+
+  @override
+  State<_ColorPick> createState() => _ColorPickState();
+}
+
+class _ColorPickState extends State<_ColorPick> {
+  late final TextEditingController _hex = TextEditingController(text: widget.value ?? '');
+  String? _error;
+
+  _PickMode get _pick => widget.value == null
+      ? _PickMode.automatic
+      : widget.mode == TamaColorMode.hex
+          ? _PickMode.hex
+          : _PickMode.palette;
+
+  @override
+  void didUpdateWidget(_ColorPick old) {
+    super.didUpdateWidget(old);
+    // Lo que llega de fuera (la paleta, la rueda, deshacer) se refleja en el
+    // campo; lo que se esta escribiendo a medias, no se pisa.
+    final value = widget.value;
+    if (value != null && _hex.text.toUpperCase() != value) _hex.text = value;
+    if (value != old.value) _error = null;
+  }
+
+  @override
+  void dispose() {
+    _hex.dispose();
+    super.dispose();
+  }
+
+  void _setPick(_PickMode pick) {
+    final mode = pick == _PickMode.hex ? TamaColorMode.hex : TamaColorMode.palette;
+    if (pick == _PickMode.automatic) {
+      widget.onChanged(null, mode);
+    } else {
+      widget.onChanged(widget.value ?? widget.automatic, mode);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final prefix = widget.keyPrefix;
+    final value = widget.value;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        IbashoSegmented<_PickMode>(
+          key: ValueKey<String>('$prefix.colorMode'),
+          options: [
+            if (widget.automatic != null) (_PickMode.automatic, l.tamaColorAuto),
+            (_PickMode.palette, l.tamaColorPalette),
+            (_PickMode.hex, l.tamaColorHex),
+          ],
+          value: _pick,
+          onChanged: _setPick,
+        ),
+        if (value != null) ...[
+          const SizedBox(height: 18),
+          if (_pick == _PickMode.palette)
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final (i, c) in T.tamaPalette.indexed)
+                  ColorChip(
+                    key: ValueKey<String>('$prefix.palette.$i'),
+                    color: c,
+                    diameter: 44,
+                    selected: hexFromColor(c) == value,
+                    onPressed: () => widget.onChanged(hexFromColor(c), TamaColorMode.palette),
+                  ),
+              ],
+            )
+          else
+            _Wrapped(
+              children: [
+                LayoutBuilder(
+                  builder: (context, box) => HsvColorPicker(
+                    value: colorFromHex(value) ?? T.tamaPalette.first,
+                    width: math.min(330, box.maxWidth),
+                    height: 170,
+                    onChangeStart: widget.onChangeStart,
+                    onChanged: (c) => widget.onChanged(hexFromColor(c), TamaColorMode.hex, checkpoint: false),
+                  ),
+                ),
+                Expanded(
+                  child: IbashoTextField(
+                    key: ValueKey<String>('$prefix.hex'),
+                    controller: _hex,
+                    label: l.tamaColorHexField,
+                    hint: '#RRGGBB',
+                    maxLength: 7,
+                    error: _error,
+                    formatters: [FilteringTextInputFormatter.allow(RegExp('[#0-9A-Fa-f]'))],
+                    onChanged: (text) {
+                      final clean = text.startsWith('#') ? text : '#$text';
+                      if (colorFromHex(clean) != null && clean.length == 7) {
+                        widget.onChanged(clean.toUpperCase(), TamaColorMode.hex);
+                      }
+                    },
+                    onSubmitted: (text) {
+                      final clean = text.startsWith('#') ? text : '#$text';
+                      if (colorFromHex(clean) == null || clean.length != 7) {
+                        AudioService.instance.play(Sfx.error);
+                        setState(() => _error = l.tamaColorHexError);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ],
+    );
+  }
+}
+
 class _Wrapped extends StatelessWidget {
   const _Wrapped({required this.children});
 

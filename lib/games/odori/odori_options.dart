@@ -1,5 +1,5 @@
-// Ibasho — Odori: las opciones del juego (direccion, aspecto, velocidad,
-// desfase con su calibracion, teclas de cada carril y tema propio).
+// Ibasho — Odori: las opciones del juego (direccion, aspecto, volumen,
+// velocidad, desfase con su calibracion, teclas de cada carril y tema propio).
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -39,9 +39,12 @@ import 'odori_widgets.dart';
 double speedOf(double approach) => 1.2 / approach;
 
 class OdoriOptionsPage extends ConsumerStatefulWidget {
-  const OdoriOptionsPage({super.key, required this.prefs, required this.onChanged});
+  const OdoriOptionsPage({super.key, required this.prefs, required this.onChanged, this.songAsset});
 
   final OdoriPrefs prefs;
+
+  /// La instrumental que suena un momento al mover el volumen de la cancion.
+  final String? songAsset;
   final ValueChanged<OdoriPrefs> onChanged;
 
   @override
@@ -59,10 +62,27 @@ class _OdoriOptionsPageState extends ConsumerState<OdoriOptionsPage> {
   int? _waitingAlt;
   final FocusNode _focus = FocusNode(debugLabel: 'odori.options');
 
+  /// Apaga la instrumental un rato despues de soltar el volumen.
+  Timer? _songOff;
+
   @override
   void dispose() {
+    _songOff?.cancel();
+    if (_songOff != null) unawaited(AudioService.instance.stopOdoriPreview());
     _focus.dispose();
     super.dispose();
+  }
+
+  /// Hace sonar la instrumental al volumen elegido, para oir como queda.
+  void _songPreview() {
+    final asset = widget.songAsset;
+    if (asset == null) return;
+    unawaited(AudioService.instance.playOdoriPreview(asset));
+    _songOff?.cancel();
+    _songOff = Timer(const Duration(milliseconds: 2500), () {
+      _songOff = null;
+      unawaited(AudioService.instance.stopOdoriPreview());
+    });
   }
 
   void _set(OdoriPrefs p) {
@@ -123,6 +143,7 @@ class _OdoriOptionsPageState extends ConsumerState<OdoriOptionsPage> {
     final l = L.of(context)!;
     final layout = Layout.of(context);
     final p = _prefs;
+    final menuMusic = ref.watch(preferencesProvider.select((m) => m.musicLevel));
 
     Widget section(String title, List<Widget> children, {String? hint}) => Padding(
           padding: const EdgeInsets.only(bottom: 18),
@@ -187,6 +208,46 @@ class _OdoriOptionsPageState extends ConsumerState<OdoriOptionsPage> {
                             onPressed: () => _set(p.copyWith(look: look)),
                           ),
                       ],
+                    ),
+                  ]),
+                  section(l.odoriMusicVolume, hint: l.odoriMusicVolumeHint, [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: IbashoSlider(
+                            key: const ValueKey<String>('odori.music'),
+                            width: double.infinity,
+                            value: p.musicVolume ?? menuMusic,
+                            ticks: 20,
+                            onChanged: (v) {
+                              final volume = (v * 20).round() / 20;
+                              if (volume == p.musicVolume) return;
+                              _set(p.copyWith(musicVolume: () => volume));
+                              _songPreview();
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 96,
+                          child: Text(
+                            '${((p.musicVolume ?? menuMusic) * 100).round()} %',
+                            textAlign: TextAlign.right,
+                            style: Ty.numeral(16, color: Ty.inkSoft),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IbashoButton(
+                        key: const ValueKey<String>('odori.music.follow'),
+                        label: l.odoriMusicFollow,
+                        glyph: Glyph.refresh,
+                        tone: ButtonTone.quiet,
+                        height: 40,
+                        onPressed: p.musicVolume == null ? null : () => _set(p.copyWith(musicVolume: () => null)),
+                      ),
                     ),
                   ]),
                   section(l.odoriHitSounds, hint: l.odoriHitSoundsHint, [

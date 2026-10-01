@@ -223,7 +223,12 @@ class PinballLayout {
         ];
 
   /// La mesa de la semilla [seed]: siempre la misma para la misma semilla.
-  factory PinballLayout.generate(int seed) => _LayoutBuilder(seed).build();
+  /// Sin [music] no hay agujero ni dianas de musica: el jugador ha apagado
+  /// esos premios.
+  factory PinballLayout.generate(int seed, {bool music = true}) => _LayoutBuilder(seed, <GachaCategory>[
+        for (final c in GachaCategory.values)
+          if (music || c != GachaCategory.music) c,
+      ]).build();
 
   final int seed;
   final Map<GachaCategory, Offset> holes;
@@ -290,9 +295,12 @@ typedef _Shape = ({Offset a, Offset b, double r});
 /// Monta una [PinballLayout] al azar: pone las piezas una a una donde quepan,
 /// dejando siempre [_gap] libre alrededor.
 class _LayoutBuilder {
-  _LayoutBuilder(this.seed) : _r = math.Random(seed);
+  _LayoutBuilder(this.seed, this.categories) : _r = math.Random(seed);
 
   final int seed;
+
+  /// Las categorias con agujero y dianas en esta mesa.
+  final List<GachaCategory> categories;
   final math.Random _r;
 
   /// Hueco minimo entre piezas: la bola (18) y aire de sobra.
@@ -329,7 +337,7 @@ class _LayoutBuilder {
     _onWall.clear();
     _holes.clear();
 
-    final cats = List<GachaCategory>.of(GachaCategory.values)..shuffle(_r);
+    final cats = List<GachaCategory>.of(categories)..shuffle(_r);
     final holes = <GachaCategory, Offset>{};
     for (final cat in cats) {
       final at = _place(200, () {
@@ -436,7 +444,7 @@ class _LayoutBuilder {
   /// las paredes, otras en carriles y el resto sueltas y un poco giradas.
   List<TargetSpec>? _targets() {
     final cats = <GachaCategory>[
-      for (final c in GachaCategory.values)
+      for (final c in categories)
         for (var i = 0; i < targetsPerCategory; i++) c,
     ]..shuffle(_r);
     final out = <TargetSpec>[];
@@ -683,14 +691,15 @@ GachaBall? _ballFromJson(Object? raw) {
 /// en juego. No sabe nada de widgets ni de red: el canal le pasa el tiempo y
 /// los mandos y pinta lo que hay.
 class PinballGame {
-  /// Sin [seed], la mesa sale nueva al azar.
-  PinballGame({required List<GachaBall> queue, math.Random? random, int? seed})
-      : this._(queue, random ?? math.Random(), seed);
+  /// Sin [seed], la mesa sale nueva al azar. Sin [music], la mesa no tiene
+  /// agujero de musica.
+  PinballGame({required List<GachaBall> queue, math.Random? random, int? seed, bool music = true})
+      : this._(queue, random ?? math.Random(), seed, music);
 
-  PinballGame._(List<GachaBall> queue, math.Random random, int? seed)
+  PinballGame._(List<GachaBall> queue, math.Random random, int? seed, this.music)
       : queue = List<GachaBall>.unmodifiable(queue),
         _random = random,
-        layout = PinballLayout.generate(seed ?? PinballLayout.randomSeed(random)) {
+        layout = PinballLayout.generate(seed ?? PinballLayout.randomSeed(random), music: music) {
     assert(queue.isNotEmpty && queue.length <= pinballQueueMax);
     spinnerAngles = List<double>.generate(layout.spinners.length, (i) => i * 1.3);
     _spinnerOmegas = List<double>.generate(layout.spinners.length, (i) => i.isEven ? _spinnerIdle : -_spinnerIdle);
@@ -699,6 +708,9 @@ class PinballGame {
 
   /// La mesa de esta partida.
   final PinballLayout layout;
+
+  /// Si la mesa tiene el agujero de musica.
+  final bool music;
 
   /// Todas las bolas de la partida, en el orden en que salen.
   final List<GachaBall> queue;
@@ -1267,6 +1279,7 @@ class PinballGame {
   /// bola ya habia salido, ya no se puede cancelar.
   Map<String, Object?> toJson() => <String, Object?>{
         'seed': layout.seed,
+        if (!music) 'music': false,
         'queue': <Object?>[for (final b in queue) _ballJson(b)],
         'outcomes': <Object?>[for (final o in outcomes) o.toJson()],
         'score': score,
@@ -1288,7 +1301,7 @@ class PinballGame {
     // Sin semilla (una partida de antes de las mesas al azar) sale una mesa
     // nueva y lo tumbado ya no sirve.
     final seed = raw['seed'] is int ? raw['seed']! as int : null;
-    final game = PinballGame(queue: queue, random: random, seed: seed);
+    final game = PinballGame(queue: queue, random: random, seed: seed, music: raw['music'] != false);
     final outs = raw['outcomes'];
     if (outs is List) {
       for (final o in outs.take(queue.length)) {

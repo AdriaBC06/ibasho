@@ -14,6 +14,9 @@ import '../backend/models.dart' show serverTimestamp;
 import '../backend/tama.dart';
 import '../games/hatarakitama/hataraki_data.dart';
 import '../games/hatarakitama/hataraki_engine.dart';
+import '../games/hatarakitama/hataraki_home.dart';
+import '../games/hatarakitama/hataraki_map.dart';
+import '../games/hatarakitama/hataraki_town.dart';
 import 'login_bonus.dart' show bonusDay;
 import 'session.dart';
 
@@ -28,6 +31,55 @@ const int hatarakiMaxScore = 999999999;
 
 /// Cada cuánto se guarda la partida mientras el canal está abierto.
 const Duration hatarakiSaveEvery = Duration(minutes: 2);
+
+/// `hataraki/visit`: lo que ven los amigos de cada Tama al visitar el pueblo
+/// (nombre, personalidad y aspecto). Los amigos no leen `tamas`, así que va
+/// con la partida y se reescribe cada vez que se guarda.
+Map<String, Object> hatarakiVisitJson(List<Tama> tamas) => {
+  'tamas': {
+    for (final t in tamas)
+      t.id: {
+        'name': t.name,
+        'personality': t.personality.name,
+        'look': {
+          for (final e in t.look.toJson().entries)
+            if (e.value != null) e.key: e.value!,
+        },
+      },
+  },
+};
+
+/// Los Tamas de una ficha de visita, como Tamas de [accountId] (sin cuidados:
+/// solo sirven para dibujarlos).
+List<Tama> hatarakiVisitTamas(Object? raw, String accountId) {
+  final tamas = raw is Map ? raw['tamas'] : null;
+  if (tamas is! Map) return const [];
+  final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+  return [
+    for (final e in tamas.entries)
+      if (e.value is Map)
+        Tama(
+          id: '${e.key}',
+          creator: accountId,
+          keeper: accountId,
+          name: ((e.value as Map)['name'] as String?) ?? '',
+          personality: TamaPersonality.byName((e.value as Map)['personality']),
+          look: TamaLook.fromJson((e.value as Map)['look']),
+          createdAt: epoch,
+          updatedAt: epoch,
+        ),
+  ]..sort((a, b) => a.name.compareTo(b.name));
+}
+
+/// Lo que se ve al visitar el pueblo de alguien: su partida tal y como la
+/// guardó y sus Tamas.
+@immutable
+class HatarakiVisit {
+  const HatarakiVisit({required this.game, required this.tamas});
+
+  final HState game;
+  final List<Tama> tamas;
+}
 
 @immutable
 class HatarakiState {
@@ -96,6 +148,10 @@ class HatarakiController extends StateNotifier<HatarakiState> {
 
   int get _ms => _now().millisecondsSinceEpoch;
 
+  /// El día de hoy para la tienda y la lonja (el mismo que el de las
+  /// clasificaciones y el bono diario).
+  int get today => bonusDay(_now());
+
   /// Personalidad y ánimo de un Tama ahora mismo, para las cuentas de la UI.
   HTama? tamaNow(String id) => _tamas[id];
 
@@ -144,6 +200,7 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     );
     if (_now().difference(_savedAt) >= hatarakiSaveEvery) unawaited(save());
     unawaited(_claimTreasure());
+    unawaited(_claimOrder());
     return report;
   }
 
@@ -152,6 +209,7 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     final report = game.advance(_ms, _tamas);
     final gained = report.xp.values.fold(0, (a, b) => a + b);
     final now = _now();
+    game.refreshOrders(bonusDay(now));
     game.countXp(gained, today: bonusDay(now), thisWeek: gachaWeek(now));
     return report;
   }
@@ -188,13 +246,16 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     return true;
   });
 
+  bool setBoost(String tamaId, String? item) =>
+      _apply((g) => g.setBoost(tamaId, item));
+
   bool drinkTea(String item) => _apply((g) => g.drinkTea(item, _ms));
 
   bool equip(String item) => _apply((g) => g.equip(item));
 
   bool unequip(HGearSlot slot) => _apply((g) => g.unequip(slot));
 
-  bool cancelExpedition() => _apply((g) => g.cancelExpedition());
+  bool cancelExpedition(String zone) => _apply((g) => g.cancelExpedition(zone));
 
   /// Vende [n] de [item] (todo lo que haya, como mucho). Devuelve los mon.
   int sell(String item, int n) {
@@ -207,24 +268,79 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     return got;
   }
 
+  /// Sube [building] un nivel con ginmon y piezas del almacén.
+  bool build(HBuilding building) => _apply((g) => g.build(building));
+
+  /// Compra [n] de [item] en la tienda de hoy. Devuelve cuántas.
+  int buy(String item, int n) {
+    var got = 0;
+    _apply((g) {
+      got = g.buy(item, n, today);
+      return got > 0;
+    });
+    return got;
+  }
+
   /// Gasta la comida más sencilla del almacén. Devuelve cuál, o `null`.
   String? takeMeal() {
     final game = state.game;
     if (game == null) return null;
-    final foods = game.bank.keys.where((id) => hItem(id)?.kind == HItemKind.food).toList()
-      ..sort((a, b) => hItem(a)!.food.compareTo(hItem(b)!.food));
+    final foods =
+        game.bank.keys.where((id) => hItem(id)?.kind == HItemKind.food).toList()
+          ..sort((a, b) => hItem(a)!.food.compareTo(hItem(b)!.food));
     if (foods.isEmpty) return null;
     return _apply((g) => g.eat(foods.first)) ? foods.first : null;
   }
 
-  bool startExpedition(String zone, List<String> tamaIds, String food) {
+  /// Los Tamas de [ids] como los ve el juego (sin los que ya no existen).
+  List<HTama> partyOf(List<String> ids) {
     final tamas = _tamas;
-    final party = [
-      for (final id in tamaIds) tamas[id],
-    ].whereType<HTama>().toList();
-    if (party.length != tamaIds.length) return false;
-    return _apply((g) => g.startExpedition(zone, party, food, _ms));
+    return [for (final id in ids) tamas[id]].whereType<HTama>().toList();
   }
+
+  bool startExpedition(HTripPlan plan, List<String> tamaIds) {
+    final party = partyOf(tamaIds);
+    if (party.length != tamaIds.length) return false;
+    return _apply((g) => g.startExpedition(plan, party, _ms, today));
+  }
+
+  /// Entrega el encargo [i] del tablón y, si era el grande, cobra su
+  /// ticket.
+  bool deliver(int i) {
+    final now = _now();
+    final ok = _apply(
+      (g) => g.deliver(i, today: bonusDay(now), thisWeek: gachaWeek(now)),
+    );
+    if (ok) unawaited(_claimOrder());
+    return ok;
+  }
+
+  /// Cambia el encargo [i] por otro (uno al día, con ginmon).
+  bool swapOrder(int i) => _apply((g) => g.swapOrder(i, today));
+
+  // --- Casas ------------------------------------------------------------------
+
+  /// Le hace casa a [tamaId].
+  bool buildHouse(String tamaId) => _apply((g) => g.buildHouse(tamaId));
+
+  /// Pone [item] del almacén en la casa de [tamaId].
+  bool placeFurniture(String tamaId, String item, int x, int y) =>
+      _apply((g) => g.placeFurniture(tamaId, item, x, y));
+
+  bool moveFurniture(String tamaId, int i, int x, int y) =>
+      _apply((g) => g.moveFurniture(tamaId, i, x, y));
+
+  bool rotateFurniture(String tamaId, int i) =>
+      _apply((g) => g.rotateFurniture(tamaId, i));
+
+  bool storeFurniture(String tamaId, int i) =>
+      _apply((g) => g.storeFurniture(tamaId, i));
+
+  bool decorate(String tamaId, {HStyle? floor, HStyle? wall}) =>
+      _apply((g) => g.decorate(tamaId, floor: floor, wall: wall));
+
+  /// Paga un guía que enseña hoy todo el mapa de [zone].
+  bool hireGuide(String zone) => _apply((g) => g.hireGuide(zone, today));
 
   // --- Canal de depuración (solo administración) ---------------------------
 
@@ -233,7 +349,12 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     final game = state.game;
     if (game == null) return;
     change(game);
-    state = HatarakiState(game: game, version: state.version + 1, away: state.away, loaded: true);
+    state = HatarakiState(
+      game: game,
+      version: state.version + 1,
+      away: state.away,
+      loaded: true,
+    );
     _dirty = true;
     unawaited(save());
   }
@@ -263,11 +384,77 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     });
   }
 
-  /// La expedición en curso vuelve ya, con su botín.
+  /// Dos de cada mueble al almacén y todos los planos sabidos.
+  void debugFurniture() => _debug((g) {
+    for (final f in hFurnitureList) {
+      g.bank[f.id] = g.count(f.id) + 2;
+    }
+    g.plans.addAll(hPlanIds);
+  });
+
+  /// Tablón nuevo: los encargos de hoy otra vez y el cambio del día libre.
+  void debugOrders() => _debug((g) {
+    g
+      ..ordersDay = 0
+      ..swapDay = 0
+      ..refreshOrders(today);
+  });
+
+  /// Todos los edificios un nivel más (o al máximo).
+  void debugTown() => _debug((g) {
+    for (final b in HBuilding.values) {
+      g.town[b] = math.min(hTownMaxLevel, g.townLevel(b) + 1);
+    }
+  });
+
+  /// Los viajes en marcha llegan ya a todas sus casillas, con su botín.
   void debugFinishTrip() => _debug((g) {
-    final exp = g.expedition;
-    if (exp == null) return;
-    g.expedition = HExpedition(exp.zone, exp.tamaIds, exp.startedAt, _ms, exp.power);
+    final now = _ms;
+    for (var i = 0; i < g.expeditions.length; i++) {
+      final e = g.expeditions[i];
+      g.expeditions[i] = HExpedition(
+        e.zone,
+        e.tamaIds,
+        e.startedAt,
+        now,
+        e.power,
+        day: e.day,
+        route: e.route,
+        at: [for (final t in e.at) math.min(t, now)],
+        fails: e.fails,
+        done: e.done,
+        porter: e.porter,
+        luck: e.luck,
+        log: e.log,
+      );
+    }
+  });
+
+  /// Cada viaje con mapa llega ya a su siguiente casilla (solo a esa).
+  void debugTripStep() => _debug((g) {
+    final now = _ms;
+    for (var i = 0; i < g.expeditions.length; i++) {
+      final e = g.expeditions[i];
+      if (e.route.isEmpty || e.done >= e.at.length) continue;
+      g.expeditions[i] = HExpedition(
+        e.zone,
+        e.tamaIds,
+        e.startedAt,
+        e.endsAt,
+        e.power,
+        day: e.day,
+        route: e.route,
+        at: [
+          for (var j = 0; j < e.at.length; j++)
+            j == e.done ? math.min(e.at[j], now) : e.at[j],
+        ],
+        fails: e.fails,
+        done: e.done,
+        porter: e.porter,
+        luck: e.luck,
+        log: e.log,
+      );
+    }
   });
 
   /// Un tesoro del gacha como si lo hubiera traído una expedición.
@@ -284,13 +471,15 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     unawaited(save());
   }
 
-  /// Partida nueva (todo a 0). Los tesoros y la hora del último canje se
-  /// conservan: las reglas no dejan tocarlos.
+  /// Partida nueva (todo a 0). Los tesoros, la hora del último canje y el
+  /// día del último ticket de encargo se conservan: las reglas no dejan
+  /// tocarlos.
   void debugReset() {
     final old = state.game;
     final game = HState.fresh(_ms)
       ..prizes = old?.prizes ?? 0
-      ..claimAt = old?.claimAt ?? 0;
+      ..claimAt = old?.claimAt ?? 0
+      ..orderDay = old?.orderDay ?? 0;
     state = HatarakiState(game: game, loaded: true);
     _dirty = true;
     unawaited(save());
@@ -301,12 +490,14 @@ class HatarakiController extends StateNotifier<HatarakiState> {
   Future<void> _claimTreasure() async {
     final game = state.game;
     final tickets = _gachakenOf;
-    if (game == null || tickets == null || _claiming || game.prizes <= 0) return;
+    if (game == null || tickets == null || _claiming || game.prizes <= 0) {
+      return;
+    }
     if (_ms - game.claimAt < hatarakiClaimGap.inMilliseconds) return;
     _claiming = true;
     final account = _session.state.accountId;
     try {
-      await save();
+      await _write();
       final token = await _session.freshToken();
       await _backend.merge('/', {
         'users/$account/tickets/gachaken': tickets() + 1,
@@ -325,8 +516,46 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     }
   }
 
-  /// Escribe la partida entera si hay algo sin guardar.
+  /// Cobra el ticket gachaken del gran encargo: las reglas dejan uno al
+  /// día, con `orderDay` pasando a hoy y el ticket subiendo 1 a la vez.
+  Future<void> _claimOrder() async {
+    final game = state.game;
+    final tickets = _gachakenOf;
+    final day = today;
+    if (game == null ||
+        tickets == null ||
+        _claiming ||
+        !game.orderTicket ||
+        game.orderDay >= day) {
+      return;
+    }
+    _claiming = true;
+    final account = _session.state.accountId;
+    try {
+      await _write();
+      await _backend.merge('/', {
+        'users/$account/tickets/gachaken': tickets() + 1,
+        'users/$account/hataraki/orderDay': day,
+      }, idToken: await _session.freshToken());
+      game
+        ..orderDay = day
+        ..orderTicket = false;
+      _dirty = true;
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido cobrar el ticket del encargo ($e)');
+    } finally {
+      _claiming = false;
+    }
+    if (mounted) unawaited(save());
+  }
+
+  /// Escribe la partida entera si hay algo sin guardar. Mientras se cobra un
+  /// ticket no: la partida vieja pisaría `claimAt` u `orderDay`.
   Future<void> save() async {
+    if (!_claiming) await _write();
+  }
+
+  Future<void> _write() async {
     final game = state.game;
     if (game == null || !_dirty) return;
     _dirty = false;
@@ -335,7 +564,9 @@ class HatarakiController extends StateNotifier<HatarakiState> {
     final now = _now();
     final scores = (
       game.day == bonusDay(now) ? math.min(hatarakiMaxScore, game.dayMoney) : 0,
-      game.week == gachaWeek(now) ? math.min(hatarakiMaxScore, game.weekMoney) : 0,
+      game.week == gachaWeek(now)
+          ? math.min(hatarakiMaxScore, game.weekMoney)
+          : 0,
       math.min(hatarakiMaxScore, game.earned),
     );
     if (scores != _sentScores && scores.$3 > 0) {
@@ -343,11 +574,10 @@ class HatarakiController extends StateNotifier<HatarakiState> {
       _onScores?.call(scores.$1, scores.$2, scores.$3);
     }
     try {
-      await _backend.write(
-        _path,
-        game.toJson(),
-        idToken: await _session.freshToken(),
-      );
+      await _backend.write(_path, {
+        ...game.toJson(),
+        'visit': hatarakiVisitJson(_tamasOf()),
+      }, idToken: await _session.freshToken());
     } catch (e) {
       debugPrint('Ibasho: no se ha podido guardar Hatarakitama ($e)');
       _dirty = true;
@@ -356,7 +586,7 @@ class HatarakiController extends StateNotifier<HatarakiState> {
 
   @override
   void dispose() {
-    unawaited(save());
+    unawaited(_write());
     super.dispose();
   }
 }

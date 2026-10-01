@@ -101,7 +101,7 @@ class SettingsChannel extends ConsumerWidget {
                         label: l.settingsMusicVolume,
                         control: volume(
                           Glyph.note,
-                          preferences.musicVolume,
+                          preferences.musicLevel,
                           controller.setMusicVolume,
                         ),
                       ),
@@ -110,7 +110,7 @@ class SettingsChannel extends ConsumerWidget {
                         divider: false,
                         control: volume(
                           Glyph.speaker,
-                          preferences.effectsVolume,
+                          preferences.effectsLevel,
                           (v) async => controller.setEffectsVolume(v),
                         ),
                       ),

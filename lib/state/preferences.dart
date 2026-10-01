@@ -20,14 +20,38 @@ class PreferencesController extends StateNotifier<Preferences> {
     await _store.save(next);
   }
 
+  /// Mover el volumen quita el silencio: si se toca es para oirlo.
   Future<void> setMusicVolume(double value) async {
-    await AudioService.instance.setMusicVolume(value);
-    await _commit(state.copyWith(musicVolume: value));
+    final v = value.clamp(0.0, 1.0);
+    await AudioService.instance.setMusicVolume(v);
+    await _commit(state.copyWith(musicVolume: v, musicMuted: false));
   }
 
   Future<void> setEffectsVolume(double value) async {
-    await AudioService.instance.setEffectsVolume(value);
-    await _commit(state.copyWith(effectsVolume: value));
+    final v = value.clamp(0.0, 1.0);
+    await AudioService.instance.setEffectsVolume(v);
+    await _commit(state.copyWith(effectsVolume: v, effectsMuted: false));
+  }
+
+  /// Silencia o devuelve la musica sin perder su volumen. Si estaba a cero,
+  /// al quitar el silencio vuelve al de serie: si no, el boton no haria nada.
+  Future<void> toggleMusicMuted() async {
+    final muted = !state.musicMuted && state.musicVolume > 0;
+    final volume = !muted && state.musicVolume <= 0
+        ? const Preferences().musicVolume
+        : state.musicVolume;
+    await AudioService.instance.setMusicVolume(muted ? 0 : volume);
+    await _commit(state.copyWith(musicVolume: volume, musicMuted: muted));
+  }
+
+  /// Lo mismo para los efectos.
+  Future<void> toggleEffectsMuted() async {
+    final muted = !state.effectsMuted && state.effectsVolume > 0;
+    final volume = !muted && state.effectsVolume <= 0
+        ? const Preferences().effectsVolume
+        : state.effectsVolume;
+    await AudioService.instance.setEffectsVolume(muted ? 0 : volume);
+    await _commit(state.copyWith(effectsVolume: volume, effectsMuted: muted));
   }
 
   Future<void> setLocale(String code) =>

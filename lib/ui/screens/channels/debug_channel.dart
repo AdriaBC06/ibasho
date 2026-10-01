@@ -12,6 +12,9 @@ import '../../../backend/gacha.dart';
 import '../../../backend/gacha_prizes.dart';
 import '../../../backend/models.dart';
 import '../../../backend/shop.dart';
+import '../../../games/hatarakitama/hataraki_channel.dart'
+    show hItemName, hSkillName, openHatarakiVisit;
+import '../../../games/hatarakitama/hataraki_town.dart' show hMarket;
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/debug.dart';
 import '../../../state/providers.dart';
@@ -582,6 +585,16 @@ class _HatarakiSection extends ConsumerWidget {
               value: '${game.money} · ${game.dayMoney} / ${game.weekMoney} / ${game.earned}',
             ),
             _InfoRow(label: l.debugHatarakiTreasures, value: '${game.prizes}'),
+            // Lo que sube y baja mañana en la lonja, entero (sin la lonja a 3).
+            const SizedBox(height: 8),
+            Text(l.debugHatarakiMarketTomorrow, style: Ty.label),
+            Text(
+              [
+                for (final m in hMarket(hataraki.today + 1))
+                  '${m.pct >= 0 ? '▲' : '▼'} ${m.skill != null ? l.hatarakiMarketSkill(hSkillName(l, m.skill!)) : hItemName(l, m.item!)}',
+              ].join(' · '),
+              style: Ty.caption,
+            ),
             const SizedBox(height: 12),
           ],
           Wrap(
@@ -590,12 +603,27 @@ class _HatarakiSection extends ConsumerWidget {
             children: [
               button('levels', l.debugHatarakiLevels, Glyph.star, () => hataraki.debugLevels(10)),
               button('bank', l.debugHatarakiBank, Glyph.gift, () => hataraki.debugFillBank(50)),
-              button('money', l.debugHatarakiGiveMoney, Glyph.yatai, () => hataraki.debugGiveMoney(1000)),
+              button('money', l.debugHatarakiGiveMoney, Glyph.yatai, () => hataraki.debugGiveMoney(100000)),
+              button('town', l.debugHatarakiTown, Glyph.house, hataraki.debugTown),
+              button('furniture', l.debugHatarakiFurniture, Glyph.gift, hataraki.debugFurniture),
+              button('orders', l.debugHatarakiOrders, Glyph.refresh, hataraki.debugOrders),
               button(
                 'trip',
                 l.debugHatarakiTrip,
                 Glyph.flag,
-                game?.expedition == null ? null : hataraki.debugFinishTrip,
+                (game?.expeditions.isEmpty ?? true) ? null : hataraki.debugFinishTrip,
+              ),
+              button(
+                'tripStep',
+                l.debugHatarakiTripStep,
+                Glyph.arrowRight,
+                (game?.expeditions.every((e) => e.route.isEmpty) ?? true) ? null : hataraki.debugTripStep,
+              ),
+              button(
+                'visit',
+                l.debugHatarakiVisit,
+                Glyph.friends,
+                () => openHatarakiVisit(context, ref.read(sessionProvider).accountId),
               ),
               button('treasure', l.debugHatarakiTreasure, Glyph.gift, hataraki.debugTreasure),
               button('away', l.debugHatarakiAway, Glyph.clock, () => hataraki.debugAway(3)),

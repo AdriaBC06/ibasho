@@ -317,11 +317,14 @@
         },
         // Hatarakitama (0.7.0): la partida entera, que calcula la app (como el
         // gacha, no se puede comprobar aquí que el trabajo sea de verdad). Solo
-        // la dueña la lee y la escribe; las reglas solo cuidan la forma.
+        // la dueña la escribe; las reglas solo cuidan la forma. Desde la 0.8.0
+        // la leen también sus amigos, para visitar el pueblo (solo mirar).
         "hataraki": {
-          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
+          ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId || root.child('users').child($accountId).child('friends').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists())",
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
-          ".validate": "newData.hasChildren(['last', 'seed'])",
+          // `claimAt` y `orderDay` no se pueden borrar: si no, se volvería a
+          // canjear antes de tiempo.
+          ".validate": "newData.hasChildren(['last', 'seed']) && (!data.child('claimAt').exists() || newData.child('claimAt').exists()) && (!data.child('orderDay').exists() || newData.child('orderDay').exists())",
           "xp": {
             "$skill": {
               ".validate": "$skill.matches(/^[a-z]{1,16}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 30000000"
@@ -339,7 +342,7 @@
           },
           "workers": {
             "$slot": {
-              ".validate": "$slot.matches(/^[0-5]$/) && newData.hasChildren(['tama', 'action', 'progress'])",
+              ".validate": "$slot.matches(/^[0-7]$/) && newData.hasChildren(['tama', 'action', 'progress'])",
               "tama": {
                 ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,40}$/)"
               },
@@ -351,6 +354,10 @@
               },
               "stalled": {
                 ".validate": "newData.isBoolean()"
+              },
+              // Cebo, abono o mecha que gasta.
+              "boost": {
+                ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,24}$/)"
               },
               "$other": {
                 ".validate": false
@@ -381,7 +388,7 @@
             },
             "tamas": {
               "$i": {
-                ".validate": "$i.matches(/^[0-2]$/) && newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,40}$/)"
+                ".validate": "$i.matches(/^[0-3]$/) && newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,40}$/)"
               }
             },
             "start": {
@@ -395,6 +402,138 @@
             },
             "$other": {
               ".validate": false
+            }
+          },
+          // Los viajes con mapa (0.8.0): hasta dos a la vez, con la ruta (fila
+          // de cada columna), cuándo se acaba cada casilla, los peligros que
+          // no se pasan y lo que ha salido en las ya pasadas.
+          "expeditions": {
+            "$i": {
+              ".validate": "$i.matches(/^[01]$/) && newData.hasChildren(['zone', 'tamas', 'start', 'end', 'power'])",
+              "zone": {
+                ".validate": "newData.isString() && newData.val().matches(/^[a-z]{1,16}$/)"
+              },
+              "tamas": {
+                "$j": {
+                  ".validate": "$j.matches(/^[0-3]$/) && newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,40}$/)"
+                }
+              },
+              "start": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+              },
+              "end": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+              },
+              "power": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100000"
+              },
+              "day": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+              },
+              "route": {
+                "$c": {
+                  ".validate": "$c.matches(/^[0-5]$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 2"
+                }
+              },
+              "at": {
+                "$c": {
+                  ".validate": "$c.matches(/^[0-5]$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+                }
+              },
+              "fails": {
+                "$k": {
+                  ".validate": "$k.matches(/^[0-5]$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+                }
+              },
+              "done": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 6"
+              },
+              "porter": {
+                ".validate": "newData.isBoolean()"
+              },
+              "luck": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5"
+              },
+              "log": {
+                "$c": {
+                  ".validate": "$c.matches(/^[0-5]$/)",
+                  "$item": {
+                    ".validate": "$item.matches(/^[a-z0-9_]{1,24}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 999999"
+                  }
+                }
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          // Sitio → día en que se pagó un guía (enseña el mapa entero).
+          "guides": {
+            "$zone": {
+              ".validate": "$zone.matches(/^[a-z]{1,16}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            }
+          },
+          // Nivel de cada edificio del pueblo (0.8.0), del 1 al 5.
+          "town": {
+            "$building": {
+              ".validate": "$building.matches(/^[a-z]{1,16}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 5"
+            }
+          },
+          // Lo comprado hoy en la tienda del pueblo (0.8.0).
+          "shop": {
+            ".validate": "newData.hasChildren(['day'])",
+            "day": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "bought": {
+              "$item": {
+                ".validate": "$item.matches(/^[a-z0-9_]{1,24}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 999"
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          // La casa de cada Tama (0.8.0): una habitación de 6×6 con suelo,
+          // pared y hasta 36 muebles, cada uno con su esquina y su giro.
+          "houses": {
+            "$tama": {
+              ".validate": "$tama.matches(/^[-0-9A-Za-z_]{1,40}$/) && newData.hasChildren(['floor', 'wall'])",
+              "floor": {
+                ".validate": "newData.isString() && newData.val().matches(/^(rustic|marine|elegant|magic|floral)$/)"
+              },
+              "wall": {
+                ".validate": "newData.isString() && newData.val().matches(/^(rustic|marine|elegant|magic|floral)$/)"
+              },
+              "items": {
+                "$i": {
+                  ".validate": "$i.matches(/^([0-9]|[12][0-9]|3[0-5])$/) && newData.hasChildren(['id', 'x', 'y', 'r'])",
+                  "id": {
+                    ".validate": "newData.isString() && newData.val().matches(/^fu_[a-z0-9_]{1,21}$/)"
+                  },
+                  "x": {
+                    ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+                  },
+                  "y": {
+                    ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+                  },
+                  "r": {
+                    ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 3"
+                  },
+                  "$other": {
+                    ".validate": false
+                  }
+                }
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          // Los planos de muebles que ya se saben (0.8.0).
+          "plans": {
+            "$item": {
+              ".validate": "$item.matches(/^fu_[a-z0-9_]{1,21}$/) && newData.isBoolean() && newData.val() === true"
             }
           },
           "last": {
@@ -413,6 +552,66 @@
           "claimAt": {
             ".validate": "newData.isNumber() && (newData.val() === data.val() || (newData.val() === now && (!data.exists() || now - data.val() >= 3600000) && newData.parent().child('prizes').val() === data.parent().child('prizes').val() - 1 && newData.parent().parent().child('tickets').child('gachaken').val() === (data.parent().parent().child('tickets').child('gachaken').exists() ? data.parent().parent().child('tickets').child('gachaken').val() : 0) + 1))"
           },
+          // Cobro del ticket del gran encargo (0.8.0): `orderDay` pasa al día
+          // UTC de hoy (solo si era otro) y el ticket sube 1 en la misma
+          // escritura. Al guardar la partida entera se reescribe igual.
+          "orderDay": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && (newData.val() === data.val() || (newData.val() * 86400000 <= now && (newData.val() + 1) * 86400000 > now && (!data.exists() || data.val() < newData.val()) && newData.parent().parent().child('tickets').child('gachaken').val() === (data.parent().parent().child('tickets').child('gachaken').exists() ? data.parent().parent().child('tickets').child('gachaken').val() : 0) + 1))"
+          },
+          // El tablón de encargos del día (0.8.0): el 0 es el gran encargo.
+          "orders": {
+            ".validate": "newData.hasChildren(['day'])",
+            "day": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "swap": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+            },
+            "ticket": {
+              ".validate": "newData.isBoolean()"
+            },
+            "list": {
+              "$i": {
+                ".validate": "$i.matches(/^[0-5]$/) && newData.hasChildren(['wants', 'money'])",
+                "wants": {
+                  "$item": {
+                    ".validate": "$item.matches(/^[a-z0-9_]{1,24}$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 9999"
+                  }
+                },
+                "money": {
+                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 99999999"
+                },
+                "skill": {
+                  ".validate": "newData.isString() && newData.val().matches(/^[a-z]{1,16}$/)"
+                },
+                "xp": {
+                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 30000000"
+                },
+                "gift": {
+                  ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,24}$/)"
+                },
+                "giftN": {
+                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 99"
+                },
+                // El plano de un mueble, de regalo (0.8.0).
+                "plan": {
+                  ".validate": "newData.isString() && newData.val().matches(/^fu_[a-z0-9_]{1,21}$/)"
+                },
+                "big": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "done": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
           // Experiencia ganada en el día y la semana en curso, para la
           // clasificación (que va aparte, en `/leaderboards/hataraki`).
           "period": {
@@ -428,6 +627,35 @@
           },
           "earned": {
             ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 999999999999"
+          },
+          // La ficha de visita (0.8.0): nombre, personalidad y aspecto de cada
+          // Tama, para que los amigos los vean sin abrirles `tamas`.
+          "visit": {
+            "tamas": {
+              "$tamaId": {
+                ".validate": "$tamaId.matches(/^[-0-9A-Za-z_]{1,40}$/) && newData.hasChildren(['name', 'personality', 'look'])",
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+                },
+                "personality": {
+                  ".validate": "newData.isString() && newData.val().matches(/^(calm|playful|shy|cheeky|sleepy)$/)"
+                },
+                "look": {
+                  "$part": {
+                    ".validate": "$part.matches(/^[a-zA-Z]{1,20}$/) && ((newData.isNumber() && newData.val() >= 0 && newData.val() <= 100) || (newData.isString() && newData.val().length <= 40) || ($part === 'acc' && newData.hasChildren()))",
+                    "$slot": {
+                      ".validate": "$slot.matches(/^[abc]$/) && newData.isString() && newData.val().matches(/^[a-z0-9_]{1,40}$/)"
+                    }
+                  }
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
           },
           "$other": {
             ".validate": false
@@ -720,8 +948,8 @@
         "tickets": {
           ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           "$kind": {
-            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists() && (root.child('admins').child(auth.uid).exists() || newData.parent().parent().child('shop').child('last').child('at').val() === now || newData.parent().parent().child('gacha').child('last').child('at').val() === now || newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now || newData.parent().parent().child('missions').child('claim').child('at').val() === now || newData.parent().parent().child('hataraki').child('claimAt').val() === now)",
-            ".validate": "$kind.matches(/^(gachaken|kinken)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999 && (root.child('admins').child(auth.uid).exists() || ($kind === 'gachaken' && newData.parent().parent().child('hataraki').child('claimAt').val() === now && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + 1 && newData.parent().parent().child('hataraki').child('prizes').val() === root.child('users').child($accountId).child('hataraki').child('prizes').val() - 1) || (newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'ticket_' + $kind && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val() && newData.parent().parent().child('shop').child('week').child('n').val() * 604800000 <= now && (newData.parent().parent().child('shop').child('week').child('n').val() + 1) * 604800000 > now && newData.parent().parent().child('shop').child('week').child($kind).val() === (root.child('users').child($accountId).child('shop/week').child('n').val() === newData.parent().parent().child('shop').child('week').child('n').val() ? root.child('users').child($accountId).child('shop/week').child($kind).val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val()) || (newData.parent().parent().child('gacha').child('last').child('at').val() === now && newData.parent().parent().child('gacha').child('last').child('kind').val() === $kind && data.exists() && newData.val() === data.val() - (newData.parent().parent().child('gacha').child('last').child('count').val() === 11 ? 10 : newData.parent().parent().child('gacha').child('last').child('count').val())) || (newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now && newData.parent().parent().child('leaderboardClaims').child('last').child('kind').val() === $kind && newData.val() > (data.exists() && data.val() > 0 ? data.val() : 0) && newData.val() <= (data.exists() && data.val() > 0 ? data.val() : 0) + 3) || (newData.parent().parent().child('missions').child('claim').child('at').val() === now && newData.parent().parent().child('missions').child('claim').child('ticketKind').val() === $kind && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + newData.parent().parent().child('missions').child('claim').child('amount').val()))"
+            ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists() && (root.child('admins').child(auth.uid).exists() || newData.parent().parent().child('shop').child('last').child('at').val() === now || newData.parent().parent().child('gacha').child('last').child('at').val() === now || newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now || newData.parent().parent().child('missions').child('claim').child('at').val() === now || newData.parent().parent().child('hataraki').child('claimAt').val() === now || (newData.parent().parent().child('hataraki').child('orderDay').isNumber() && newData.parent().parent().child('hataraki').child('orderDay').val() * 86400000 <= now && (newData.parent().parent().child('hataraki').child('orderDay').val() + 1) * 86400000 > now && newData.parent().parent().child('hataraki').child('orderDay').val() !== root.child('users').child($accountId).child('hataraki').child('orderDay').val()))",
+            ".validate": "$kind.matches(/^(gachaken|kinken)$/) && newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 9999 && (root.child('admins').child(auth.uid).exists() || ($kind === 'gachaken' && newData.parent().parent().child('hataraki').child('claimAt').val() === now && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + 1 && newData.parent().parent().child('hataraki').child('prizes').val() === root.child('users').child($accountId).child('hataraki').child('prizes').val() - 1) || ($kind === 'gachaken' && (newData.parent().parent().child('hataraki').child('orderDay').isNumber() && newData.parent().parent().child('hataraki').child('orderDay').val() * 86400000 <= now && (newData.parent().parent().child('hataraki').child('orderDay').val() + 1) * 86400000 > now && newData.parent().parent().child('hataraki').child('orderDay').val() !== root.child('users').child($accountId).child('hataraki').child('orderDay').val()) && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + 1) || (newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'ticket_' + $kind && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val() && newData.parent().parent().child('shop').child('week').child('n').val() * 604800000 <= now && (newData.parent().parent().child('shop').child('week').child('n').val() + 1) * 604800000 > now && newData.parent().parent().child('shop').child('week').child($kind).val() === (root.child('users').child($accountId).child('shop/week').child('n').val() === newData.parent().parent().child('shop').child('week').child('n').val() ? root.child('users').child($accountId).child('shop/week').child($kind).val() : 0) + newData.parent().parent().child('shop').child('last').child('qty').val()) || (newData.parent().parent().child('gacha').child('last').child('at').val() === now && newData.parent().parent().child('gacha').child('last').child('kind').val() === $kind && data.exists() && newData.val() === data.val() - (newData.parent().parent().child('gacha').child('last').child('count').val() === 11 ? 10 : newData.parent().parent().child('gacha').child('last').child('count').val())) || (newData.parent().parent().child('leaderboardClaims').child('last').child('at').val() === now && newData.parent().parent().child('leaderboardClaims').child('last').child('kind').val() === $kind && newData.val() > (data.exists() && data.val() > 0 ? data.val() : 0) && newData.val() <= (data.exists() && data.val() > 0 ? data.val() : 0) + 3) || (newData.parent().parent().child('missions').child('claim').child('at').val() === now && newData.parent().parent().child('missions').child('claim').child('ticketKind').val() === $kind && newData.val() === (data.exists() && data.val() > 0 ? data.val() : 0) + newData.parent().parent().child('missions').child('claim').child('amount').val()))"
           }
         },
         // El gacha (0.6.0). El sorteo lo hace la app: las reglas no pueden
@@ -864,7 +1092,7 @@
           },
           "turn": {
             ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
-            ".validate": "newData.hasChildren(['at', 'rarity']) && newData.child('at').val() === now && root.child('users').child($accountId).child('gacha/play').exists() && newData.parent().child('play').child('done').val() === (root.child('users').child($accountId).child('gacha/play').child('done').exists() ? root.child('users').child($accountId).child('gacha/play').child('done').val() : 0) + 1 && newData.parent().child('play').child('done').val() <= root.child('users').child($accountId).child('gacha/play').child('count').val() && (newData.child('category').exists() ? (root.child('users').child($accountId).child('gacha/play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).exists() && (newData.parent().child('play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).exists() ? newData.parent().child('play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).val() : 0) === root.child('users').child($accountId).child('gacha/play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).val() - 1) : (root.child('users').child($accountId).child('gacha/play').child('balls').child(newData.child('rarity').val()).exists() && (newData.parent().child('play').child('balls').child(newData.child('rarity').val()).exists() ? newData.parent().child('play').child('balls').child(newData.child('rarity').val()).val() : 0) === root.child('users').child($accountId).child('gacha/play').child('balls').child(newData.child('rarity').val()).val() - 1)) && (!newData.child('prize').exists() || (((newData.child('rarity').val() === 'n' && newData.child('prize').val().matches(/^(cap_red|cap_blue|cap_green|cap_yellow|afro_brown|beanie_red|beanie_blue|beanie_cream|hachimaki_white|hachimaki_red|leaf_green|leaf_orange|bow_pink|bow_blue|bow_yellow|glasses_black|glasses_white|glasses_red|glasses_navy|bowtie_black|bowtie_red|sneakers_red|sneakers_blue|sneakers_green|scarf_red|scarf_blue|scarf_cream|randoseru_red|randoseru_black|bg_sky|bg_coral|bg_mint|bg_peach|mu_nana|mu_carrillon)$/)) || (newData.child('rarity').val() === 'r' && newData.child('prize').val().matches(/^(headphones_white|headphones_skyblue|beret_red|beret_black|beret_green|top_hat_black|top_hat_white|hard_hat_yellow|hard_hat_orange|frog_hat_green|frog_hat_pink|chef_hat_white|groucho_black|clown_nose_red|clown_nose_black|clown_nose_green|bottle_water|bottle_cola|bottle_bluecola|energy_green|energy_white|energy_red|boba_pink|boba_green|boba_brown|taco_classic|balloon_red|balloon_blue|balloon_yellow|balloon_pink|uchiwa_sun|uchiwa_fish|bg_lavender|bg_dusk|bg_sunrise|bg_lagoon|mu_lofi)$/)) || (newData.child('rarity').val() === 'sr' && newData.child('prize').val().matches(/^(hood_black|hood_red|hood_green|witch_hat_purple|witch_hat_black|nightcap_navy|nightcap_pink|flower_crown_sakura|flower_crown_sunflower|flower_crown_lavender|kitsune_white|kitsune_red|viking_iron|sombrero_straw|sombrero_charro|mask_a|mask_b|mask_c|mask_d|bandage_stars|pickaxe_diamond|sword_iron|sword_diamond|swim_ring_stripes|lantern_red|fish_bag_gold|cape_red|cape_blue|bg_aurora|bg_candy|bg_forest|mu_feria)$/)) || (newData.child('rarity').val() === 'ssr' && newData.child('prize').val().matches(/^(gamer_headset_black|gamer_headset_blue|gamer_headset_pink|crown_gold|crown_silver|kabuto_red|kabuto_black|wizard_hat_blue|wizard_hat_purple|shutter_shades_orange|shutter_shades_blue|shutter_shades_yellow|shutter_shades_red|shutter_shades_lime|dollar_chain_gold|dollar_chain_silver|microphone_silver|kendama_red|kendama_blue|bg_sunset|bg_glacier|mu_feria)$/)) || (newData.child('rarity').val() === 'ur' && newData.child('prize').val().matches(/^(cat_headset_black|cat_headset_blue|cat_headset_pink|cat_headset_white|halo_gold|devil_horns_red|devil_horns_black|rainbow_cloud_sky|cursor_white|cursor_black|cursor_inverted|controller_blue|fairies_light|angel_wings_white|angel_wings_black|bg_phoenix|bg_borealis|mu_abrigo)$/)) || (newData.child('rarity').val() === 'mu' && newData.child('prize').val().matches(/^(cat_headset_rgb_black|cat_headset_rgb_blue|cat_headset_rgb_pink|cat_headset_rgb_white|halo_rgb_rainbow|crown_rgb_rainbow|rgb_shades_rainbow|rgb_wings_rainbow|bg_starfield|mu_cenit)$/))) && (!newData.child('category').exists() || (newData.child('category').val() === 'hats' && newData.child('prize').val().matches(/^(cap_red|cap_blue|cap_green|cap_yellow|afro_brown|beanie_red|beanie_blue|beanie_cream|hachimaki_white|hachimaki_red|leaf_green|leaf_orange|bow_pink|bow_blue|bow_yellow|headphones_white|headphones_skyblue|beret_red|beret_black|beret_green|top_hat_black|top_hat_white|hard_hat_yellow|hard_hat_orange|frog_hat_green|frog_hat_pink|chef_hat_white|hood_black|hood_red|hood_green|witch_hat_purple|witch_hat_black|nightcap_navy|nightcap_pink|flower_crown_sakura|flower_crown_sunflower|flower_crown_lavender|kitsune_white|kitsune_red|viking_iron|sombrero_straw|sombrero_charro|gamer_headset_black|gamer_headset_blue|gamer_headset_pink|crown_gold|crown_silver|kabuto_red|kabuto_black|wizard_hat_blue|wizard_hat_purple|cat_headset_black|cat_headset_blue|cat_headset_pink|cat_headset_white|halo_gold|devil_horns_red|devil_horns_black|rainbow_cloud_sky|cat_headset_rgb_black|cat_headset_rgb_blue|cat_headset_rgb_pink|cat_headset_rgb_white|halo_rgb_rainbow|crown_rgb_rainbow)$/)) || (newData.child('category').val() === 'accessories' && newData.child('prize').val().matches(/^(glasses_black|glasses_white|glasses_red|glasses_navy|bowtie_black|bowtie_red|sneakers_red|sneakers_blue|sneakers_green|scarf_red|scarf_blue|scarf_cream|randoseru_red|randoseru_black|groucho_black|clown_nose_red|clown_nose_black|clown_nose_green|bottle_water|bottle_cola|bottle_bluecola|energy_green|energy_white|energy_red|boba_pink|boba_green|boba_brown|taco_classic|balloon_red|balloon_blue|balloon_yellow|balloon_pink|uchiwa_sun|uchiwa_fish|mask_a|mask_b|mask_c|mask_d|bandage_stars|pickaxe_diamond|sword_iron|sword_diamond|swim_ring_stripes|lantern_red|fish_bag_gold|cape_red|cape_blue|shutter_shades_orange|shutter_shades_blue|shutter_shades_yellow|shutter_shades_red|shutter_shades_lime|dollar_chain_gold|dollar_chain_silver|microphone_silver|kendama_red|kendama_blue|cursor_white|cursor_black|cursor_inverted|controller_blue|fairies_light|angel_wings_white|angel_wings_black|rgb_shades_rainbow|rgb_wings_rainbow)$/)) || (newData.child('category').val() === 'backdrops' && newData.child('prize').val().matches(/^(bg_sky|bg_coral|bg_mint|bg_peach|bg_lavender|bg_dusk|bg_sunrise|bg_lagoon|bg_aurora|bg_candy|bg_forest|bg_sunset|bg_glacier|bg_phoenix|bg_borealis|bg_starfield)$/)) || (newData.child('category').val() === 'music' && newData.child('prize').val().matches(/^(mu_nana|mu_carrillon|mu_lofi|mu_feria|mu_abrigo|mu_cenit)$/))) && newData.parent().parent().child('prizes').child(newData.child('prize').val()).val() === (root.child('users').child($accountId).child('prizes').child(newData.child('prize').val()).exists() ? root.child('users').child($accountId).child('prizes').child(newData.child('prize').val()).val() : 0) + 1))",
+            ".validate": "newData.hasChildren(['at', 'rarity']) && newData.child('at').val() === now && root.child('users').child($accountId).child('gacha/play').exists() && newData.parent().child('play').child('done').val() === (root.child('users').child($accountId).child('gacha/play').child('done').exists() ? root.child('users').child($accountId).child('gacha/play').child('done').val() : 0) + 1 && newData.parent().child('play').child('done').val() <= root.child('users').child($accountId).child('gacha/play').child('count').val() && (newData.child('category').exists() ? (root.child('users').child($accountId).child('gacha/play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).exists() && (newData.parent().child('play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).exists() ? newData.parent().child('play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).val() : 0) === root.child('users').child($accountId).child('gacha/play').child('marked').child(newData.child('category').val()).child(newData.child('rarity').val()).val() - 1) : (root.child('users').child($accountId).child('gacha/play').child('balls').child(newData.child('rarity').val()).exists() && (newData.parent().child('play').child('balls').child(newData.child('rarity').val()).exists() ? newData.parent().child('play').child('balls').child(newData.child('rarity').val()).val() : 0) === root.child('users').child($accountId).child('gacha/play').child('balls').child(newData.child('rarity').val()).val() - 1)) && (!newData.child('prize').exists() || (((newData.child('rarity').val() === 'n' && newData.child('prize').val().matches(/^(cap_red|cap_blue|cap_green|cap_yellow|afro_brown|beanie_red|beanie_blue|beanie_cream|hachimaki_white|hachimaki_red|leaf_green|leaf_orange|bow_pink|bow_blue|bow_yellow|glasses_black|glasses_white|glasses_red|glasses_navy|bowtie_black|bowtie_red|sneakers_red|sneakers_blue|sneakers_green|scarf_red|scarf_blue|scarf_cream|randoseru_red|randoseru_black|bg_sky|bg_coral|bg_mint|bg_peach|mu_nana|mu_carrillon)$/)) || (newData.child('rarity').val() === 'r' && newData.child('prize').val().matches(/^(headphones_white|headphones_skyblue|beret_red|beret_black|beret_green|top_hat_black|top_hat_white|hard_hat_yellow|hard_hat_orange|frog_hat_green|frog_hat_pink|chef_hat_white|groucho_black|clown_nose_red|clown_nose_black|clown_nose_green|bottle_water|bottle_cola|bottle_bluecola|energy_green|energy_white|energy_red|boba_pink|boba_green|boba_brown|taco_classic|balloon_red|balloon_blue|balloon_yellow|balloon_pink|uchiwa_sun|uchiwa_fish|bg_lavender|bg_dusk|bg_sunrise|bg_lagoon|mu_lofi)$/)) || (newData.child('rarity').val() === 'sr' && newData.child('prize').val().matches(/^(hood_black|hood_red|hood_green|witch_hat_purple|witch_hat_black|nightcap_navy|nightcap_pink|flower_crown_sakura|flower_crown_sunflower|flower_crown_lavender|kitsune_white|kitsune_red|viking_iron|sombrero_straw|sombrero_charro|mask_a|mask_b|mask_c|mask_d|bandage_stars|pickaxe_diamond|sword_iron|sword_diamond|swim_ring_stripes|lantern_red|fish_bag_gold|cape_red|cape_blue|bg_aurora|bg_candy|bg_forest|mu_feria)$/)) || (newData.child('rarity').val() === 'ssr' && newData.child('prize').val().matches(/^(gamer_headset_black|gamer_headset_blue|gamer_headset_pink|crown_gold|crown_silver|kabuto_red|kabuto_black|wizard_hat_blue|wizard_hat_purple|shutter_shades_orange|shutter_shades_blue|shutter_shades_yellow|shutter_shades_red|shutter_shades_lime|dollar_chain_gold|dollar_chain_silver|microphone_silver|kendama_red|kendama_blue|bg_sunset|bg_glacier|mu_feria)$/)) || (newData.child('rarity').val() === 'ur' && newData.child('prize').val().matches(/^(cat_headset_black|cat_headset_blue|cat_headset_pink|cat_headset_white|halo_gold|devil_horns_red|devil_horns_black|rainbow_cloud_sky|cursor_white|cursor_black|cursor_inverted|controller_blue|fairies_light|angel_wings_white|angel_wings_black|pixel_heart_red|bg_phoenix|bg_borealis|mu_abrigo)$/)) || (newData.child('rarity').val() === 'mu' && newData.child('prize').val().matches(/^(cat_headset_rgb_black|cat_headset_rgb_blue|cat_headset_rgb_pink|cat_headset_rgb_white|halo_rgb_rainbow|crown_rgb_rainbow|rgb_shades_rainbow|rgb_wings_rainbow|bg_starfield|mu_cenit)$/))) && (!newData.child('category').exists() || (newData.child('category').val() === 'hats' && newData.child('prize').val().matches(/^(cap_red|cap_blue|cap_green|cap_yellow|afro_brown|beanie_red|beanie_blue|beanie_cream|hachimaki_white|hachimaki_red|leaf_green|leaf_orange|bow_pink|bow_blue|bow_yellow|headphones_white|headphones_skyblue|beret_red|beret_black|beret_green|top_hat_black|top_hat_white|hard_hat_yellow|hard_hat_orange|frog_hat_green|frog_hat_pink|chef_hat_white|hood_black|hood_red|hood_green|witch_hat_purple|witch_hat_black|nightcap_navy|nightcap_pink|flower_crown_sakura|flower_crown_sunflower|flower_crown_lavender|kitsune_white|kitsune_red|viking_iron|sombrero_straw|sombrero_charro|gamer_headset_black|gamer_headset_blue|gamer_headset_pink|crown_gold|crown_silver|kabuto_red|kabuto_black|wizard_hat_blue|wizard_hat_purple|cat_headset_black|cat_headset_blue|cat_headset_pink|cat_headset_white|halo_gold|devil_horns_red|devil_horns_black|rainbow_cloud_sky|cat_headset_rgb_black|cat_headset_rgb_blue|cat_headset_rgb_pink|cat_headset_rgb_white|halo_rgb_rainbow|crown_rgb_rainbow)$/)) || (newData.child('category').val() === 'accessories' && newData.child('prize').val().matches(/^(glasses_black|glasses_white|glasses_red|glasses_navy|bowtie_black|bowtie_red|sneakers_red|sneakers_blue|sneakers_green|scarf_red|scarf_blue|scarf_cream|randoseru_red|randoseru_black|groucho_black|clown_nose_red|clown_nose_black|clown_nose_green|bottle_water|bottle_cola|bottle_bluecola|energy_green|energy_white|energy_red|boba_pink|boba_green|boba_brown|taco_classic|balloon_red|balloon_blue|balloon_yellow|balloon_pink|uchiwa_sun|uchiwa_fish|mask_a|mask_b|mask_c|mask_d|bandage_stars|pickaxe_diamond|sword_iron|sword_diamond|swim_ring_stripes|lantern_red|fish_bag_gold|cape_red|cape_blue|shutter_shades_orange|shutter_shades_blue|shutter_shades_yellow|shutter_shades_red|shutter_shades_lime|dollar_chain_gold|dollar_chain_silver|microphone_silver|kendama_red|kendama_blue|cursor_white|cursor_black|cursor_inverted|controller_blue|fairies_light|angel_wings_white|angel_wings_black|pixel_heart_red|rgb_shades_rainbow|rgb_wings_rainbow)$/)) || (newData.child('category').val() === 'backdrops' && newData.child('prize').val().matches(/^(bg_sky|bg_coral|bg_mint|bg_peach|bg_lavender|bg_dusk|bg_sunrise|bg_lagoon|bg_aurora|bg_candy|bg_forest|bg_sunset|bg_glacier|bg_phoenix|bg_borealis|bg_starfield)$/)) || (newData.child('category').val() === 'music' && newData.child('prize').val().matches(/^(mu_nana|mu_carrillon|mu_lofi|mu_feria|mu_abrigo|mu_cenit)$/))) && newData.parent().parent().child('prizes').child(newData.child('prize').val()).val() === (root.child('users').child($accountId).child('prizes').child(newData.child('prize').val()).exists() ? root.child('users').child($accountId).child('prizes').child(newData.child('prize').val()).val() : 0) + 1))",
             "at": {
               ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
             },
@@ -914,13 +1142,16 @@
         // (`bg_sky`) y musicas (`mu_nana`). Solo sube de una en una y con la
         // jugada del pinball que la da (`gacha/turn` fresco con ese premio).
         // Un admin, en su cuenta, puede darse lo que quiera o borrarla entera
-        // para probar (0.6.1: el boton de depuracion).
+        // para probar (0.6.1: el boton de depuracion). Desde la 0.8.0 algunos
+        // se compran en el Yatai (la caca, `prize_{clave}`): sube de uno en
+        // uno con un recibo fresco de ese articulo (las monedas las valida
+        // `shop/last`).
         "prizes": {
           ".read": "auth != null && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false",
           ".write": "auth != null && root.child('admins').child(auth.uid).exists() && (auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false)) && !newData.exists()",
           "$key": {
             ".write": "auth != null && (root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && root.child('allowlist').child(auth.uid).child('disabled').val() === false) && newData.exists()",
-            ".validate": "$key.matches(/^[a-z0-9_]{1,40}$/) && newData.isNumber() && ((newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().child('gacha').child('turn').child('at').val() === now && newData.parent().parent().child('gacha').child('turn').child('prize').val() === $key) || (root.child('admins').child(auth.uid).exists() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 9999))"
+            ".validate": "$key.matches(/^[a-z0-9_]{1,40}$/) && newData.isNumber() && ((newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().child('gacha').child('turn').child('at').val() === now && newData.parent().parent().child('gacha').child('turn').child('prize').val() === $key) || (newData.val() === (data.exists() ? data.val() : 0) + 1 && newData.parent().parent().child('shop').child('last').child('at').val() === now && newData.parent().parent().child('shop').child('last').child('item').val() === 'prize_' + $key && newData.parent().parent().child('shop').child('last').child('qty').val() === 1) || (root.child('admins').child(auth.uid).exists() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 9999))"
           }
         },
         // La despensa: unidades de cada comida. No se puede borrar
@@ -1467,28 +1698,28 @@
           ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('tamas').child($tamaId).child('creator').val() === root.child('allowlist').child(auth.uid).child('accountId').val()",
           ".validate": "newData.hasChildren(['body', 'eyes', 'mouth', 'crown', 'cheeks', 'pattern', 'arms', 'feet', 'bodyWidth', 'bodyHeight', 'eyeSize', 'eyeSpacing', 'eyeHeight', 'mouthSize', 'mouthHeight', 'crownSize', 'cheekIntensity', 'patternTone', 'color', 'colorMode'])",
           "body": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 13"
           },
           "eyes": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 13"
           },
           "mouth": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 4"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 12"
           },
           "crown": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 13"
           },
           "cheeks": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 3"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 7"
           },
           "pattern": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 4"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 11"
           },
           "arms": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 3"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 8"
           },
           "feet": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 3"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 8"
           },
           "bodyWidth": {
             ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
@@ -1519,6 +1750,21 @@
           },
           "patternTone": {
             ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100"
+          },
+          // Color propio del dibujo y de los ojos (0.8.0), con como se eligio.
+          // Opcionales: sin ellos van con su color de siempre, como los
+          // Tamas de antes.
+          "patternColor": {
+            ".validate": "newData.isString() && newData.val().matches(/^#[0-9A-Fa-f]{6}$/)"
+          },
+          "patternColorMode": {
+            ".validate": "newData.isString() && (newData.val() === 'palette' || newData.val() === 'hex')"
+          },
+          "eyesColor": {
+            ".validate": "newData.isString() && newData.val().matches(/^#[0-9A-Fa-f]{6}$/)"
+          },
+          "eyesColorMode": {
+            ".validate": "newData.isString() && (newData.val() === 'palette' || newData.val() === 'hex')"
           },
           "color": {
             ".validate": "newData.isString() && newData.val().matches(/^#[0-9A-Fa-f]{6}$/)"

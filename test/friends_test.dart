@@ -620,10 +620,10 @@ Future<void> main() async {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     for (var body = 0; body < TamaPart.body.variants; body++) {
-      for (final height in [0, 100]) {
+      for (final (height, feet) in [(0, 2), (100, 2), (100, 7)]) {
         final look = const TamaLook()
             .withPart(TamaPart.body, body)
-            .withPart(TamaPart.feet, 2)
+            .withPart(TamaPart.feet, feet)
             .withDial(TamaDial.bodyHeight, height);
         await tester.pumpWidget(
           Align(

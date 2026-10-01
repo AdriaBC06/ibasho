@@ -164,7 +164,8 @@ Todos dibujados y probados en la hoja ✓. Entre paréntesis, el sitio.
 - **SSR**: gafas de contraventana (ojos), collar del dólar (cuello), micro
   (derecha), kendama (izquierda).
 - **UR**: cursor blanco, negro e invertido (derecha), mando (izquierda), hadas
-  (alrededor), alas angelicales (espalda).
+  (alrededor), alas angelicales (espalda), corazón pixelado (alrededor,
+  flotando arriba a su derecha; 0.8.0).
 - **∞**: gafas de contraventana RGB (ojos), alas RGB (espalda).
 
 ## Pendiente de programar (cuando estén los dibujos)
