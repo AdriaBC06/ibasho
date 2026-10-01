@@ -726,11 +726,14 @@ class _PagedSlotsState extends State<_PagedSlots> with SingleTickerProviderState
     return ClipRect(
       child: AnimatedBuilder(
         animation: _slide,
-        builder: (context, _) => Transform.translate(
-          offset: Offset(-_current * width, 0),
-          child: OverflowBox(
-            alignment: Alignment.topLeft,
-            maxWidth: width * widget.pages,
+        // El desplazamiento va DENTRO del OverflowBox: si va fuera, las
+        // páginas siguientes quedan pintadas en su sitio pero fuera del área
+        // de toque del OverflowBox y no reciben pulsaciones.
+        builder: (context, _) => OverflowBox(
+          alignment: Alignment.topLeft,
+          maxWidth: width * widget.pages,
+          child: Transform.translate(
+            offset: Offset(-_current * width, 0),
             child: Row(
               children: [
                 for (var page = 0; page < widget.pages; page++)

@@ -5,6 +5,16 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.8.1 — Crear en la segunda página
+
+### Arreglado
+
+- **El botón de crear Tama no respondía en la segunda página.** Con la
+  primera página de Tamas llena, la ranura de crear pasaba a la segunda y se
+  veía, pero no recibía el toque. Era el mismo fallo que ya se arregló en el
+  menú de inicio y en amigos: la rejilla de Tamas desplazaba las páginas por
+  fuera de su área de toque.
+
 ## 0.8.0 — El pueblo crece
 
 ### Añadido

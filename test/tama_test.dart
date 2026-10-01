@@ -640,4 +640,23 @@ Future<void> main() async {
     expect(highest(TamaPersonality.playful), greaterThan(5));
     expect(highest(TamaPersonality.shy), 0);
   });
+
+  testWidgets('la ranura de crear responde aunque caiga en la segunda pagina',
+      (tester) async {
+    // Doce Tamas llenan la primera pagina (6x2): «crear» abre la segunda.
+    final tamas = [
+      for (var i = 0; i < 12; i++)
+        sampleTama(id: '-TamaMuestra${(i + 1).toString().padLeft(8, '0')}', name: 'Tama $i'),
+    ];
+    await boot(tester, backend: FakeIbashoBackend(tamas: tamas, profileTamaId: tamas.first.id));
+    await tapKey(tester, 'channel.tamas', 60);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await settle(tester, 30);
+    final create = find.byKey(const ValueKey<String>('tamas.create'));
+    expect(create.hitTestable(), findsOneWidget, reason: 'el toque tiene que llegarle');
+    await tester.tap(create);
+    await settle(tester, 40);
+    expect(find.byKey(const ValueKey<String>('creator.save')), findsOneWidget);
+  });
 }
