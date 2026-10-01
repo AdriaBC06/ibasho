@@ -508,6 +508,58 @@ test('el veredicto lo da el admin y sale a la lista publica', async () => {
   );
 });
 
+test('el veredicto se archiva y la siguiente no lo pisa', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/suggestions/${ANA}`), suggestion({ at: 1000 }));
+  });
+  await assertSucceeds(
+    update(ref(db(ADMIN), '/'), {
+      [`suggestions/${ANA}/status`]: 'accepted',
+      [`suggestions/${ANA}/decidedAt`]: now,
+      [`suggestions/${ANA}/decidedBy`]: 'admin',
+      [`suggestionHistory/${ANA}/1000`]: {
+        title: 'Musica en la habitacion',
+        body: 'Que cada Tama tenga una pista suya.',
+        at: 1000,
+        status: 'accepted',
+        decidedAt: now,
+        decidedBy: 'admin',
+      },
+    }),
+  );
+  // La siguiente ocupa el sitio de la viva; el archivo sigue ahi.
+  await assertSucceeds(
+    set(ref(db(ANA), `/suggestions/${ANA}`), suggestion({ title: 'Otra' })),
+  );
+  await assertSucceeds(get(ref(db(ANA), `/suggestionHistory/${ANA}`)));
+  await assertSucceeds(get(ref(db(ADMIN), '/suggestionHistory')));
+  await assertFails(get(ref(db(LUIS), `/suggestionHistory/${ANA}`)));
+  await assertFails(get(ref(db(ANA), '/suggestionHistory')));
+});
+
+test('el archivo solo lo escribe el admin y con su forma', async () => {
+  const entry = (extra = {}) => ({
+    title: 'Algo',
+    body: 'Lo que sea.',
+    at: 2000,
+    status: 'rejected',
+    ...extra,
+  });
+  // Nadie se archiva una aceptada a si mismo.
+  await assertFails(
+    set(ref(db(ANA), `/suggestionHistory/${ANA}/2000`), entry({ status: 'accepted' })),
+  );
+  // La clave es el `at`, y en el archivo no hay pendientes.
+  await assertFails(set(ref(db(ADMIN), `/suggestionHistory/${ANA}/2001`), entry()));
+  await assertFails(
+    set(ref(db(ADMIN), `/suggestionHistory/${ANA}/2000`), entry({ status: 'pending' })),
+  );
+  await assertFails(
+    set(ref(db(ADMIN), `/suggestionHistory/${ANA}/2000`), entry({ otra: 1 })),
+  );
+  await assertSucceeds(set(ref(db(ADMIN), `/suggestionHistory/${ANA}/2000`), entry()));
+});
+
 // --- Lo que no cambia -----------------------------------------------------
 
 test('lo que ya era privado sigue siendolo', async () => {

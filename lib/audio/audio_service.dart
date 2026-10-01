@@ -186,7 +186,10 @@ enum MusicTrack {
   // (`tool/gen_hataraki_music.py`).
   asa('asa', 'audio/bgm/asa.ogg', 'Adrià Bonnin Catalán', 'CC0'),
   mizuba('mizuba', 'audio/bgm/mizuba.ogg', 'Adrià Bonnin Catalán', 'CC0'),
-  yuyake('yuyake', 'audio/bgm/yuyake.ogg', 'Adrià Bonnin Catalán', 'CC0');
+  yuyake('yuyake', 'audio/bgm/yuyake.ogg', 'Adrià Bonnin Catalán', 'CC0'),
+
+  // Hebi (0.9.0): la serpiente que crece (`tool/gen_hebi_music.py`).
+  hebi('hebi', 'audio/bgm/hebi.ogg', 'Adrià Bonnin Catalán', 'CC0');
 
   const MusicTrack(
     this.id,

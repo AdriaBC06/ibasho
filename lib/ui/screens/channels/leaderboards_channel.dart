@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,15 +52,21 @@ String leaderboardGameName(L l, LeaderboardGame game) => switch (game) {
       LeaderboardGame.odoriButai => l.leaderboardsOdoriButai,
       LeaderboardGame.ohirune => l.ohiruneDaily,
       LeaderboardGame.hataraki => l.channelHataraki,
+      LeaderboardGame.hebi => l.hebiTitle,
     };
 
 /// Los juegos del primer selector. Buscaminas (por nivel) y Odori (Taki o
 /// Butai) tienen varias tablas, que se eligen en un segundo selector al lado
 /// de diaria/semanal: con las siete tablas en una fila, en el movil no se
 /// leia nada.
+/// Ancho minimo de cada juego en el primer selector: por debajo, los nombres
+/// largos (hatarakitama, buscaminas) encogian hasta no leerse.
+const double _familyMinWidth = 92;
+
 enum _Family {
   minesweeper([LeaderboardGame.minesweeperEasy, LeaderboardGame.minesweeperMedium, LeaderboardGame.minesweeperHard]),
   tsumiki([LeaderboardGame.tsumiki]),
+  hebi([LeaderboardGame.hebi]),
   nihongo([LeaderboardGame.nihongo]),
   odori([LeaderboardGame.odori, LeaderboardGame.odoriButai]),
   ohirune([LeaderboardGame.ohirune]),
@@ -74,6 +81,7 @@ enum _Family {
   String name(L l) => switch (this) {
         _Family.minesweeper => l.minesweeperTitle,
         _Family.tsumiki => l.tsumikiTitle,
+        _Family.hebi => l.hebiTitle,
         _Family.nihongo => l.nihongoTitle,
         _Family.odori => l.channelOdori,
         _Family.ohirune => l.channelOhirune,
@@ -206,11 +214,23 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
             return Column(
               children: [
                 const SizedBox(height: 14),
-                IbashoSegmented<_Family>(
-                  options: [for (final f in families) (f, f.name(l))],
-                  value: _Family.of(_game),
-                  onChanged: _selectFamily,
-                ),
+                // Con muchos juegos no caben en un movil: cada opcion tiene un
+                // ancho minimo y, si no llegan, la fila se desliza de lado.
+                LayoutBuilder(builder: (context, row) {
+                  final width = math.max(row.maxWidth, families.length * _familyMinWidth);
+                  return SingleChildScrollView(
+                    key: const ValueKey<String>('leaderboards.families'),
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: width,
+                      child: IbashoSegmented<_Family>(
+                        options: [for (final f in families) (f, f.name(l))],
+                        value: _Family.of(_game),
+                        onChanged: _selectFamily,
+                      ),
+                    ),
+                  );
+                }),
                 const SizedBox(height: 10),
                 // En vertical se reparten el ancho; en horizontal van a su
                 // tamano, centrados.

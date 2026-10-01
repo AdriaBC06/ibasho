@@ -5,6 +5,38 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.9.0 — (en curso)
+
+### Añadido
+
+- **Hebi**, la serpiente de siempre, en el Yatai por 10 monedas. Un tablero de
+  15×15 con paredes: la serpiente come comida de Tama, crece una casilla por
+  bocado y cada cinco va más rápida. Se maneja con la cruceta, deslizando
+  sobre el tablero o con el teclado (flechas o WASD), y el botón A o la barra
+  espaciadora aceleran mientras se mantienen. Tu Tama la anima y se agobia
+  cuando va directa a chocar. Con 15 de largo da 3 monedas, con 30 da 5 y
+  con 50 da 8, dentro del tope diario. Tiene clasificación diaria y semanal
+  por mejor longitud y canción propia, *hebi*: un mokkin que toca su dibujo
+  nota a nota, creciendo como la serpiente, con koto y flauta de bambú.
+- **Las sugerencias ya no se pisan.** Cada veredicto se archiva, y quien
+  sugiere ve sus sugerencias anteriores con la nota de cada una. El panel
+  de administración las enseña todas, filtradas por pendientes, aceptadas y
+  rechazadas.
+- **Calendario de cumpleaños** en Amigos, con el botón del calendario de la
+  cabecera. El mes con flechas (o deslizando, o con las flechas del teclado)
+  enseña en cada día el Tama de perfil de quien cumple, y al lado la lista de
+  los próximos cumpleaños: cuánto falta y cuántos cumple. El tuyo también
+  sale; si no lo has puesto, te recuerda que se pone en el perfil. Tocar un
+  día deja solo los de ese día y tocar a alguien abre su perfil.
+
+### Cambiado
+
+- En Clasificaciones, si los juegos no caben en el selector (en el móvil),
+  la fila se desliza de lado en lugar de encoger los nombres hasta que no se
+  leen.
+- En Amigos, en vertical, el número de amigos ya no va en la cabecera (sigue
+  en la pestaña), para que quepan el título y el botón del calendario.
+
 ## 0.8.1 — Crear en la segunda página
 
 ### Arreglado

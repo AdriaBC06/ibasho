@@ -185,6 +185,29 @@ test('tsumiki (mas alto mejor): una puntuacion peor no sustituye a la mejor', as
   );
 });
 
+test('hebi (0.9.0, longitud, mas alto mejor) entra sin reglas propias', async () => {
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/hebi/daily/${day}/day`]: day,
+      [`leaderboards/hebi/daily/${day}/scores/${ANA}`]: 18,
+      [`leaderboards/hebi/daily/${day}/at/${ANA}`]: serverTimestamp(),
+    }),
+  );
+  await assertFails(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/hebi/daily/${day}/scores/${ANA}`]: 12,
+      [`leaderboards/hebi/daily/${day}/at/${ANA}`]: serverTimestamp(),
+    }),
+  );
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), {
+      [`leaderboards/hebi/weekly/${week}/week`]: week,
+      [`leaderboards/hebi/weekly/${week}/scores/${ANA}`]: 25,
+      [`leaderboards/hebi/weekly/${week}/at/${ANA}`]: serverTimestamp(),
+    }),
+  );
+});
+
 test('buscaminas (mas bajo mejor): un tiempo peor no sustituye al mejor', async () => {
   await seed({
     leaderboards: { minesweeper_easy: { daily: { [day]: { day, scores: { [ANA]: 5000 } } } } },

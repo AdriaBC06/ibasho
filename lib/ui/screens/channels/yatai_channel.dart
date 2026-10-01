@@ -47,6 +47,7 @@ enum _Tab { games, tamas, gacha }
 /// `gameChannelRegistry` en `channel.dart`.
 ArtIcon _gameArt(String gameId) => switch (gameId) {
       'tsumiki' => ArtIcon.tsumiki,
+      'hebi' => ArtIcon.hebi,
       'nihongo' => ArtIcon.nihongo,
       _ => ArtIcon.minesweeper,
     };
@@ -54,6 +55,7 @@ ArtIcon _gameArt(String gameId) => switch (gameId) {
 String _gameTitle(L l, String gameId) => switch (gameId) {
       'minesweeper' => l.minesweeperTitle,
       'tsumiki' => l.tsumikiTitle,
+      'hebi' => l.hebiTitle,
       'nihongo' => l.nihongoTitle,
       _ => gameId,
     };
@@ -93,6 +95,7 @@ ArtIcon itemArt(ShopItem it) => it.ticket != null
 
 String _gameDesc(L l, String gameId) => switch (gameId) {
       'tsumiki' => l.yataiDescTsumiki,
+      'hebi' => l.yataiDescHebi,
       'nihongo' => l.yataiDescNihongo,
       _ => l.yataiDescGame,
     };

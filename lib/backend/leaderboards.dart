@@ -21,7 +21,8 @@ enum LeaderboardGame {
   odori,
   odoriButai,
   ohirune,
-  hataraki;
+  hataraki,
+  hebi;
 
   /// La clave del juego en `/leaderboards/{clave}` y en las reglas.
   String get key => switch (this) {
@@ -34,10 +35,12 @@ enum LeaderboardGame {
         LeaderboardGame.odoriButai => 'odori_butai',
         LeaderboardGame.ohirune => 'ohirune',
         LeaderboardGame.hataraki => 'hataraki',
+        LeaderboardGame.hebi => 'hebi',
       };
 
   /// Buscaminas y Ohirune son por tiempo: menor es mejor. Tsumiki, Nihongo
-  /// y Odori (Taki y Butai) son por puntos: mayor es mejor.
+  /// y Odori (Taki y Butai) son por puntos: mayor es mejor. Hebi, por
+  /// longitud: mayor es mejor.
   bool get lowerIsBetter => switch (this) {
         LeaderboardGame.minesweeperEasy ||
         LeaderboardGame.minesweeperMedium ||
@@ -48,7 +51,8 @@ enum LeaderboardGame {
         LeaderboardGame.nihongo ||
         LeaderboardGame.odori ||
         LeaderboardGame.odoriButai ||
-        LeaderboardGame.hataraki =>
+        LeaderboardGame.hataraki ||
+        LeaderboardGame.hebi =>
           false,
       };
 

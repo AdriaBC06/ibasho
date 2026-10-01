@@ -1483,6 +1483,46 @@
         }
       }
     },
+    // El archivo de sugerencias ya decididas. Hasta la 0.8.x la viva de
+    // `/suggestions` era lo unico que habia, y la siguiente de esa cuenta la
+    // pisaba. Ahora el admin copia aqui cada veredicto en la misma escritura
+    // que lo da; la clave es el `at` de la sugerencia, asi que copiarla dos
+    // veces no duplica nada. Solo lo escribe el admin; cada cual lee el suyo.
+    "suggestionHistory": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$accountId": {
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId",
+        ".validate": "$accountId.matches(/^[-0-9A-Za-z_]{1,128}$/)",
+        "$at": {
+          ".validate": "newData.hasChildren(['title', 'body', 'at', 'status']) && $at.matches(/^[0-9]{1,15}$/)",
+          "title": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+          },
+          "body": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200"
+          },
+          "at": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() + '' === $at"
+          },
+          "status": {
+            ".validate": "newData.isString() && (newData.val() === 'accepted' || newData.val() === 'rejected')"
+          },
+          "note": {
+            ".validate": "newData.isString() && newData.val().length <= 140"
+          },
+          "decidedAt": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "decidedBy": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     // Las aceptadas, en limpio y a la vista de todos: sirve para que no se
     // repitan y para que se vea que las sugerencias van a alguna parte.
     "acceptedSuggestions": {

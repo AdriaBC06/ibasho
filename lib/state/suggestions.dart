@@ -19,7 +19,9 @@ class SuggestionsState {
   const SuggestionsState({
     this.mine,
     this.accepted = const <AcceptedSuggestion>[],
+    this.history = const <Suggestion>[],
     this.pending = const <Suggestion>[],
+    this.decided = const <Suggestion>[],
     this.open = true,
     this.loaded = false,
   });
@@ -30,8 +32,22 @@ class SuggestionsState {
   /// Las aceptadas, a la vista de todos.
   final List<AcceptedSuggestion> accepted;
 
+  /// Las de esta cuenta ya decididas, archivadas en `/suggestionHistory`, de
+  /// la mas nueva a la mas vieja. Puede incluir la misma que [mine].
+  final List<Suggestion> history;
+
   /// Todas las que esperan respuesta. Solo se llena si quien mira es admin.
   final List<Suggestion> pending;
+
+  /// Todas las ya decididas, de todas las cuentas y de la mas nueva a la mas
+  /// vieja. Solo se llena si quien mira es admin.
+  final List<Suggestion> decided;
+
+  /// Las de [history] menos la que ya se ve como [mine].
+  List<Suggestion> get earlier => [
+        for (final s in history)
+          if (mine == null || s.historyKey != mine!.historyKey) s,
+      ];
 
   /// Si el buzon admite sugerencias nuevas.
   final bool open;
@@ -45,14 +61,18 @@ class SuggestionsState {
     Suggestion? mine,
     bool clearMine = false,
     List<AcceptedSuggestion>? accepted,
+    List<Suggestion>? history,
     List<Suggestion>? pending,
+    List<Suggestion>? decided,
     bool? open,
     bool? loaded,
   }) =>
       SuggestionsState(
         mine: clearMine ? null : (mine ?? this.mine),
         accepted: accepted ?? this.accepted,
+        history: history ?? this.history,
         pending: pending ?? this.pending,
+        decided: decided ?? this.decided,
         open: open ?? this.open,
         loaded: loaded ?? this.loaded,
       );
@@ -82,6 +102,9 @@ class SuggestionsController extends StateNotifier<SuggestionsState> {
   Object? _acceptedTree;
   Object? _allTree;
 
+  /// `/suggestionHistory/{yo}`, o el arbol entero si quien mira es admin.
+  Object? _historyTree;
+
   String get _me => _session.state.accountId;
 
   @override
@@ -99,12 +122,15 @@ class SuggestionsController extends StateNotifier<SuggestionsState> {
         _backend.read('/suggestions/$_me', idToken: token),
         _backend.read('/acceptedSuggestions', idToken: token),
         _backend.read('/system/suggestionsOpen', idToken: token),
+        _backend.read(_historyPath, idToken: token),
       ]);
       if (!mounted) return;
       _acceptedTree = results[1];
+      _historyTree = results[3];
       state = SuggestionsState(
         mine: Suggestion.fromJson(_me, results[0]),
         accepted: _parseAccepted(_acceptedTree),
+        history: _parseHistory(_me, _myHistory),
         open: results[2] != false,
         loaded: true,
       );
@@ -114,6 +140,24 @@ class SuggestionsController extends StateNotifier<SuggestionsState> {
     }
     if (!mounted) return;
     _listen();
+  }
+
+  /// El admin vigila el archivo entero (lo necesita para su lista) y ahi ya
+  /// va el suyo; los demas, solo el propio.
+  String get _historyPath =>
+      _isAdmin ? '/suggestionHistory' : '/suggestionHistory/$_me';
+
+  Object? get _myHistory {
+    if (!_isAdmin) return _historyTree;
+    final tree = _historyTree;
+    return tree is Map ? tree[_me] : null;
+  }
+
+  void _publishHistory() {
+    state = state.copyWith(
+      history: _parseHistory(_me, _myHistory),
+      decided: _isAdmin ? _parseDecided(_allTree, _historyTree) : null,
+    );
   }
 
   void _listen() {
@@ -141,17 +185,27 @@ class SuggestionsController extends StateNotifier<SuggestionsState> {
       }, onError: (Object e) => debugPrint('Ibasho: stream del buzon ($e)')),
     );
 
+    _watches.add(
+      _backend.watch(_historyPath, token: _session.freshToken).listen((e) {
+        _historyTree = applyDatabaseEvent(_historyTree, e);
+        if (mounted) _publishHistory();
+      }, onError: (Object e) => debugPrint('Ibasho: stream del archivo ($e)')),
+    );
+
     if (_isAdmin) {
       _watches.add(
         _backend.watch('/suggestions', token: _session.freshToken).listen((e) {
           _allTree = applyDatabaseEvent(_allTree, e);
-          if (mounted) state = state.copyWith(pending: _parsePending(_allTree));
+          if (!mounted) return;
+          state = state.copyWith(pending: _parsePending(_allTree));
+          _publishHistory();
         }, onError: (Object e) => debugPrint('Ibasho: stream de sugerencias ($e)')),
       );
     }
   }
 
-  /// Manda una sugerencia. Sustituye a la anterior, que ya tendra veredicto.
+  /// Manda una sugerencia. Ocupa el sitio de la anterior, que ya tendra
+  /// veredicto y por tanto ya estara en el archivo.
   Future<bool> submit({required String title, required String body}) async {
     if (!state.canSubmit) return false;
     try {
@@ -175,8 +229,9 @@ class SuggestionsController extends StateNotifier<SuggestionsState> {
 
   // --- Solo admin --------------------------------------------------------
 
-  /// Acepta o rechaza. Al aceptar, la sugerencia pasa ademas a la lista
-  /// publica, con el nombre de quien la propuso.
+  /// Acepta o rechaza. En la misma escritura la copia al archivo, para que la
+  /// siguiente de esa cuenta no se la lleve por delante. Al aceptar, pasa
+  /// ademas a la lista publica, con el nombre de quien la propuso.
   Future<bool> decide({
     required Suggestion suggestion,
     required bool accept,
@@ -186,11 +241,22 @@ class SuggestionsController extends StateNotifier<SuggestionsState> {
   }) async {
     final status =
         accept ? SuggestionStatus.accepted.name : SuggestionStatus.rejected.name;
+    final by = decidedBy.isEmpty ? null : decidedBy;
     final writes = <String, Object?>{
       'suggestions/${suggestion.accountId}/status': status,
       'suggestions/${suggestion.accountId}/decidedAt': serverTimestamp,
-      'suggestions/${suggestion.accountId}/decidedBy': decidedBy,
+      'suggestions/${suggestion.accountId}/decidedBy': by,
       'suggestions/${suggestion.accountId}/note': note.isEmpty ? null : note,
+      'suggestionHistory/${suggestion.accountId}/${suggestion.historyKey}':
+          <String, Object?>{
+        'title': suggestion.title,
+        'body': suggestion.body,
+        'at': suggestion.at.millisecondsSinceEpoch,
+        'status': status,
+        'decidedAt': serverTimestamp,
+        'decidedBy': ?by,
+        if (note.isNotEmpty) 'note': note,
+      },
       if (accept)
         'acceptedSuggestions/${generatePushId()}': <String, Object?>{
           'title': suggestion.title,
@@ -230,6 +296,41 @@ class SuggestionsController extends StateNotifier<SuggestionsState> {
     }
     out.sort((a, b) => b.id.compareTo(a.id));
     return List<AcceptedSuggestion>.unmodifiable(out);
+  }
+
+  /// Las de una cuenta en el archivo, de la mas nueva a la mas vieja.
+  static List<Suggestion> _parseHistory(String accountId, Object? raw) {
+    if (raw is! Map) return const <Suggestion>[];
+    final out = <Suggestion>[];
+    for (final v in raw.values) {
+      final item = Suggestion.fromJson(accountId, v);
+      if (item != null && !item.isPending) out.add(item);
+    }
+    out.sort((a, b) => b.at.compareTo(a.at));
+    return List<Suggestion>.unmodifiable(out);
+  }
+
+  /// Todas las decididas: el archivo y, por si alguna aun no esta archivada
+  /// (las de antes de la 0.9.0, hasta que se migran), las vivas con veredicto.
+  static List<Suggestion> _parseDecided(Object? live, Object? history) {
+    final byKey = <String, Suggestion>{};
+    if (history is Map) {
+      for (final account in history.entries) {
+        for (final s in _parseHistory('${account.key}', account.value)) {
+          byKey['${s.accountId}/${s.historyKey}'] = s;
+        }
+      }
+    }
+    if (live is Map) {
+      for (final e in live.entries) {
+        final s = Suggestion.fromJson('${e.key}', e.value);
+        if (s != null && !s.isPending) {
+          byKey.putIfAbsent('${s.accountId}/${s.historyKey}', () => s);
+        }
+      }
+    }
+    final out = byKey.values.toList()..sort((a, b) => b.at.compareTo(a.at));
+    return List<Suggestion>.unmodifiable(out);
   }
 
   static List<Suggestion> _parsePending(Object? raw) {

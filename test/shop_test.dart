@@ -38,7 +38,7 @@ void main() {
         shopCatalog
             .where((i) => i.section == ShopSection.games && i.koroTier == null && i.odoriSong == null)
             .map((i) => i.gameId),
-        ['minesweeper', 'tsumiki', 'nihongo'],
+        ['minesweeper', 'tsumiki', 'hebi', 'nihongo'],
       );
       // Las canciones de pago de Odori, ninguna de las gratis.
       expect(shopCatalog.where((i) => i.odoriSong != null).map((i) => i.id), [

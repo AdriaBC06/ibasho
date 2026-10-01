@@ -25,10 +25,12 @@ import 'dart:io';
 /// Desde la 0.6.2, los huecos de Tamakoro: 10, 20, 30 y 40 monedas segun el
 /// tramo (del 11 al 20, del 21 al 30...).
 /// Desde la 0.8.0, la caca para el Tama: 1 moneda.
+/// Desde la 0.9.0, Hebi: 10, como Tsumiki.
 /// Ampliar el catalogo es anadir aqui su precio, nada mas.
 const Map<String, int> _prices = <String, int>{
   'game_minesweeper': 0,
   'game_tsumiki': 10,
+  'game_hebi': 10,
   'game_nihongo': 50,
   'food_cookie': 3,
   'food_candy': 3,
@@ -47,6 +49,13 @@ const Map<String, int> _prices = <String, int>{
   'koro_slot_3': 30,
   'koro_slot_4': 40,
   'prize_poop_brown': 1,
+  // Las canciones de pago de Odori (0.6.3): faltaban aqui y, como esto
+  // escribe /shop/prices entero, lanzarlo las dejaba sin precio.
+  'odori_hanabi': 10,
+  'odori_nekobasu': 10,
+  'odori_kasa': 10,
+  'odori_tsukimi': 10,
+  'odori_kaerimichi': 10,
 };
 
 Future<int> main() async {

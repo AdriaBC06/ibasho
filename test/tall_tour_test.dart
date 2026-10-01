@@ -229,6 +229,11 @@ Future<void> main() async {
         await tester.dragFrom(Offset(phone.width / 2, phone.height * .7), const Offset(0, -300));
         await settle(tester, 20);
         await shoot(tester, '13b-perfil-amigo-muro');
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await settle(tester, 30);
+        await tester.tap(find.byKey(const ValueKey<String>('friends.birthdays')));
+        await settle(tester, 60);
+        await shoot(tester, '13c-calendario-cumples');
         await settle(tester, 60);
       });
 

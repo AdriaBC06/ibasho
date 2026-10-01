@@ -152,11 +152,19 @@ class _SuggestionsChannelState extends ConsumerState<SuggestionsChannel> {
                             onPressed: () => setState(() => _composing = true),
                           ),
                         ),
+                      if (state.earlier.isNotEmpty) ...[
+                        const SizedBox(height: 22),
+                        _EarlierList(earlier: state.earlier),
+                      ],
                       const SizedBox(height: 22),
                       _AcceptedList(accepted: state.accepted),
                       if (isAdmin) ...[
                         const SizedBox(height: 22),
-                        _AdminSection(pending: state.pending, open: state.open),
+                        _AdminSection(
+                          pending: state.pending,
+                          decided: state.decided,
+                          open: state.open,
+                        ),
                       ],
                     ],
                   ),
@@ -194,28 +202,133 @@ class _MineCard extends StatelessWidget {
           Text(suggestion.body, style: Ty.body.copyWith(color: Ty.inkSoft)),
           if (suggestion.note != null) ...[
             const SizedBox(height: 16),
-            GlossSurface(
-              radius: 16,
-              recessed: true,
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(suggestion.note!, style: Ty.body),
-                  if (suggestion.decidedBy != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        l.suggestDecidedBy(suggestion.decidedBy!),
-                        style: Ty.caption,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            _Verdict(suggestion: suggestion),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// El motivo del admin, con su firma.
+class _Verdict extends StatelessWidget {
+  const _Verdict({required this.suggestion});
+
+  final Suggestion suggestion;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    return GlossSurface(
+      radius: 16,
+      recessed: true,
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(suggestion.note!, style: Ty.body),
+          if (suggestion.decidedBy != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                l.suggestDecidedBy(suggestion.decidedBy!),
+                style: Ty.caption,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Una sugerencia ya decidida, en una lista: titulo y sello en una linea, el
+/// texto debajo y el motivo si lo hay. Si se pasa [author], va su nombre.
+class _DecidedRow extends StatelessWidget {
+  const _DecidedRow({required this.suggestion, this.author});
+
+  final Suggestion suggestion;
+  final String? author;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: Text(suggestion.title, style: Ty.body)),
+                const SizedBox(width: 12),
+                _StatusSeal(status: suggestion.status),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(suggestion.body, style: Ty.caption),
+            if (author != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  GlyphIcon(Glyph.person, size: 15, color: Ty.inkSoft),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      author!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Ty.micro,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (suggestion.note != null) ...[
+              const SizedBox(height: 10),
+              _Verdict(suggestion: suggestion),
+            ],
+          ],
+        ),
+      );
+}
+
+/// Las que esta cuenta mando antes de la de ahora, ya con su veredicto.
+class _EarlierList extends StatelessWidget {
+  const _EarlierList({required this.earlier});
+
+  final List<Suggestion> earlier;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    return SectionCard(
+      title: l.suggestEarlier,
+      padding: const EdgeInsets.fromLTRB(26, 6, 26, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < earlier.length; i++) ...[
+            if (i > 0) const Hairline(),
+            _DecidedRow(suggestion: earlier[i]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Una ya decidida en la lista del admin, con el nombre de quien la mando.
+class _AdminDecidedRow extends ConsumerWidget {
+  const _AdminDecidedRow({super.key, required this.suggestion});
+
+  final Suggestion suggestion;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = L.of(context)!;
+    final card = ref.watch(cardOfProvider(suggestion.accountId)).valueOrNull;
+    return _DecidedRow(
+      suggestion: suggestion,
+      author: card?.displayName ?? l.addFriendNoCard,
     );
   }
 }
@@ -433,9 +546,14 @@ class _AcceptedList extends StatelessWidget {
 /// La cola de veredictos y la llave del buzon. Solo la ve quien manda: si no
 /// es admin, `pending` ni siquiera se llena.
 class _AdminSection extends ConsumerStatefulWidget {
-  const _AdminSection({required this.pending, required this.open});
+  const _AdminSection({
+    required this.pending,
+    required this.decided,
+    required this.open,
+  });
 
   final List<Suggestion> pending;
+  final List<Suggestion> decided;
   final bool open;
 
   @override
@@ -444,6 +562,9 @@ class _AdminSection extends ConsumerStatefulWidget {
 
 class _AdminSectionState extends ConsumerState<_AdminSection> {
   bool _switching = false;
+
+  /// Que lista se ve: las que esperan, o las decididas de un color.
+  SuggestionStatus _filter = SuggestionStatus.pending;
 
   Future<void> _setOpen(bool open) async {
     final l = L.of(context)!;
@@ -458,6 +579,19 @@ class _AdminSectionState extends ConsumerState<_AdminSection> {
   @override
   Widget build(BuildContext context) {
     final l = L.of(context)!;
+    final accepted = [
+      for (final s in widget.decided)
+        if (s.status == SuggestionStatus.accepted) s,
+    ];
+    final rejected = [
+      for (final s in widget.decided)
+        if (s.status == SuggestionStatus.rejected) s,
+    ];
+    final shown = switch (_filter) {
+      SuggestionStatus.pending => widget.pending,
+      SuggestionStatus.accepted => accepted,
+      SuggestionStatus.rejected => rejected,
+    };
 
     return SectionCard(
       title: l.adminSuggestSection,
@@ -473,18 +607,48 @@ class _AdminSectionState extends ConsumerState<_AdminSection> {
               onChanged: _switching ? null : _setOpen,
             ),
           ),
-          if (widget.pending.isEmpty)
+          const SizedBox(height: 10),
+          IbashoSegmented<SuggestionStatus>(
+            key: const ValueKey<String>('suggest.filter'),
+            height: 40,
+            options: [
+              (SuggestionStatus.pending, l.adminSuggestFilterPending(widget.pending.length)),
+              (SuggestionStatus.accepted, l.adminSuggestFilterAccepted(accepted.length)),
+              (SuggestionStatus.rejected, l.adminSuggestFilterRejected(rejected.length)),
+            ],
+            value: _filter,
+            onChanged: (f) => setState(() => _filter = f),
+          ),
+          const SizedBox(height: 4),
+          if (shown.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 28),
-              child: Center(child: Text(l.adminSuggestEmpty, style: Ty.caption)),
+              child: Center(
+                child: Text(
+                  switch (_filter) {
+                    SuggestionStatus.pending => l.adminSuggestEmpty,
+                    SuggestionStatus.accepted => l.adminSuggestNoneAccepted,
+                    SuggestionStatus.rejected => l.adminSuggestNoneRejected,
+                  },
+                  style: Ty.caption,
+                ),
+              ),
             )
           else
-            for (var i = 0; i < widget.pending.length; i++) ...[
+            for (var i = 0; i < shown.length; i++) ...[
               if (i > 0) const Hairline(),
-              _PendingRow(
-                key: ValueKey<String>('suggest.pending.${widget.pending[i].accountId}'),
-                suggestion: widget.pending[i],
-              ),
+              if (_filter == SuggestionStatus.pending)
+                _PendingRow(
+                  key: ValueKey<String>('suggest.pending.${shown[i].accountId}'),
+                  suggestion: shown[i],
+                )
+              else
+                _AdminDecidedRow(
+                  key: ValueKey<String>(
+                    'suggest.decided.${shown[i].accountId}.${shown[i].historyKey}',
+                  ),
+                  suggestion: shown[i],
+                ),
             ],
         ],
       ),

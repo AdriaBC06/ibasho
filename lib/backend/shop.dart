@@ -86,6 +86,7 @@ class ShopItem {
 final List<ShopItem> shopCatalog = List<ShopItem>.unmodifiable(<ShopItem>[
   const ShopItem(id: 'game_minesweeper', section: ShopSection.games, gameId: 'minesweeper'),
   const ShopItem(id: 'game_tsumiki', section: ShopSection.games, gameId: 'tsumiki'),
+  const ShopItem(id: 'game_hebi', section: ShopSection.games, gameId: 'hebi'),
   const ShopItem(id: 'game_nihongo', section: ShopSection.games, gameId: 'nihongo'),
   for (final food in TamaFood.values)
     ShopItem(id: ShopItem.idForFood(food), section: ShopSection.tamas, food: food),

@@ -36,6 +36,7 @@ import '../../widgets/slot_tile.dart';
 import '../channel_grid.dart';
 import '../channel_route.dart';
 import '../friends/add_friend_screen.dart';
+import '../friends/birthday_calendar_screen.dart';
 import '../friends/friend_profile_screen.dart';
 
 /// Ranuras por pagina: rejilla de 6x2, como la de Tamas. En vertical son 3
@@ -120,6 +121,8 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
 
   void _addFriend() => pushChannelPage<void>(context, (_) => const AddFriendScreen());
 
+  void _openBirthdays() => pushChannelPage<void>(context, (_) => const BirthdayCalendarScreen());
+
   void _openFriend(String account) =>
       pushChannelPage<void>(context, (_) => FriendProfileScreen(accountId: account));
 
@@ -191,12 +194,27 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
     return ChannelScaffold(
       title: l.friendsTitle,
       glyph: Glyph.friends,
-      trailing: state.friends.isEmpty
-          ? null
-          : Text(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // En vertical el numero ya va en la pestaña y el titulo no cabria.
+          if (state.friends.isNotEmpty && !tall) ...[
+            Text(
               l.friendsCount(state.friends.length, maxFriendsPerAccount),
               style: Ty.numeral(layout.pick(19, 16), color: Ty.inkSoft),
             ),
+            const SizedBox(width: 14),
+          ],
+          IconPill(
+            key: const ValueKey<String>('friends.birthdays'),
+            glyph: Glyph.calendar,
+            diameter: tall ? 44 : 46,
+            semanticLabel: l.friendsBirthdays,
+            cue: null,
+            onPressed: _openBirthdays,
+          ),
+        ],
+      ),
       child: Focus(
         autofocus: true,
         onKeyEvent: _onKey,

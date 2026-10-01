@@ -703,6 +703,12 @@ test('el tope de un juego no cuenta para otro', async () => {
   await assertSucceeds(claim(ANA, { game: 'tsumiki', earned: 8, coins: 108 }));
 });
 
+test('hebi (0.9.0) cobra como cualquier juego comprado, sin reglas propias', async () => {
+  await assertFails(claim(ANA, { game: 'hebi', earned: 3, coins: 103 }));
+  await giveGame(ANA, 'hebi');
+  await assertSucceeds(claim(ANA, { game: 'hebi', earned: 3, coins: 103 }));
+});
+
 test('un dia nuevo empieza de cero', async () => {
   await giveMinesweeper(ANA);
   await earnedBefore(ANA, 'minesweeper', { day: today() - 1, earned: 20 });

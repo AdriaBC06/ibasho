@@ -47,6 +47,7 @@ enum Glyph {
   eye,
   eyeOff,
   cake,
+  calendar,
   clock,
   chevronDown,
   tama,
@@ -71,6 +72,7 @@ enum Glyph {
   coin,
   mine,
   blocks,
+  snake,
   kana,
   pause,
   yatai,
@@ -427,6 +429,16 @@ class _GlyphPainter extends CustomPainter {
             ..close(),
           fill,
         );
+      case Glyph.calendar:
+        // Hoja de calendario con sus dos anillas y un dia marcado.
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(const Rect.fromLTWH(3.6, 5.2, 16.8, 15.2), const Radius.circular(3)),
+          stroke,
+        );
+        canvas.drawLine(const Offset(3.6, 9.8), const Offset(20.4, 9.8), stroke);
+        canvas.drawLine(const Offset(8.2, 3), const Offset(8.2, 7), stroke);
+        canvas.drawLine(const Offset(15.8, 3), const Offset(15.8, 7), stroke);
+        canvas.drawCircle(const Offset(15.2, 15.2), 1.9, fill);
       case Glyph.clock:
         canvas.drawCircle(const Offset(12, 12), 8.4, stroke);
         canvas.drawPath(
@@ -784,6 +796,19 @@ class _GlyphPainter extends CustomPainter {
             ..close(),
           stroke,
         );
+      case Glyph.snake:
+        // Una serpiente en S, de la cola (abajo a la izquierda) a la cabeza
+        // (arriba a la derecha), en un solo trazo, y el ojo aparte.
+        canvas.drawPath(
+          Path()
+            ..moveTo(4, 19.4)
+            ..cubicTo(8.6, 19.4, 13.6, 18.6, 13.6, 15.2)
+            ..cubicTo(13.6, 11.8, 6.4, 13.2, 6.4, 9.4)
+            ..cubicTo(6.4, 5.6, 12.8, 4.6, 17.6, 5.4),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(17.8, 5.4), 2.6, stroke);
+        canvas.drawCircle(const Offset(18.4, 4.9), .9, fill);
       case Glyph.pause:
         // Dos barras con aire entre medias.
         canvas.drawLine(const Offset(8.6, 6), const Offset(8.6, 18), stroke);

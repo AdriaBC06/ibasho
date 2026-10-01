@@ -56,6 +56,11 @@ class Suggestion {
 
   bool get isPending => status == SuggestionStatus.pending;
 
+  /// Su clave en `/suggestionHistory/{accountId}`: el `at` en milisegundos.
+  /// Una sugerencia solo se manda una vez, asi que la identifica, y archivarla
+  /// dos veces escribe en el mismo sitio.
+  String get historyKey => '${at.millisecondsSinceEpoch}';
+
   static Suggestion? fromJson(String accountId, Object? raw) {
     if (raw is! Map || raw['title'] is! String || raw['body'] is! String) {
       return null;

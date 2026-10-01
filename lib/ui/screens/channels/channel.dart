@@ -15,6 +15,7 @@ import '../../../games/nihongo/nihongo_channel.dart';
 import '../../../games/odori/odori_channel.dart';
 import '../../../games/hatarakitama/hataraki_channel.dart';
 import '../../../games/ohirune/ohirune_channel.dart';
+import '../../../games/hebi/hebi_channel.dart';
 import '../../../games/tsumiki/tsumiki_channel.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
@@ -111,6 +112,12 @@ final Map<String, GameChannelEntry> gameChannelRegistry = <String, GameChannelEn
     art: ArtIcon.tsumiki,
     label: (l) => l.channelTsumiki,
     builder: (_) => const GameMusic(track: MusicTrack.bossa, child: TsumikiChannel()),
+  ),
+  'hebi': GameChannelEntry(
+    glyph: Glyph.snake,
+    art: ArtIcon.hebi,
+    label: (l) => l.channelHebi,
+    builder: (_) => const GameMusic(track: MusicTrack.hebi, child: HebiChannel()),
   ),
   'nihongo': GameChannelEntry(
     glyph: Glyph.kana,

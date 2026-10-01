@@ -25,6 +25,7 @@ import 'package:ibasho/games/minesweeper/minesweeper.dart';
 import 'package:ibasho/games/minesweeper/minesweeper_channel.dart';
 import 'package:ibasho/games/nihongo/nihongo_channel.dart';
 import 'package:ibasho/games/nihongo/nihongo_widgets.dart';
+import 'package:ibasho/games/hebi/hebi_channel.dart';
 import 'package:ibasho/games/tsumiki/tsumiki_channel.dart';
 import 'package:ibasho/state/login_bonus.dart' show bonusDay;
 import 'package:ibasho/state/providers.dart';
@@ -59,6 +60,7 @@ Future<void> main() async {
         .load();
     debugMinesweeperSeed = _seed;
     debugTsumikiSeed = _seed;
+    debugHebiSeed = _seed;
     debugNihongoSeed = _seed;
     debugPachinkoSeed = _seed;
   });
@@ -195,6 +197,9 @@ Future<void> main() async {
         await boot(tester, backend: backend);
         await settle(tester, 100);
         await openChannel(tester, 'leaderboards');
+        // En el movil estrecho los juegos se deslizan de lado.
+        await tester.ensureVisible(find.text('odori').last);
+        await settle(tester, 10);
         await tester.tap(find.text('odori').last);
         await settle(tester, 40);
         await tester.tap(find.text('butai').last);
@@ -506,6 +511,43 @@ Future<void> main() async {
         await settle(tester, 40);
         await shoot(tester, 't7-resultados');
         expect(find.byKey(const ValueKey<String>('tsumiki.results')), findsOneWidget);
+      });
+
+      testWidgets('hebi: salida, cuenta, partida, pausa y final', (tester) async {
+        await boot(tester, backend: shopBackend(game: 'open', gameId: 'hebi'));
+        await settle(tester, 100);
+        await openChannel(tester, 'game-hebi');
+        await shoot(tester, 'h1-salida');
+        await tester.tap(find.byKey(const ValueKey<String>('hebi.start')));
+        await settle(tester, 20);
+        await shoot(tester, 'h2-cuenta');
+        await settle(tester, 40);
+
+        // Unas vueltas en zigzag para que se mueva por el tablero.
+        for (final key in [
+          LogicalKeyboardKey.arrowUp,
+          LogicalKeyboardKey.arrowRight,
+          LogicalKeyboardKey.arrowDown,
+          LogicalKeyboardKey.arrowRight,
+        ]) {
+          await tester.sendKeyEvent(key);
+          await settle(tester, 6);
+        }
+        await shoot(tester, 'h3-jugando');
+
+        await tester.tap(find.byKey(const ValueKey<String>('hebi.pause')));
+        await settle(tester, 20);
+        await shoot(tester, 'h4-pausa');
+        await tester.tap(find.byKey(const ValueKey<String>('hebi.resume')));
+        await settle(tester, 6);
+
+        // Recto hasta la pared.
+        for (var i = 0; i < 80 && find.byKey(const ValueKey<String>('hebi.results')).evaluate().isEmpty; i++) {
+          await settle(tester, 4);
+        }
+        await settle(tester, 40);
+        await shoot(tester, 'h5-resultados');
+        expect(find.byKey(const ValueKey<String>('hebi.results')), findsOneWidget);
       });
 
       testWidgets('nihongo: menu, aciertos, fallo, resultados y escribir', (tester) async {

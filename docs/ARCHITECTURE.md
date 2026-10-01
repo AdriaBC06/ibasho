@@ -89,6 +89,7 @@ lib/
     game_stage.dart    piezas comunes de los juegos: foco, bocadillo, cara de reserva, marcadores, chapas, selector de raíl, entrada con rebote y línea de monedas
     game_store.dart    récords locales de un juego en `<nombre>.json`
     tsumiki/           Tsumiki: tsumiki.dart (pozo, piezas, giros SRS, bolsa de 7, puntos), tsumiki_channel.dart (la escena, mandos, gestos y teclado), tsumiki_board.dart (bloques y efectos), tsumiki_widgets.dart (cruceta, botones A/B, huecos, carteles, salida, pausa y resultados), tsumiki_store.dart (récords)
+    hebi/              Hebi (0.9.0): hebi.dart (tablero de 15×15, giros encolados, comer, velocidad, monedas), hebi_channel.dart (la escena, cruceta, deslizar y teclado; reutiliza los mandos de Tsumiki), hebi_board.dart (la serpiente que se desliza entre casillas, comida y destellos), hebi_widgets.dart (salida, pausa y resultados), hebi_store.dart (récords)
     nihongo/           Nihongo: kana.dart (tablas de kana, lecturas aceptadas, rondas y opciones), nihongo_channel.dart (menú, ronda y resultados), nihongo_widgets.dart (tarjeta, maru, puntos, respuestas, categorías), nihongo_store.dart (dominio por kana y rondas)
     minesweeper/       buscaminas: minesweeper.dart (tablero, reglas y tablero del día), minesweeper_channel.dart (la escena), minesweeper_board.dart (casillas y efectos), minesweeper_widgets.dart (escenario, marcadores, niveles, resultados), minesweeper_store.dart (récords y medallas locales)
   storage/
@@ -113,7 +114,7 @@ lib/
       channels/        ajustes, perfil, Tamas, amigos, administración, depuración, créditos, próximamente
                        gacha_channel.dart: el canal del gachapón (máquina, tirada animada y depósito)
       tama/            habitación y creador de un Tama
-      friends/         añadir amigo, perfil de un amigo y muro de cumpleaños
+      friends/         añadir amigo, perfil de un amigo, muro y calendario de cumpleaños
 android/                   proyecto de Android (manifiesto, Gradle, iconos, MainActivity)
 windows/                   proyecto de Windows (runner nativo, icono, instalador)
 test/
@@ -137,6 +138,7 @@ tool/
   dev_seed.dart          cuentas y amistades de prueba en los emuladores
   gen_audio.py           genera la música propia y los efectos
   gen_hataraki_music.py  las tres canciones de Hatarakitama (asa, mizuba, yuyake)
+  gen_hebi_music.py      la canción de Hebi (mokkin en proceso aditivo, koto y flauta)
   test_rules.sh          lanza los tests de reglas con el emulador
   test_e2e.sh            lanza el e2e con los emuladores
 assets/                  audio (bgm, sfx) y fuentes con sus licencias
@@ -334,7 +336,7 @@ Material.
 | `TrackTile` | `track_tile.dart` | `title`, `subtitle`, `selected`, `onPressed`, `trailing`, `dimmed` | Fila de pista de música. |
 | `SlotTile` | `slot_tile.dart` | `width`, `height`, `child`, `onPressed`, `selected`, `tint`, `semanticLabel` | Baldosa de rejilla paginada: se inclina 2° y sube 4 px con `easeOutBack`; la elegida lleva `accentWash` y filo `accentDeep`. La usan Tamas y amigos. |
 | `EmptySlot` | `slot_tile.dart` | `width`, `height` | Ranura libre hundida. |
-| `ArtIconView` | `channel_art.dart` | `icon` (`ArtIcon`), `size` (64) | Ilustración a color sobre una caja de 100×100: `yatai`, `minesweeper`, `tsumiki`, `nihongo`, `gacha`, `coin`, `medalBronze/Silver/Gold`, `calendar`. Colores propios en `Art` (no el acento). Las funciones `paintPlastic`, `paintBomb`, `paintFlag`, `paintCapsule`, `paintCoin`, `paintTwinkle` y `paintGroundShadow` se reutilizan en el tablero y en el Yatai. |
+| `ArtIconView` | `channel_art.dart` | `icon` (`ArtIcon`), `size` (64) | Ilustración a color sobre una caja de 100×100: `yatai`, `minesweeper`, `tsumiki`, `hebi`, `nihongo`, `gacha`, `coin`, `medalBronze/Silver/Gold`, `calendar`. Colores propios en `Art` (no el acento). Las funciones `paintPlastic`, `paintBomb`, `paintFlag`, `paintCapsule`, `paintCoin`, `paintTwinkle` y `paintGroundShadow` se reutilizan en el tablero y en el Yatai. |
 | `GachaMachineView` | `channel_art.dart` | `size`, `crank` (vueltas), `stir` (0–1, cuánto se remueven las cápsulas), `tremble`, `lit` | La máquina de cápsulas a tamaño de escena, sobre la misma caja de 100×100. `GachaMachineView.mouth` da la boca de salida en esas unidades, para que la tirada haga salir las bolas justo de ahí. |
 | `GiftFace` | `gift_face.dart` | `open` (0–1) | Regalo envuelto que llena su caja. `open` lo anima entero: se deshace el lazo, salta la tapa, salen destellos y se desvanece. Al revés (1→0) es el envoltorio de la compra. |
 
@@ -911,7 +913,7 @@ coincide con su uid).
 /system/friendCodeCounter  number entero: el siguiente contador (ausente = 1), sube de 1 en 1
 /system/suggestionsOpen    boolean (ausente = abierto)
 
-/shop/prices/$itemId       number entero 0–999999999 (game_minesweeper, game_tsumiki, game_nihongo, food_cookie, ticket_gachaken, ticket_kinken…)
+/shop/prices/$itemId       number entero 0–999999999 (game_minesweeper, game_tsumiki, game_hebi, game_nihongo, food_cookie, ticket_gachaken, ticket_kinken…)
 
 /dm/$pairId                los dos accountId ordenados, unidos por '_'
     a                    string: el menor de los dos

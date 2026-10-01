@@ -22,6 +22,7 @@ import 'package:ibasho/core/timezones.dart';
 import 'package:ibasho/l10n/gen/app_localizations_en.dart';
 import 'package:ibasho/l10n/gen/app_localizations_es.dart';
 import 'package:ibasho/state/friends.dart';
+import 'package:ibasho/state/people.dart';
 import 'package:ibasho/state/presence.dart';
 import 'package:ibasho/state/providers.dart';
 import 'package:ibasho/storage/settings_store.dart';
@@ -611,6 +612,90 @@ Future<void> main() async {
     expect(zoneDifferenceLabel(es, const Duration(hours: 7)), '7 h por delante de ti');
     expect(zoneDifferenceLabel(en, const Duration(hours: -5, minutes: -30)), '5 h 30 min behind you');
     expect(zoneDifferenceLabel(es, Duration.zero), es.timeSame);
+  });
+
+  test('el calendario ordena los cumpleaños por cercania y cuenta los años', () {
+    BirthdayEntry who(String? id, String name, String birthday) => BirthdayEntry.of(
+          id,
+          name,
+          UserProfile(username: name, displayName: name, birthday: birthday, createdAt: DateTime(2026)),
+        )!;
+    final today = DateTime(2026, 10, 1, 18, 30);
+    final hoy = who('a', 'Ana', '1999-10-01');
+    final manana = who('b', 'Bea', '2001-10-02');
+    final pasado = who('c', 'Cris', '1990-09-30');
+    final yo = who(null, 'Yo', '1998-10-01');
+    expect(hoy.daysFrom(today), 0);
+    expect(manana.daysFrom(today), 1);
+    expect(pasado.daysFrom(today), 364);
+    expect(pasado.nextFrom(today), DateTime(2027, 9, 30));
+    expect(hoy.turnsFrom(today), 27);
+    expect(pasado.turnsFrom(today), 37);
+    // Hoy primero, y a igualdad el propio delante.
+    expect(upcomingBirthdays([pasado, manana, hoy, yo], today).map((e) => e.name), ['Yo', 'Ana', 'Bea', 'Cris']);
+    // Por dia del mes.
+    final october = birthdaysByDay([pasado, manana, hoy, yo], 2026, 10);
+    expect(october.keys.toSet(), {1, 2});
+    expect(october[1]!.map((e) => e.name), ['Yo', 'Ana']);
+    // Bisiestos: el 29 de febrero cae el 28 los años normales y el 29 los bisiestos.
+    final bisiesto = who('d', 'Dani', '2000-02-29');
+    expect(bisiesto.nextFrom(today), DateTime(2027, 2, 28));
+    expect(birthdaysByDay([bisiesto], 2027, 2).keys, [28]);
+    expect(birthdaysByDay([bisiesto], 2028, 2).keys, [29]);
+    // Sin cumpleaños, o con un año raro, no se inventa nada.
+    expect(BirthdayEntry.of('e', 'Eva', UserProfile(username: 'e', displayName: 'e', createdAt: DateTime(2026))), isNull);
+    expect(who('f', 'Fede', '0000-05-05').turnsFrom(today), isNull);
+  });
+
+  testWidgets('el calendario de cumpleaños enseña el mes, los proximos y el dia elegido', (tester) async {
+    await boot(tester);
+    await tapKey(tester, 'channel.friends', 40);
+    await tapKey(tester, 'friends.birthdays', 60);
+    final container = containerOf(tester);
+    final now = container.read(moodClockProvider);
+    expect(find.text(DateFormat.yMMMM('es').format(now)), findsOneWidget);
+    // Mireia cumple hoy en Tokio y quien mira el 14 de septiembre: salen los
+    // dos, con la etiqueta «tú» en el propio.
+    expect(find.byKey(ValueKey<String>('birthdays.row.$kMireiaUid')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('birthdays.row.me')), findsOneWidget);
+    expect(find.text(es.birthdaysYou), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('birthdays.setYours')), findsNothing);
+
+    // Las flechas cambian de mes y vuelven.
+    await tapKey(tester, 'birthdays.next', 20);
+    expect(find.text(DateFormat.yMMMM('es').format(DateTime(now.year, now.month + 1))), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await settle(tester, 20);
+    expect(find.text(DateFormat.yMMMM('es').format(now)), findsOneWidget);
+
+    // Elegir el dia de Mireia deja en la lista solo los de ese dia.
+    final mireia = container.read(friendProfileProvider(kMireiaUid)).valueOrNull!;
+    final day = mireia.birthdayParts!.$3;
+    if (mireia.birthdayParts!.$2 == now.month) {
+      await tapKey(tester, 'birthdays.day.$day', 20);
+      expect(find.byKey(const ValueKey<String>('birthdays.showUpcoming')), findsOneWidget);
+      await tapKey(tester, 'birthdays.showUpcoming', 20);
+      expect(find.text(es.birthdaysUpcoming), findsOneWidget);
+    }
+
+    // Tocar la fila abre su perfil.
+    await tapKey(tester, 'birthdays.row.$kMireiaUid', 60);
+    expect(find.byKey(ValueKey<String>('birthdays.row.$kMireiaUid')), findsNothing);
+    await closeTop(tester);
+    await closeTop(tester);
+    await settle(tester, 60);
+  });
+
+  testWidgets('sin cumpleaños propio el calendario pide ponerlo', (tester) async {
+    final fake = FakeIbashoBackend()..let((b) => seedSocial(b, mireiaBirthdayToday: false));
+    fake.seed('/users/$kAdminUid/profile/birthday', '');
+    await boot(tester, backend: fake);
+    await tapKey(tester, 'channel.friends', 40);
+    await tapKey(tester, 'friends.birthdays', 60);
+    expect(find.byKey(const ValueKey<String>('birthdays.row.me')), findsNothing);
+    expect(find.byKey(const ValueKey<String>('birthdays.setYours')), findsOneWidget);
+    expect(find.byKey(ValueKey<String>('birthdays.row.$kMireiaUid')), findsOneWidget);
+    await settle(tester, 60);
   });
 
   testWidgets('el gorrito de fiesta cabe en el lienzo del Tama con cualquier cuerpo', (tester) async {

@@ -24,6 +24,7 @@ enum ArtIcon {
   yatai,
   minesweeper,
   tsumiki,
+  hebi,
   nihongo,
   tamakoro,
   odori,
@@ -76,6 +77,8 @@ class ArtPainter extends CustomPainter {
         paintMinesweeper(canvas);
       case ArtIcon.tsumiki:
         paintTsumiki(canvas);
+      case ArtIcon.hebi:
+        paintHebi(canvas);
       case ArtIcon.nihongo:
         paintNihongo(canvas);
       case ArtIcon.tamakoro:
@@ -446,6 +449,71 @@ void paintTsumiki(Canvas canvas) {
   // Destellos: esta a punto de hacer fila.
   paintTwinkle(canvas, const Offset(91, 50), 6, Art.spark);
   paintTwinkle(canvas, const Offset(8, 36), 4, Art.spark);
+}
+
+// --- Hebi -----------------------------------------------------------------------
+
+/// Una serpiente de juguete enroscada en S, con la cabeza alzada y carita,
+/// a punto de zamparse un onigiri que espera delante.
+void paintHebi(Canvas canvas) {
+  paintGroundShadow(canvas, const Offset(50, 91), 80);
+  const body = Color(0xFF74DDA2);
+  // El cuerpo: un trazo grueso en S, primero el filo y luego el plastico.
+  final path = Path()
+    ..moveTo(14, 82)
+    ..cubicTo(34, 86, 62, 84, 62, 70)
+    ..cubicTo(62, 56, 26, 62, 26, 46)
+    ..cubicTo(26, 34, 44, 30, 56, 32);
+  Paint line(Color c, double w) => Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = w
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round
+    ..color = c;
+  canvas.drawPath(path, line(Art.deep(body, .35), 19));
+  canvas.drawPath(path, line(body, 15));
+  canvas.drawPath(path, line(Art.light(body, .5), 4));
+  canvas.drawPath(path.shift(const Offset(-1.6, -2.6)), line(const Color(0x77FFFFFF), 3));
+  for (final c in const [Offset(40, 82), Offset(58, 61), Offset(30, 52)]) {
+    canvas.drawCircle(c, 2.4, Paint()..color = const Color(0xFF4FBF84));
+  }
+  // La cabeza.
+  const c = Offset(62, 31);
+  final head = Path()..addOval(Rect.fromCenter(center: c, width: 30, height: 26));
+  paintPlastic(canvas, head, body, edge: 2, shine: .9);
+  final ink = Paint()..color = Art.brush;
+  for (final dx in [-5.5, 5.5]) {
+    canvas.drawOval(Rect.fromCenter(center: c.translate(dx, -1), width: 4, height: 5.4), ink);
+    canvas.drawCircle(c.translate(dx - .8, -2), 1.1, Paint()..color = T.shellTop);
+  }
+  canvas.drawPath(
+    Path()
+      ..moveTo(c.dx - 3, c.dy + 4.6)
+      ..quadraticBezierTo(c.dx, c.dy + 7.4, c.dx + 3, c.dy + 4.6),
+    _edge(Art.brush, 1.4),
+  );
+  final blush = Paint()..color = T.tamaBlush.withValues(alpha: .6);
+  canvas.drawOval(Rect.fromCenter(center: c.translate(-10, 4), width: 5, height: 2.6), blush);
+  canvas.drawOval(Rect.fromCenter(center: c.translate(10, 4), width: 5, height: 2.6), blush);
+  // La lengua, bifida.
+  canvas.drawLine(c.translate(14, 2), c.translate(20, 2), line(Art.awningRed, 1.8));
+  canvas.drawLine(c.translate(20, 2), c.translate(23, -.5), line(Art.awningRed, 1.6));
+  canvas.drawLine(c.translate(20, 2), c.translate(23, 4.5), line(Art.awningRed, 1.6));
+  // El onigiri: triangulo de arroz con su alga.
+  const o = Offset(86, 62);
+  final rice = Path()
+    ..moveTo(o.dx, o.dy - 11)
+    ..quadraticBezierTo(o.dx + 3, o.dy - 12, o.dx + 11, o.dy + 7)
+    ..quadraticBezierTo(o.dx, o.dy + 10, o.dx - 11, o.dy + 7)
+    ..quadraticBezierTo(o.dx - 3, o.dy - 12, o.dx, o.dy - 11)
+    ..close();
+  paintPlastic(canvas, rice, const Color(0xFFFFFBF2), edge: 1.6, shine: .6);
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(Rect.fromCenter(center: o.translate(0, 5), width: 9, height: 8), const Radius.circular(1.5)),
+    Paint()..color = const Color(0xFF2F4A3A),
+  );
+  paintTwinkle(canvas, const Offset(90, 44), 5, Art.spark);
+  paintTwinkle(canvas, const Offset(10, 60), 4, Art.spark);
 }
 
 // --- Nihongo -------------------------------------------------------------------

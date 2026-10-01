@@ -8,6 +8,7 @@
 //
 //   flutter test test/visual_tour_test.dart
 
+import 'dart:math' as math;
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -450,6 +451,12 @@ Future<void> main() async {
         'card': {'displayName': 'Pau', 'accentColor': '#8CC96A', 'tamaId': bolo.id},
         'presence': {'state': 'away', 'lastSeen': since},
         'friends': {kAdminUid: {'since': since}},
+        'profile': {
+          'username': 'pau',
+          'displayName': 'Pau',
+          'birthday': '2001-${DateTime.now().month.toString().padLeft(2, '0')}-${math.min(28, DateTime.now().day + 4).toString().padLeft(2, '0')}',
+          'timezone': 'Europe/Madrid',
+        },
       })
       ..seed('/users/$kMireiaUid/wall/${DateTime.now().year}/$kPauUid', {
         'text': '¡Feliz cumple, Mireia! Que Mochi te traiga muchas chuches',
@@ -488,6 +495,12 @@ Future<void> main() async {
     await tester.tap(find.byKey(const ValueKey<String>('friends.friend.$kMireiaUid')));
     await settle(tester, 60);
     await shoot(tester, '29-perfil-amigo-cumple');
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await settle(tester, 30);
+
+    await tester.tap(find.byKey(const ValueKey<String>('friends.birthdays')));
+    await settle(tester, 60);
+    await shoot(tester, '29b-calendario-cumples');
     await settle(tester, 80);
   });
 

@@ -548,6 +548,67 @@ Future<void> main() async {
       expect(container.read(suggestionsProvider).canSubmit, isTrue);
     });
 
+    test('el veredicto se archiva y la siguiente no se lo lleva', () async {
+      final backend = FakeIbashoBackend();
+      final container = await signedIn(backend);
+      container.listen(suggestionsProvider, (_, _) {}, fireImmediately: true);
+      await settle();
+
+      final notifier = container.read(suggestionsProvider.notifier);
+      expect(await notifier.submit(title: 'Serpiente', body: 'Un snake.'), isTrue);
+      await settle(10);
+      final first = container.read(suggestionsProvider).mine!;
+      expect(container.read(suggestionsProvider).pending, hasLength(1));
+
+      expect(
+        await notifier.decide(
+          suggestion: first,
+          accept: true,
+          note: 'Vale.',
+          decidedBy: 'admin',
+          authorName: 'admin',
+        ),
+        isTrue,
+      );
+      await settle(10);
+
+      final archived =
+          backend.peek('/suggestionHistory/${backend.uid}/${first.historyKey}') as Map;
+      expect(archived['title'], 'Serpiente');
+      expect(archived['status'], 'accepted');
+      expect(archived['note'], 'Vale.');
+
+      var state = container.read(suggestionsProvider);
+      expect(state.history.single.title, 'Serpiente');
+      // La que se ve arriba no se repite en "anteriores".
+      expect(state.earlier, isEmpty);
+      expect(state.decided.single.status, SuggestionStatus.accepted);
+
+      expect(await notifier.submit(title: 'Sudoku', body: 'Uno diario.'), isTrue);
+      await settle(10);
+      state = container.read(suggestionsProvider);
+      expect(state.mine!.title, 'Sudoku');
+      expect(state.earlier.single.title, 'Serpiente');
+      expect(state.decided, hasLength(1));
+      expect(state.pending.single.title, 'Sudoku');
+    });
+
+    test('las decididas sin archivar tambien salen al admin', () async {
+      final backend = FakeIbashoBackend()
+        ..seed('/suggestions/uid-mireia', <String, Object?>{
+          'title': 'Vieja',
+          'body': 'De antes de la 0.9.0.',
+          'at': 1000,
+          'status': 'rejected',
+        });
+      final container = await signedIn(backend);
+      container.listen(suggestionsProvider, (_, _) {}, fireImmediately: true);
+      await settle(10);
+      final decided = container.read(suggestionsProvider).decided;
+      expect(decided.single.title, 'Vieja');
+      expect(decided.single.accountId, 'uid-mireia');
+    });
+
     test('el buzon cerrado no admite nada', () async {
       final backend = FakeIbashoBackend()..seed('/system/suggestionsOpen', false);
       final container = await signedIn(backend);
