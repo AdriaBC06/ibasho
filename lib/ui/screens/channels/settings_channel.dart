@@ -10,10 +10,10 @@ import '../../../backend/backdrops.dart';
 import '../../../backend/gacha.dart';
 import '../../../core/device.dart';
 import '../../../core/version.dart';
+import '../../../extensions/backdrop_pack.dart';
 import '../../../games/tamakoro/menu_music_picker.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
-import '../../../theme/menu_theme.dart';
 import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
@@ -31,6 +31,7 @@ import '../channel_route.dart';
 import '../messages/backup_key.dart';
 import 'change_own_password_dialog.dart';
 import 'credits_channel.dart';
+import 'extensions_channel.dart';
 
 class SettingsChannel extends ConsumerWidget {
   const SettingsChannel({super.key});
@@ -44,7 +45,9 @@ class SettingsChannel extends ConsumerWidget {
     final controller = ref.read(preferencesProvider.notifier);
     final gacha = ref.watch(gachaProvider);
     final layout = Layout.of(context);
-
+    final extensionBackdrops =
+        ref.watch(extensionBackdropsProvider).asData?.value ??
+        const <ExtensionBackdrop>[];
 
     /// Fila de volumen: en vertical el raíl ocupa el ancho entero.
     Widget volume(Glyph glyph, double value, ValueChanged<double> onChanged) =>
@@ -211,17 +214,40 @@ class SettingsChannel extends ConsumerWidget {
                                       ? () async {
                                           await controller.setBackdrop(b.id);
                                           if (!context.mounted) return;
-                                          await askAccentForTheme(context, ref, b.id);
+                                          await askAccentForTheme(
+                                            context,
+                                            ref,
+                                            b.id,
+                                          );
                                         }
                                       : null,
                                 );
                               },
                             ),
+                          for (final b in extensionBackdrops)
+                            BackdropChip(
+                              key: ValueKey<String>(
+                                'backdrop.extension.${b.preferenceId}',
+                              ),
+                              id: b.preferenceId,
+                              rarity: null,
+                              label: b.label(preferences.localeCode),
+                              locked: false,
+                              selected:
+                                  preferences.backdropId == b.preferenceId,
+                              onPressed: () =>
+                                  controller.setBackdrop(b.preferenceId),
+                            ),
                         ],
                       ),
                       // El cristal de las pantallas del menu, solo si el tema
                       // puesto lo tiene.
-                      if ((menuThemeFor(preferences.backdropId)?.surfaces.glass ?? 1) < 1)
+                      if ((resolvedMenuTheme(
+                                preferences.backdropId,
+                                extensionBackdrops,
+                              )?.surfaces.glass ??
+                              1) <
+                          1)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
                           child: SettingRow(
@@ -244,6 +270,22 @@ class SettingsChannel extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(26, 6, 26, 6),
                   child: Column(
                     children: [
+                      SettingRow(
+                        label: l.settingsExtensions,
+                        hint: l.settingsExtensionsHint,
+                        control: IbashoButton(
+                          label: l.settingsExtensions,
+                          glyph: Glyph.download,
+                          height: 44,
+                          cue: Sfx.open,
+                          onPressed: () => Navigator.of(context).push(
+                            _plainRoute(
+                              const ExtensionsChannel(),
+                              skin.reducedMotion,
+                            ),
+                          ),
+                        ),
+                      ),
                       SettingRow(
                         label: l.settingsCredits,
                         divider: false,

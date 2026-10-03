@@ -15,6 +15,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'audio/audio_service.dart';
 import 'core/device.dart';
+import 'extensions/runtime.dart';
 import 'state/koro.dart';
 import 'state/providers.dart';
 import 'ui/mobile.dart';
@@ -43,7 +44,7 @@ Future<void> main() async {
 
   await AudioService.instance.init();
   await restoreKoroMenuMusic(preferences.musicTrack);
-  await AudioService.instance.setTrack(preferences.musicTrack);
+  await restoreInitialExtensionMusic(preferences.musicTrack);
   await AudioService.instance.setMusicVolume(preferences.musicLevel);
   await AudioService.instance.setEffectsVolume(preferences.effectsLevel);
 

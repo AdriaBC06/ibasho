@@ -11,6 +11,10 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  # Extensiones IES: ZIP seguro, rutas portables y selector nativo.
+  archive: ^4.3.0
+  path: ^1.9.1
+  file_selector: ^1.1.0
 
   # Estado.
   flutter_riverpod: ^2.6.1
@@ -25,7 +29,7 @@ dependencies:
   crypto: ^3.0.7
 
   # Fechas y numeros localizados.
-  intl: 0.20.2
+  intl: 0.20.3
 
   # Musica y efectos.
   audioplayers: ^6.7.1
