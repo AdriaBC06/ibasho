@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "com.justmre.hexebra",
+  "name": "HEXEBRA",
+  "version": "1.0.0",
+  "publisher": "Mr. E",
+  "description": "Rompecabezas numérico de deducción.",
+  "type": "external-app",
+  "compatibility": {
+    "ibashoApi": "^1.0",
+    "minIbasho": "0.10.0"
+  },
+  "entry": {
+    "url": "https://hexebra.netlify.app/"
+  },
+  "permissions": [],
+  "assets": {
+    "icon": "icon.png"
+  }
+}
