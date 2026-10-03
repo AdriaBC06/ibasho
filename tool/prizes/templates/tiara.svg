@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+  <!-- Tiara con joya. La base apoya en la cabeza en (20..80, 42). -->
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".5" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+    <radialGradient id="gem" cx=".35" cy=".35" r=".7">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".35" stop-color="{gem.light}"/>
+      <stop offset="1" stop-color="{gem.deep}"/>
+    </radialGradient>
+  </defs>
+  <!-- Filigrana: arcos que suben al centro -->
+  <path d="M18 42 C24 34 30 30 34 32 C38 26 44 14 50 10 C56 14 62 26 66 32 C70 30 76 34 82 42 Z"
+        fill="url(#metal)" stroke="{main.edge}" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M28 40 C32 36 36 36 38 38 C42 32 46 26 50 24 C54 26 58 32 62 38 C64 36 68 36 72 40"
+        fill="none" stroke="{main.edge}" stroke-opacity=".45" stroke-width="1.2"/>
+  <!-- Diadema -->
+  <path d="M14 46 Q50 36 86 46 L85 49 Q50 40 15 49 Z" fill="url(#metal)" stroke="{main.edge}" stroke-width="1.4" stroke-linejoin="round"/>
+  <!-- Joyas -->
+  <ellipse cx="50" cy="22" rx="5" ry="6.4" fill="url(#gem)" stroke="{gem.edge}" stroke-width="1.2"/>
+  <circle cx="34" cy="36" r="2.4" fill="url(#gem)" stroke="{gem.edge}" stroke-width=".9"/>
+  <circle cx="66" cy="36" r="2.4" fill="url(#gem)" stroke="{gem.edge}" stroke-width=".9"/>
+  <circle cx="50" cy="8" r="2" fill="{main.light}" stroke="{main.edge}" stroke-width="1"/>
+  <!-- Destellos -->
+  <path d="M43 12 L43 6 M40 9 L46 9" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M60 18 L60 14 M58 16 L62 16" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="1" stroke-linecap="round"/>
+</svg>

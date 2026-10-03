@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 96">
+  <!-- Paraguas japones abierto, en la mano derecha: el mango acaba en
+       (60, 90), pegado al costado, y la copa le asoma por encima del hombro. -->
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F08D7F"/>
+      <stop offset=".5" stop-color="#E8503A"/>
+      <stop offset="1" stop-color="#C04838"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(-8 60 90)">
+    <!-- Palo y mango de cuerda -->
+    <path d="M58.6 30 L61.4 30 L61.8 90 Q60 92 58.2 90 Z" fill="#A86B45" stroke="#614A3C" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M58 76 L62 76 L62.2 90 Q60 92 57.8 90 Z" fill="#614A3C"/>
+    <path d="M58 79 L62 80 M58 83 L62 84 M58 87 L62 88" stroke="#A86B45" stroke-width=".9"/>
+    <!-- Copa, con el borde en ondas entre varilla y varilla -->
+    <path d="M24 34 C28 18 46 6 60 6 C74 6 92 18 96 34 Q90 30 84 34 Q78 30 72 34 Q66 30 60 34 Q54 30 48 34 Q42 30 36 34 Q30 30 24 34 Z"
+          fill="url(#paper)" stroke="#853B36" stroke-width="1.8" stroke-linejoin="round"/>
+    <!-- Varillas -->
+    <path d="M60 6 L36 33 M60 6 L48 33 M60 6 L60 33 M60 6 L72 33 M60 6 L84 33" fill="none" stroke="#853B36" stroke-opacity=".35" stroke-width="1"/>
+    <!-- Franja -->
+    <path d="M40 20 C48 14 54 12 60 12 C66 12 72 14 80 20 Q60 15 40 20 Z" fill="#F4F7FA" fill-opacity=".9"/>
+    <circle cx="60" cy="6" r="2.4" fill="#A86B45" stroke="#614A3C" stroke-width="1"/>
+    <path d="M34 26 C38 18 46 12 54 10" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+</svg>

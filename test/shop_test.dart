@@ -4,6 +4,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ibasho/backend/prizes.dart';
 import 'package:ibasho/backend/shop.dart';
 import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/state/providers.dart';
@@ -52,11 +53,13 @@ void main() {
       final foods = shopCatalog.where((i) => i.section == ShopSection.tamas && i.prize == null).toList();
       expect(foods.length, TamaFood.values.length);
       expect(foods.map((i) => i.food).toSet(), TamaFood.values.toSet());
-      // Y lo que se pone el Tama y se compra (0.8.0): la caca.
-      expect(
-        shopCatalog.where((i) => i.prize != null).map((i) => (i.id, i.section)),
-        [('prize_poop_brown', ShopSection.tamas)],
-      );
+      // Y lo que se pone el Tama y se compra, en su propia seccion (0.9.0):
+      // la caca y los diez accesorios, ninguno del gacha.
+      final prizes = shopCatalog.where((i) => i.prize != null).toList();
+      expect(prizes.length, 11);
+      expect(prizes.first.id, 'prize_poop_brown');
+      expect(prizes.every((i) => i.section == ShopSection.accessories), isTrue);
+      expect(prizes.every((i) => prizeItem(i.prize)!.prize.shop), isTrue);
     });
 
     test('los ids siguen el patron game_/food_', () {

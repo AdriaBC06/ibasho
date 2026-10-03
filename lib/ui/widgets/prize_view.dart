@@ -9,10 +9,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../backend/backdrops.dart';
 import '../../backend/gacha.dart';
 import '../../backend/gacha_music.dart';
+import '../../backend/koen_duo.dart' show koenCharmOf;
 import '../../backend/prizes.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
+import '../tama/tama_outfit.dart' show prizeTint;
 import 'backdrop_art.dart';
 import 'gacha_art.dart';
 
@@ -27,7 +29,12 @@ class PrizeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filter = locked ? ColorFilter.mode(Ty.inkSoft.withValues(alpha: .45), BlendMode.srcIn) : null;
+    final tint = prizeTint(item);
+    final filter = locked
+        ? ColorFilter.mode(Ty.inkSoft.withValues(alpha: .45), BlendMode.srcIn)
+        : tint == null
+        ? null
+        : ColorFilter.mode(tint, BlendMode.modulate);
     Widget art(String asset) => SvgPicture.asset(asset, width: size, height: size, colorFilter: filter);
     final front = item.frontAsset;
     return SizedBox(
@@ -81,9 +88,17 @@ class GachaPrizeView extends StatelessWidget {
   }
 }
 
+/// El nombre de un gorro o un accesorio. El accesorio de pareja de Tama
+/// Kōen, que lleva el color del dúo en la clave, se llama por su forma.
+String prizeLabel(L l, PrizeItem item) {
+  final charm = koenCharmOf(item.key);
+  return charm == null ? l.prizeName(item.key) : l.koenCharmName(charm.shape.name);
+}
+
 /// El nombre de un premio del gacha, sea de la categoria que sea.
 String gachaPrizeName(L l, String key) {
   if (backdropByKey(key) != null) return l.backdropName(key);
   if (gachaMusicByKey(key) case final track?) return track.id;
+  if (prizeItem(key) case final item?) return prizeLabel(l, item);
   return l.prizeName(key);
 }

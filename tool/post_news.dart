@@ -39,7 +39,7 @@ import 'dart:math';
 const Set<String> _kinds = <String>{'update', 'note', 'poll'};
 
 const int _titleMax = 60;
-const int _bodyMax = 600;
+const int _bodyMax = 2000;
 const int _optionMax = 40;
 const int _optionsMax = 4;
 

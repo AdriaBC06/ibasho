@@ -16,9 +16,11 @@ import '../../../games/odori/odori_channel.dart';
 import '../../../games/hatarakitama/hataraki_channel.dart';
 import '../../../games/ohirune/ohirune_channel.dart';
 import '../../../games/hebi/hebi_channel.dart';
-import '../../../games/tsumiki/tsumiki_channel.dart';
+import '../../../games/koen/koen_channel.dart';
+import '../../../games/tsumiki/tsumiki_menu.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
+import '../../../state/tsumiki_versus.dart';
 import '../../widgets/channel_art.dart';
 import '../../widgets/glyphs.dart';
 import 'admin_channel.dart';
@@ -90,12 +92,16 @@ class GameChannelEntry {
     required this.art,
     required this.label,
     required this.builder,
+    this.badge,
   });
 
   final Glyph glyph;
   final ArtIcon art;
   final String Function(L) label;
   final WidgetBuilder builder;
+
+  /// Como [ChannelSpec.badge]: los retos de Tsumiki sin responder.
+  final ProviderListenable<int>? badge;
 }
 
 /// Registro de juegos: la clave es el `gameId` del catalogo del Yatai
@@ -105,19 +111,20 @@ final Map<String, GameChannelEntry> gameChannelRegistry = <String, GameChannelEn
     glyph: Glyph.mine,
     art: ArtIcon.minesweeper,
     label: (l) => l.channelMinesweeper,
-    builder: (_) => const GameMusic(track: MusicTrack.plaza, child: MinesweeperChannel()),
+    builder: (_) => const GameMusic(gameId: 'minesweeper', track: MusicTrack.plaza, child: MinesweeperChannel()),
   ),
   'tsumiki': GameChannelEntry(
     glyph: Glyph.blocks,
     art: ArtIcon.tsumiki,
     label: (l) => l.channelTsumiki,
-    builder: (_) => const GameMusic(track: MusicTrack.bossa, child: TsumikiChannel()),
+    builder: (_) => const GameMusic(gameId: 'tsumiki', track: MusicTrack.bossa, child: TsumikiChannel()),
+    badge: pendingTsumikiInvitesProvider,
   ),
   'hebi': GameChannelEntry(
     glyph: Glyph.snake,
     art: ArtIcon.hebi,
     label: (l) => l.channelHebi,
-    builder: (_) => const GameMusic(track: MusicTrack.hebi, child: HebiChannel()),
+    builder: (_) => const GameMusic(gameId: 'hebi', track: MusicTrack.hebi, child: HebiChannel()),
   ),
   'nihongo': GameChannelEntry(
     glyph: Glyph.kana,
@@ -144,6 +151,7 @@ List<ChannelSpec> channelsFor({
   bool koroGift = false,
   bool odoriGift = false,
   bool hatarakiGift = false,
+  bool koenGift = false,
   bool ohiruneUnlocked = false,
   bool ohiruneGift = false,
 }) {
@@ -246,7 +254,8 @@ List<ChannelSpec> channelsFor({
           glyph: Glyph.star,
           art: ArtIcon.pinball,
           label: (l) => l.channelPinball,
-          builder: (_) => const PinballChannel(),
+          // Sin cancion propia: sigue la del menu, salvo que se elija otra.
+          builder: (_) => const GameMusic(gameId: 'pinball', child: PinballChannel()),
           gift: pinballGift,
           onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openPinball()),
         ),
@@ -258,7 +267,8 @@ List<ChannelSpec> channelsFor({
           glyph: Glyph.star,
           art: ArtIcon.pachinko,
           label: (l) => l.channelPachinko,
-          builder: (_) => const PachinkoChannel(),
+          // Sin cancion propia: sigue la del menu, salvo que se elija otra.
+          builder: (_) => const GameMusic(gameId: 'pachinko', child: PachinkoChannel()),
           gift: pachinkoGift,
           onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openPachinko()),
         ),
@@ -281,6 +291,7 @@ List<ChannelSpec> channelsFor({
           art: gameChannelRegistry[entry.key]!.art,
           label: gameChannelRegistry[entry.key]!.label,
           builder: gameChannelRegistry[entry.key]!.builder,
+          badge: gameChannelRegistry[entry.key]!.badge,
           gift: entry.value.isGift,
           gameId: entry.key,
         ),
@@ -307,6 +318,18 @@ List<ChannelSpec> channelsFor({
         gift: hatarakiGift,
         onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openHataraki()),
       ),
+      // Tama Kōen, el parque de los Tamas de los amigos (0.9.0). Gratis y
+      // para todos, envuelto hasta que se abre.
+      ChannelSpec(
+        id: 'koen',
+        glyph: Glyph.park,
+        art: ArtIcon.koen,
+        label: (l) => l.channelKoen,
+        builder: (_) => const KoenChannel(),
+        badge: pendingKoenOffersProvider,
+        gift: koenGift,
+        onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openKoen()),
+      ),
       // Ohirune es secreto: no sale en ningun sitio hasta que la cuenta junta
       // los Tamas del tablero facil, y entonces llega envuelto. Quien ya lo
       // abrio lo conserva aunque borre Tamas (sin ellos no puede jugar).
@@ -316,7 +339,8 @@ List<ChannelSpec> channelsFor({
           glyph: Glyph.moon,
           art: ArtIcon.ohirune,
           label: (l) => l.channelOhirune,
-          builder: (_) => const OhiruneChannel(),
+          // Sin cancion propia: sigue la del menu, salvo que se elija otra.
+          builder: (_) => const GameMusic(gameId: 'ohirune', child: OhiruneChannel()),
           gift: ohiruneGift,
           onUnwrap: (ref) => unawaited(ref.read(preferencesProvider.notifier).openOhirune()),
         ),

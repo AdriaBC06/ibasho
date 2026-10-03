@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 67">
+  <!-- Accesorio de pareja: la mitad derecha del corazón partido. El zigzag
+       encaja con el de la mitad izquierda. Gris, se tiñe al pintarlo. -->
+  <defs>
+    <linearGradient id="half" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D2D2D2"/>
+    </linearGradient>
+  </defs>
+  <path d="M6 4 Q40 34 74 4" fill="none" stroke="#A6A6A6" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="40" cy="19" r="2.6" fill="#E6E6E6" stroke="#8C8C8C" stroke-width="1.4"/>
+  <g transform="translate(40 19) scale(1.45) translate(-40 -19)">
+    <path d="M40 26 Q45 20 51 22 Q58 25 56.5 33 Q54.5 41 40 50 L43 45 L39 41 L43 37 L39 33 L43 29 Z"
+          fill="url(#half)" stroke="#8C8C8C" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M46 25 Q50 24 52.5 27" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

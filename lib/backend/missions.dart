@@ -11,11 +11,17 @@
 import 'gacha.dart';
 
 /// Lo que cuenta una mision: una accion que ya deja una señal propia.
-enum MissionEvent { feed, play, pull, buy }
+///
+/// `pet`, `gift`, `koen` y `chat` llegaron en la 0.9.0: acariciar a un Tama,
+/// abrir el regalo del Yatai, mandar un Tama al parque y mandar un mensaje.
+enum MissionEvent { feed, play, pull, buy, pet, gift, koen, chat }
 
-/// Las cuatro son validas para cobrar en cualquier momento (lo dicen las
-/// reglas); el reparto diario solo decide cuales tres se enseñan hoy, para
-/// que no sea siempre la misma lista.
+/// Cuantas misiones diarias se enseñan cada dia.
+const int dailyMissionCount = 4;
+
+/// Todas son validas para cobrar en cualquier momento (lo dicen las reglas);
+/// el reparto diario solo decide cuales [dailyMissionCount] se enseñan hoy,
+/// para que no sea siempre la misma lista.
 List<MissionEvent> dailyMissionsFor(int day) {
   final order = List<MissionEvent>.from(MissionEvent.values);
   // Fisher-Yates con el mismo hash multiplicativo de Knuth que usa
@@ -32,27 +38,53 @@ List<MissionEvent> dailyMissionsFor(int day) {
     order[i] = order[j];
     order[j] = tmp;
   }
-  return order.take(3).toList(growable: false);
+  return order.take(dailyMissionCount).toList(growable: false);
 }
 
 /// Lo que da una mision diaria cobrada.
 const int dailyMissionReward = 1;
 
-/// Las dos misiones semanales, fijas: no roban ninguna a la diaria (hacen la
-/// misma señal, pero valen para la semana entera).
-enum WeeklyMission { pull, buy }
+/// Las misiones semanales de una vez, fijas: no roban ninguna a la diaria
+/// (hacen la misma señal, pero valen para la semana entera).
+enum WeeklyMission { pull, buy, koen, chat }
 
 /// Lo que da cada mision semanal.
 const Map<WeeklyMission, (TicketKind, int)> weeklyMissionReward = {
   WeeklyMission.pull: (TicketKind.kinken, 1),
   WeeklyMission.buy: (TicketKind.gachaken, 3),
+  WeeklyMission.koen: (TicketKind.gachaken, 2),
+  WeeklyMission.chat: (TicketKind.gachaken, 2),
 };
 
 MissionEvent _eventOf(WeeklyMission m) => switch (m) {
       WeeklyMission.pull => MissionEvent.pull,
       WeeklyMission.buy => MissionEvent.buy,
+      WeeklyMission.koen => MissionEvent.koen,
+      WeeklyMission.chat => MissionEvent.chat,
     };
 
 extension WeeklyMissionEvent on WeeklyMission {
   MissionEvent get event => _eventOf(this);
 }
+
+/// Las semanales que se repiten: cada [RepeatMission.step] veces que pasa su
+/// señal en la semana se puede cobrar una vez, hasta [repeatMissionTimes].
+/// Las cuentan los `missions/tally/{evento}` de la semana.
+enum RepeatMission {
+  play(MissionEvent.play, 5),
+  feed(MissionEvent.feed, 5),
+  pet(MissionEvent.pet, 5);
+
+  const RepeatMission(this.event, this.step);
+
+  final MissionEvent event;
+
+  /// Veces que tiene que pasar la señal para cada cobro.
+  final int step;
+}
+
+/// Veces que se puede cobrar cada repetible por semana.
+const int repeatMissionTimes = 3;
+
+/// Lo que da cada cobro de una repetible.
+const int repeatMissionReward = 1;

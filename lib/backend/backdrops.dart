@@ -12,10 +12,13 @@ import 'gacha.dart';
 /// Un fondo del gacha. La clave que se guarda en `/users/{uid}/prizes` es
 /// `bg_<id>`, hasta 16 letras en total (lo exigen las reglas del gacha).
 class Backdrop {
-  const Backdrop(this.id, this.rarity);
+  const Backdrop(this.id, this.rarity, {this.koen = false});
 
   final String id;
   final Rarity rarity;
+
+  /// No sale en el gacha: lo da la amistad entre Tamas de Tama Kōen.
+  final bool koen;
 
   String get key => 'bg_$id';
 }
@@ -39,6 +42,8 @@ const List<Backdrop> backdrops = <Backdrop>[
   Backdrop('phoenix', Rarity.ur),
   Backdrop('borealis', Rarity.ur),
   Backdrop('starfield', Rarity.mu),
+  // De Tama Kōen, no del gacha (0.9.0): el parque con la estación de hoy.
+  Backdrop('koen', Rarity.sr, koen: true),
 ];
 
 final Map<String, Backdrop> _byKey = <String, Backdrop>{
@@ -57,6 +62,6 @@ Backdrop? backdropByKey(String? key) => key == null ? null : _byKey[key];
 Backdrop? backdropById(String? id) =>
     id == null || id.isEmpty ? null : _byId[id];
 
-/// Los fondos de [rarity], en el orden del catalogo.
+/// Los fondos de [rarity] que da el gacha, en el orden del catalogo.
 List<Backdrop> backdropsOf(Rarity rarity) =>
-    backdrops.where((b) => b.rarity == rarity).toList(growable: false);
+    backdrops.where((b) => b.rarity == rarity && !b.koen).toList(growable: false);

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../audio/audio_service.dart';
+import '../../games/game_music.dart';
 import '../../theme/skin.dart';
 import '../../theme/tokens.dart';
 import '../../theme/type.dart';
@@ -353,6 +354,8 @@ class ChannelScaffold extends StatelessWidget {
     final skin = IbashoSkin.of(context);
     final layout = Layout.of(context);
     final tall = layout.tall;
+    // Los juegos llevan un boton ♪ para elegir con que musica se juega.
+    final music = GameMusicScope.maybeOf(context);
 
     void close() {
       if (onClose != null) {
@@ -417,6 +420,10 @@ class ChannelScaffold extends StatelessWidget {
                           style: tall ? Ty.lead.copyWith(fontWeight: FontWeight.w500) : Ty.title,
                         ),
                       ),
+                      if (music != null) ...[
+                        GameMusicButton(scope: music),
+                        SizedBox(width: tall ? 8 : 12),
+                      ],
                       if (trailing != null) ...[
                         trailing!,
                         SizedBox(width: tall ? 8 : 12),

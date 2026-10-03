@@ -867,5 +867,117 @@
         "main": "#A86B45"
       }
     }
+  },
+  {
+    "id": "party_hat",
+    "template": "party_hat.svg",
+    "variants": {
+      "pink": {
+        "main": "#F07AB8",
+        "stripe": "#FFE27A",
+        "pom": "#7FD3F0"
+      }
+    }
+  },
+  {
+    "id": "grad_cap",
+    "template": "grad_cap.svg",
+    "variants": {
+      "black": {
+        "main": "#3B4658",
+        "tassel": "#F5C542"
+      }
+    }
+  },
+  {
+    "id": "pirate_hat",
+    "template": "pirate_hat.svg",
+    "variants": {
+      "black": {
+        "main": "#3B4658",
+        "trim": "#F5C542"
+      }
+    }
+  },
+  {
+    "id": "bucket_hat",
+    "template": "bucket_hat.svg",
+    "variants": {
+      "khaki": {
+        "main": "#D8C08A",
+        "band": "#6B8F5A"
+      }
+    }
+  },
+  {
+    "id": "tiara",
+    "template": "tiara.svg",
+    "variants": {
+      "silver": {
+        "main": "#D9E2EA",
+        "gem": "#E8507A"
+      }
+    }
+  },
+  {
+    "id": "heart_shades",
+    "template": "heart_shades.svg",
+    "variants": {
+      "pink": {
+        "main": "#F07AB8",
+        "lens": "#E8323C"
+      }
+    }
+  },
+  {
+    "id": "suzu",
+    "template": "suzu.svg",
+    "variants": {
+      "red": {
+        "main": "#E8323C",
+        "bell": "#F5C542"
+      }
+    }
+  },
+  {
+    "id": "wagasa",
+    "template": "wagasa.svg",
+    "variants": {
+      "red": {
+        "main": "#E8503A",
+        "band": "#F4F7FA",
+        "rim": "#A86B45"
+      }
+    }
+  },
+  {
+    "id": "teddy",
+    "template": "teddy.svg",
+    "variants": {
+      "brown": {
+        "main": "#B98455",
+        "inner": "#EBD2B0",
+        "ribbon": "#E8323C"
+      }
+    }
+  },
+  {
+    "id": "butterfly_wings",
+    "template": "butterfly_wings.svg",
+    "variants": {
+      "blue": {
+        "main": "#5AA7F0",
+        "spot": "#F5C542"
+      }
+    }
+  },
+  {
+    "id": "momiji",
+    "template": "momiji.svg",
+    "variants": {
+      "red": {
+        "main": "#E8503A"
+      }
+    }
   }
 ]

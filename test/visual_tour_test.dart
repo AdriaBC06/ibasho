@@ -19,6 +19,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ibasho/backend/prizes.dart';
+import 'package:ibasho/backend/tsumiki_versus.dart' show tsumikiPairId;
 import 'package:ibasho/ui/tama/tama_outfit.dart';
 import 'package:ibasho/app.dart';
 import 'package:ibasho/backend/models.dart';
@@ -505,9 +506,19 @@ Future<void> main() async {
   });
 
   testWidgets('amigos: perfil sin cumpleaños, en ingles', (tester) async {
+    final backend = socialScene(birthday: false, locale: 'en');
+    // Un marcador de Tsumiki con ella: la píldora y sus partidas.
+    final room = '/tsumiki/${tsumikiPairId(kAdminUid, kMireiaUid)}';
+    final now = DateTime.now().millisecondsSinceEpoch;
+    backend
+      ..seed('$room/score', {kAdminUid: 3, kMireiaUid: 2})
+      ..seed('$room/history', {
+        'h1': {'w': kAdminUid, 'why': 'top', 'at': now, 'dur': 154, 's': {kAdminUid: 12, kMireiaUid: 7}, 'l': {kAdminUid: 31}},
+        'h0': {'w': kMireiaUid, 'why': 'quit', 'at': now - 86400000, 'dur': 61, 's': {kAdminUid: 2}, 'l': {kAdminUid: 6}},
+      });
     await boot(
       tester,
-      backend: socialScene(birthday: false, locale: 'en'),
+      backend: backend,
       preferences: const Preferences(localeCode: 'en'),
     );
     await settle(tester, 100);
@@ -518,6 +529,10 @@ Future<void> main() async {
     await tester.tap(find.byKey(const ValueKey<String>('friends.friend.$kMireiaUid')));
     await settle(tester, 60);
     await shoot(tester, '30-perfil-amigo-en');
+    await tester.tap(find.byKey(const ValueKey<String>('friend.tsumiki.$kMireiaUid')));
+    await settle(tester, 40);
+    await shoot(tester, '30b-perfil-amigo-tsumiki');
+    expect(find.byKey(const ValueKey<String>('tsumiki.history.$kMireiaUid')), findsOneWidget);
   });
 
   testWidgets('muro propio el dia del cumpleaños', (tester) async {

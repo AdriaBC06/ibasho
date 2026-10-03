@@ -20,6 +20,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ibasho/app.dart';
 import 'package:ibasho/backend/tama.dart';
+import 'package:ibasho/backend/tsumiki_versus.dart';
 import 'package:ibasho/games/pachinko/pachinko.dart' show debugPachinkoSeed;
 import 'package:ibasho/games/minesweeper/minesweeper.dart';
 import 'package:ibasho/games/minesweeper/minesweeper_channel.dart';
@@ -123,6 +124,9 @@ Future<void> main() async {
           'ticket_gachaken': 25,
           'ticket_kinken': 150,
           for (final food in TamaFood.values) 'food_${food.name}': 3,
+          'prize_poop_brown': 1,
+          'prize_party_hat_pink': 50,
+          'prize_tiara_silver': 120,
         })
         ..seed('/users/${FakeIbashoBackend().uid}/coins', coins)
         // Con tickets en la cartera para poder tirar en el recorrido.
@@ -162,9 +166,20 @@ Future<void> main() async {
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
         await settle(tester, 30);
 
+        await tester.tap(find.text('accesorios').last);
+        await settle(tester, 30);
+        await shoot(tester, 'y2c-accesorios');
+
         await tester.tap(find.text('gacha').last);
         await settle(tester, 30);
         await shoot(tester, 'y3-tickets');
+
+        await tester.tap(find.text('regalo').last);
+        await settle(tester, 30);
+        await shoot(tester, 'y3b-regalo');
+        await tester.tap(find.byKey(const ValueKey<String>('yatai.gift.open')));
+        await settle(tester, 120);
+        await shoot(tester, 'y3c-regalo-abierto');
 
         await tester.tap(find.text('juegos').last);
         await settle(tester, 30);
@@ -474,6 +489,9 @@ Future<void> main() async {
         await boot(tester, backend: shopBackend(game: 'open', gameId: 'tsumiki'));
         await settle(tester, 100);
         await openChannel(tester, 'game-tsumiki');
+        await shoot(tester, 't0-menu');
+        await tester.tap(find.byKey(const ValueKey<String>('tsumiki.menu.solo')));
+        await settle(tester, 20);
         await shoot(tester, 't1-salida');
         await tester.tap(find.byKey(const ValueKey<String>('tsumiki.level.5')));
         await settle(tester, 10);
@@ -511,6 +529,106 @@ Future<void> main() async {
         await settle(tester, 40);
         await shoot(tester, 't7-resultados');
         expect(find.byKey(const ValueKey<String>('tsumiki.results')), findsOneWidget);
+      });
+
+      testWidgets('tsumiki versus: reto, rivales, espera, partida y final', (tester) async {
+        final backend = shopBackend(game: 'open', gameId: 'tsumiki');
+        seedSocial(backend);
+        final me = backend.uid;
+        final room = '/tsumiki/${tsumikiPairId(me, kMireiaUid)}';
+        final now = DateTime.now().millisecondsSinceEpoch;
+        // Mireia ya ha retado antes de entrar: el 1 y el aviso.
+        backend
+          ..seed('$room/live', {
+            'id': 'm0',
+            'seed': 3,
+            'host': kMireiaUid,
+            'guest': me,
+            'state': 'wait',
+            'at': now,
+          })
+          ..seed('/users/$me/tsumikiInbox/$kMireiaUid', {'at': now, 'id': 'm0'});
+        await boot(tester, backend: backend);
+        await settle(tester, 100);
+        await openChannel(tester, 'game-tsumiki');
+        await shoot(tester, 'v1-menu-reto');
+
+        await tester.tap(find.byKey(const ValueKey<String>('tsumiki.menu.versus')));
+        await settle(tester, 30);
+        await shoot(tester, 'v2-rivales');
+
+        // Se le dice que no y se la reta desde aquí.
+        await tester.tap(find.byKey(ValueKey<String>('tsumiki.invite.$kMireiaUid.no')));
+        await settle(tester, 20);
+        expect(backend.peek('$room/live/state'), 'no');
+        await tester.tap(find.byKey(ValueKey<String>('tsumiki.friend.$kMireiaUid')));
+        await settle(tester, 30);
+        await shoot(tester, 'v3-espera');
+        expect(find.byKey(const ValueKey<String>('tsumiki.room.waiting')), findsOneWidget);
+
+        // Acepta, con un tablero ya empezado.
+        final board = '${'.' * 150}${'..iiii....' * 1}${'tt.ooo.szz' * 2}${'ggggg.gggg' * 2}';
+        backend
+          ..seed('$room/live/state', 'play')
+          ..seed('$room/live/start', now)
+          ..seed('$room/live/p/$kMireiaUid', {'ping': now, 'board': board, 'lines': 3, 'sent': 1, 'meter': 40});
+        await settle(tester, 120);
+        for (var i = 0; i < 6; i++) {
+          final key = i.isEven ? LogicalKeyboardKey.arrowLeft : LogicalKeyboardKey.arrowRight;
+          for (var k = 0; k < i % 3 + 1; k++) {
+            await tester.sendKeyEvent(key);
+          }
+          await tester.sendKeyEvent(LogicalKeyboardKey.space);
+          await settle(tester, 4);
+        }
+        backend
+          ..seed('$room/live/atk/$kMireiaUid/a1', {'rows': 3, 'hole': 4})
+          ..seed('$room/live/atk/$kMireiaUid/a2', {'sab': 'fog'})
+          ..seed('$room/live/p/$kMireiaUid/ping', now + 1);
+        await settle(tester, 20);
+        await shoot(tester, 'v4-partida');
+        // Su Tama se ríe de la niebla que te ha lanzado.
+        expect(find.text('¡jiji!'), findsOneWidget);
+        expect(backend.peek('$room/live/p/$me/board'), isA<String>());
+
+        // Mireia llega arriba.
+        backend
+          ..seed('$room/score/$me', 1)
+          ..seed('$room/live/result', {'w': me, 'why': 'top', 'at': now})
+          ..seed('$room/live/state', 'done');
+        await settle(tester, 40);
+        await shoot(tester, 'v5-resultado');
+        expect(find.byKey(const ValueKey<String>('tsumiki.vs.result')), findsOneWidget);
+
+        // Y pide la revancha.
+        backend.seed('$room/live', {
+          'id': 'm2',
+          'seed': 9,
+          'host': kMireiaUid,
+          'guest': me,
+          'state': 'wait',
+          'at': now,
+        });
+        await settle(tester, 20);
+        await shoot(tester, 'v6-revancha');
+        await tester.tap(find.byKey(const ValueKey<String>('tsumiki.vs.exit')));
+        await settle(tester, 30);
+        expect(find.byKey(ValueKey<String>('tsumiki.friend.$kMireiaUid')), findsOneWidget);
+
+        // El historial con ella.
+        backend.seed('$room/history', {
+          'h1': {'w': me, 'why': 'top', 'at': now, 'dur': 154, 's': {me: 12, kMireiaUid: 7}, 'l': {me: 31, kMireiaUid: 22}},
+          'h0': {'w': kMireiaUid, 'why': 'leave', 'at': now - 86400000, 'dur': 61, 's': {me: 2}, 'l': {me: 6}},
+        });
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await settle(tester, 20);
+        await tester.tap(find.byKey(const ValueKey<String>('tsumiki.menu.history')));
+        await settle(tester, 30);
+        await shoot(tester, 'v7-historial');
+        await tester.tap(find.byKey(ValueKey<String>('tsumiki.hist.$kMireiaUid')));
+        await settle(tester, 30);
+        await shoot(tester, 'v8-historial-mireia');
+        expect(find.byKey(ValueKey<String>('tsumiki.history.$kMireiaUid')), findsOneWidget);
       });
 
       testWidgets('hebi: salida, cuenta, partida, pausa y final', (tester) async {

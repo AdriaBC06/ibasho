@@ -23,6 +23,8 @@ class MissionsState {
     this.signals = const <MissionEvent, DateTime>{},
     this.dailyClaims = const <int, Set<MissionEvent>>{},
     this.weeklyClaims = const <int, Set<WeeklyMission>>{},
+    this.tallies = const <MissionEvent, (int, int)>{},
+    this.repeatClaims = const <int, Map<RepeatMission, int>>{},
     this.loaded = false,
   });
 
@@ -35,6 +37,13 @@ class MissionsState {
 
   /// Misiones semanales ya cobradas, por semana UTC.
   final Map<int, Set<WeeklyMission>> weeklyClaims;
+
+  /// Cuantas veces ha pasado cada señal en una semana: `(semana, veces)`.
+  /// Solo se guarda la semana de la ultima vez.
+  final Map<MissionEvent, (int, int)> tallies;
+
+  /// Cuantas veces se ha cobrado cada repetible, por semana UTC.
+  final Map<int, Map<RepeatMission, int>> repeatClaims;
 
   final bool loaded;
 
@@ -51,16 +60,35 @@ class MissionsState {
 
   bool claimedWeekly(WeeklyMission mission, int week) => weeklyClaims[week]?.contains(mission) ?? false;
 
+  /// Veces que ha pasado [event] en la semana [week].
+  int tally(MissionEvent event, int week) {
+    final t = tallies[event];
+    return t != null && t.$1 == week ? t.$2 : 0;
+  }
+
+  /// Veces cobrada [mission] en la semana [week].
+  int repeatsClaimed(RepeatMission mission, int week) => repeatClaims[week]?[mission] ?? 0;
+
+  /// Se puede cobrar otra vez [mission] esta semana.
+  bool canClaimRepeat(RepeatMission mission, int week) {
+    final claimed = repeatsClaimed(mission, week);
+    return claimed < repeatMissionTimes && tally(mission.event, week) >= (claimed + 1) * mission.step;
+  }
+
   MissionsState copyWith({
     Map<MissionEvent, DateTime>? signals,
     Map<int, Set<MissionEvent>>? dailyClaims,
     Map<int, Set<WeeklyMission>>? weeklyClaims,
+    Map<MissionEvent, (int, int)>? tallies,
+    Map<int, Map<RepeatMission, int>>? repeatClaims,
     bool? loaded,
   }) =>
       MissionsState(
         signals: signals ?? this.signals,
         dailyClaims: dailyClaims ?? this.dailyClaims,
         weeklyClaims: weeklyClaims ?? this.weeklyClaims,
+        tallies: tallies ?? this.tallies,
+        repeatClaims: repeatClaims ?? this.repeatClaims,
         loaded: loaded ?? this.loaded,
       );
 }
@@ -77,8 +105,14 @@ class MissionsController extends StateNotifier<MissionsState> {
         super(const MissionsState()) {
     if (_me.isNotEmpty && session.state.phase == SessionPhase.active) {
       unawaited(_start());
+    } else {
+      _ready.complete();
     }
   }
+
+  /// Se completa al acabar la primera lectura, salga bien o mal: los
+  /// recuentos no se pueden sumar sin saber por donde iban.
+  final Completer<void> _ready = Completer<void>();
 
   final IbashoBackend _backend;
   final SessionController _session;
@@ -107,6 +141,7 @@ class MissionsController extends StateNotifier<MissionsState> {
       debugPrint('Ibasho: no se han podido leer las misiones ($e)');
       if (mounted) state = state.copyWith(loaded: true);
     }
+    _ready.complete();
     if (!mounted) return;
     _watch = _backend.watch('/users/$_me/missions', token: _session.freshToken).listen((event) {
       _tree = applyDatabaseEvent(_tree, event);
@@ -150,20 +185,91 @@ class MissionsController extends StateNotifier<MissionsState> {
         };
       }
     }
-    return MissionsState(signals: signals, dailyClaims: dailyClaims, weeklyClaims: weeklyClaims, loaded: true);
+    final tallies = <MissionEvent, (int, int)>{};
+    final tallyRaw = raw['tally'];
+    if (tallyRaw is Map) {
+      for (final e in MissionEvent.values) {
+        final t = tallyRaw[e.name];
+        if (t is! Map) continue;
+        final week = t['week'];
+        final n = t['n'];
+        if (week is num && n is num) tallies[e] = (week.toInt(), n.toInt());
+      }
+    }
+    final repeatClaims = <int, Map<RepeatMission, int>>{};
+    final repeatRaw = raw['repeat'];
+    if (repeatRaw is Map) {
+      for (final weekEntry in repeatRaw.entries) {
+        final week = int.tryParse('${weekEntry.key}');
+        final claims = weekEntry.value;
+        if (week == null || claims is! Map) continue;
+        repeatClaims[week] = {
+          for (final m in RepeatMission.values)
+            if (claims[m.event.name] is num) m: (claims[m.event.name] as num).toInt(),
+        };
+      }
+    }
+    return MissionsState(
+      signals: signals,
+      dailyClaims: dailyClaims,
+      weeklyClaims: weeklyClaims,
+      tallies: tallies,
+      repeatClaims: repeatClaims,
+      loaded: true,
+    );
   }
 
-  /// Marca que ha pasado [event] ahora mismo. Sin bloquear ni avisar si
-  /// falla: se reintenta solo la proxima vez que pase.
-  Future<void> mark(MissionEvent event) async {
+  /// Marca que ha pasado [event] ahora mismo, y lo suma al recuento de la
+  /// semana. Sin bloquear ni avisar si falla: se reintenta solo la proxima
+  /// vez que pase.
+  ///
+  /// Van de una en una: el recuento se escribe como total y las reglas
+  /// exigen que suba justo 1, asi que dos a la vez se pisarian.
+  Future<void> mark(MissionEvent event) {
+    final next = _marks.then((_) => _mark(event));
+    _marks = next;
+    return next;
+  }
+
+  Future<void> _marks = Future<void>.value();
+
+  Future<void> _mark(MissionEvent event) async {
+    await _ready.future;
+    if (!mounted) return;
+    final week = gachaWeek();
+    final n = state.tally(event, week) + 1;
     try {
-      await _backend.write(
-        '/users/$_me/missions/signal/${event.name}',
-        {'at': serverTimestamp},
+      await _backend.merge(
+        '/',
+        {
+          'users/$_me/missions/signal/${event.name}': {'at': serverTimestamp},
+          'users/$_me/missions/tally/${event.name}': {'week': week, 'n': n, 'at': serverTimestamp},
+        },
         idToken: await _session.freshToken(),
       );
     } catch (e) {
-      debugPrint('Ibasho: no se ha podido apuntar la señal de ${event.name} ($e)');
+      // Con un recuento que no cuadra (u otras reglas sin recuentos), al
+      // menos la señal: las diarias y las semanales de una vez siguen
+      // contando.
+      debugPrint('Ibasho: no se ha podido sumar al recuento de ${event.name} ($e)');
+      try {
+        await _backend.write(
+          '/users/$_me/missions/signal/${event.name}',
+          {'at': serverTimestamp},
+          idToken: await _session.freshToken(),
+        );
+      } catch (e) {
+        debugPrint('Ibasho: no se ha podido apuntar la señal de ${event.name} ($e)');
+        return;
+      }
+      if (mounted) state = state.copyWith(signals: {...state.signals, event: DateTime.now()});
+      return;
+    }
+    if (mounted) {
+      state = state.copyWith(
+        signals: {...state.signals, event: DateTime.now()},
+        tallies: {...state.tallies, event: (week, n)},
+      );
     }
   }
 
@@ -235,6 +341,40 @@ class MissionsController extends StateNotifier<MissionsState> {
       state = state.copyWith(weeklyClaims: {
         ...state.weeklyClaims,
         week: {...?state.weeklyClaims[week], mission},
+      });
+    }
+    return true;
+  }
+
+  /// Cobra otra vez la repetible [mission] de la semana [week].
+  Future<bool> claimRepeat(RepeatMission mission, int week) async {
+    if (!state.canClaimRepeat(mission, week)) return false;
+    final count = state.repeatsClaimed(mission, week) + 1;
+    try {
+      await _backend.merge(
+        '/',
+        {
+          'users/$_me/missions/claim': {
+            'kind': 'repeat',
+            'event': mission.event.name,
+            'week': week,
+            'amount': repeatMissionReward,
+            'ticketKind': TicketKind.gachaken.name,
+            'at': serverTimestamp,
+          },
+          'users/$_me/missions/repeat/$week/${mission.event.name}': count,
+          'users/$_me/tickets/${TicketKind.gachaken.name}': _ticketsOf(TicketKind.gachaken) + repeatMissionReward,
+        },
+        idToken: await _session.freshToken(),
+      );
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido cobrar la repetible de ${mission.name} ($e)');
+      return false;
+    }
+    if (mounted) {
+      state = state.copyWith(repeatClaims: {
+        ...state.repeatClaims,
+        week: {...?state.repeatClaims[week], mission: count},
       });
     }
     return true;

@@ -83,6 +83,8 @@ enum Glyph {
   pick,
   house,
   noteOff,
+  park,
+  flame,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -969,6 +971,40 @@ class _GlyphPainter extends CustomPainter {
             ..lineTo(10, 15)
             ..lineTo(14, 15)
             ..lineTo(14, 20),
+          stroke,
+        );
+      case Glyph.park:
+        // Tama Kōen: un árbol de copa redonda y, al lado, un Tama pequeño
+        // sobre la hierba.
+        canvas.drawCircle(const Offset(9, 8.6), 5.2, stroke);
+        canvas.drawLine(const Offset(9, 13.8), const Offset(9, 20), stroke);
+        canvas.drawLine(const Offset(3, 20), const Offset(21, 20), stroke);
+        canvas.drawPath(
+          Path()
+            ..moveTo(13.6, 20)
+            ..cubicTo(13.6, 14.4, 20.4, 14.4, 20.4, 20),
+          stroke,
+        );
+      case Glyph.flame:
+        // La racha de un dúo: una llama con su lengua de dentro.
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 3.4)
+            ..cubicTo(13, 7.4, 18.6, 9.6, 18.6, 14.6)
+            ..cubicTo(18.6, 18.4, 15.6, 20.8, 12, 20.8)
+            ..cubicTo(8.4, 20.8, 5.4, 18.4, 5.4, 14.6)
+            ..cubicTo(5.4, 11.6, 7.4, 9.8, 8.6, 8.4)
+            ..cubicTo(8.8, 10.4, 9.8, 11.4, 10.6, 11.6)
+            ..cubicTo(10.4, 8.6, 10.8, 5.6, 12, 3.4),
+          stroke,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(12, 20.8)
+            ..cubicTo(10, 20.8, 9.2, 19.2, 9.2, 17.8)
+            ..cubicTo(9.2, 16, 11, 15, 12, 13.4)
+            ..cubicTo(13, 15, 14.8, 16, 14.8, 17.8)
+            ..cubicTo(14.8, 19.2, 14, 20.8, 12, 20.8),
           stroke,
         );
       case Glyph.noteOff:

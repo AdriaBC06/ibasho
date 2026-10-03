@@ -12,12 +12,14 @@ import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../audio/audio_service.dart';
 import '../../../games/odori/odori_catalog.dart' show odoriTitles;
+import '../../../backend/gacha.dart' show TicketKind;
 import '../../../backend/missions.dart';
 import '../../../backend/prizes.dart';
 import '../../../backend/shop.dart';
 import '../../../backend/tama.dart';
 import '../../../games/tamakoro/koro_song.dart';
 import '../../../l10n/gen/app_localizations.dart';
+import '../../../state/daily_gift.dart';
 import '../../../state/pantry.dart';
 import '../../../state/providers.dart';
 import '../../../state/shop.dart';
@@ -41,7 +43,7 @@ import '../channel_route.dart';
 import 'gacha_channel.dart';
 
 /// Las tres secciones, en el mismo orden que en el catalogo.
-enum _Tab { games, tamas, gacha }
+enum _Tab { games, tamas, accessories, gacha, gift }
 
 /// La ilustracion, el nombre y la descripcion de un juego. Crecen con
 /// `gameChannelRegistry` en `channel.dart`.
@@ -127,8 +129,12 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     final section = switch (tab) {
       _Tab.games => ShopSection.games,
       _Tab.tamas => ShopSection.tamas,
+      _Tab.accessories => ShopSection.accessories,
       _Tab.gacha => ShopSection.gacha,
+      // El regalo no se vende: tiene su propio escaparate.
+      _Tab.gift => null,
     };
+    if (section == null) return const <ShopItem>[];
     // De los huecos de Tamakoro se ve solo el del tramo en el que va la
     // cuenta, y solo si el canal ya ha llegado.
     final koroOpen = ref.read(tamasProvider).tamas.isNotEmpty ||
@@ -242,10 +248,24 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
       ShopSection.games when item.odoriSong != null => l.yataiDoneOdoriSong,
       ShopSection.games => l.yataiDoneGame,
       ShopSection.gacha => l.gachaDoneTickets(qty),
-      ShopSection.tamas when item.prize != null => l.yataiDonePrize(l.prizeName(item.prize!)),
+      ShopSection.accessories => l.yataiDonePrize(l.prizeName(item.prize!)),
       ShopSection.tamas => l.yataiDoneFood(qty, foodLabel(l, item.food!)),
     };
     showIbashoToast(context, done);
+  }
+
+  Future<void> _openGift() async {
+    final l = L.of(context)!;
+    final gift = await ref.read(dailyGiftProvider.notifier).claim();
+    if (!mounted) return;
+    if (gift == null) {
+      AudioService.instance.play(Sfx.error);
+      showIbashoToast(context, l.yataiGiftError, isError: true);
+      return;
+    }
+    unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.gift));
+    AudioService.instance.play(Sfx.chime);
+    showIbashoToast(context, l.yataiGiftDone(foodLabel(l, gift.food), gift.coins));
   }
 
   String _errorMessage(L l, Object error) {
@@ -284,6 +304,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     final unlocked = ref.watch(unlockedFoodsProvider);
     final pantry = ref.watch(pantryProvider);
     final gacha = ref.watch(gachaProvider);
+    final gift = ref.watch(dailyGiftProvider);
     // `_items` lee los huecos de Tamakoro: si cambian, el mostrador tambien.
     ref.watch(koroProvider.select((k) => k.slots));
 
@@ -298,7 +319,9 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
     if (_page >= pages) _page = pages - 1;
     final pageItems = items.skip(_page * perPage).take(perPage).toList();
 
-    final showcase = !shop.loaded
+    final showcase = _tab == _Tab.gift
+        ? _GiftShowcase(gift: gift, onOpen: () => unawaited(_openGift()))
+        : !shop.loaded
             ? Center(child: Text(l.loading, style: Ty.lead))
             : _Showcase(
                 item: selected,
@@ -310,7 +333,9 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
                 onBuy: selected == null ? null : () => unawaited(_buy(selected)),
               );
 
-    final shelf = _Shelf(
+    final shelf = _tab == _Tab.gift
+        ? _GiftShelf(gift: gift, columns: tall ? 3 : 6)
+        : _Shelf(
             items: pageItems,
             perPage: perPage,
             columns: tall ? 3 : 6,
@@ -348,7 +373,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
                   const SizedBox(height: 8),
                   SizedBox(height: top, child: showcase),
                   const SizedBox(height: 10),
-                  _Tabs(tab: _tab, onChanged: _setTab),
+                  _Tabs(tab: _tab, giftReady: gift.available, onChanged: _setTab),
                   const SizedBox(height: 10),
                   Expanded(
                     child: PageSwipe(
@@ -370,7 +395,7 @@ class _YataiChannelState extends ConsumerState<YataiChannel> {
                 Row(
                   children: [
                     const Spacer(),
-                    _Tabs(tab: _tab, onChanged: _setTab),
+                    _Tabs(tab: _tab, giftReady: gift.available, onChanged: _setTab),
                     Expanded(
                       child: Align(alignment: Alignment.centerRight, child: pager ?? const SizedBox()),
                     ),
@@ -485,6 +510,13 @@ class _PriceTag extends StatelessWidget {
   }
 }
 
+/// Si ya es de la cuenta: juegos, canciones de Odori y lo que se pone un
+/// Tama se compran una vez.
+bool _owned(ShopItem it, ShopState shop, bool Function(String key) ownsPrize) =>
+    (it.gameId != null && shop.games.containsKey(it.gameId)) ||
+    (it.odoriSong != null && shop.hasOdoriSong(it.odoriSong!)) ||
+    (it.prize != null && ownsPrize(it.prize!));
+
 class _Showcase extends StatelessWidget {
   const _Showcase({
     required this.item,
@@ -513,9 +545,7 @@ class _Showcase extends StatelessWidget {
     if (it == null) return const SizedBox.shrink();
 
     final locked = it.food != null && !unlocked.contains(it.food);
-    final owned = (it.gameId != null && shop.games.containsKey(it.gameId)) ||
-        (it.odoriSong != null && shop.hasOdoriSong(it.odoriSong!)) ||
-        (it.prize != null && ownsPrize(it.prize!));
+    final owned = _owned(it, shop, ownsPrize);
     final price = shop.prices[it.id];
     final name = itemName(l, it);
     final description = it.food != null
@@ -581,6 +611,31 @@ class _Showcase extends StatelessWidget {
       ],
     );
 
+    return _ShowcaseFrame(art: art, name: name, description: description, meta: meta, button: button);
+  }
+}
+
+/// La disposicion del escaparate: la peana con lo que se enseña, y al lado
+/// su nombre, la descripcion, los datos y el boton. En vertical, el boton
+/// va debajo a lo ancho.
+class _ShowcaseFrame extends StatelessWidget {
+  const _ShowcaseFrame({
+    required this.art,
+    required this.name,
+    required this.description,
+    required this.meta,
+    required this.button,
+  });
+
+  final Widget Function(double size) art;
+  final String name;
+  final String description;
+  final Widget meta;
+  final Widget button;
+
+  @override
+  Widget build(BuildContext context) {
+    final tall = Layout.of(context).tall;
     if (tall) {
       return Column(
         children: [
@@ -647,12 +702,196 @@ class _Showcase extends StatelessWidget {
   }
 }
 
+// --- Regalo diario ---------------------------------------------------------------
+
+/// El escaparate del regalo de hoy: la caja envuelta en la peana y el boton
+/// de abrir. Al abrirla se deshace el lazo y deja ver la comida que traia;
+/// si ya estaba abierta, se ve abierta.
+class _GiftShowcase extends StatefulWidget {
+  const _GiftShowcase({required this.gift, required this.onOpen});
+
+  final DailyGiftState gift;
+  final VoidCallback onOpen;
+
+  @override
+  State<_GiftShowcase> createState() => _GiftShowcaseState();
+}
+
+class _GiftShowcaseState extends State<_GiftShowcase> with SingleTickerProviderStateMixin {
+  late final AnimationController _open = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+    value: widget.gift.claimedToday ? 1 : 0,
+  );
+
+  @override
+  void didUpdateWidget(_GiftShowcase old) {
+    super.didUpdateWidget(old);
+    final now = widget.gift.claimedToday;
+    if (now && !old.gift.claimedToday) {
+      final skin = IbashoSkin.of(context);
+      if (skin.reducedMotion) {
+        _open.value = 1;
+      } else {
+        unawaited(_open.forward(from: 0));
+      }
+    } else if (!now && old.gift.claimedToday) {
+      _open.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _open.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final gift = widget.gift;
+    final claimed = gift.claimedToday;
+    final food = claimed ? gift.last?.food : null;
+
+    Widget art(double size) => AnimatedBuilder(
+          animation: _open,
+          builder: (context, _) {
+            final t = _open.value;
+            final rise = Curves.easeOutBack.transform(((t - .45) / .55).clamp(0.0, 1.0));
+            return SizedBox.square(
+              dimension: size,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (food != null)
+                    Opacity(
+                      opacity: rise.clamp(0.0, 1.0),
+                      child: Transform.scale(
+                        scale: .6 + .4 * rise,
+                        child: CustomPaint(
+                          size: Size.square(size * .8),
+                          painter: TamaFoodPainter(food, fill: .44),
+                        ),
+                      ),
+                    ),
+                  if (t < 1) Positioned.fill(child: GiftFace(open: t)),
+                ],
+              ),
+            );
+          },
+        );
+
+    final button = IbashoButton(
+      key: const ValueKey<String>('yatai.gift.open'),
+      label: claimed ? l.yataiGiftOpened : l.yataiGiftOpen,
+      glyph: claimed ? Glyph.check : Glyph.gift,
+      tone: gift.available ? ButtonTone.accent : ButtonTone.plain,
+      height: Layout.of(context).tall ? 50 : 54,
+      minWidth: 240,
+      expand: Layout.of(context).tall,
+      cue: null,
+      onPressed: gift.available ? widget.onOpen : null,
+    );
+
+    final meta = claimed
+        ? Text(l.yataiGiftTomorrow, style: Ty.caption)
+        : const SizedBox.shrink();
+
+    return _ShowcaseFrame(
+      art: art,
+      name: l.yataiGiftTitle,
+      description: l.yataiGiftBody,
+      meta: meta,
+      button: button,
+    );
+  }
+}
+
+/// Lo que trae el regalo, en tres casillas: la comida (sorpresa hasta que
+/// se abre), el gachaken y el saquito (de 5 a 10, o lo que traia).
+class _GiftShelf extends StatelessWidget {
+  const _GiftShelf({required this.gift, required this.columns});
+
+  final DailyGiftState gift;
+  final int columns;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context)!;
+    final today = gift.claimedToday ? gift.last : null;
+    final food = today?.food;
+    final cells = <(String key, String name, String amount, Widget Function(double) art)>[
+      (
+        'food',
+        food == null ? l.yataiGiftFood : foodLabel(l, food),
+        '×$dailyGiftFoodUnits',
+        (s) => food == null
+            ? Center(child: Text('?', style: Ty.numeral(s * .7, weight: FontWeight.w800).copyWith(color: Ty.inkSoft)))
+            : CustomPaint(size: Size.square(s), painter: TamaFoodPainter(food, fill: .44)),
+      ),
+      (
+        'ticket',
+        ticketName(l, TicketKind.gachaken),
+        '×$dailyGiftTickets',
+        (s) => ArtIconView(ticketArt(TicketKind.gachaken), size: s),
+      ),
+      (
+        'coins',
+        l.yataiGiftPouch,
+        today == null ? '$dailyGiftCoinsMin–$dailyGiftCoinsMax' : '+${today.coins}',
+        (s) => ArtIconView(ArtIcon.coinPouch, size: s),
+      ),
+    ];
+
+    return LayoutBuilder(builder: (context, box) {
+      const gap = 14.0;
+      final tileW = (box.maxWidth - gap * (columns - 1)) / columns;
+      final tileH = math.min(box.maxHeight, tileW * 1.1);
+      // En vertical, pegadas a las pestañas: centradas quedarian sueltas.
+      return Align(
+        alignment: Layout.of(context).tall ? Alignment.topCenter : Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (i, (key, name, amount, art)) in cells.indexed) ...[
+              if (i > 0) const SizedBox(width: gap),
+              SlotTile(
+                key: ValueKey<String>('yatai.gift.$key'),
+                width: tileW,
+                height: tileH,
+                semanticLabel: '$name $amount',
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(6, tileH * .08, 6, tileH * .06),
+                  child: Column(
+                    children: [
+                      Expanded(child: Center(child: art(tileH * .48))),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(name, maxLines: 1, style: Ty.caption.copyWith(fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(amount, style: Ty.numeral(15, weight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+}
+
 // --- Secciones -----------------------------------------------------------------
 
 class _Tabs extends StatelessWidget {
-  const _Tabs({required this.tab, required this.onChanged});
+  const _Tabs({required this.tab, required this.giftReady, required this.onChanged});
 
   final _Tab tab;
+
+  /// El regalo de hoy esta sin abrir: su pestaña lleva un punto.
+  final bool giftReady;
   final ValueChanged<_Tab> onChanged;
 
   @override
@@ -662,7 +901,9 @@ class _Tabs extends StatelessWidget {
     final options = <(_Tab, String, Widget)>[
       (_Tab.games, l.yataiTabGames, const ArtIconView(ArtIcon.minesweeper)),
       (_Tab.tamas, l.yataiTabTamas, const CustomPaint(painter: TamaFoodPainter(TamaFood.cookie, fill: .42))),
+      (_Tab.accessories, l.yataiTabAccessories, PrizeView(prizeItem('party_hat_pink')!)),
       (_Tab.gacha, l.yataiTabGacha, const ArtIconView(ArtIcon.gacha)),
+      (_Tab.gift, l.yataiTabGift, const GiftFace()),
     ];
     // En vertical cada pestaña tiene que llegar a los 48 de un dedo.
     final h = tall ? 56.0 : 52.0;
@@ -678,8 +919,8 @@ class _Tabs extends StatelessWidget {
           children: [
             for (final (value, label, icon) in options)
               tall
-                  ? Expanded(child: _TabButton(label: label, icon: icon, selected: value == tab, onTap: () => onChanged(value), height: h - 8))
-                  : _TabButton(label: label, icon: icon, selected: value == tab, onTap: () => onChanged(value), height: h - 8, width: 150),
+                  ? Expanded(child: _TabButton(label: label, icon: icon, selected: value == tab, dot: value == _Tab.gift && giftReady, onTap: () => onChanged(value), height: h - 8))
+                  : _TabButton(label: label, icon: icon, selected: value == tab, dot: value == _Tab.gift && giftReady, onTap: () => onChanged(value), height: h - 8, width: 150),
           ],
         ),
       ),
@@ -695,11 +936,15 @@ class _TabButton extends StatelessWidget {
     required this.onTap,
     required this.height,
     this.width,
+    this.dot = false,
   });
 
   final String label;
   final Widget icon;
   final bool selected;
+
+  /// Un punto del acento junto al icono: algo espera dentro.
+  final bool dot;
   final VoidCallback onTap;
   final double height;
   final double? width;
@@ -713,6 +958,28 @@ class _TabButton extends StatelessWidget {
       onPressed: onTap,
       builder: (context, state) {
         final ink = selected ? skin.accentDeep : Color.lerp(Ty.inkSoft, Ty.ink, state.hover)!;
+        Widget badged(double side) => SizedBox(
+              width: side,
+              height: side,
+              child: Stack(clipBehavior: Clip.none, children: [
+                Positioned.fill(child: icon),
+                if (dot)
+                  Positioned(
+                    right: -3,
+                    top: -2,
+                    child: Container(
+                      key: const ValueKey<String>('yatai.tab.dot'),
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: skin.accent,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: T.onAccent, width: 1.6),
+                      ),
+                    ),
+                  ),
+              ]),
+            );
         // Estrecha (un movil pequeño): icono encima y la etiqueta debajo, en
         // pequeño, para que no se corte.
         final content = LayoutBuilder(
@@ -720,17 +987,21 @@ class _TabButton extends StatelessWidget {
               ? Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(width: height * .48, height: height * .48, child: icon),
-                    Text(label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Ty.micro.copyWith(fontWeight: FontWeight.w700, color: ink, height: 1.1)),
+                    badged(height * .48),
+                    // Con cinco pestañas, «accesorios» no cabe entera: se
+                    // encoge antes que cortarse.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(label,
+                          maxLines: 1,
+                          style: Ty.micro.copyWith(fontWeight: FontWeight.w700, color: ink, height: 1.1)),
+                    ),
                   ],
                 )
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(width: height * .78, height: height * .78, child: icon),
+                    badged(height * .78),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
@@ -914,8 +1185,7 @@ class _ShopTile extends StatelessWidget {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final locked = item.food != null && !unlocked.contains(item.food);
-    final owned = (item.gameId != null && shop.games.containsKey(item.gameId)) ||
-        (item.prize != null && ownsPrize(item.prize!));
+    final owned = _owned(item, shop, ownsPrize);
     final name = itemName(l, item);
     final price = shop.prices[item.id];
     final art = height * .5;

@@ -520,11 +520,20 @@ test('hataraki: la tabla de siempre, cada una la suya y solo hacia arriba', asyn
   );
 });
 
-test('la tabla de siempre es solo de hataraki', async () => {
-  await assertFails(
+test('tabla de siempre en los demás juegos: la mejor partida', async () => {
+  const send = (game, score) =>
     update(ref(db(ANA), '/'), {
-      [`leaderboards/tsumiki/alltime/scores/${ANA}`]: 10,
-      [`leaderboards/tsumiki/alltime/at/${ANA}`]: serverTimestamp(),
-    }),
-  );
+      [`leaderboards/${game}/alltime/scores/${ANA}`]: score,
+      [`leaderboards/${game}/alltime/at/${ANA}`]: serverTimestamp(),
+    });
+  await assertSucceeds(send('tsumiki', 10));
+  await assertSucceeds(send('tsumiki', 20));
+  await assertFails(send('tsumiki', 20));
+  await assertFails(send('tsumiki', 1000000));
+  // Por tiempo: solo hacia abajo.
+  await assertSucceeds(send('minesweeper_easy', 9000));
+  await assertSucceeds(send('minesweeper_easy', 8000));
+  await assertFails(send('minesweeper_easy', 8500));
+  await assertFails(send('minesweeper_easy', 0));
+  await assertSucceeds(send('odori', 1400000));
 });

@@ -99,19 +99,13 @@ const List<CreditEntry> audioCredits = <CreditEntry>[
     note: _downloaded,
   ),
   CreditEntry(
-    title: 'Odori: Tamagoyaki · Hanabi no Ato · Neko no Basu · Ame no Hi no Kasa · '
+    title:
+        'Odori: Tamagoyaki · Hanabi no Ato · Neko no Basu · Ame no Hi no Kasa · '
         'Tsukimi Dango · Kaeri Michi · Ibasho · Yakō · Hoshikuzu Dash',
     author: _me,
     license: 'CC BY-NC 4.0',
     url: 'tool/odori_canciones.py',
     note: _odoriSongs,
-  ),
-  CreditEntry(
-    title: 'NIT SONG070 F001 (Sinsy)',
-    author: 'Nagoya Institute of Technology · Sinsy · WORLD (Masanori Morise)',
-    license: 'CC BY 3.0',
-    url: 'https://sourceforge.net/projects/sinsy/files/HTS%20voice/',
-    note: _voiceSung,
   ),
   CreditEntry(
     title: 'Kasane Teto 重音テト (JP · EN)',
@@ -121,17 +115,10 @@ const List<CreditEntry> audioCredits = <CreditEntry>[
     note: _voiceSung,
   ),
   CreditEntry(
-    title: 'Tohoku Kiritan 東北きりたん · Zundamon ずんだもん',
+    title: 'Zundamon ずんだもん',
     author: '東北ずん子・ずんだもんプロジェクト (SSS LLC.) · NEUTRINO (STUDIO NEUTRINO)',
     license: 'zunko.jp · NC',
     url: 'https://zunko.jp/guideline.html',
-    note: _voiceSung,
-  ),
-  CreditEntry(
-    title: 'Merrow めろう',
-    author: 'NEUTRINO (SHACHI · STUDIO NEUTRINO)',
-    license: 'NEUTRINO',
-    url: 'https://studio-neutrino.com',
     note: _voiceSung,
   ),
 ];

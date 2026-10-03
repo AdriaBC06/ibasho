@@ -40,6 +40,10 @@ class OdoriVersion {
     'kiritan': 'Tōhoku Kiritan',
     'zundamon': 'Zundamon',
     'merrow': 'Merrow',
+    'reina': 'Reina',
+    'nakumo': 'Nakumo',
+    'runo': 'Runo',
+    'soma': 'Soma',
   };
 }
 

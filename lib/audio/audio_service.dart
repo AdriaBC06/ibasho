@@ -425,6 +425,10 @@ class AudioService {
   /// ese perfil esta abierto.
   MusicTrack? _guest;
 
+  /// Una cancion de Tamakoro elegida para un juego: la ruta del WAV. Suena
+  /// como invitada, igual que [_guest], y manda sobre ella.
+  String? _guestFile;
+
   /// Si la pista de invitada es una ronda: al acabar cada una suena la
   /// siguiente, sin bucle.
   List<MusicTrack>? _cycle;
@@ -540,7 +544,7 @@ class AudioService {
         return;
       }
       // Una cancion de Tamakoro puesta en el menu es un archivo, no un asset.
-      final file = _guest == null ? _menuFile : null;
+      final file = _guestFile ?? (_guest == null ? _menuFile : null);
       final wanted = file ?? (_guest ?? _track).asset;
       var fadeIn = false;
       if (_loadedAsset != wanted) {
@@ -549,7 +553,8 @@ class AudioService {
         }
         await player.stop();
         // En una ronda cada pista suena una vez y avisa al acabar.
-        await player.setReleaseMode(_cycle != null && _guest != null ? ReleaseMode.release : ReleaseMode.loop);
+        await player.setReleaseMode(
+            _cycle != null && _guest != null && _guestFile == null ? ReleaseMode.release : ReleaseMode.loop);
         await player.setSource(file != null ? DeviceFileSource(file) : AssetSource(wanted));
         _loadedAsset = wanted;
         fadeIn = fade;
@@ -663,8 +668,9 @@ class AudioService {
   /// Pone la pista de un perfil en lugar de la de ambiente, con un fundido
   /// corto.
   Future<void> playProfileTrack(MusicTrack track) {
-    if (_guest == track && _cycle == null) return _musicQueue;
+    if (_guest == track && _cycle == null && _guestFile == null) return _musicQueue;
     _cycle = null;
+    _guestFile = null;
     _setGuest(track);
     _fadeNext = true;
     _loadedAsset = null;
@@ -676,8 +682,9 @@ class AudioService {
   /// B→A→C…) y nunca suena la misma dos veces seguidas.
   Future<void> playProfileCycle(List<MusicTrack> tracks) {
     if (tracks.isEmpty) return endProfileTrack();
-    if (_cycle != null && listEquals(_cycle, tracks)) return _musicQueue;
+    if (_cycle != null && listEquals(_cycle, tracks) && _guestFile == null) return _musicQueue;
     _cycle = List.unmodifiable(tracks);
+    _guestFile = null;
     _cycleQueue.clear();
     _setGuest(_nextInCycle(tracks));
     _fadeNext = true;
@@ -685,10 +692,22 @@ class AudioService {
     return _serial(_reconcileMusic);
   }
 
+  /// Como [playProfileTrack], con una cancion de Tamakoro ya renderizada en
+  /// [path]. Con la misma ruta vuelve a cargarla: el archivo puede cambiar.
+  Future<void> playProfileFile(String path) {
+    _cycle = null;
+    _guestFile = path;
+    _setGuest(null);
+    _fadeNext = true;
+    _loadedAsset = null;
+    return _serial(_reconcileMusic);
+  }
+
   /// Vuelve a la musica de ambiente, con el mismo fundido.
   Future<void> endProfileTrack() {
-    if (_guest == null) return _musicQueue;
+    if (_guest == null && _guestFile == null) return _musicQueue;
     _cycle = null;
+    _guestFile = null;
     _setGuest(null);
     _fadeNext = true;
     return _serial(_reconcileMusic);

@@ -5,10 +5,61 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
-## 0.9.0 — (en curso)
+## 0.9.0 — El parque
 
 ### Añadido
 
+- **Tama Kōen (公園), el parque de los Tamas.** Un canal nuevo del menú
+  donde se juntan tus Tamas y los de tus amigos. Cada uno manda hasta tres
+  Tamas, que se quedan hasta que los saque. Cada día se encuentran por
+  parejas en los columpios, el tobogán, el arenero, el estanque, la manta
+  de picnic o el árbol, o a medio camino, y charlan con bocadillos que
+  dependen de lo que se conocen. Los encuentros salen igual en todos los
+  móviles, así que no hace falta coincidir: al entrar ves lo que ha pasado
+  «mientras no estabas». El parque tiene día y noche según la hora (con
+  farolas y luciérnagas) y estaciones según el mes (cerezos, hojas, nieve).
+  Al tocar un Tama salta y dice su nombre, y arrastrándolo junto a otro
+  fuerzan un encuentro (hasta 3 por pareja al día).
+  - **Lo que da**: 5 monedas por encuentro, hasta 20 al día; una chuche
+    para la despensa con el primer encuentro; un gachaken a la semana al
+    llenar el medidor; y tus Tamas vuelven mimados.
+  - **Álbum de recuerdos**: 25 postales que salen según la zona, la
+    estación, la hora y quién se encuentra.
+  - **Amistad entre Tamas**: cada pareja sube de nivel jugando. En el nivel
+    2 aprenden un baile, en el 3 dan el fondo del parque para el menú y en
+    el 5 un gorro de hoja de arce.
+  - **Amistad entre jugadores**: conocidos → amigos → buenos amigos →
+    inseparables, con una insignia en la lista de amigos y en el perfil, y
+    20, 40 o 60 monedas para los dos al subir. Tocar la insignia abre la
+    ficha con los puntos de cada uno y lo que trae cada nivel.
+- **Cuidar un Tama a medias.** Desde el parque, desde «tus Tamas» o desde
+  amigos se puede ofrecer un Tama a un amigo. Sigue siendo tuyo, pero el
+  otro puede mimarlo, darle de comer con su despensa, llevarlo al parque y
+  jugar con él (no editarlo ni vestirlo). Cada día que está mimado y comido,
+  sea quien sea quien lo haga, los dos cobráis 10 monedas. Tiene su casita
+  en el parque y cualquiera de los dos puede terminarlo cuando quiera.
+- **Dúos.** Si los dos os cuidáis un Tama a medias el uno al otro, esos dos
+  Tamas son un dúo: viven juntos en una **casita decorable** (cada uno pone
+  su Tama a un lado), se encuentran a diario en el parque y pasean juntos.
+  La **racha** cuenta los días seguidos en que los dos Tamas han estado
+  cuidados; si uno falla, se rompe para los dos. Hay premios a los 3, 7, 14
+  y 30 días, y la casita sube de nivel (hasta 5) con la racha y la amistad,
+  con siete muebles para colocar entre los dos.
+- **Accesorio de pareja.** Un dúo con suficiente amistad elige una de tres
+  formas: colgante partido, gorritos gemelos o hilo rojo. El color es único
+  de vuestra pareja y cada mitad depende del lado de la casita; cuando los
+  dos Tamas lo llevan uno junto al otro, encaja.
+- **Tsumiki versus**, 1 contra 1 con un amigo. Al entrar en Tsumiki hay un
+  menú nuevo: Solo (el de siempre), Versus e Historial. Invitas a un amigo y
+  le sale un 1 en el canal; tiene 10 minutos para aceptar. Los dos jugáis
+  con las mismas piezas, y borrar dos o más líneas, encadenar combos o hacer
+  un tsumiki le sube filas grises al otro. Al borrar se carga un medidor de
+  **sabotajes** (acelerar su caída, taparle las siguientes, bloquearle la
+  reserva o echarle niebla arriba), y el que va perdiendo lo carga más
+  rápido. El Tama del otro reacciona a lo que pasa. Pierde quien se llena
+  primero; si alguien se va y no vuelve en 20 s, gana el otro. Al acabar,
+  revancha. No da monedas: cuenta el marcador, que también sale en la ficha
+  del amigo, con el historial de partidas.
 - **Hebi**, la serpiente de siempre, en el Yatai por 10 monedas. Un tablero de
   15×15 con paredes: la serpiente come comida de Tama, crece una casilla por
   bocado y cada cinco va más rápida. Se maneja con la cruceta, deslizando
@@ -18,6 +69,27 @@ versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dar
   con 50 da 8, dentro del tope diario. Tiene clasificación diaria y semanal
   por mejor longitud y canción propia, *hebi*: un mokkin que toca su dibujo
   nota a nota, creciendo como la serpiente, con koto y flauta de bambú.
+- **Música a elegir en cada juego.** Un botón ♪ en la cabecera de
+  buscaminas, Tsumiki, Hebi, Nihongo, Hatarakitama, pinball, pachinko y
+  Ohirune deja jugar con cualquier canción de tu biblioteca (desbloqueadas,
+  del gacha o hechas en Tamakoro) en lugar de la de serie. Se guarda en la
+  cuenta. El selector propio de Hatarakitama pasa a ser este.
+- **Regalo diario en el Yatai**, en una pestaña nueva que lleva un punto
+  mientras está sin abrir: una vez al día, dos de una comida al azar, un
+  gachaken y un saquito de 5 a 10 monedas.
+- **Accesorios en el Yatai**, en otra pestaña nueva: la caquita y diez
+  premios que solo se compran ahí (no salen en el gacha): gorro de
+  pescador y cascabel (30), gorro de fiesta, birrete, gafas de corazón y
+  osito (50), sombrero pirata y wagasa (80), tiara y alas de mariposa
+  (120).
+- **Más misiones.** Cuatro diarias al día (de ocho posibles, ahora también
+  acariciar, abrir el regalo, ir al parque y mandar un mensaje), un
+  gachaken cada una. Semanales nuevas del parque y de mensajes (2 gachaken
+  cada una). Y **repetibles**: cada 5 partidas, comidas o caricias, un
+  gachaken, hasta tres veces por semana cada una.
+- **Clasificaciones de siempre en todos los juegos**, no solo en
+  Hatarakitama: la mejor partida de cada uno, con las marcas que ya había
+  en las diarias y semanales.
 - **Las sugerencias ya no se pisan.** Cada veredicto se archiva, y quien
   sugiere ve sus sugerencias anteriores con la nota de cada una. El panel
   de administración las enseña todas, filtradas por pendientes, aceptadas y
@@ -28,14 +100,28 @@ versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dar
   los próximos cumpleaños: cuánto falta y cuántos cumple. El tuyo también
   sale; si no lo has puesto, te recuerda que se pone en el perfil. Tocar un
   día deja solo los de ese día y tocar a alguien abre su perfil.
+- Las insignias del perfil explican por qué se tienen al tocarlas o pasar
+  el ratón.
 
 ### Cambiado
 
+- **La app pesa mucho menos.** Odori se queda con las voces de Kasane Teto
+  y Zundamon, más la instrumental, y el audio va más comprimido; las voces
+  de Teto y Zundamon suenan más fuertes frente a la música. Las demás voces
+  (Kiritan, Merrow, Sinsy) no se han perdido y podrán volver más adelante.
+- Para Android hay dos APK: uno ligero para móviles de 64 bits (casi todos)
+  y el universal de siempre.
+- Hebi tiene icono nuevo: una serpiente de bolitas, como en el juego.
 - En Clasificaciones, si los juegos no caben en el selector (en el móvil),
   la fila se desliza de lado en lugar de encoger los nombres hasta que no se
   leen.
 - En Amigos, en vertical, el número de amigos ya no va en la cabecera (sigue
   en la pestaña), para que quepan el título y el botón del calendario.
+
+### Arreglado
+
+- Las canciones de Odori compradas no salían como compradas en el Yatai;
+  ahora dicen «en tu menú».
 
 ## 0.8.1 — Crear en la segunda página
 

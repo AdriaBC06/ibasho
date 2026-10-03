@@ -12,6 +12,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
 import '../../../backend/tama.dart';
+import '../../../games/koen/koen_album.dart' show koenFriendName;
+import '../../../games/koen/koen_care_ui.dart';
+import '../../../games/koen/koen_house.dart' show KoenHouseScreen;
+import '../../../games/koen/koen_social.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
 import '../../../state/tamas.dart';
@@ -25,6 +29,7 @@ import '../../tama/tama_widgets.dart';
 import '../../widgets/controls.dart';
 import '../../widgets/glyphs.dart';
 import '../../widgets/gloss.dart';
+import '../../widgets/hint_bubble.dart';
 import '../../widgets/panel.dart';
 import '../../widgets/pressable.dart';
 import '../../layout.dart';
@@ -63,13 +68,22 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
   /// cuantas filas caben, asi que la mide la rejilla y la deja aqui.
   int _slots = _perPage;
 
+  @override
+  void initState() {
+    super.initState();
+    // La racha de los dúos se apunta también desde aquí, no solo en el parque.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(refreshKoenDuos(context, ref));
+    });
+  }
+
   Tama? _selected(TamasState state) =>
-      state.byId(_selectedId) ??
+      state.find(_selectedId) ??
       state.profileTama ??
       (state.tamas.isEmpty ? null : state.tamas.first);
 
   int _pageCount(TamasState state) {
-    final slots = state.tamas.length + (state.full ? 0 : 1);
+    final slots = state.companions.length + (state.full ? 0 : 1);
     return math.max(1, (slots / _slots).ceil());
   }
 
@@ -99,14 +113,15 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
   /// Mueve la eleccion con el teclado, pasando de pagina si hace falta.
   void _step(int delta) {
     final state = ref.read(tamasProvider);
-    if (state.tamas.isEmpty) return;
+    final all = state.companions;
+    if (all.isEmpty) return;
     final current = _selected(state);
-    final index = current == null ? 0 : state.tamas.indexWhere((t) => t.id == current.id);
-    final next = (index + delta).clamp(0, state.tamas.length - 1);
+    final index = current == null ? 0 : all.indexWhere((t) => t.id == current.id);
+    final next = (index + delta).clamp(0, all.length - 1);
     if (next == index) return;
     AudioService.instance.play(Sfx.tick);
     setState(() {
-      _selectedId = state.tamas[next].id;
+      _selectedId = all[next].id;
       _page = next ~/ _slots;
     });
   }
@@ -150,16 +165,24 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
     if (_page >= pages) _page = pages - 1;
 
     final layout = Layout.of(context);
+    listenKoenDuos(context, ref);
 
     return ChannelScaffold(
       title: l.tamasTitle,
       glyph: Glyph.tama,
-      trailing: state.tamas.isEmpty
-          ? null
-          : Text(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (state.tamas.isNotEmpty) ...[
+            Text(
               l.tamasCount(state.tamas.length, maxTamasPerAccount),
               style: Ty.numeral(layout.pick(19, 16), color: Ty.inkSoft),
             ),
+            const SizedBox(width: 14),
+          ],
+          const KoenCareButton(),
+        ],
+      ),
       child: Focus(
         autofocus: true,
         onKeyEvent: _onKey,
@@ -221,7 +244,8 @@ class _TamasChannelState extends ConsumerState<TamasChannel> {
                           page: _page,
                           pages: pages,
                           tall: layout.tall,
-                          tamas: state.tamas,
+                          // Los que se cuidan a medias van detrás de los propios.
+                          tamas: state.companions,
                           showCreate: state.loaded && !state.full,
                           selectedId: selected?.id,
                           profileId: state.profileTamaId,
@@ -303,7 +327,14 @@ class _TamaShowcase extends ConsumerWidget {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final reading = TamaMoodReading.of(tama, ref.watch(moodClockProvider));
-    final isCreator = tama.createdBy(ref.watch(sessionProvider.select((s) => s.accountId)));
+    final me = ref.watch(sessionProvider.select((s) => s.accountId));
+    final isCreator = tama.createdBy(me);
+    final own = ref.watch(tamasProvider.select((t) => t.byId(tama.id) != null));
+    final partner = koenCarePartner(tama, me);
+    // La línea de con quién se cuida a medias se come el aire de debajo.
+    final cared = tama.shared && partner != null;
+    final duo = cared ? ref.watch(koenDuoWithProvider(partner)) : null;
+    final inDuo = duo != null && [...duo.mine, ...duo.theirs].any((t) => t.id == tama.id);
 
     final layout = Layout.of(context);
     final tall = layout.tall;
@@ -331,7 +362,7 @@ class _TamaShowcase extends ConsumerWidget {
               onPressed: onVisit,
             ),
           ),
-          if (!isProfile) ...[
+          if (!isProfile && own) ...[
             const SizedBox(width: 12),
             if (tall)
               IconPill(
@@ -349,6 +380,22 @@ class _TamaShowcase extends ConsumerWidget {
                 height: 48,
                 onPressed: () => unawaited(putTamaOnProfile(context, ref, tama)),
               ),
+          ],
+          // La casita del dúo o, si aún no se comparte, ofrecerlo a un amigo.
+          if (inDuo || (isCreator && !tama.shared)) ...[
+            const SizedBox(width: 12),
+            HintBubble(
+              message: inDuo ? l.koenDuoOpen : l.koenCareOffer,
+              child: IconPill(
+                key: const ValueKey<String>('tamas.koen'),
+                glyph: Glyph.house,
+                diameter: 48,
+                semanticLabel: inDuo ? l.koenDuoOpen : l.koenCareOffer,
+                onPressed: inDuo
+                    ? () => pushChannelPage<void>(context, (_) => KoenHouseScreen(friend: duo.friend))
+                    : () => unawaited(offerKoenCare(context, ref, tama)),
+              ),
+            ),
           ],
           if (isCreator) ...[
             const SizedBox(width: 12),
@@ -402,6 +449,29 @@ class _TamaShowcase extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 6),
+          if (cared) ...[
+            Row(
+              children: [
+                const KoenCareMark(size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    own
+                        ? l.koenCareWith(koenFriendName(ref, partner))
+                        : '${l.koenCareOfFriend(koenFriendName(ref, partner))} · ${l.koenCareMark}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Ty.caption.copyWith(color: Ty.ink),
+                  ),
+                ),
+                if (inDuo) ...[
+                  const SizedBox(width: 10),
+                  Flexible(child: KoenStreakLine(duo: duo)),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+          ],
           Text(
             tall
                 ? personalityLabel(l, tama.personality)
@@ -410,7 +480,7 @@ class _TamaShowcase extends ConsumerWidget {
             overflow: TextOverflow.ellipsis,
             style: Ty.caption.copyWith(fontSize: 15),
           ),
-          SizedBox(height: tall ? 12 : 18),
+          SizedBox(height: tall ? 12 : (cared ? 12 : 18)),
           Row(
             children: [
               Flexible(child: TamaMoodMeter(value: reading.value, width: tall ? 120 : 200)),
@@ -426,7 +496,7 @@ class _TamaShowcase extends ConsumerWidget {
             ],
           ),
           if (!tall) ...[
-            SizedBox(height: tall ? 14 : 26),
+            SizedBox(height: cared ? 16 : 26),
             actions,
             const SizedBox(height: 10),
             Text(l.tamasSelectHint, style: Ty.micro),
@@ -846,6 +916,7 @@ class _TamaTile extends ConsumerWidget {
               right: 10,
               child: GlyphIcon(Glyph.portrait, size: 17, color: skin.accentDeep),
             ),
+          if (tama.shared) const Positioned(top: 7, left: 8, child: KoenCareMark(size: 20)),
         ],
       ),
     );

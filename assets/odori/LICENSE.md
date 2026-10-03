@@ -6,6 +6,5 @@ Adrià Bonnin Catalán y se licencia bajo
 GPL-3.0 del resto de Ibasho.
 
 Las voces conservan además las condiciones de su banco: Kasane Teto
-(© TWINDRILL, voz de 小山乃舞世), Tohoku Kiritan y Zundamon (zunko.jp, con
-NEUTRINO), Merrow (NEUTRINO) y NIT SONG070 F001 (Sinsy, CC BY 3.0, © Nagoya
-Institute of Technology). El detalle está en [`CREDITS.md`](../../CREDITS.md).
+(© TWINDRILL, voz de 小山乃舞世) y Zundamon (zunko.jp, con NEUTRINO). El
+detalle está en [`CREDITS.md`](../../CREDITS.md).

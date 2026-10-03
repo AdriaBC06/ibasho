@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 40">
+  <!-- Accesorio de pareja: el hilo rojo del Tama de la derecha, atado a su
+       izquierda (el nudo en (42, 18)), en espejo del de la izquierda. -->
+  <path d="M42 18 Q26 30 14 24 Q4 19 3 30" fill="none" stroke="#A82633" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M42 18 Q26 30 14 24 Q4 19 3 30" fill="none" stroke="#E8414E" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M42 18 Q46 8 39 7 Q34 8 42 18 Z" fill="#E8414E" stroke="#A82633" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M42 18 Q32 12 30 18 Q32 23 42 18 Z" fill="#E8414E" stroke="#A82633" stroke-width="1.8" stroke-linejoin="round"/>
+  <circle cx="42" cy="18" r="2.6" fill="#F06A74" stroke="#A82633" stroke-width="1.4"/>
+</svg>

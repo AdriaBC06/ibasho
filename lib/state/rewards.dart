@@ -17,9 +17,14 @@ import 'session.dart';
 /// exigen lo mismo.
 const int dailyRewardCap = 20;
 
-/// El tope de [game]: Odori llega a 30, el resto a [dailyRewardCap]. Las
-/// reglas exigen lo mismo.
-int rewardCapFor(String game) => game == 'odori' ? 30 : dailyRewardCap;
+/// El tope de [game]: Odori llega a 30, cuidar a medias (`koen_care`) da 10
+/// de una vez y el resto llega a [dailyRewardCap]. Las reglas exigen lo
+/// mismo.
+int rewardCapFor(String game) => switch (game) {
+      'odori' => 30,
+      'koen_care' => 10,
+      _ => dailyRewardCap,
+    };
 
 /// Tiempo minimo entre dos cobros, sean del juego que sean. Las reglas exigen
 /// lo mismo.
@@ -134,8 +139,12 @@ class RewardsController extends StateNotifier<RewardsState> {
 
   /// Cobra el premio de una victoria en [game]. Si con [amount] se pasaria
   /// del tope de ese juego, cobra lo que falte hasta el tope; si ya esta,
-  /// nada.
-  Future<RewardOutcome> claim({required String game, required int amount}) async {
+  /// nada. [extra] va dentro de `earnings/{game}` (el Tama de `koen_care`).
+  Future<RewardOutcome> claim({
+    required String game,
+    required int amount,
+    Map<String, Object?> extra = const {},
+  }) async {
     final now = DateTime.now();
     final left = state.leftToday(game, now);
     if (left <= 0) return const RewardOutcome(RewardStatus.capped);
@@ -155,7 +164,7 @@ class RewardsController extends StateNotifier<RewardsState> {
       await _backend.merge(
         '/',
         {
-          'users/$_me/earnings/$game': {'day': day, 'earned': earned, 'at': serverTimestamp},
+          'users/$_me/earnings/$game': {'day': day, 'earned': earned, 'at': serverTimestamp, ...extra},
           'users/$_me/earnings/last': {'game': game, 'at': serverTimestamp},
           'users/$_me/coins': _coinsOf() + coins,
         },

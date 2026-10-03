@@ -43,3 +43,6 @@ __pycache__/
 
 # Los binarios publicados en Hosting: se bajan del CI, no se versionan.
 hosting/public/descargas/
+
+# Voces de Odori que no van en la app (copia de seguridad, no se borran)
+odori-reserva/

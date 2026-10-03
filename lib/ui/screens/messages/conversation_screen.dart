@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 
 import '../../../audio/audio_service.dart';
 import '../../../backend/messaging.dart';
+import '../../../backend/missions.dart';
 import '../../../core/clock_format.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/conversation.dart';
@@ -80,6 +81,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     if (!mounted) return;
     AudioService.instance.play(ok ? Sfx.open : Sfx.error);
     if (ok) {
+      unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.chat));
       _typed.clear();
       setState(() {});
       // Al mandar siempre se baja del todo: lo que acabas de escribir tiene

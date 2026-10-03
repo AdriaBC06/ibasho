@@ -140,6 +140,11 @@ abstract final class T {
   static const Color themeStarfieldGlow = Color(0xFF8FA6F0);
   static const Color themeStarfieldGlowAlt = Color(0xFFC8B8FF);
 
+  /// El fondo de Tama Kōen (0.9.0): el césped del parque y el rosa de sus
+  /// cerezos.
+  static const Color themeKoen = Color(0xFFA6DE92);
+  static const Color themeKoenFrame = Color(0xFFF08FB0);
+
   // --- Tamas -------------------------------------------------------------
 
   /// Paleta cerrada del Tama: 16 tonos aero elegidos a mano.

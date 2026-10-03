@@ -871,3 +871,483 @@ test('un admin puede borrar su propio bono para probarlo otra vez, y solo el suy
   await assertSucceeds(set(ref(db(ADMIN), `/users/${ADMIN}/login`), null));
   await assertFails(set(ref(db(ADMIN), `/users/${ANA}/login`), null));
 });
+
+test('koen: el parque es gratis, de 5 en 5 y con tope de 20', async () => {
+  await assertSucceeds(claim(ANA, { earned: 5, coins: 105, game: 'koen' }));
+  await earnedBefore(ANA, 'koen', { earned: 20 });
+  await assertFails(claim(ANA, { earned: 25, coins: 110, game: 'koen' }));
+});
+
+test('koen: la chuche del día, una vez al día y solo una unidad', async () => {
+  const gift = (food, qty, day = today()) =>
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/koen/gift`]: { day, food, at: serverTimestamp() },
+      [`users/${ANA}/pantry/${food}`]: qty,
+    });
+  await assertFails(gift('cookie', 7));
+  await assertFails(gift('cookie', 6, today() + 1));
+  await assertFails(gift('caviar', 1));
+  // Sin recibo no sube.
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/pantry/cookie`), 6));
+  await assertSucceeds(gift('cookie', 6));
+  await assertFails(gift('candy', 6));
+  await assertFails(gift('dango', 1));
+  // El recibo no se puede borrar para volver a cobrar.
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen/gift`), null));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen`), null));
+});
+
+test('koen: un gachaken a la semana', async () => {
+  const week = Math.floor(Date.now() / 604800000);
+  const ticket = (tickets, w = week, kind = 'gachaken') =>
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/koen/ticket`]: { week: w, at: serverTimestamp() },
+      [`users/${ANA}/tickets/${kind}`]: tickets,
+    });
+  await assertFails(ticket(2));
+  await assertFails(ticket(1, week + 1));
+  await assertFails(ticket(1, week, 'kinken'));
+  await assertSucceeds(ticket(1));
+  await assertFails(ticket(2));
+});
+
+test('koen: recuerdos que no se pisan y encuentros forzados con tope', async () => {
+  const d = today();
+  await assertSucceeds(set(ref(db(ANA), `/users/${ANA}/koen/album/hanami`), d));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen/album/hanami`), d));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen/album/first`), d + 1));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen/album/a b`), d));
+  const drags = (pairs, day = d) => set(ref(db(ANA), `/users/${ANA}/koen/drags`), { day, pairs });
+  await assertSucceeds(drags({ '-TamaA_-TamaB': 3 }));
+  await assertFails(drags({ '-TamaA_-TamaB': 4 }));
+  await assertFails(drags({ '-TamaA_-TamaB': 1 }, d - 1));
+  await assertFails(drags({ tama: 1 }));
+  await assertFails(set(ref(db(LUIS), `/users/${ANA}/koen/drags`), { day: d, pairs: { '-A_-B': 1 } }));
+});
+
+/// Ana y Luis, amigos.
+async function befriend() {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/friends/${LUIS}`), { since: now });
+    await set(ref(context.database(), `/users/${LUIS}/friends/${ANA}`), { since: now });
+  });
+}
+
+test('koen: la amistad entre Tamas solo sube lo que se cuenta hoy', async () => {
+  const d = today();
+  const bond = (v) => set(ref(db(ANA), `/users/${ANA}/koen/bonds/-TamaA_-TamaB`), v);
+  await assertSucceeds(bond({ p: 2, d, n: 2 }));
+  await assertSucceeds(bond({ p: 3, d, n: 3 }));
+  await assertFails(bond({ p: 5, d, n: 3 }));
+  await assertFails(bond({ p: 2, d, n: 2 }));
+  await assertFails(bond({ p: 5, d, n: 5 }));
+  await assertFails(bond({ p: 4, d: d - 1, n: 1 }));
+  await assertFails(set(ref(db(LUIS), `/users/${ANA}/koen/bonds/-TamaA_-TamaB`), { p: 4, d, n: 4 }));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen/bonds/tama`), { p: 1, d, n: 1 }));
+});
+
+test('koen: la amistad entre jugadores, solo con amigos y con tope diario', async () => {
+  const d = today();
+  const half = (v) => set(ref(db(ANA), `/users/${ANA}/koen/friends/${LUIS}`), v);
+  await assertFails(half({ p: 3, d, n: 3, l: 1 }));
+  await befriend();
+  await assertSucceeds(half({ p: 3, d, n: 3, l: 1 }));
+  await assertFails(half({ p: 40, d, n: 40, l: 1 }));
+  await assertFails(half({ p: 4, d, n: 4, l: 5 }));
+  await assertSucceeds(half({ p: 4, d, n: 4, l: 1 }));
+  // Lo lee Luis (es amigo), no lo escribe.
+  await assertSucceeds(get(ref(db(LUIS), `/users/${ANA}/koen/friends/${LUIS}/p`)));
+  await assertFails(set(ref(db(LUIS), `/users/${ANA}/koen/friends/${LUIS}`), { p: 9, d, n: 9 }));
+});
+
+test('koen: el fondo y el gorro de la amistad, con su pareja y una sola vez', async () => {
+  const d = today();
+  const pair = '-TamaA_-TamaB';
+  const prize = (key, bonds) =>
+    update(ref(db(ANA), '/'), {
+      ...(bonds ? { [`users/${ANA}/koen/bonds/${pair}`]: bonds } : {}),
+      [`users/${ANA}/koen/prize`]: { key, pair, at: serverTimestamp() },
+      [`users/${ANA}/prizes/${key}`]: 1,
+    });
+  await assertFails(prize('bg_koen'));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/prizes/bg_koen`), 1));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/koen/bonds/${pair}`), { p: 8, d: d - 1, n: 1 });
+  });
+  await assertFails(prize('momiji_red'));
+  await assertFails(prize('cap_red'));
+  await assertSucceeds(prize('bg_koen'));
+  await assertFails(prize('bg_koen'));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen/prize`), null));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/koen/bonds/${pair}`), { p: 25, d: d - 1, n: 1 });
+  });
+  await assertSucceeds(prize('momiji_red'));
+});
+
+test('koen: el premio de nivel con un amigo, con los puntos de los dos', async () => {
+  const d = today();
+  await befriend();
+  const reward = (level, coins) =>
+    update(ref(db(ANA), '/'), {
+      [`users/${ANA}/koen/reward`]: { friend: LUIS, level, at: serverTimestamp() },
+      [`users/${ANA}/koen/rewards/${LUIS}/${level}`]: true,
+      [`users/${ANA}/coins`]: coins,
+    });
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/koen/friends/${LUIS}`), { p: 12, d, n: 12 });
+    await set(ref(context.database(), `/users/${LUIS}/koen/friends/${ANA}`), { p: 7, d, n: 7 });
+  });
+  // 12 + 7 = 19: aún no son «amigos».
+  await assertFails(reward(2, 120));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${LUIS}/koen/friends/${ANA}/p`), 8);
+  });
+  await assertFails(reward(2, 140));
+  await assertFails(reward(3, 140));
+  await assertSucceeds(reward(2, 120));
+  await assertFails(reward(2, 140));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen/rewards/${LUIS}/2`), null));
+  // Sin recibo, las monedas no suben.
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/coins`), 160));
+});
+
+// --- Tama Kōen, fase 4: cuidar a medias ----------------------------------------
+
+const TAMA = '-AnaTama0000000000aa';
+const LUIS_TAMA = '-LuisTama000000000bb';
+
+/// Un Tama de Ana (o de quien sea), con lo que haga falta encima.
+async function seedTama(id = TAMA, creator = ANA, extra = {}) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/tamas/${id}`), {
+      schema: 1,
+      creator,
+      keeper: creator,
+      name: 'Pumi',
+      personality: 'calm',
+      voice: { pitch: 50, tempo: 50, timbre: 0 },
+      look: { body: 0 },
+      createdAt: now - 1000,
+      updatedAt: now - 1000,
+      ...extra,
+    });
+  });
+}
+
+const offerCard = (tamaId = TAMA, owner = ANA) => ({
+  tamaId,
+  owner,
+  name: 'Pumi',
+  personality: 'calm',
+  voice: { pitch: 50, tempo: 50, timbre: 0 },
+  look: { body: 0, color: '#FFB3C8' },
+  at: serverTimestamp(),
+});
+
+const accept = (extra = {}) =>
+  update(ref(db(LUIS), '/'), {
+    [`tamas/${TAMA}/carer`]: LUIS,
+    [`users/${LUIS}/koenInbox/${ANA}`]: null,
+    [`users/${LUIS}/koen/caring/${TAMA}`]: ANA,
+    ...extra,
+  });
+
+test('koen: ofrecer cuidar a medias, solo a un amigo y con un Tama propio sin cuidador', async () => {
+  await seedTama();
+  await seedTama(LUIS_TAMA, LUIS);
+  const offer = (card) => set(ref(db(ANA), `/users/${LUIS}/koenInbox/${ANA}`), card);
+  await assertFails(offer(offerCard()));
+  await befriend();
+  await assertSucceeds(offer(offerCard()));
+  // Un Tama que no es suyo, o una ficha que dice otro dueño, no.
+  await assertFails(offer(offerCard(LUIS_TAMA, ANA)));
+  await assertFails(offer(offerCard(TAMA, LUIS)));
+  // El buzón solo lo lee su dueño.
+  await assertFails(get(ref(db(ANA), `/users/${LUIS}/koenInbox`)));
+  await assertSucceeds(get(ref(db(LUIS), `/users/${LUIS}/koenInbox`)));
+  // Lo puede retirar quien lo manda y tirar quien lo recibe; nadie más.
+  await assertFails(set(ref(db(ADMIN), `/users/${LUIS}/koenInbox/${ANA}`), null));
+  await assertSucceeds(set(ref(db(ANA), `/users/${LUIS}/koenInbox/${ANA}`), null));
+  await assertSucceeds(offer(offerCard()));
+  await assertSucceeds(set(ref(db(LUIS), `/users/${LUIS}/koenInbox/${ANA}`), null));
+  // El dueño del buzón no se escribe ofertas a sí mismo.
+  await assertFails(set(ref(db(LUIS), `/users/${LUIS}/koenInbox/${LUIS}`), offerCard(LUIS_TAMA, LUIS)));
+});
+
+test('koen: aceptar pone el cuidador y borra la oferta en la misma escritura', async () => {
+  await seedTama();
+  await befriend();
+  await assertSucceeds(set(ref(db(ANA), `/users/${LUIS}/koenInbox/${ANA}`), offerCard()));
+  // Sin borrar la oferta, o para otra cuenta, no.
+  await assertFails(set(ref(db(LUIS), `/tamas/${TAMA}/carer`), LUIS));
+  await assertFails(accept({ [`tamas/${TAMA}/carer`]: ADMIN }));
+  await assertSucceeds(accept());
+  // El cuidador lee el Tama entero y escribe sus cuidados; lo demás no.
+  await assertSucceeds(get(ref(db(LUIS), `/tamas/${TAMA}`)));
+  await assertSucceeds(set(ref(db(LUIS), `/tamas/${TAMA}/care/lastFed`), serverTimestamp()));
+  await assertFails(set(ref(db(LUIS), `/tamas/${TAMA}/name`), 'Luisito'));
+  await assertFails(set(ref(db(LUIS), `/tamas/${TAMA}/carer`), ADMIN));
+  // Ya tiene cuidador: no se puede volver a ofrecer.
+  await assertFails(set(ref(db(ANA), `/users/${LUIS}/koenInbox/${ANA}`), offerCard()));
+  // El creador no se lo cambia a otro, pero sí lo quita; y entonces Luis ya
+  // no lo lee.
+  await assertFails(set(ref(db(ANA), `/tamas/${TAMA}/carer`), ADMIN));
+  await assertSucceeds(set(ref(db(ANA), `/tamas/${TAMA}/carer`), null));
+  await assertFails(get(ref(db(LUIS), `/tamas/${TAMA}`)));
+});
+
+test('koen: sin oferta no hay cuidador, y nadie se lo pone a otro', async () => {
+  await seedTama();
+  await befriend();
+  await assertFails(set(ref(db(LUIS), `/tamas/${TAMA}/carer`), LUIS));
+  await assertFails(accept());
+  await assertFails(set(ref(db(ANA), `/tamas/${TAMA}/carer`), LUIS));
+  await assertFails(set(ref(db(ANA), `/tamas/${TAMA}/carer`), ANA));
+  // El índice de `koen/caring` solo lo escribe su dueño.
+  await assertSucceeds(set(ref(db(LUIS), `/users/${LUIS}/koen/caring/${TAMA}`), ANA));
+  await assertFails(set(ref(db(ANA), `/users/${LUIS}/koen/caring/${TAMA}`), ANA));
+});
+
+test('koen: al dejar de ser amigos el cuidador pierde el acceso, y lo puede soltar', async () => {
+  await seedTama(TAMA, ANA, { carer: LUIS });
+  await befriend();
+  await assertSucceeds(get(ref(db(LUIS), `/tamas/${TAMA}`)));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/friends/${LUIS}`), null);
+    await set(ref(context.database(), `/users/${LUIS}/friends/${ANA}`), null);
+  });
+  await assertFails(get(ref(db(LUIS), `/tamas/${TAMA}`)));
+  await assertFails(set(ref(db(LUIS), `/tamas/${TAMA}/care/lastPetted`), serverTimestamp()));
+  await assertSucceeds(set(ref(db(LUIS), `/tamas/${TAMA}/carer`), null));
+});
+
+const careClaim = (uid, { coins, earned = 10, tama = TAMA, day = today() }) =>
+  update(ref(db(uid), '/'), {
+    [`users/${uid}/earnings/koen_care`]: { day, earned, at: serverTimestamp(), ...(tama ? { tama } : {}) },
+    [`users/${uid}/earnings/last`]: { game: 'koen_care', at: serverTimestamp() },
+    [`users/${uid}/coins`]: coins,
+  });
+
+test('koen_care: 10 monedas al día para los dos, con el Tama compartido cuidado hoy', async () => {
+  await befriend();
+  // Sin cuidador, no.
+  await seedTama(TAMA, ANA, { care: { lastFed: now, lastPetted: now } });
+  await assertFails(careClaim(ANA, { coins: 110 }));
+  // Con cuidador pero sin mimo de hoy, tampoco.
+  await seedTama(TAMA, ANA, { carer: LUIS, care: { lastFed: now, lastPetted: (today() - 1) * DAY } });
+  await assertFails(careClaim(ANA, { coins: 110 }));
+  await seedTama(TAMA, ANA, { carer: LUIS, care: { lastFed: now, lastPetted: now } });
+  // Ni otra cantidad, ni sin decir el Tama.
+  await assertFails(careClaim(ANA, { coins: 105, earned: 5 }));
+  await assertFails(careClaim(ANA, { coins: 110, tama: null }));
+  await assertSucceeds(careClaim(ANA, { coins: 110 }));
+  await assertSucceeds(careClaim(LUIS, { coins: 12 }));
+  // Una vez al día.
+  await earnedBefore(ANA, 'koen_care', { earned: 10 });
+  await assertFails(careClaim(ANA, { coins: 120 }));
+  // El Tama no vale para otros juegos.
+  await giveMinesweeper(LUIS);
+  await earnedBefore(LUIS, 'minesweeper', { earned: 0, day: today() - 1 });
+  await assertFails(
+    update(ref(db(LUIS), '/'), {
+      [`users/${LUIS}/earnings/minesweeper`]: { day: today(), earned: 5, at: serverTimestamp(), tama: TAMA },
+      [`users/${LUIS}/earnings/last`]: { game: 'minesweeper', at: serverTimestamp() },
+      [`users/${LUIS}/coins`]: 17,
+    }),
+  );
+});
+
+test('koen_care: quien no es ni creador ni cuidador, o ya no es amigo, no cobra', async () => {
+  await befriend();
+  await seedTama(TAMA, ANA, { carer: LUIS, care: { lastFed: now, lastPetted: now } });
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ADMIN}/coins`), 0);
+  });
+  await assertFails(careClaim(ADMIN, { coins: 10 }));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/friends/${LUIS}`), null);
+  });
+  await assertFails(careClaim(LUIS, { coins: 12 }));
+});
+
+// --- Tama Kōen, fase 5: dúos, racha y casita -------------------------------------
+
+const PAIR = `${ANA}_${LUIS}`;
+
+/// Ana cuida a medias el Tama de Luis y Luis el de Ana: un dúo. [care] son los
+/// cuidados de los dos Tamas.
+async function seedDuo(care = { lastFed: now, lastPetted: now }) {
+  await befriend();
+  await seedTama(TAMA, ANA, { carer: LUIS, care });
+  await seedTama(LUIS_TAMA, LUIS, { carer: ANA, care });
+}
+
+const duoWrite = (uid, patch, { create = false } = {}) =>
+  update(ref(db(uid), '/'), {
+    ...(create ? { [`koen/${PAIR}/a`]: ANA, [`koen/${PAIR}/b`]: LUIS } : {}),
+    ...Object.fromEntries(Object.entries(patch).map(([k, v]) => [`koen/${PAIR}/${k}`, v])),
+  });
+
+const slots = { left: TAMA, right: LUIS_TAMA };
+
+test('koen dúo: lo crean y lo leen los dos amigos, con el id de la pareja', async () => {
+  await seedDuo();
+  // Vacío, lo puede leer quien sale en el id; otro, no.
+  await assertSucceeds(get(ref(db(LUIS), `/koen/${PAIR}`)));
+  await assertFails(get(ref(db(ADMIN), `/koen/${PAIR}`)));
+  // El id tiene que ser el de los dos, ordenados.
+  await assertFails(
+    update(ref(db(ANA), '/'), { [`koen/${LUIS}_${ANA}/a`]: LUIS, [`koen/${LUIS}_${ANA}/b`]: ANA, [`koen/${LUIS}_${ANA}/slots`]: slots }),
+  );
+  await assertSucceeds(duoWrite(ANA, { slots }, { create: true }));
+  await assertSucceeds(get(ref(db(LUIS), `/koen/${PAIR}`)));
+  await assertFails(get(ref(db(ADMIN), `/koen/${PAIR}`)));
+  // `a` y `b` ya no se tocan.
+  await assertFails(duoWrite(LUIS, { slots }, { create: true }));
+  await assertSucceeds(duoWrite(LUIS, { slots: { left: LUIS_TAMA, right: TAMA } }));
+  // Sin ser amigos, ni leer ni escribir.
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/friends/${LUIS}`), null);
+  });
+  await assertFails(get(ref(db(LUIS), `/koen/${PAIR}`)));
+  await assertFails(duoWrite(LUIS, { slots }));
+});
+
+test('koen dúo: en la casita, un Tama de cada uno y los dos a medias', async () => {
+  await seedDuo();
+  await assertFails(duoWrite(ANA, { slots: { left: TAMA, right: TAMA } }, { create: true }));
+  await seedTama('-otroTamaDeAna000000', ANA);
+  await assertFails(duoWrite(ANA, { slots: { left: '-otroTamaDeAna000000', right: LUIS_TAMA } }, { create: true }));
+  await assertSucceeds(duoWrite(ANA, { slots }, { create: true }));
+  // Los muebles son adorno: solo se mira la forma.
+  await assertSucceeds(duoWrite(LUIS, { 'house/decor/0': 'kotatsu', 'house/decor/5': 'maneki' }));
+  await assertFails(duoWrite(LUIS, { 'house/decor/6': 'kotatsu' }));
+  await assertFails(duoWrite(LUIS, { 'house/decor/1': 'trono' }));
+  await assertFails(duoWrite(LUIS, { 'house/level': 5 }));
+});
+
+test('koen dúo: la racha sube un día cada vez, con los dos Tamas cuidados hoy', async () => {
+  const d = today();
+  await seedDuo({ lastFed: now, lastPetted: (d - 1) * DAY });
+  await assertFails(duoWrite(ANA, { slots, streak: { count: 1, day: d, best: 1 } }, { create: true }));
+  await seedDuo();
+  // Ni otro día, ni empezar por más de 1.
+  await assertFails(duoWrite(ANA, { slots, streak: { count: 1, day: d - 1, best: 1 } }, { create: true }));
+  await assertFails(duoWrite(ANA, { slots, streak: { count: 2, day: d, best: 2 } }, { create: true }));
+  await assertSucceeds(duoWrite(ANA, { slots, streak: { count: 1, day: d, best: 1 } }, { create: true }));
+  // Una vez al día.
+  await assertFails(duoWrite(LUIS, { streak: { count: 2, day: d, best: 2 } }));
+  // Si ayer contó, sigue; si no, vuelve a 1 y la mejor se queda.
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/koen/${PAIR}/streak`), { count: 6, day: d - 1, best: 6 });
+  });
+  await assertFails(duoWrite(LUIS, { streak: { count: 1, day: d, best: 6 } }));
+  await assertFails(duoWrite(LUIS, { streak: { count: 7, day: d, best: 6 } }));
+  await assertSucceeds(duoWrite(LUIS, { streak: { count: 7, day: d, best: 7 } }));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/koen/${PAIR}/streak`), { count: 9, day: d - 3, best: 12 });
+  });
+  await assertFails(duoWrite(ANA, { streak: { count: 10, day: d, best: 12 } }));
+  await assertSucceeds(duoWrite(ANA, { streak: { count: 1, day: d, best: 12 } }));
+  // Si dejan de cuidarse a medias, ya no cuenta.
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/koen/${PAIR}/streak`), { count: 1, day: d - 1, best: 12 });
+    await set(ref(context.database(), `/tamas/${TAMA}/carer`), null);
+  });
+  await assertFails(duoWrite(ANA, { streak: { count: 2, day: d, best: 12 } }));
+});
+
+const duoPrize = (uid, days, extra = {}) =>
+  update(ref(db(uid), '/'), {
+    [`users/${uid}/koen/duo`]: { pair: PAIR, days, at: serverTimestamp() },
+    [`users/${uid}/koen/duos/${PAIR}/${days}`]: true,
+    ...extra,
+  });
+
+test('koen dúo: los premios de la racha, una vez cada uno y con la racha hecha', async () => {
+  await seedDuo();
+  await assertSucceeds(duoWrite(ANA, { slots }, { create: true }));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/koen/${PAIR}/streak`), { count: 1, day: today(), best: 7 });
+    await set(ref(context.database(), `/users/${LUIS}/tickets/gachaken`), 0);
+  });
+  // 3 días: 10 monedas, ni una más.
+  await assertFails(duoPrize(ANA, 3, { [`users/${ANA}/coins`]: 120 }));
+  await assertSucceeds(duoPrize(ANA, 3, { [`users/${ANA}/coins`]: 110 }));
+  await assertFails(duoPrize(ANA, 3, { [`users/${ANA}/coins`]: 120 }));
+  // 7 días: 20, cada uno el suyo.
+  await assertSucceeds(duoPrize(ANA, 7, { [`users/${ANA}/coins`]: 130 }));
+  await assertSucceeds(duoPrize(LUIS, 7, { [`users/${LUIS}/coins`]: 22 }));
+  // 14 días: aún no llegan.
+  await assertFails(duoPrize(LUIS, 14, { [`users/${LUIS}/tickets/gachaken`]: 1 }));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/koen/${PAIR}/streak/best`), 14);
+  });
+  await assertFails(duoPrize(LUIS, 14, { [`users/${LUIS}/tickets/gachaken`]: 2 }));
+  await assertSucceeds(duoPrize(LUIS, 14, { [`users/${LUIS}/tickets/gachaken`]: 1 }));
+  // El sello no se borra, y quien no es del dúo no cobra.
+  await assertFails(set(ref(db(LUIS), `/users/${LUIS}/koen/duos/${PAIR}/14`), null));
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ADMIN}/coins`), 0);
+  });
+  await assertFails(duoPrize(ADMIN, 3, { [`users/${ADMIN}/coins`]: 10 }));
+});
+
+test('koen dúo: la ficha del parque puede llevar su pareja', async () => {
+  const card = { ...offerCard(), at: now, duo: LUIS_TAMA };
+  await assertSucceeds(set(ref(db(ANA), `/users/${ANA}/koen/park/0`), card));
+  await assertFails(set(ref(db(ANA), `/users/${ANA}/koen/park/1`), { ...card, duo: 'no vale' }));
+});
+
+// --- Tama Kōen, fase 6: el accesorio de pareja -----------------------------------
+
+const CODE = '3fa9c1';
+
+const charmClaim = (uid, key, pair = PAIR) =>
+  update(ref(db(uid), '/'), {
+    [`users/${uid}/koen/charm`]: { key, pair, at: serverTimestamp() },
+    [`users/${uid}/prizes/${key}`]: 1,
+  });
+
+/// La amistad entre Ana y Luis: los puntos que ha sumado cada uno.
+async function seedPoints(ana, luis) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await set(ref(context.database(), `/users/${ANA}/koen/friends/${LUIS}`), { p: ana, d: today(), n: 0 });
+    await set(ref(context.database(), `/users/${LUIS}/koen/friends/${ANA}`), { p: luis, d: today(), n: 0 });
+  });
+}
+
+test('koen pareja: la forma la eligen los dos y el color no cambia', async () => {
+  await seedDuo();
+  await assertSucceeds(duoWrite(ANA, { slots, charm: { shape: 'pendant', code: CODE } }, { create: true }));
+  await assertSucceeds(duoWrite(LUIS, { charm: { shape: 'thread', code: CODE } }));
+  await assertFails(duoWrite(LUIS, { charm: { shape: 'thread', code: 'ffffff' } }));
+  await assertFails(duoWrite(LUIS, { charm: { shape: 'anillo', code: CODE } }));
+  await assertFails(duoWrite(LUIS, { charm: { shape: 'twins' } }));
+});
+
+test('koen pareja: cada uno cobra su mitad, con buenos amigos y su lado de la casita', async () => {
+  await seedDuo();
+  await assertSucceeds(duoWrite(ANA, { slots, charm: { shape: 'pendant', code: CODE } }, { create: true }));
+  // Aún no son buenos amigos (60 puntos entre los dos).
+  await seedPoints(30, 29);
+  await assertFails(charmClaim(ANA, `charm_pendant_l_${CODE}`));
+  await seedPoints(30, 30);
+  // La mitad del otro lado, otra forma u otro color, no.
+  await assertFails(charmClaim(ANA, `charm_pendant_r_${CODE}`));
+  await assertFails(charmClaim(ANA, `charm_twins_l_${CODE}`));
+  await assertFails(charmClaim(ANA, `charm_pendant_l_ffffff`));
+  await assertSucceeds(charmClaim(ANA, `charm_pendant_l_${CODE}`));
+  // Una sola copia.
+  await assertFails(charmClaim(ANA, `charm_pendant_l_${CODE}`));
+  await assertSucceeds(charmClaim(LUIS, `charm_pendant_r_${CODE}`));
+  // Sin recibo, nada.
+  await assertFails(set(ref(db(LUIS), `/users/${LUIS}/prizes/charm_twins_r_${CODE}`), 1));
+  // Si cambian de lado, a Ana le toca la otra mitad.
+  await assertSucceeds(duoWrite(LUIS, { slots: { left: LUIS_TAMA, right: TAMA }, charm: { shape: 'twins', code: CODE } }));
+  await assertFails(charmClaim(ANA, `charm_twins_l_${CODE}`));
+  await assertSucceeds(charmClaim(ANA, `charm_twins_r_${CODE}`));
+  // Quien no es del dúo, no.
+  await assertFails(charmClaim(ADMIN, `charm_twins_r_${CODE}`));
+});

@@ -568,7 +568,7 @@ def voice_key(spec):
     return min(0, spec["teto_key"] + 3, 78 - max(ps) - spec.get("tr_final", 0))
 
 
-VOICES = ["teto", "sinsy", "kiritan", "zundamon", "merrow"]
+VOICES = ["teto", "sinsy", "kiritan", "zundamon", "merrow", "reina", "nakumo", "runo", "soma"]
 
 
 def make_song(spec, lang=None, voice=None):

@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../theme/tokens.dart';
 import '../../games/hatarakitama/hataraki_art.dart' show paintHataraki;
+import '../../games/koen/koen_art.dart' show paintKoen;
 import 'gacha_art.dart';
 
 /// Las ilustraciones a color del entorno.
@@ -30,6 +31,7 @@ enum ArtIcon {
   odori,
   ohirune,
   hataraki,
+  koen,
   gacha,
   pinball,
   pachinko,
@@ -37,6 +39,7 @@ enum ArtIcon {
   ticketKinken,
   catalog,
   coin,
+  coinPouch,
   ginmon,
   medalBronze,
   medalSilver,
@@ -89,6 +92,8 @@ class ArtPainter extends CustomPainter {
         paintOhirune(canvas);
       case ArtIcon.hataraki:
         paintHataraki(canvas);
+      case ArtIcon.koen:
+        paintKoen(canvas);
       case ArtIcon.gacha:
         paintGacha(canvas);
       case ArtIcon.pinball:
@@ -103,6 +108,8 @@ class ArtPainter extends CustomPainter {
         paintCatalog(canvas);
       case ArtIcon.coin:
         paintCoin(canvas, const Offset(50, 50), 40);
+      case ArtIcon.coinPouch:
+        paintCoinPouch(canvas);
       case ArtIcon.ginmon:
         paintGinmon(canvas, const Offset(50, 50), 40);
       case ArtIcon.medalBronze:
@@ -170,6 +177,8 @@ abstract final class Art {
   static const Color blockZ = Color(0xFFF2636E);
   static const Color blockJ = Color(0xFF6A94F0);
   static const Color blockL = Color(0xFFF79A68);
+  // Las filas grises que manda el otro en el versus.
+  static const Color blockGarbage = Color(0xFFA9B4BF);
 
   // La tarjeta de Nihongo: papel, tinta de pincel y el sello.
   static const Color paper = Color(0xFFFFF8EA);
@@ -453,54 +462,73 @@ void paintTsumiki(Canvas canvas) {
 
 // --- Hebi -----------------------------------------------------------------------
 
-/// Una serpiente de juguete enroscada en S, con la cabeza alzada y carita,
-/// a punto de zamparse un onigiri que espera delante.
+/// Una serpiente de juguete hecha de bolitas, como en el juego: crece de la
+/// cola a la cabeza, enroscada sobre si misma, con carita de frente y la
+/// lengua fuera. Un onigiri espera a su lado.
 void paintHebi(Canvas canvas) {
-  paintGroundShadow(canvas, const Offset(50, 91), 80);
+  paintGroundShadow(canvas, const Offset(50, 91), 82);
   const body = Color(0xFF74DDA2);
-  // El cuerpo: un trazo grueso en S, primero el filo y luego el plastico.
-  final path = Path()
-    ..moveTo(14, 82)
-    ..cubicTo(34, 86, 62, 84, 62, 70)
-    ..cubicTo(62, 56, 26, 62, 26, 46)
-    ..cubicTo(26, 34, 44, 30, 56, 32);
-  Paint line(Color c, double w) => Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = w
-    ..strokeCap = StrokeCap.round
-    ..strokeJoin = StrokeJoin.round
-    ..color = c;
-  canvas.drawPath(path, line(Art.deep(body, .35), 19));
-  canvas.drawPath(path, line(body, 15));
-  canvas.drawPath(path, line(Art.light(body, .5), 4));
-  canvas.drawPath(path.shift(const Offset(-1.6, -2.6)), line(const Color(0x77FFFFFF), 3));
-  for (final c in const [Offset(40, 82), Offset(58, 61), Offset(30, 52)]) {
-    canvas.drawCircle(c, 2.4, Paint()..color = const Color(0xFF4FBF84));
+  const stripe = Color(0xFF52C487);
+  // Las bolitas, de la cola a la cabeza; cada una tapa un poco la anterior.
+  // La punta de la cola, afilada, antes que las bolitas.
+  final tail = Path()
+    ..moveTo(8, 76)
+    ..quadraticBezierTo(16, 77, 24, 79)
+    ..lineTo(24, 89)
+    ..quadraticBezierTo(14, 86, 8, 76)
+    ..close();
+  paintPlastic(canvas, tail, stripe, edge: 1.6, shine: .6);
+  const beads = [
+    (Offset(25, 84), 6.5),
+    (Offset(34, 85), 8.0),
+    (Offset(45, 84.5), 9.0),
+    (Offset(56, 82), 10.0),
+    (Offset(66, 76), 10.5),
+    (Offset(72, 67), 11.0),
+    (Offset(73, 57), 11.5),
+    (Offset(66, 48), 12.0),
+  ];
+  for (var i = 0; i < beads.length; i++) {
+    final (c, r) = beads[i];
+    paintPlastic(canvas, Path()..addOval(Rect.fromCircle(center: c, radius: r)), i.isEven ? body : stripe, edge: 1.8, shine: .8);
+    // Una escama en rombo en cada bolita.
+    final d = c.translate(r * .15, r * .2);
+    final s = r * .3;
+    canvas.drawPath(
+      Path()
+        ..moveTo(d.dx, d.dy - s)
+        ..lineTo(d.dx + s * .8, d.dy)
+        ..lineTo(d.dx, d.dy + s)
+        ..lineTo(d.dx - s * .8, d.dy)
+        ..close(),
+      Paint()..color = Art.light(body, .55).withValues(alpha: .75),
+    );
   }
-  // La cabeza.
-  const c = Offset(62, 31);
-  final head = Path()..addOval(Rect.fromCenter(center: c, width: 30, height: 26));
-  paintPlastic(canvas, head, body, edge: 2, shine: .9);
+  // La cabeza, grande y de frente.
+  const c = Offset(44, 40);
+  final head = Path()..addOval(Rect.fromCenter(center: c, width: 40, height: 33));
+  paintPlastic(canvas, head, body, edge: 2.2, shine: 1);
   final ink = Paint()..color = Art.brush;
-  for (final dx in [-5.5, 5.5]) {
-    canvas.drawOval(Rect.fromCenter(center: c.translate(dx, -1), width: 4, height: 5.4), ink);
-    canvas.drawCircle(c.translate(dx - .8, -2), 1.1, Paint()..color = T.shellTop);
+  for (final dx in [-8.0, 8.0]) {
+    canvas.drawOval(Rect.fromCenter(center: c.translate(dx, -2), width: 5.6, height: 7.4), ink);
+    canvas.drawCircle(c.translate(dx - 1, -3.6), 1.6, Paint()..color = T.shellTop);
   }
+  final blush = Paint()..color = T.tamaBlush.withValues(alpha: .65);
+  canvas.drawOval(Rect.fromCenter(center: c.translate(-13, 5), width: 6, height: 3.2), blush);
+  canvas.drawOval(Rect.fromCenter(center: c.translate(13, 5), width: 6, height: 3.2), blush);
+  // La lengua, bifida, asomando por debajo de la sonrisa.
+  final tongue = _edge(Art.awningRed, 2);
+  canvas.drawLine(c.translate(0, 7), c.translate(0, 13), tongue);
+  canvas.drawLine(c.translate(0, 13), c.translate(-2.6, 16.5), tongue);
+  canvas.drawLine(c.translate(0, 13), c.translate(2.6, 16.5), tongue);
   canvas.drawPath(
     Path()
-      ..moveTo(c.dx - 3, c.dy + 4.6)
-      ..quadraticBezierTo(c.dx, c.dy + 7.4, c.dx + 3, c.dy + 4.6),
-    _edge(Art.brush, 1.4),
+      ..moveTo(c.dx - 4, c.dy + 5)
+      ..quadraticBezierTo(c.dx, c.dy + 8.6, c.dx + 4, c.dy + 5),
+    _edge(Art.brush, 1.6),
   );
-  final blush = Paint()..color = T.tamaBlush.withValues(alpha: .6);
-  canvas.drawOval(Rect.fromCenter(center: c.translate(-10, 4), width: 5, height: 2.6), blush);
-  canvas.drawOval(Rect.fromCenter(center: c.translate(10, 4), width: 5, height: 2.6), blush);
-  // La lengua, bifida.
-  canvas.drawLine(c.translate(14, 2), c.translate(20, 2), line(Art.awningRed, 1.8));
-  canvas.drawLine(c.translate(20, 2), c.translate(23, -.5), line(Art.awningRed, 1.6));
-  canvas.drawLine(c.translate(20, 2), c.translate(23, 4.5), line(Art.awningRed, 1.6));
   // El onigiri: triangulo de arroz con su alga.
-  const o = Offset(86, 62);
+  const o = Offset(84, 26);
   final rice = Path()
     ..moveTo(o.dx, o.dy - 11)
     ..quadraticBezierTo(o.dx + 3, o.dy - 12, o.dx + 11, o.dy + 7)
@@ -512,8 +540,8 @@ void paintHebi(Canvas canvas) {
     RRect.fromRectAndRadius(Rect.fromCenter(center: o.translate(0, 5), width: 9, height: 8), const Radius.circular(1.5)),
     Paint()..color = const Color(0xFF2F4A3A),
   );
-  paintTwinkle(canvas, const Offset(90, 44), 5, Art.spark);
-  paintTwinkle(canvas, const Offset(10, 60), 4, Art.spark);
+  paintTwinkle(canvas, const Offset(92, 48), 5, Art.spark);
+  paintTwinkle(canvas, const Offset(14, 22), 4, Art.spark);
 }
 
 // --- Nihongo -------------------------------------------------------------------
@@ -983,6 +1011,56 @@ void paintCoin(Canvas canvas, Offset c, double r) {
   final star = _star(c.translate(0, r * .03), r * .44, r * .2);
   canvas.drawPath(star.shift(Offset(0, r * .04)), Paint()..color = Art.deep(Art.gold, .3));
   canvas.drawPath(star, _vertical(star.getBounds(), [const Color(0xFFFFF1B8), Art.gold]));
+}
+
+/// El saquito de monedas del regalo diario: una bolsita de tela roja,
+/// fruncida arriba con un cordon dorado de lazo, y dos monedas que se le han
+/// escapado delante.
+void paintCoinPouch(Canvas canvas) {
+  const cloth = Color(0xFFE8505E);
+  // Sombra en el suelo.
+  canvas.drawOval(
+    Rect.fromCenter(center: const Offset(50, 91), width: 70, height: 10),
+    Paint()..color = const Color(0x22000000),
+  );
+  // El cuerpo: ancho abajo y estrecho en el cuello.
+  final body = Path()
+    ..moveTo(38, 36)
+    ..cubicTo(18, 46, 12, 70, 20, 82)
+    ..cubicTo(28, 93, 72, 93, 80, 82)
+    ..cubicTo(88, 70, 82, 46, 62, 36)
+    ..close();
+  paintPlastic(canvas, body, cloth, edge: 2.6, shine: .7);
+  // Pliegues que suben hacia el frunce.
+  final fold = _edge(Art.deep(cloth, .25), 2)..strokeCap = StrokeCap.round;
+  canvas.drawPath(Path()..moveTo(43, 40)..quadraticBezierTo(36, 56, 34, 72), fold);
+  canvas.drawPath(Path()..moveTo(57, 40)..quadraticBezierTo(64, 56, 66, 72), fold);
+  // La boca fruncida, por encima del cordon.
+  final mouth = Path()
+    ..moveTo(40, 34)
+    ..cubicTo(30, 22, 36, 14, 42, 20)
+    ..cubicTo(45, 12, 55, 12, 58, 20)
+    ..cubicTo(64, 14, 70, 22, 60, 34)
+    ..close();
+  paintPlastic(canvas, mouth, Art.light(cloth, .1), edge: 2.2, shine: .5);
+  // El cordon y su lazo.
+  final cord = Rect.fromLTWH(35, 31, 30, 7);
+  paintPlastic(canvas, Path()..addRRect(RRect.fromRectAndRadius(cord, const Radius.circular(3.5))), Art.gold,
+      edge: 1.6, shine: .6);
+  final loop = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3.2
+    ..strokeCap = StrokeCap.round
+    ..color = Art.goldDark;
+  canvas.drawPath(Path()..moveTo(60, 35)..quadraticBezierTo(74, 30, 72, 42)..quadraticBezierTo(66, 46, 62, 37), loop);
+  canvas.drawPath(Path()..moveTo(61, 37)..quadraticBezierTo(66, 52, 72, 56), loop);
+  // La estrella de Ibasho, cosida delante.
+  final star = _star(const Offset(50, 64), 11, 5);
+  canvas.drawPath(star.shift(const Offset(0, 1.5)), Paint()..color = Art.deep(cloth, .35));
+  canvas.drawPath(star, _vertical(star.getBounds(), [const Color(0xFFFFF1B8), Art.gold]));
+  // Dos monedas que se han salido.
+  paintCoin(canvas, const Offset(22, 84), 10);
+  paintCoin(canvas, const Offset(80, 86), 8);
 }
 
 /// El ginmon (銀文), la moneda de plata del pueblo de Hatarakitama: redonda,

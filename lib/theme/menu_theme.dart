@@ -375,6 +375,7 @@ final Map<String, MenuTheme> _themes = <String, MenuTheme>{
   'candy': _glass(T.themeCandy, T.themeCandyFrame),
   'forest': _glass(T.themeForest, T.themeForestFrame,
       accent: T.themeForestFrame),
+  'koen': _glass(T.themeKoen, T.themeKoenFrame, accent: T.themeKoenFrame),
   'sunset': _sparkle(T.themeSunset, T.themeSunsetFrame, T.themeSunsetDeep),
   'glacier': _sparkle(T.themeGlacier, T.themeGlacierFrame, T.themeGlacierDeep),
   'phoenix': _living(

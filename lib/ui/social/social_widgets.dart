@@ -19,6 +19,7 @@ import '../../theme/type.dart';
 import '../tama/tama_view.dart';
 import '../widgets/glyphs.dart';
 import '../widgets/gloss.dart';
+import '../widgets/hint_bubble.dart';
 
 // --- Textos -------------------------------------------------------------------
 
@@ -245,7 +246,17 @@ String badgeLabel(L l, ProfileBadge badge) => switch (badge) {
       ProfileBadge.musicLover => l.badgeMusicLover,
     };
 
-/// Una insignia: pastilla hundida con su icono.
+/// Por qué la tiene: lo que sale al pasar el ratón o tocar la insignia.
+String badgeWhy(L l, ProfileBadge badge) => switch (badge) {
+      ProfileBadge.birthday => l.badgeBirthdayWhy,
+      ProfileBadge.pioneer => l.badgePioneerWhy,
+      ProfileBadge.oldFriend => l.badgeOldFriendWhy,
+      ProfileBadge.social => l.badgeSocialWhy,
+      ProfileBadge.musicLover => l.badgeMusicLoverWhy,
+    };
+
+/// Una insignia: pastilla hundida con su icono. Al pasar el ratón o tocarla
+/// dice por qué la tiene.
 class BadgeChip extends StatelessWidget {
   const BadgeChip({super.key, required this.badge});
 
@@ -257,29 +268,32 @@ class BadgeChip extends StatelessWidget {
     final skin = IbashoSkin.of(context);
     final party = badge == ProfileBadge.birthday;
     final ink = party ? T.warn : skin.accentDeep;
-    return SizedBox(
-      height: 30,
-      child: GlossSurface(
-        radius: 15,
-        recessed: true,
-        tint: party ? T.warn : skin.accent,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GlyphIcon(badge.glyph, size: 15, color: ink),
-            const SizedBox(width: 6),
-            // En un lienzo estrecho la insignia no empuja: se recorta su
-            // texto antes de desbordar la fila.
-            Flexible(
-              child: Text(
-                badgeLabel(l, badge),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Ty.caption.copyWith(color: ink, height: 1.1),
+    return HintBubble(
+      message: badgeWhy(l, badge),
+      child: SizedBox(
+        height: 30,
+        child: GlossSurface(
+          radius: 15,
+          recessed: true,
+          tint: party ? T.warn : skin.accent,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GlyphIcon(badge.glyph, size: 15, color: ink),
+              const SizedBox(width: 6),
+              // En un lienzo estrecho la insignia no empuja: se recorta su
+              // texto antes de desbordar la fila.
+              Flexible(
+                child: Text(
+                  badgeLabel(l, badge),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Ty.caption.copyWith(color: ink, height: 1.1),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -239,10 +239,13 @@ Future<void> main() async {
     expect(backend.writes, isEmpty);
     await settle(tester, 80);
 
-    // Solo un cuidado de verdad escribe, y solo su marca de tiempo.
+    // Solo un cuidado de verdad escribe: su marca de tiempo y, como cuenta
+    // para las misiones, una sola señal de acariciar.
     await tapKey(tester, 'tama.pet', 10);
-    expect(backend.writes.map((w) => w.$1), ['/tamas/${tama.id}/care/lastPetted']);
-    expect(backend.writes.single.$2, serverTimestamp);
+    expect(backend.writes.map((w) => w.$1), ['/tamas/${tama.id}/care/lastPetted', '/']);
+    expect(backend.writes.first.$2, serverTimestamp);
+    expect((backend.writes.last.$2! as Map).keys.every((k) => '$k'.contains('/missions/') && '$k'.endsWith('/pet')),
+        isTrue);
   });
 
   test('el humor baja despacio con el tiempo y nunca pasa de melancolico', () {

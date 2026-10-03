@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../audio/audio_service.dart';
 import '../../audio/tama_voice.dart';
 import '../../backend/leaderboards.dart';
+import '../../backend/missions.dart';
 import '../../backend/tama.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
@@ -348,6 +349,7 @@ class _OdoriPlayScreenState extends ConsumerState<OdoriPlayScreen>
       _newRecord = fresh;
       _oldBest = old;
       unawaited(store.save());
+      unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.play));
       final board = odoriBoardScore(
         result.score,
         setup.difficulty,

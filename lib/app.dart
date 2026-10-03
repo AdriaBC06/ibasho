@@ -63,6 +63,8 @@ class _IbashoAppState extends ConsumerState<IbashoApp> {
     final locale = ref.watch(localeProvider);
     // La cancion de Tamakoro del menu se mantiene al dia en cualquier pantalla.
     ref.watch(koroMenuMusicProvider);
+    // Los cuidados a medias con quien ya no es amigo se quitan al abrir.
+    ref.watch(koenCareTidyProvider);
 
     return WidgetsApp(
       navigatorKey: rootNavigatorKey,

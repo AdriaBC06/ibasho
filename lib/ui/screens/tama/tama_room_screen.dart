@@ -10,12 +10,17 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../backend/koen_care.dart';
 import '../../../backend/missions.dart';
 import '../../../backend/tama.dart';
 import '../../../core/birthday.dart';
+import '../../../games/koen/koen_album.dart' show koenFriendName;
+import '../../../games/koen/koen_care_ui.dart';
+import '../../../games/koen/koen_house.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/pantry.dart';
 import '../../../state/providers.dart';
+import '../../../state/rewards.dart' show RewardsState;
 import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
@@ -47,9 +52,50 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
   final TamaViewController _view = TamaViewController();
   bool _leaving = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Uno cuidado a medias no se sigue en vivo: al entrar se relee, por si el
+    // otro ya le ha dado de comer, y se cobra el día si ya toca.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final tamas = ref.read(tamasProvider);
+      if (tamas.byId(widget.tamaId) == null && tamas.find(widget.tamaId) != null) {
+        await ref.read(tamasProvider.notifier).refreshCared();
+      }
+      _claimCare();
+    });
+  }
+
+  /// Las monedas del día de cuidar a medias y la racha del dúo, si con esto
+  /// ya toca.
+  void _claimCare() {
+    if (!mounted) return;
+    final tama = ref.read(tamasProvider).find(widget.tamaId);
+    if (tama == null || !tama.shared) return;
+    unawaited(claimKoenCareWithToast(context, ref, tama).then((_) {
+      if (mounted) unawaited(tickKoenDuoWithToast(context, ref, tama.id));
+    }));
+  }
+
   void _cuddle(Tama tama) {
     _view.cuddle();
-    unawaited(ref.read(tamasProvider.notifier).pet(tama.id));
+    unawaited(_pet(tama));
+  }
+
+  /// Un mimo; si cuenta (uno cada rato por Tama), también para las misiones.
+  Future<void> _pet(Tama tama) async {
+    final counted = await ref.read(tamasProvider.notifier).pet(tama.id);
+    if (counted) unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.pet));
+    _claimCare();
+  }
+
+  Future<void> _endCare(Tama tama, {required bool own}) async {
+    final ok = await endKoenCare(context, ref, tama);
+    // Si era de otro, ya no queda nada que hacer aquí.
+    if (ok && !own && mounted) {
+      _leaving = true;
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _feed(Tama tama, TamaFood food) async {
@@ -63,6 +109,7 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
     }
     _view.feed(food);
     unawaited(ref.read(missionsProvider.notifier).mark(MissionEvent.feed));
+    _claimCare();
   }
 
   Future<void> _setProfile(Tama tama) async {
@@ -104,7 +151,7 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
     final tamas = ref.watch(tamasProvider);
-    final tama = tamas.byId(widget.tamaId);
+    final tama = tamas.find(widget.tamaId);
     final account = ref.watch(sessionProvider.select((s) => s.accountId));
     final now = ref.watch(moodClockProvider);
 
@@ -128,6 +175,10 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
     final reading = TamaMoodReading.of(tama, now);
     final isProfile = tamas.profileTamaId == tama.id;
     final isCreator = tama.createdBy(account);
+    // Uno que se cuida a medias y es de otro: ni perfil, ni editar, ni borrar.
+    final own = tamas.byId(tama.id) != null;
+    final partner = koenCarePartner(tama, account);
+    final duo = koenDuoOfTama(ref.watch(koenDuosProvider), tama.id);
 
     final layout = Layout.of(context);
     final tall = layout.tall;
@@ -196,7 +247,7 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                   joy: reading.joy,
                   controller: _view,
                   pettable: true,
-                  onPetted: () => unawaited(ref.read(tamasProvider.notifier).pet(tama.id)),
+                  onPetted: () => unawaited(_pet(tama)),
                   // El dia del cumpleaños de su cuidador, el de perfil va de fiesta.
                   wear: _partyFor(ref, tama) ? TamaWear.partyHat : TamaWear.none,
                 ),
@@ -297,6 +348,70 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 22),
+                  SectionCard(
+                    title: l.koenCareTitle,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (tama.shared && partner != null) ...[
+                          Row(
+                            children: [
+                              const KoenCareMark(size: 24),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  l.koenCareWith(koenFriendName(ref, partner)),
+                                  style: Ty.body.copyWith(fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                              if (koenCareDone(tama, RewardsState.today()))
+                                GlyphIcon(Glyph.check, size: 20, color: skin.accentDeep),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(l.koenCareHint(koenCareCoins), style: Ty.micro),
+                          if (duo != null) ...[
+                            const SizedBox(height: 12),
+                            IbashoButton(
+                              key: const ValueKey<String>('tama.duoHouse'),
+                              label: l.koenDuoOpen,
+                              glyph: Glyph.house,
+                              height: 46,
+                              expand: true,
+                              onPressed: () => pushChannelPage<void>(
+                                context,
+                                (_) => KoenHouseScreen(friend: duo.friend),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: IbashoButton(
+                              key: const ValueKey<String>('tama.endCare'),
+                              label: l.koenCareEnd,
+                              glyph: Glyph.cross,
+                              tone: ButtonTone.quiet,
+                              height: 42,
+                              onPressed: () => unawaited(_endCare(tama, own: own)),
+                            ),
+                          ),
+                        ] else ...[
+                          Text(l.koenCareHint(koenCareCoins), style: Ty.caption),
+                          const SizedBox(height: 12),
+                          IbashoButton(
+                            key: const ValueKey<String>('tama.offerCare'),
+                            label: l.koenCareOffer,
+                            glyph: Glyph.house,
+                            height: 46,
+                            expand: true,
+                            onPressed: isCreator ? () => unawaited(offerKoenCare(context, ref, tama)) : null,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                   if (isCreator) ...[
                     const SizedBox(height: 18),
                     Align(
@@ -325,7 +440,7 @@ class _TamaRoomScreenState extends ConsumerState<TamaRoomScreen> {
             edit,
             SizedBox(width: tall ? 8 : 12),
           ],
-          if (!isProfile) setProfile,
+          if (!isProfile && own) setProfile,
         ],
       ),
       // En vertical el Tama manda arriba y los cuidados se desplazan debajo;

@@ -344,7 +344,7 @@ test('el tablon lo lee todo el mundo y lo escribe solo el admin', async () => {
   await assertFails(set(ref(db(ANA), '/news/VVVVVVVVVVVVVVVVVVVV'), nuevo));
   await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/title`), ''));
   await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/titleEn`), ''));
-  await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/bodyEn`), 'x'.repeat(601)));
+  await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/bodyEn`), 'x'.repeat(2001)));
   // Y un campo que las reglas no conocen sigue sin entrar.
   await assertFails(set(ref(db(ADMIN), `/news/${NEWS}/titleFr`), 'Salut'));
 });

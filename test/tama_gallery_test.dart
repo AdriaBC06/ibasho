@@ -153,6 +153,22 @@ void main() {
     ], cell: 260);
   });
 
+  testWidgets('accesorios del Yatai', (tester) async {
+    final items = [for (final p in wearablePrizes) if (p.shop && p.id != 'poop') ...p.items];
+    await tester.runAsync(() => PrizeArt.instance.preload(items));
+    TamaLook wearing(TamaLook look, PrizeItem item) => look.withOutfit(item.slot == PrizeSlot.head
+        ? TamaOutfit(hat: item.key)
+        : TamaOutfit(accessories: [item.key]));
+    await sheet(tester, 'g10-yatai', [
+      for (final item in items)
+        for (final body in const [0, 4, 12])
+          (
+            wearing(base.withPart(TamaPart.body, body).withDial(TamaDial.bodyWidth, body == 4 ? 100 : 50), item),
+            TamaPose.rest,
+          ),
+    ], cell: 220);
+  });
+
   testWidgets('colores propios', (tester) async {
     await tester.runAsync(() => PrizeArt.instance
         .preload([prizeItem('leaf_green')!, prizeItem('leaf_orange')!, prizeItem('pixel_heart_red')!]));

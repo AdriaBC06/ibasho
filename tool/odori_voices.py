@@ -9,12 +9,29 @@ permite cantar en espanol con voces japonesas.
   kiritan   NEUTRINO + Tohoku Kiritan (zunko.jp, uso no comercial).
   zundamon  NEUTRINO + Zundamon (zunko.jp, uso no comercial).
   merrow    NEUTRINO + Merrow (STUDIO NEUTRINO, uso libre).
+  reina     NEUTRINO + Reina (STUDIO NEUTRINO, mismo contrato que Merrow).
+  nakumo    NEUTRINO + Nakumo (STUDIO NEUTRINO), voz de chico.
+  runo      NEUTRINO + Runo (STUDIO NEUTRINO), voz de chico.
+  soma      NEUTRINO + Soma (STUDIO NEUTRINO), voz de chico.
   teto      UTAU: Kasane Teto (TWINDRILL, uso no comercial), sintetizada
             aqui con WORLD a partir del banco de voz (oto.ini).
 
 Los bancos y NEUTRINO no van en el repositorio: se buscan en
 $ODORI_VOICES (por defecto ~/.cache/ibasho-voices). Ver docs en
 tool/gen_odori_music.py.
+
+NEUTRINO va por GPU (NVIDIA) si encuentra las librerias de CUDA 12 en
+$ODORI_VOICES/cuda12: su proveedor de ONNX Runtime esta compilado contra
+CUDA 12 y no carga con las 13 del sistema. Se instalan aparte, sin tocar el
+sistema (unos 2,7 GB):
+
+  uv pip install --target ~/.cache/ibasho-voices/cuda12 \
+    --python-platform x86_64-manylinux_2_28 --python-version 3.12 \
+    nvidia-cublas-cu12 nvidia-cuda-runtime-cu12 "nvidia-cufft-cu12<11.3" \
+    nvidia-curand-cu12 "nvidia-cudnn-cu12>=9,<10"
+
+En una RTX 4060 Ti una cancion pasa de 110 s a 48 s por NEUTRINO (x2,3).
+Sin esa carpeta, o con ODORI_CPU=1, va por CPU como antes.
 
 Las salidas de NEUTRINO no se pasan por ningun conversor de voz (su
 licencia lo prohibe): solo se corrige la curva de tono con las propias
@@ -34,12 +51,22 @@ NEUTRINO_DIR = os.path.join(VOICES_DIR, "neutrino", "NEUTRINO")
 CACHE_DIR = os.path.join(VOICES_DIR, "_cache")
 DROP = "’"
 
-NEUTRINO_MODELS = {"kiritan": "KIRITAN", "zundamon": "ZUNDAMON", "merrow": "MERROW"}
+NEUTRINO_MODELS = {"kiritan": "KIRITAN", "zundamon": "ZUNDAMON", "merrow": "MERROW",
+                   "reina": "REINA", "nakumo": "NAKUMO", "runo": "RUNO", "soma": "SOMA"}
+
+# Las voces de chico cantan la misma partitura una octava por debajo: las
+# melodias estan escritas para voz de chica (hasta Fa#5) y a NEUTRINO sus
+# modelos masculinos solo llegan hasta ahi forzados. La base no cambia.
+VOICE_OCTAVE = {"nakumo": -12, "runo": -12, "soma": -12}
 VOICE_NAMES = {
     "sinsy": "NIT SONG070 F001",
     "kiritan": "Tohoku Kiritan",
     "zundamon": "Zundamon",
     "merrow": "Merrow",
+    "reina": "Reina",
+    "nakumo": "Nakumo",
+    "runo": "Runo",
+    "soma": "Soma",
     "teto": "Kasane Teto",
 }
 
@@ -212,8 +239,22 @@ def sinsy_lyric(mora):
 
 # ------------------------------------------------------------ NEUTRINO
 
+CUDA12_DIR = os.path.join(VOICES_DIR, "cuda12", "nvidia")
+_CUDA12_LIBS = ("cublas", "cudnn", "curand", "cuda_runtime", "cufft")
+
+
+def _neutrino_gpu():
+    """Las carpetas de CUDA 12 si se puede usar la GPU; si no, None."""
+    if os.environ.get("ODORI_CPU"):
+        return None
+    dirs = [os.path.join(CUDA12_DIR, d, "lib") for d in _CUDA12_LIBS]
+    return dirs if all(os.path.isdir(d) for d in dirs) else None
+
+
 def _neutrino_run(xml_path, name, model, skip_f0=False):
-    env = dict(os.environ, LD_LIBRARY_PATH=os.path.join(NEUTRINO_DIR, "bin"))
+    gpu = _neutrino_gpu()
+    # Las de CUDA 12 primero: bin/ trae un cuDNN para CUDA 13.
+    env = dict(os.environ, LD_LIBRARY_PATH=os.pathsep.join((gpu or []) + [os.path.join(NEUTRINO_DIR, "bin")]))
     b = lambda *p: os.path.join(NEUTRINO_DIR, *p)
     lab_full, lab_mono = b("score", "label", "full", name + ".lab"), b("score", "label", "mono", name + ".lab")
     lab_time = b("score", "label", "timing", name + ".lab")
@@ -225,6 +266,8 @@ def _neutrino_run(xml_path, name, model, skip_f0=False):
                        check=True, capture_output=True, env=env, cwd=NEUTRINO_DIR)
     args = [b("bin", "neutrino"), lab_full, lab_time, b("output", name + ".f0"), b("output", name + ".melspec"),
             b("output", name + ".wav"), b("model", model) + "/", "-n", str(os.cpu_count() or 4)]
+    if gpu:
+        args.append("-m")
     if skip_f0:
         args += ["--skip-timing", "--skip-f0"]
     subprocess.run(args, check=True, capture_output=True, env=env, cwd=NEUTRINO_DIR)
@@ -729,6 +772,7 @@ def sing(voice, phrases, bpm, key, formant=1.12):
     [formant] solo lo usa Sinsy (a NEUTRINO no se le puede tocar el timbre)."""
     if voice != "teto_en":
         phrases = resolve_long(phrases)
+    key += VOICE_OCTAVE.get(voice, 0)
     if voice == "sinsy":
         y = sing_sinsy(phrases, bpm, key, formant=formant)
     elif voice in NEUTRINO_MODELS:

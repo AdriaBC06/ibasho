@@ -11,11 +11,16 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../backend/koen_bonds.dart' show KoenFriendLevel;
 import '../../../backend/social.dart';
 import '../../../backend/tama.dart';
 import '../../../core/birthday.dart';
 import '../../../core/device.dart';
 import '../../../core/friend_code.dart';
+import '../../../games/koen/koen_badge.dart';
+import '../../../games/koen/koen_care_ui.dart' show KoenCareMark;
+import '../../../games/koen/koen_house.dart' show KoenDuoMark;
+import '../../../games/koen/koen_social.dart' show KoenCareButton;
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/friends.dart';
 import '../../../state/people.dart';
@@ -205,6 +210,8 @@ class _FriendsChannelState extends ConsumerState<FriendsChannel> {
             ),
             const SizedBox(width: 14),
           ],
+          const KoenCareButton(),
+          const SizedBox(width: 10),
           IconPill(
             key: const ValueKey<String>('friends.birthdays'),
             glyph: Glyph.calendar,
@@ -950,6 +957,9 @@ class _FriendTile extends ConsumerWidget {
     final now = ref.watch(moodClockProvider);
     final party = profile != null && isBirthdayToday(profile, now);
     final name = card?.displayName ?? '…';
+    final koen = ref.watch(koenFriendLevelsProvider).valueOrNull?[account] ?? KoenFriendLevel.none;
+    final shares = ref.watch(tamasProvider.select((t) => t.sharesWith(account)));
+    final duo = ref.watch(koenDuoWithProvider(account));
 
     return SlotTile(
       key: ValueKey<String>('friends.friend.$account'),
@@ -999,6 +1009,16 @@ class _FriendTile extends ConsumerWidget {
               left: 10,
               child: GlyphIcon(Glyph.cake, size: 17, color: T.warn),
             ),
+          // La amistad de Tama Kōen, en la esquina libre de abajo.
+          if (koen != KoenFriendLevel.none)
+            Positioned(bottom: 30, right: 8, child: KoenFriendBadge(level: koen, size: 22)),
+          // Un Tama que cuidáis a medias.
+          // Con un dúo salen los dos Tamas en pequeño; si solo se cuida uno a
+          // medias, la casita.
+          if (duo != null)
+            Positioned(bottom: 28, left: 6, child: KoenDuoMark(duo: duo, size: 30))
+          else if (shares)
+            const Positioned(bottom: 30, left: 8, child: KoenCareMark(size: 22)),
         ],
       ),
     );

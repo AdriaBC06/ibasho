@@ -80,8 +80,8 @@ Catalán, generadas con `tool/gen_odori_music.py`, `tool/odori_canciones.py` y
 
 **Todo lo que hay en `assets/odori/` se licencia bajo
 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/), no bajo la
-GPL-3.0**, instrumentales incluidas, porque las voces de Teto, Kiritan y
-Zundamon solo permiten uso no comercial. Ibasho no se vende ni da dinero; las
+GPL-3.0**, instrumentales incluidas, porque las voces de Teto y Zundamon
+solo permiten uso no comercial. Ibasho no se vende ni da dinero; las
 monedas del Yatai son del juego y no se compran.
 
 La licencia CC cubre la parte de Adrià. **La voz de cada versión conserva
@@ -90,22 +90,21 @@ los archivos:
 
 - **Teto:** nada comercial; nada que ofenda o dañe a terceros; no hacerse pasar
   por su autora.
-- **NEUTRINO (Kiritan, Zundamon, Merrow):**
+- **NEUTRINO (Zundamon):**
   - prohibido usar el audio para entrenar modelos o como entrada de conversión
     de voz;
   - prohibido usarlo como librería de sonidos o de samples;
   - nada político, religioso, violento ni difamatorio.
-- **Kiritan y Zundamon:** además, la guía de personajes de zunko.jp.
+- **Zundamon:** además, la guía de personajes de zunko.jp.
 
 | Voz | Autor | Licencia | Dónde sale |
 |---|---|---|---|
-| NIT SONG070 F001 (Sinsy) | Nagoya Institute of Technology (HTS Working Group) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). **Cambios:** su f0 se sustituye por una curva de la partitura y se resintetiza con WORLD; `hoshikuzu_voz_b` lleva además los formantes ×1,12. | Hoshikuzu Dash (`_voz`, `_voz_b`), todas las `*_sinsy` |
 | Kasane Teto 重音テト (JP y EN) | Voz: 小山乃舞世. Diseño del personaje: 線. Círculo oficial: ツインドリル (TWINDRILL). | [Condiciones del banco de voz](https://kasaneteto.jp/guideline/vltu.html): no comercial. Kasane Teto © TWINDRILL. | Todas las `*_teto` |
-| Tohoku Kiritan 東北きりたん | Personaje: 東北ずん子・ずんだもんプロジェクト (SSS LLC.). Banco NEUTRINO: STUDIO NEUTRINO. | [zunko.jp](https://zunko.jp/guideline.html): no comercial, sin trámite | Todas las `*_kiritan` |
-| Zundamon ずんだもん | Igual que Kiritan | Igual que Kiritan | Todas las `*_zundamon` |
-| Merrow めろう | STUDIO NEUTRINO | Licencia de la librería NEUTRINO: uso comercial y no comercial, crédito opcional | Todas las `*_merrow` |
+| Zundamon ずんだもん | Personaje: 東北ずん子・ずんだもんプロジェクト (SSS LLC.). Banco NEUTRINO: STUDIO NEUTRINO. | [zunko.jp](https://zunko.jp/guideline.html): no comercial, sin trámite | Todas las `*_zundamon` |
 
-El entrenamiento del banco de Kiritan usa el 東北きりたん歌唱データベース.
+Las demás voces (Kiritan, Merrow, Reina, Nakumo, Runo, Soma y Sinsy) se
+generaron pero no van en la app desde la 0.9.0, para que pese menos. Volverán
+más adelante con sus créditos.
 
 **Herramientas usadas para cantar** (ninguna va dentro de la app):
 

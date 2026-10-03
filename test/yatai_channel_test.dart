@@ -3,9 +3,11 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ibasho/backend/gacha.dart';
 import 'package:ibasho/backend/tama.dart';
 import 'package:ibasho/l10n/gen/app_localizations.dart';
 import 'package:ibasho/state/providers.dart';
@@ -156,6 +158,37 @@ void main() {
     await _finish(tester, container);
   });
 
+  testWidgets('una canción de Odori ya comprada no enseña el precio en su baldosa', (tester) async {
+    final backend = FakeIbashoBackend();
+    backend
+      ..seed('/shop/prices', {'odori_hanabi': 40, 'odori_kasa': 40})
+      ..seed('/users/${backend.uid}/coins', 0)
+      ..seed('/users/${backend.uid}/odori/songs/hanabi', true);
+    final container = await _account(backend);
+    await _until(tester, () => container.read(shopProvider).hasOdoriSong('hanabi'));
+
+    await _boot(tester, const Size(1280, 800), container, const YataiChannel());
+    await tester.pumpAndSettle();
+
+    Finder inTile(String id, Finder f) =>
+        find.descendant(of: find.byKey(ValueKey<String>('yatai.item.$id')), matching: f);
+    // La rejilla va por páginas: se pasan hasta dar con las canciones.
+    Future<void> pageTo(String id) async {
+      for (var i = 0; i < 8 && find.byKey(ValueKey<String>('yatai.item.$id')).evaluate().isEmpty; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+        await tester.pumpAndSettle();
+      }
+    }
+
+    await pageTo('odori_hanabi');
+    expect(inTile('odori_hanabi', find.text('en tu menú')), findsOneWidget);
+    expect(inTile('odori_hanabi', find.textContaining('40')), findsNothing);
+    await pageTo('odori_kasa');
+    expect(inTile('odori_kasa', find.text('en tu menú')), findsNothing);
+
+    await _finish(tester, container);
+  });
+
   testWidgets('el regalo de un juego se desenvuelve al tocarlo', (tester) async {
     final backend = FakeIbashoBackend();
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -205,4 +238,56 @@ void main() {
 
     await _finish(tester, container);
   });
+
+  for (final size in const [Size(1280, 800), Size(360, 640)]) {
+    testWidgets('regalo diario (${size.width.toInt()}): se abre una vez y lo reparte', (tester) async {
+      final backend = FakeIbashoBackend();
+      backend
+        ..seed('/shop/prices', {'food_cookie': 3})
+        ..seed('/users/${backend.uid}/coins', 20)
+        ..seed('/users/${backend.uid}/tickets', {'gachaken': 2, 'kinken': 0})
+        ..seed('/users/${backend.uid}/pantry', {'cookie': 5, 'candy': 5});
+      final container = await _account(backend);
+      container
+        ..read(coinsProvider)
+        ..read(gachaProvider)
+        ..read(pantryProvider)
+        ..read(dailyGiftProvider);
+      await _until(tester, () =>
+          container.read(dailyGiftProvider).loaded &&
+          container.read(coinsProvider) == 20 &&
+          container.read(gachaProvider).ticketsOf(TicketKind.gachaken) == 2 &&
+          container.read(pantryProvider)[TamaFood.cookie] == 5);
+
+      await _boot(tester, size, container, const YataiChannel());
+      await tester.pumpAndSettle();
+      // Sin abrir: la pestaña lleva su punto.
+      expect(find.byKey(const ValueKey<String>('yatai.tab.dot')), findsOneWidget);
+
+      await tester.tap(find.text('regalo'));
+      await tester.pumpAndSettle();
+      expect(find.text('comida sorpresa'), findsOneWidget);
+      expect(find.text('5–10'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey<String>('yatai.gift.open')));
+      await _until(tester, () => container.read(dailyGiftProvider).claimedToday);
+      await tester.pumpAndSettle();
+
+      final gift = container.read(dailyGiftProvider).last!;
+      expect(gift.coins, inInclusiveRange(5, 10));
+      expect(await backend.read('/users/${backend.uid}/coins', idToken: ''), 20 + gift.coins);
+      expect(await backend.read('/users/${backend.uid}/tickets/gachaken', idToken: ''), 3);
+      final before = gift.food == TamaFood.cookie || gift.food == TamaFood.candy ? 5 : 0;
+      expect(await backend.read('/users/${backend.uid}/pantry/${gift.food.name}', idToken: ''), before + 2);
+
+      expect(find.byKey(const ValueKey<String>('yatai.tab.dot')), findsNothing);
+      expect(find.text('abierto'), findsOneWidget);
+      expect(find.text('+${gift.coins}'), findsOneWidget);
+      expect(find.text('comida sorpresa'), findsNothing);
+      expect(await container.read(dailyGiftProvider.notifier).claim(), isNull);
+      expect(tester.takeException(), isNull);
+
+      await _finish(tester, container);
+    });
+  }
 }

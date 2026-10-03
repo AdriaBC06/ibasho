@@ -31,6 +31,7 @@ import '../game_stage.dart';
 import '../game_store.dart';
 import 'tsumiki.dart';
 import 'tsumiki_board.dart';
+import 'tsumiki_input.dart';
 import 'tsumiki_store.dart';
 import 'tsumiki_widgets.dart';
 
@@ -38,9 +39,7 @@ import 'tsumiki_widgets.dart';
 @visibleForTesting
 int? debugTsumikiSeed;
 
-enum _Act { left, right, down, drop, rotate, rotateBack, hold }
-
-/// El canal de Tsumiki.
+/// Tsumiki a solas (la entrada «solo» del menú del canal).
 ///
 /// Como el buscaminas, una sola escena: a un lado el escenario con uno de tus
 /// Tamas (otro en cada partida), que celebra las filas y se agobia cuando la
@@ -51,15 +50,18 @@ enum _Act { left, right, down, drop, rotate, rotateBack, hold }
 /// Se juega con la cruceta y los botones, con gestos sobre el pozo (deslizar
 /// para mover, tocar para girar, bajar rapido para soltar y subir para
 /// guardar) o con el teclado.
-class TsumikiChannel extends ConsumerStatefulWidget {
-  const TsumikiChannel({super.key});
+class TsumikiSolo extends ConsumerStatefulWidget {
+  const TsumikiSolo({super.key, this.onBack});
+
+  /// Vuelve al menú del canal en vez de cerrarlo.
+  final VoidCallback? onBack;
 
   @override
-  ConsumerState<TsumikiChannel> createState() => _TsumikiChannelState();
+  ConsumerState<TsumikiSolo> createState() => _TsumikiSoloState();
 }
 
-class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _TsumikiSoloState extends ConsumerState<TsumikiSolo>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver, TsumikiControls<TsumikiSolo> {
   int _startLevel = 1;
   late TsumikiGame _game = TsumikiGame(seed: debugTsumikiSeed, startLevel: _startLevel);
 
@@ -87,22 +89,6 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
   RewardOutcome? _reward;
   bool _rewardPending = false;
   Timer? _resultsTimer;
-
-  // Repeticion de la cruceta: se espera un poco y luego se repite rapido.
-  static const double _das = .17;
-  static const double _arr = .05;
-  static const double _softRate = .045;
-  int _dasDir = 0;
-  double _dasT = 0;
-  bool _softHeld = false;
-  double _softT = 0;
-  final Set<_Act> _keysDown = <_Act>{};
-
-  // Gestos sobre el pozo.
-  double _dragX = 0;
-  double _dragY = 0;
-  bool _dragged = false;
-  double _cell = 30;
 
   final TsumikiFx _fx = TsumikiFx();
   double _fxTime = 0;
@@ -180,7 +166,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
         setState(() {});
       }
     } else if (_game.status == TsumikiStatus.playing) {
-      _repeat(dt);
+      repeatHeld(dt);
       final wasClearing = _game.clearing.isNotEmpty;
       final event = _game.tick(dt);
       if (event != null) _onLock(event);
@@ -194,27 +180,10 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
     if (!_wantsTicks) _ticker.stop();
   }
 
-  void _repeat(double dt) {
-    if (_dasDir != 0) {
-      _dasT += dt;
-      while (_dasT >= _das + _arr) {
-        _dasT -= _arr;
-        if (!_game.move(_dasDir)) break;
-      }
-    }
-    if (_softHeld) {
-      _softT += dt;
-      while (_softT >= _softRate) {
-        _softT -= _softRate;
-        if (!_game.softDrop()) break;
-      }
-    }
-  }
-
   // --- Tama, bocadillo y carteles ---------------------------------------------
 
   void _pickTama() {
-    final tamas = ref.read(tamasProvider).tamas;
+    final tamas = ref.read(tamasProvider).companions;
     if (tamas.isEmpty) {
       _tamaId = null;
       return;
@@ -224,7 +193,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
   }
 
   Tama? _currentTama() {
-    final tamas = ref.watch(tamasProvider).tamas;
+    final tamas = ref.watch(tamasProvider).companions;
     if (tamas.isEmpty) return null;
     if (_tamaId == null || !tamas.any((t) => t.id == _tamaId)) {
       _tamaId = tamas[_random.nextInt(tamas.length)].id;
@@ -276,7 +245,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
   void _newGame({bool countdown = true}) {
     _resultsTimer?.cancel();
     _fx.clear();
-    _releaseAll();
+    releaseAll();
     setState(() {
       _game = TsumikiGame(seed: debugTsumikiSeed, startLevel: _startLevel);
       _report = null;
@@ -305,7 +274,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
   void _pause() {
     if (_game.status != TsumikiStatus.playing) return;
     _game.pause();
-    _releaseAll();
+    releaseAll();
     AudioService.instance.play(Sfx.back);
     _joy = 0;
     _say(L.of(context)!.tsumikiBubblePause, hold: const Duration(seconds: 30));
@@ -323,72 +292,25 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
     _kick();
   }
 
-  void _releaseAll() {
-    _dasDir = 0;
-    _softHeld = false;
-    _keysDown.clear();
+  @override
+  TsumikiGame get controlledGame => _game;
+
+  @override
+  TsumikiFx get controlFx => _fx;
+
+  @override
+  double get controlNow => _now;
+
+  @override
+  void onPieceLocked(LockEvent e) => _onLock(e);
+
+  @override
+  void onPieceHeld() {
+    if (_random.nextDouble() < .25) _say(L.of(context)!.tsumikiBubbleHold);
   }
 
-  void _press(_Act act) {
-    if (_game.status != TsumikiStatus.playing) return;
-    switch (act) {
-      case _Act.left:
-      case _Act.right:
-        final dir = act == _Act.left ? -1 : 1;
-        _game.move(dir);
-        _dasDir = dir;
-        _dasT = 0;
-      case _Act.down:
-        _game.softDrop();
-        _softHeld = true;
-        _softT = 0;
-      case _Act.rotate:
-      case _Act.rotateBack:
-        if (_game.rotate(clockwise: act == _Act.rotate)) AudioService.instance.play(Sfx.tick);
-      case _Act.drop:
-        final p = _game.current;
-        final res = _game.hardDrop();
-        if (res != null && p != null) {
-          final (d, event) = res;
-          final cols = p.cells.map((c) => c.$1).toSet().toList();
-          final ys = p.cells.map((c) => c.$2);
-          _fx.drop = (cols, ys.reduce(math.min), ys.reduce(math.max) + d, pieceColor(p.type), _now);
-          _fx.touch(_now + TsumikiFx.dropTime);
-          if (d > 0) {
-            _fx
-              ..shakeAt = _now
-              ..shakePower = math.min(4, 1.2 + d * .12);
-          }
-          AudioService.instance.play(Sfx.tick);
-          _onLock(event);
-        }
-      case _Act.hold:
-        if (_game.hold()) {
-          AudioService.instance.play(Sfx.tick);
-          if (_random.nextDouble() < .25) _say(L.of(context)!.tsumikiBubbleHold);
-        }
-    }
-    setState(() {});
-    _kick();
-  }
-
-  void _release(_Act act) {
-    switch (act) {
-      case _Act.left:
-      case _Act.right:
-        final dir = act == _Act.left ? -1 : 1;
-        if (_dasDir == dir) {
-          // Si la otra flecha sigue pulsada, se sigue hacia alli.
-          final other = act == _Act.left ? _Act.right : _Act.left;
-          _dasDir = _keysDown.contains(other) ? -dir : 0;
-          _dasT = 0;
-        }
-      case _Act.down:
-        _softHeld = false;
-      default:
-        break;
-    }
-  }
+  @override
+  void kickTicker() => _kick();
 
   void _onLock(LockEvent e) {
     final l = L.of(context)!;
@@ -440,7 +362,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
 
   void _onGameOver() {
     final l = L.of(context)!;
-    _releaseAll();
+    releaseAll();
     _fx
       ..overAt = _now + .15
       ..touch(_now + .15 + TsumikiFx.overTime);
@@ -486,22 +408,6 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
 
   // --- Teclado y gestos --------------------------------------------------------
 
-  static final Map<LogicalKeyboardKey, _Act> _keys = {
-    LogicalKeyboardKey.arrowLeft: _Act.left,
-    LogicalKeyboardKey.keyA: _Act.left,
-    LogicalKeyboardKey.arrowRight: _Act.right,
-    LogicalKeyboardKey.keyD: _Act.right,
-    LogicalKeyboardKey.arrowDown: _Act.down,
-    LogicalKeyboardKey.keyS: _Act.down,
-    LogicalKeyboardKey.arrowUp: _Act.rotate,
-    LogicalKeyboardKey.keyW: _Act.rotate,
-    LogicalKeyboardKey.keyX: _Act.rotate,
-    LogicalKeyboardKey.keyZ: _Act.rotateBack,
-    LogicalKeyboardKey.space: _Act.drop,
-    LogicalKeyboardKey.keyC: _Act.hold,
-    LogicalKeyboardKey.shiftLeft: _Act.hold,
-  };
-
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     final key = event.logicalKey;
     if (event is KeyDownEvent) {
@@ -519,52 +425,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
         return KeyEventResult.handled;
       }
     }
-    final act = _keys[key];
-    if (act == null) return KeyEventResult.ignored;
-    // La repeticion la lleva el canal, no el sistema.
-    if (event is KeyDownEvent) {
-      _keysDown.add(act);
-      _press(act);
-    } else if (event is KeyUpEvent) {
-      _keysDown.remove(act);
-      _release(act);
-    }
-    return KeyEventResult.handled;
-  }
-
-  void _onPanStart(DragStartDetails d) {
-    _dragX = 0;
-    _dragY = 0;
-    _dragged = false;
-  }
-
-  void _onPanUpdate(DragUpdateDetails d) {
-    if (_game.status != TsumikiStatus.playing) return;
-    _dragX += d.delta.dx;
-    _dragY += d.delta.dy;
-    final step = _cell * .85;
-    while (_dragX.abs() >= step) {
-      final dir = _dragX.sign.toInt();
-      _game.move(dir);
-      _dragX -= dir * step;
-      _dragged = true;
-    }
-    // Bajar despacio baja fila a fila; los empujones hacia arriba no cuentan.
-    while (_dragY >= _cell) {
-      _game.softDrop();
-      _dragY -= _cell;
-      _dragged = true;
-    }
-    setState(() {});
-  }
-
-  void _onPanEnd(DragEndDetails d) {
-    final v = d.velocity.pixelsPerSecond;
-    if (v.dy > 1300 && v.dy.abs() > v.dx.abs() * 1.4) {
-      _press(_Act.drop);
-    } else if (v.dy < -900 && v.dy.abs() > v.dx.abs() * 1.4) {
-      _press(_Act.hold);
-    }
+    return handleActKey(event);
   }
 
   // --- Composicion ---------------------------------------------------------------
@@ -587,6 +448,12 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
       title: l.tsumikiTitle,
       glyph: Glyph.blocks,
       art: ArtIcon.tsumiki,
+      onClose: widget.onBack == null
+          ? null
+          : () {
+              AudioService.instance.play(Sfx.back);
+              widget.onBack!();
+            },
       child: Focus(
         focusNode: _focus,
         autofocus: true,
@@ -669,7 +536,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
         .min((box.maxWidth - pad * 2) / TsumikiGame.width, (box.maxHeight - pad * 2) / TsumikiGame.visibleRows)
         .floorToDouble()
         .clamp(10.0, 40.0);
-    _cell = cell;
+    controlCell = cell;
     final paused = _game.status == TsumikiStatus.paused;
     return SizedBox(
       width: cell * TsumikiGame.width + pad * 2,
@@ -679,15 +546,8 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
         tint: skin.accentWash,
         elevation: 2,
         padding: EdgeInsets.all(pad),
-        child: GestureDetector(
+        child: wellGestures(
           key: const ValueKey<String>('tsumiki.board'),
-          behavior: HitTestBehavior.opaque,
-          onTapUp: (_) {
-            if (!_dragged) _press(_Act.rotate);
-          },
-          onPanStart: _onPanStart,
-          onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
           child: AnimatedOpacity(
             // En la pausa el pozo se tapa: sin mirar donde ira la siguiente.
             opacity: paused ? .15 : 1,
@@ -757,78 +617,6 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
     );
   }
 
-  /// Los mandos: cruceta a la izquierda y A y B en diagonal a la derecha.
-  Widget _controls(L l, {required double pad, required double button}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        DPad(
-          key: const ValueKey<String>('tsumiki.dpad'),
-          size: pad,
-          semanticLabel: l.tsumikiPad,
-          onDown: (d) => _press(switch (d) {
-            PadDir.left => _Act.left,
-            PadDir.right => _Act.right,
-            PadDir.down => _Act.down,
-            PadDir.up => _Act.drop,
-          }),
-          onUp: (d) => _release(switch (d) {
-            PadDir.left => _Act.left,
-            PadDir.right => _Act.right,
-            PadDir.down => _Act.down,
-            PadDir.up => _Act.drop,
-          }),
-        ),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _pauseButton(l),
-              const SizedBox(height: 8),
-              PadButton(
-                key: const ValueKey<String>('tsumiki.hold'),
-                glyph: Glyph.undo,
-                size: 48,
-                semanticLabel: l.tsumikiHoldAction,
-                onDown: () => _press(_Act.hold),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          width: button * 2.1,
-          height: button * 1.7,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                bottom: 0,
-                child: PadButton(
-                  key: const ValueKey<String>('tsumiki.b'),
-                  letter: 'B',
-                  size: button,
-                  semanticLabel: l.tsumikiRotateBack,
-                  onDown: () => _press(_Act.rotateBack),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: PadButton(
-                  key: const ValueKey<String>('tsumiki.a'),
-                  letter: 'A',
-                  size: button,
-                  semanticLabel: l.tsumikiRotate,
-                  onDown: () => _press(_Act.rotate),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _wideLayout(BuildContext context, Tama? tama) {
     final l = L.of(context)!;
     return Padding(
@@ -855,7 +643,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
                 ),
                 _readouts(l, height: 54),
                 const SizedBox(height: 14),
-                _controls(l, pad: 128, button: 58),
+                padControls(l, pad: 128, button: 58, middle: _pauseButton(l)),
               ],
             ),
           ),
@@ -946,7 +734,7 @@ class _TsumikiChannelState extends ConsumerState<TsumikiChannel>
           ),
         ),
         SizedBox(height: small ? 6 : 12),
-        _controls(l, pad: small ? 116 : 136, button: small ? 52 : 60),
+        padControls(l, pad: small ? 116 : 136, button: small ? 52 : 60, middle: _pauseButton(l)),
         SizedBox(height: small ? 8 : 16),
       ],
     );

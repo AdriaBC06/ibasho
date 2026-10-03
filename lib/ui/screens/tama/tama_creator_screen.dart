@@ -604,11 +604,19 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
           selected: outfit == bare,
           onPressed: () => _apply(_draft.copyWith(look: look.withOutfit(bare))),
         ),
-        for (final item in prizeItems(category))
+        for (final item in [
+          ...prizeItems(category),
+          // El accesorio de pareja de Tama Kōen: los de la colección y el que
+          // lleve puesto, que no salen en el catálogo.
+          for (final charm in {
+            for (final key in {...gacha.prizes.keys, ?outfit.hat, ...outfit.accessories}) ?prizeItem(key),
+          })
+            if (charm.code != null && charm.prize.category == category) charm,
+        ])
           Builder(builder: (context) {
             final worn = outfit.wears(item.key);
             final next = outfit.toggle(item);
-            final (zoom, focus) = framing(item.prize.slot);
+            final (zoom, focus) = framing(item.slot);
             // Lo que no se tiene sale en silueta, sin nombre. Lo que ya
             // llevaba puesto (un Tama traspasado) se puede quitar igual.
             if (!worn && !gacha.owns(item.key)) {
@@ -627,7 +635,7 @@ class _TamaCreatorScreenState extends ConsumerState<TamaCreatorScreen> {
               key: ValueKey<String>('creator.prize.${item.key}'),
               // La ficha ensena como quedaria: con el premio puesto.
               look: look.withOutfit(worn ? outfit : next ?? outfit),
-              label: l.prizeName(item.key),
+              label: prizeLabel(l, item),
               // El fondo, del color de su rareza: se ve de un vistazo que es
               // raro sin leer la sigla.
               wash: RarityArt.of(item.prize.rarity),

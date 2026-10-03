@@ -16,6 +16,8 @@ import 'package:flutter/widgets.dart';
 
 import '../../backend/backdrops.dart';
 import '../../backend/gacha.dart';
+import '../../backend/koen.dart';
+import '../../games/koen/koen_art.dart';
 import '../../theme/skin.dart';
 import 'channel_art.dart' show paintTwinkle;
 
@@ -91,11 +93,101 @@ class _BackdropViewState extends State<BackdropView>
         ),
       );
     }
+    if (id == 'koen') {
+      return IgnorePointer(
+        child: RepaintBoundary(child: _KoenBackdrop(loop: _drift)),
+      );
+    }
     return IgnorePointer(
       child: CustomPaint(
         size: Size.infinite,
         painter: _BackdropPainter(id, _drift),
       ),
+    );
+  }
+}
+
+/// El fondo de Tama Kōen: el propio parque, de día y con la estación de hoy
+/// (según el hemisferio del país del dispositivo), cubriendo la pantalla sin
+/// deformarse. Lo que cae del cielo (pétalos, hojas, nieve) va con la vuelta
+/// lenta del resto de fondos.
+class _KoenBackdrop extends StatefulWidget {
+  const _KoenBackdrop({required this.loop});
+
+  final Animation<double> loop;
+
+  @override
+  State<_KoenBackdrop> createState() => _KoenBackdropState();
+}
+
+class _KoenBackdropState extends State<_KoenBackdrop> {
+  final ValueNotifier<double> _time = ValueNotifier<double>(0);
+  final KoenSceneFx _fx = KoenSceneFx();
+
+  void _tick() => _time.value = widget.loop.value * 90;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.loop.addListener(_tick);
+  }
+
+  @override
+  void didUpdateWidget(_KoenBackdrop old) {
+    super.didUpdateWidget(old);
+    if (old.loop != widget.loop) {
+      old.loop.removeListener(_tick);
+      widget.loop.addListener(_tick);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.loop.removeListener(_tick);
+    _time.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final south = koenSouthern(View.of(context).platformDispatcher.locale.countryCode);
+    final season = koenSeason(DateTime.now(), south: south);
+    final reduced = IbashoSkin.of(context).reducedMotion;
+    return LayoutBuilder(
+      builder: (context, box) {
+        // La escena se pinta a 1.3 de ancho por alto: se escala hasta cubrir
+        // la pantalla y se centra.
+        final size = box.biggest;
+        final scale = math.max(size.width / 1.3, size.height);
+        final scene = Size(scale * 1.3, scale);
+        return ClipRect(
+          child: OverflowBox(
+            maxWidth: scene.width,
+            maxHeight: scene.height,
+            child: SizedBox.fromSize(
+              size: scene,
+              child: Stack(
+                children: [
+                  for (final layer in KoenLayer.values)
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: KoenScenePainter(
+                          layer: layer,
+                          season: season,
+                          daylight: 1,
+                          time: _time,
+                          fx: _fx,
+                          reducedMotion: reduced,
+                          repaint: layer == KoenLayer.air ? _time : null,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -132,6 +224,8 @@ const Map<String, _Palette> _palettes = <String, _Palette>{
   // --- UR: halo vivo y destellos de color. ---
   'phoenix': _Palette(Color(0xFFFFD37A), Color(0xFFF0577A), Color(0xFF6E1E3C)),
   'borealis': _Palette(Color(0xFF163049), Color(0xFF1E6E5C), Color(0xFF3C1E6E)),
+  // --- Tama Kōen: el cielo y el césped del parque (la miniatura). ---
+  'koen': _Palette(Color(0xFFCFEFFF), Color(0xFFA6DE92)),
 };
 
 class _BackdropPainter extends CustomPainter {

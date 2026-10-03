@@ -21,7 +21,7 @@ import 'package:ibasho/backend/gacha.dart';
 
 void main() {
   testWidgets('ilustraciones', (tester) async {
-    tester.view.physicalSize = const Size(2500, 1020);
+    tester.view.physicalSize = const Size(2500, 1180);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -95,7 +95,7 @@ void main() {
                           ),
                     ],
                   ),
-                  Row(
+                  Wrap(
                     children: [for (final b in backdrops) backdropCell(b.id)],
                   ),
                 ],
@@ -107,7 +107,7 @@ void main() {
     );
     expect(
       backdrops.length,
-      16,
+      17,
       reason: 'falta pintar algun fondo en la galeria',
     );
     final boundary = tester.renderObject<RenderRepaintBoundary>(

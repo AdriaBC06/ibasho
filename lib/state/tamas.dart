@@ -11,6 +11,7 @@ import '../backend/errors.dart';
 import '../backend/ibasho_backend.dart';
 import '../backend/live_tree.dart';
 import '../backend/models.dart';
+import '../backend/koen.dart';
 import '../backend/push_id.dart';
 import '../backend/social.dart';
 import '../backend/tama.dart';
@@ -22,10 +23,15 @@ class TamasState {
     this.tamas = const <Tama>[],
     this.profileTamaId,
     this.loaded = false,
+    this.cared = const <Tama>[],
   });
 
   /// Los Tamas que cuida la cuenta, del mas antiguo al mas nuevo.
   final List<Tama> tamas;
+
+  /// Los Tamas de amigos que la cuenta cuida a medias (Tama Kōen). No cuentan
+  /// para el tope ni pueden ir al perfil.
+  final List<Tama> cared;
 
   /// El que se ensena en el panel superior y en el perfil.
   final String? profileTamaId;
@@ -42,6 +48,21 @@ class TamasState {
 
   Tama? get profileTama => byId(profileTamaId);
 
+  /// Uno propio o uno que se cuida a medias.
+  Tama? find(String? id) {
+    if (id == null) return null;
+    return byId(id) ?? cared.where((t) => t.id == id).firstOrNull;
+  }
+
+  /// Los que pueden acompañar en los minijuegos: los propios y los que se
+  /// cuidan a medias.
+  List<Tama> get companions => cared.isEmpty ? tamas : [...tamas, ...cared];
+
+  /// Si la cuenta cuida a medias algún Tama con [friend], en un sentido u
+  /// otro.
+  bool sharesWith(String friend) =>
+      tamas.any((t) => t.carer == friend) || cared.any((t) => t.creator == friend);
+
   bool get full => tamas.length >= maxTamasPerAccount;
 
   TamasState copyWith({
@@ -49,11 +70,13 @@ class TamasState {
     String? profileTamaId,
     bool clearProfile = false,
     bool? loaded,
+    List<Tama>? cared,
   }) =>
       TamasState(
         tamas: tamas ?? this.tamas,
         profileTamaId: clearProfile ? null : (profileTamaId ?? this.profileTamaId),
         loaded: loaded ?? this.loaded,
+        cared: cared ?? this.cared,
       );
 }
 
@@ -91,7 +114,11 @@ class TamasController extends StateNotifier<TamasState> {
 
   StreamSubscription<DatabaseEvent>? _listWatch;
   StreamSubscription<DatabaseEvent>? _profileWatch;
+  StreamSubscription<DatabaseEvent>? _caringWatch;
   Object? _tree;
+
+  /// `koen/caring`: los Tamas que se cuidan a medias, con su creador.
+  Object? _caring;
 
   /// Ultima escritura de cada cuidado por Tama. Mimar frotando dispara muchos
   /// gestos seguidos; al servidor le basta con uno de vez en cuando.
@@ -109,6 +136,7 @@ class TamasController extends StateNotifier<TamasState> {
   void dispose() {
     unawaited(_listWatch?.cancel());
     unawaited(_profileWatch?.cancel());
+    unawaited(_caringWatch?.cancel());
     super.dispose();
   }
 
@@ -150,6 +178,53 @@ class TamasController extends StateNotifier<TamasState> {
           ? state.copyWith(profileTamaId: id)
           : state.copyWith(clearProfile: true);
     }, onError: (Object e) => debugPrint('Ibasho: stream del Tama de perfil ($e)'));
+
+    // Sale de la conexion de la cuenta: no abre otra.
+    _caringWatch = _backend
+        .watch('/users/$_account/koen/caring', token: _session.freshToken)
+        .listen((event) {
+      _caring = applyDatabaseEvent(_caring, event);
+      unawaited(refreshCared());
+    }, onError: (Object e) => debugPrint('Ibasho: stream de los cuidados a medias ($e)'));
+  }
+
+  /// Vuelve a leer los Tamas que se cuidan a medias. No se siguen en vivo
+  /// (cada uno seria una conexion): se leen al cambiar la lista y al abrir el
+  /// parque o la habitacion. Los que ya no se pueden leer o ya no tienen a la
+  /// cuenta de cuidadora se quitan de la lista.
+  Future<void> refreshCared() async {
+    final ids = _caring is Map ? [for (final k in (_caring! as Map).keys) '$k'] : const <String>[];
+    final demo = state.cared.where((t) => _isDemo(t.id)).toList();
+    if (ids.isEmpty) {
+      if (mounted && state.cared.length != demo.length) state = state.copyWith(cared: demo);
+      return;
+    }
+    try {
+      final token = await _session.freshToken();
+      final raws = await Future.wait([
+        for (final id in ids)
+          _backend.read('/tamas/$id', idToken: token).then<Object?>((v) => v, onError: (Object _) => null),
+      ]);
+      if (!mounted) return;
+      final cared = <Tama>[...demo];
+      final gone = <String, Object?>{};
+      for (var i = 0; i < ids.length; i++) {
+        final raw = raws[i];
+        final tama = raw is Map ? Tama.fromJson(ids[i], raw) : null;
+        if (tama != null && tama.carer == _account) {
+          cared.add(tama);
+        } else {
+          gone[ids[i]] = null;
+        }
+      }
+      cared.sort((a, b) => a.id.compareTo(b.id));
+      state = state.copyWith(cared: List<Tama>.unmodifiable(cared));
+      if (gone.isNotEmpty) {
+        await _backend.merge('/users/$_account/koen/caring', gone, idToken: token);
+      }
+    } catch (e) {
+      debugPrint('Ibasho: no se han podido leer los Tamas a medias ($e)');
+    }
   }
 
   static List<Tama> _parse(Object? tree) {
@@ -164,6 +239,10 @@ class TamasController extends StateNotifier<TamasState> {
   /// Aplica un cambio en local sin esperar al servidor. Tambien va al arbol,
   /// para que el siguiente evento del stream no lo deshaga antes de tiempo.
   void _putLocal(Tama tama) {
+    if (state.byId(tama.id) == null && state.cared.any((t) => t.id == tama.id)) {
+      state = state.copyWith(cared: [for (final t in state.cared) t.id == tama.id ? tama : t]);
+      return;
+    }
     _tree = applyDatabaseEvent(
       _tree,
       DatabaseEvent(path: '/${tama.id}', data: tama.toJson(), isPatch: false),
@@ -264,14 +343,16 @@ class TamasController extends StateNotifier<TamasState> {
     }
   }
 
-  /// Un mimo. La marca solo se escribe si ha pasado un rato desde la ultima.
-  Future<void> pet(String id) => _care(id, 'lastPetted', _lastPetWrite, petWriteGap,
+  /// Un mimo. La marca solo se escribe si ha pasado un rato desde la ultima;
+  /// `true` si se ha escrito (es lo que cuenta para las misiones).
+  Future<bool> pet(String id) => _care(id, 'lastPetted', _lastPetWrite, petWriteGap,
       (care, at) => care.copyWith(lastPetted: at));
 
   /// Una chuche. Gasta primero una unidad de esa comida en la despensa; si no
   /// quedaba ninguna, no se llega a dar de comer y devuelve `false`.
   Future<bool> feed(String id, TamaFood food) async {
-    if (!await _consumeFood(food)) return false;
+    // Los del parque de prueba no gastan la despensa de verdad.
+    if (!_isDemo(id) && !await _consumeFood(food)) return false;
     await _care(id, 'lastFed', _lastFeedWrite, feedWriteGap,
         (care, at) => care.copyWith(lastFed: at));
     return true;
@@ -279,23 +360,23 @@ class TamasController extends StateNotifier<TamasState> {
 
   /// Una comida hecha en Hatarakitama: cuenta como comer, pero no sale de
   /// la despensa (la ha gastado el almacén del juego).
-  Future<void> feedMeal(String id) => _care(id, 'lastFed', _lastFeedWrite, feedWriteGap,
+  Future<bool> feedMeal(String id) => _care(id, 'lastFed', _lastFeedWrite, feedWriteGap,
       (care, at) => care.copyWith(lastFed: at));
 
-  Future<void> _care(
+  Future<bool> _care(
     String id,
     String field,
     Map<String, DateTime> last,
     Duration gap,
     TamaCare Function(TamaCare, DateTime) apply,
   ) async {
-    final tama = state.byId(id);
-    if (tama == null) return;
+    final tama = state.find(id);
+    if (tama == null) return false;
     final now = DateTime.now();
     final previous = last[id];
     // El humor se ve cambiar al momento aunque no se escriba nada.
     _putLocal(tama.copyWith(care: apply(tama.care, now)));
-    if (previous != null && now.difference(previous) < gap) return;
+    if (_isDemo(id) || (previous != null && now.difference(previous) < gap)) return false;
     last[id] = now;
     try {
       await _backend.write('/tamas/$id/care/$field', serverTimestamp,
@@ -303,7 +384,9 @@ class TamasController extends StateNotifier<TamasState> {
     } catch (e) {
       debugPrint('Ibasho: no se ha podido guardar el cuidado ($e)');
       last.remove(id);
+      return false;
     }
+    return true;
   }
 
   /// Pone un Tama en el perfil.
@@ -362,6 +445,124 @@ class TamasController extends StateNotifier<TamasState> {
     } catch (e) {
       debugPrint('Ibasho: no se ha podido borrar el Tama ($e)');
       return false;
+    }
+  }
+
+  // --- Cuidar a medias (Tama Kōen) -------------------------------------------------
+
+  /// Los Tamas inventados del parque de prueba (`-demo…`): no se escriben.
+  static bool _isDemo(String id) => id.startsWith('-demo');
+
+  /// Solo para probar en una build de depuración: [tama] (de un amigo
+  /// inventado) pasa a cuidarse a medias, sin escribir nada.
+  void debugCare(Tama tama) {
+    if (state.cared.any((t) => t.id == tama.id)) return;
+    state = state.copyWith(cared: [...state.cared, tama]);
+  }
+
+  /// Ofrece a [friend] cuidar a medias [tama]: le deja la ficha del Tama en
+  /// su buzon (`koenInbox/{yo}`), que pisa la oferta anterior si la habia.
+  Future<bool> offerCare(Tama tama, String friend) async {
+    if (!tama.createdBy(_account) || tama.shared) return false;
+    final card = KoenCard.ofTama(tama, holder: _account, slot: 0, at: 0).toJson()..['at'] = serverTimestamp;
+    try {
+      await _backend.write('/users/$friend/koenInbox/$_account', card, idToken: await _session.freshToken());
+      return true;
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido mandar la oferta de cuidar a medias ($e)');
+      return false;
+    }
+  }
+
+  /// Acepta la oferta de [from]: la cuenta pasa a ser la cuidadora de
+  /// [tamaId]. La oferta se borra en la misma escritura, y el Tama se apunta
+  /// en `koen/caring` para encontrarlo.
+  Future<bool> acceptCare(String from, String tamaId) async {
+    try {
+      await _backend.merge('/', {
+        'tamas/$tamaId/carer': _account,
+        'users/$_account/koenInbox/$from': null,
+        'users/$_account/koen/caring/$tamaId': from,
+      }, idToken: await _session.freshToken());
+      return true;
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido aceptar la oferta de cuidar a medias ($e)');
+      return false;
+    }
+  }
+
+  /// Rechaza (o tira) la oferta de [from].
+  Future<bool> declineCare(String from) async {
+    try {
+      await _backend.remove('/users/$_account/koenInbox/$from', idToken: await _session.freshToken());
+      return true;
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido rechazar la oferta ($e)');
+      return false;
+    }
+  }
+
+  /// Deja de cuidar [tama] a medias. Lo puede hacer cualquiera de los dos.
+  Future<bool> endCare(Tama tama) async {
+    final mine = tama.createdBy(_account);
+    if (!mine && tama.carer != _account) return false;
+    if (_isDemo(tama.id)) {
+      state = state.copyWith(cared: [...state.cared.where((t) => t.id != tama.id)]);
+      return true;
+    }
+    try {
+      await _backend.merge('/', {
+        'tamas/${tama.id}/carer': null,
+        if (!mine) 'users/$_account/koen/caring/${tama.id}': null,
+      }, idToken: await _session.freshToken());
+      if (!mounted) return true;
+      if (mine) {
+        _putLocal(tama.copyWith(clearCarer: true));
+      } else {
+        state = state.copyWith(cared: [...state.cared.where((t) => t.id != tama.id)]);
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido dejar de cuidar a medias ($e)');
+      return false;
+    }
+  }
+
+  /// Lo que hay que borrar al dejar de ser amigo de [friend]: los cuidados a
+  /// medias con el, en los dos sentidos. Va en la misma escritura.
+  Map<String, Object?> unsharePaths(String friend) => {
+    for (final t in state.tamas)
+      if (t.carer == friend) 'tamas/${t.id}/carer': null,
+    for (final t in state.cared)
+      if (t.creator == friend) ...{
+        'tamas/${t.id}/carer': null,
+        'users/$_account/koen/caring/${t.id}': null,
+      },
+  };
+
+  /// Al abrir: quita los cuidados a medias con quien ya no es amigo (si lo
+  /// dejaron desde el otro lado, las reglas ya le han cerrado el acceso).
+  Future<void> tidyShares(Set<String> friends) async {
+    Map<String, Object?> stale(Set<String> friends) => {
+      for (final t in state.tamas)
+        if (t.carer != null && !friends.contains(t.carer)) 'tamas/${t.id}/carer': null,
+      for (final t in state.cared)
+        if (!_isDemo(t.id) && !friends.contains(t.creator)) ...{
+          'tamas/${t.id}/carer': null,
+          'users/$_account/koen/caring/${t.id}': null,
+        },
+    };
+    if (stale(friends).isEmpty) return;
+    try {
+      // Antes de quitar nada, la lista de amigos de verdad: la de memoria
+      // puede haber salido vacia por no tener red.
+      final token = await _session.freshToken();
+      final raw = await _backend.read('/users/$_account/friends', idToken: token);
+      final patch = stale({if (raw is Map) for (final k in raw.keys) '$k'});
+      if (patch.isEmpty || !mounted) return;
+      await _backend.merge('/', patch, idToken: token);
+    } catch (e) {
+      debugPrint('Ibasho: no se han podido limpiar los cuidados a medias ($e)');
     }
   }
 }

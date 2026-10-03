@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Gorro de fiesta, un cono a rayas. La base apoya en la cabeza en (28..72, 82). -->
+  <defs>
+    <linearGradient id="cone" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F5A9D1"/>
+      <stop offset=".45" stop-color="#F07AB8"/>
+      <stop offset="1" stop-color="#C76AA0"/>
+    </linearGradient>
+    <clipPath id="inside">
+      <path d="M50 14 L73 82 Q50 88 27 82 Z"/>
+    </clipPath>
+  </defs>
+  <!-- Cono -->
+  <path d="M50 14 L73 82 Q50 88 27 82 Z" fill="url(#cone)" stroke="#89527B" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Rayas en diagonal -->
+  <g clip-path="url(#inside)" fill="#FFE27A" fill-opacity=".9">
+    <path d="M20 44 L80 28 L80 36 L20 52 Z"/>
+    <path d="M20 66 L80 50 L80 58 L20 74 Z"/>
+  </g>
+  <!-- Topos -->
+  <g fill="#FFFFFF" fill-opacity=".85">
+    <circle cx="47" cy="38" r="2"/><circle cx="56" cy="62" r="2.2"/><circle cx="40" cy="64" r="1.8"/><circle cx="53" cy="28" r="1.4"/>
+  </g>
+  <!-- Brillo -->
+  <path d="M46 24 L36 68" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Borde de abajo -->
+  <path d="M25 80 Q50 87 75 80 L76 85 Q50 92 24 85 Z" fill="#FFE27A" stroke="#918C59" stroke-width="1.6" stroke-linejoin="round"/>
+  <!-- Pompon -->
+  <g fill="#7FD3F0" stroke="#4B839A" stroke-width="1.4">
+    <circle cx="50" cy="11" r="7"/>
+  </g>
+  <path d="M46 8 Q48 6 51 6" fill="none" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M43 13 L39 15 M57 13 L61 15 M50 4 L50 1" stroke="#4B839A" stroke-width="1.4" stroke-linecap="round"/>
+</svg>

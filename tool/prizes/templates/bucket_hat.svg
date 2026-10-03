@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80">
+  <!-- Gorro de pescador. El ala apoya en la cabeza en (18..82, 62). -->
+  <defs>
+    <linearGradient id="cloth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{main.light}"/>
+      <stop offset=".6" stop-color="{main}"/>
+      <stop offset="1" stop-color="{main.deep}"/>
+    </linearGradient>
+  </defs>
+  <!-- Copa -->
+  <path d="M24 60 L28 26 Q50 18 72 26 L76 60 Z" fill="url(#cloth)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+  <ellipse cx="50" cy="25" rx="22" ry="5" fill="{main.light}" stroke="{main.edge}" stroke-width="1.6"/>
+  <!-- Cinta -->
+  <path d="M26 46 Q50 52 74 46 L75 55 Q50 61 25 55 Z" fill="{band}" stroke="{band.edge}" stroke-width="1.4" stroke-linejoin="round"/>
+  <!-- Costuras -->
+  <path d="M30 36 Q50 41 70 36" fill="none" stroke="{main.edge}" stroke-opacity=".35" stroke-width="1.1" stroke-dasharray="2.4 2"/>
+  <!-- Ala caida -->
+  <path d="M22 56 Q50 64 78 56 L92 70 Q50 82 8 70 Z" fill="url(#cloth)" stroke="{main.edge}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M16 68 Q50 78 84 68" fill="none" stroke="{main.edge}" stroke-opacity=".35" stroke-width="1.1" stroke-dasharray="2.4 2"/>
+  <!-- Brillo -->
+  <path d="M34 30 L32 44" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="2" stroke-linecap="round"/>
+</svg>

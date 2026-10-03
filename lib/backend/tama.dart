@@ -144,7 +144,7 @@ class TamaOutfit {
   /// al que ocupe su sitio. Devuelve `null` si ya lleva [maxAccessories] y el
   /// nuevo no desplaza a ninguno.
   TamaOutfit? toggle(PrizeItem item) {
-    if (item.prize.slot == PrizeSlot.head) {
+    if (item.slot == PrizeSlot.head) {
       return TamaOutfit(hat: hat == item.key ? null : item.key, accessories: accessories);
     }
     if (accessories.contains(item.key)) {
@@ -152,7 +152,7 @@ class TamaOutfit {
     }
     final kept = [
       for (final k in accessories)
-        if (prizeItem(k)?.prize.slot != item.prize.slot) k,
+        if (prizeItem(k)?.slot != item.slot) k,
     ];
     if (kept.length >= maxAccessories) return null;
     return TamaOutfit(hat: hat, accessories: [...kept, item.key]);
@@ -525,6 +525,7 @@ class Tama {
     required this.id,
     required this.creator,
     required this.keeper,
+    this.carer,
     required this.name,
     this.personality = TamaPersonality.calm,
     this.voice = const TamaVoice(),
@@ -544,6 +545,10 @@ class Tama {
   /// Tama sera cambiar este campo.
   final String keeper;
 
+  /// El amigo que lo cuida a medias (Tama Kōen), si lo hay. Puede mimarlo,
+  /// darle de comer y llevarlo al parque; lo demás sigue siendo del creador.
+  final String? carer;
+
   final String name;
   final TamaPersonality personality;
   final TamaVoice voice;
@@ -554,6 +559,9 @@ class Tama {
 
   bool createdBy(String accountId) => creator == accountId;
 
+  /// Si se cuida a medias.
+  bool get shared => carer != null;
+
   static Tama fromJson(String id, Map<Object?, Object?> json) {
     DateTime at(String key) => DateTime.fromMillisecondsSinceEpoch(
           (json[key] as num?)?.toInt() ?? 0,
@@ -562,6 +570,7 @@ class Tama {
       id: id,
       creator: (json['creator'] as String?) ?? '',
       keeper: (json['keeper'] as String?) ?? '',
+      carer: json['carer'] is String ? json['carer'] as String : null,
       name: (json['name'] as String?) ?? '',
       personality: TamaPersonality.byName(json['personality']),
       voice: TamaVoice.fromJson(json['voice']),
@@ -577,6 +586,7 @@ class Tama {
         'schema': tamaSchema,
         'creator': creator,
         'keeper': keeper,
+        'carer': ?carer,
         ...identityJson(),
         'care': care.toJson(),
         'createdAt': createdAt.millisecondsSinceEpoch,
@@ -598,11 +608,14 @@ class Tama {
     TamaLook? look,
     TamaCare? care,
     DateTime? updatedAt,
+    String? carer,
+    bool clearCarer = false,
   }) =>
       Tama(
         id: id,
         creator: creator,
         keeper: keeper,
+        carer: clearCarer ? null : carer ?? this.carer,
         name: name ?? this.name,
         personality: personality ?? this.personality,
         voice: voice ?? this.voice,

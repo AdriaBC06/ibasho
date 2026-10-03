@@ -163,4 +163,18 @@ Future<void> applyKoroMenuMusic(KoroSong? song, List<Tama> tamas) async {
   }
 }
 
+/// Renderiza [song] para que suene en un juego y devuelve la ruta del WAV, o
+/// `null` si no se ha podido.
+Future<String?> renderKoroGameMusic(KoroSong song, List<Tama> tamas) async {
+  try {
+    final wav = await compute(_render, (song, koroVoices(song, tamas)));
+    final file = File('${(await getApplicationSupportDirectory()).path}/koro_game.wav');
+    await file.writeAsBytes(wav, flush: true);
+    return file.path;
+  } catch (e) {
+    debugPrint('Ibasho: no se ha podido poner la cancion en el juego ($e)');
+    return null;
+  }
+}
+
 Uint8List _render((KoroSong, List<TamaVoice?>) job) => renderKoroSong(job.$1, job.$2);

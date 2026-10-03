@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../backend/koen_duo.dart' show koenCharmHue;
 import '../../backend/prizes.dart';
 import '../../backend/tama.dart';
 import 'tama_painter.dart';
@@ -216,10 +217,22 @@ final Map<String, _Place> _places = <String, _Place>{
   'sombrero': _hat(view: const Size(120, 70), band: 56, left: 40, right: 80, frac: .14, fit: .95, tall: .5),
   'devil_horns': _hat(view: const Size(100, 50), band: 44, left: 14, right: 86, frac: .1, fit: .95, tall: .4),
   'crown_rgb': _hat(view: const Size(100, 72), band: 62, left: 16, right: 84, frac: .1, fit: .72, tall: .5),
+  // Los del Yatai (0.9.0).
+  'bucket_hat': _hat(view: const Size(100, 80), band: 62, left: 18, right: 82, frac: .16, fit: 1.04, tall: .55),
+  'party_hat': _hat(view: const Size(100, 100), band: 84, left: 26, right: 74, frac: .1, fit: .62, tall: .8),
+  'grad_cap': _hat(view: const Size(100, 80), band: 66, left: 24, right: 76, frac: .14, fit: .92, tall: .55),
+  'pirate_hat': _hat(view: const Size(100, 80), band: 68, left: 16, right: 84, frac: .14, fit: 1.04, tall: .6),
+  'tiara': _hat(view: const Size(100, 50), band: 46, left: 20, right: 80, frac: .12, fit: .8, tall: .38),
   'leaf': (look, body) {
     // Un brote que nace en la coronilla.
     final r = body.bounds;
     final k = math.min((r.width * .4).clamp(16.0, 26.0) / 60, (r.top + 3 - 1) / 57);
+    return _one(Rect.fromLTWH(r.center.dx - 30 * k, r.top + 3 - 57 * k, 60 * k, 60 * k));
+  },
+  'momiji': (look, body) {
+    // La hoja de arce de Tama Kōen: nace en la coronilla, como el brote.
+    final r = body.bounds;
+    final k = math.min((r.width * .44).clamp(18.0, 28.0) / 60, (r.top + 3 - 1) / 57);
     return _one(Rect.fromLTWH(r.center.dx - 30 * k, r.top + 3 - 57 * k, 60 * k, 60 * k));
   },
   'bow': (look, body) {
@@ -249,6 +262,7 @@ final Map<String, _Place> _places = <String, _Place>{
   'rgb_shades': _overEyes(const Size(100, 40), 20, 10),
   'glasses': _overEyes(const Size(100, 40), 20, 9),
   'shutter_shades': _overEyes(const Size(100, 40), 20, 10),
+  'heart_shades': _overEyes(const Size(100, 40), 20, 11),
   'groucho': (look, body) {
     final f = TamaFace.of(look, body);
     final kx = f.eyeDx * 2 / 30;
@@ -279,6 +293,29 @@ final Map<String, _Place> _places = <String, _Place>{
     // chato no crece tanto que las puntas lleguen al suelo.
     final k = math.min(body.halfWidthAt(y) * 2 * 1.04 / 60, (TamaPainter.floor - y + 6) / 30);
     return _one(Rect.fromLTWH(r.center.dx - 35 * k, y - 16 * k, 70 * k, 46 * k));
+  },
+  // El accesorio de pareja de Tama Kōen: el corazón partido cuelga como la
+  // cadena, el gorrito apoya como un gorro y el hilo se ata del lado del
+  // otro Tama.
+  'charm_pendant': (look, body) {
+    final f = TamaFace.of(look, body);
+    final r = body.bounds;
+    // El corazón puede bajar hasta los pies: es lo que tiene que verse.
+    final y = math.min(f.mouthY + 1, r.bottom - 16);
+    final k = math
+        .min(math.max(body.halfWidthAt(y) * 2 * .9, 34) / 72, (TamaPainter.floor + 9 - y) / 61)
+        .clamp(.3, r.width * .5 / 26);
+    return _one(Rect.fromLTWH(r.center.dx - 40 * k, y - 4 * k, 80 * k, 67 * k));
+  },
+  'charm_twins': _hat(view: const Size(100, 72), band: 58, left: 16, right: 84, frac: .16, tall: .7),
+  'charm_thread_l': _held(const Size(48, 40), const Offset(6, 18), right: true, size: .42, min: 15, max: 22),
+  'charm_thread_r': _held(const Size(48, 40), const Offset(42, 18), right: false, size: .42, min: 15, max: 22),
+  'suzu': (look, body) {
+    // El collar cruza el cuello en y = 10 del SVG y el cascabel cuelga.
+    final r = body.bounds;
+    final y = _neck(look, body, 2);
+    final k = math.min(body.halfWidthAt(y) * 2 * .9 / 60, (TamaPainter.floor - y + 4) / 34).clamp(.2, 1.0);
+    return _one(Rect.fromLTWH(r.center.dx - 35 * k, y - 10 * k, 70 * k, 44 * k));
   },
   'dollar_chain': (look, body) {
     final f = TamaFace.of(look, body);
@@ -318,6 +355,15 @@ final Map<String, _Place> _places = <String, _Place>{
   'pickaxe': _held(const Size(72, 72), const Offset(12, 60), right: true, size: .8, min: 26, max: 38),
   'sword': _held(const Size(72, 72), const Offset(12, 56), right: true, size: .8, min: 26, max: 38),
   'microphone': _held(const Size(44, 64), const Offset(8, 60), right: true, at: .72, size: .8, min: 24, max: 34),
+  'wagasa': (look, body) {
+    // El mango en su costado derecho, como lo que empuña; en un Tama ancho
+    // la copa se arrima para no salirse del lienzo.
+    final r = body.bounds;
+    final y = r.top + r.height * .7;
+    final k = (r.height * 1.2).clamp(40.0, 54.0) / 96;
+    final x = math.min(r.center.dx + body.halfWidthAt(y) - 60 * k, 99 - 90 * k);
+    return _one(Rect.fromLTWH(x, y - 90 * k, 90 * k, 96 * k));
+  },
   'cursor': (look, body) {
     // Flota arriba a su derecha y la punta le senala el hombro.
     final r = body.bounds;
@@ -333,6 +379,15 @@ final Map<String, _Place> _places = <String, _Place>{
   'lantern': _held(const Size(50, 80), const Offset(46, 72), right: false, at: .7, size: 1.1, min: 38, max: 48),
   'fish_bag': _held(const Size(44, 64), const Offset(38, 5), right: false, at: .55, size: .9, min: 28, max: 36),
   'kendama': _held(const Size(50, 70), const Offset(36, 67), right: false, at: .7, size: 1, min: 32, max: 40),
+  'teddy': (look, body) {
+    // Como lo que sujeta a su izquierda, pero en un Tama ancho no se sale
+    // del lienzo: se arrima a el.
+    final r = body.bounds;
+    final y = r.top + r.height * .66;
+    final k = (r.height * .62).clamp(22.0, 30.0) / 60;
+    final x = math.max(1.0, r.center.dx - body.halfWidthAt(y) - 44 * k);
+    return _one(Rect.fromLTWH(x, y - 38 * k, 50 * k, 60 * k));
+  },
   'controller': _held(const Size(72, 52), const Offset(70, 30), right: false, at: .6, size: .5, min: 18, max: 26),
   // Detras y alrededor.
   'randoseru': _aroundBody(const Size(120, 100), const Rect.fromLTRB(30, 20, 90, 90)),
@@ -340,6 +395,7 @@ final Map<String, _Place> _places = <String, _Place>{
   'angel_wings': _wings,
   'rgb_wings': _wings,
   'fairies': _wings,
+  'butterfly_wings': _wings,
   // Flotando arriba a su derecha, como una vida de videojuego.
   'pixel_heart': (look, body) {
     final r = body.bounds;
@@ -360,7 +416,19 @@ final Map<String, _Place> _places = <String, _Place>{
 
 /// Las cajas que ocupa [item] en un Tama con este aspecto.
 List<PrizeBox> prizeBoxes(PrizeItem item, TamaLook look, TamaBody body) =>
-    _places[item.prize.id]?.call(look, body) ?? const <PrizeBox>[];
+    (_places['${item.prize.id}_${item.variant}'] ?? _places[item.prize.id])?.call(look, body) ??
+    const <PrizeBox>[];
+
+/// El color de la pareja con el que se tiñe [item], o `null` si se pinta tal
+/// cual. El hilo rojo no se tiñe.
+Color? prizeTint(PrizeItem item) {
+  final code = item.code;
+  if (code == null || item.prize.id == 'charm_thread') return null;
+  return koenCharmColor(code);
+}
+
+/// El color del accesorio de pareja con el código [code].
+Color koenCharmColor(String code) => HSLColor.fromAHSL(1, koenCharmHue(code).toDouble(), .72, .62).toColor();
 
 /// Lo que lleva puesto [look], ya resuelto: se salta lo que esta version no
 /// conoce.
@@ -370,7 +438,7 @@ List<PrizeItem> wornItems(TamaLook look) => [
     ];
 
 /// Si lleva algo que sustituye a los pies (las zapatillas).
-bool hidesFeet(TamaLook look) => wornItems(look).any((i) => i.prize.slot == PrizeSlot.feet);
+bool hidesFeet(TamaLook look) => wornItems(look).any((i) => i.slot == PrizeSlot.feet);
 
 /// Pinta lo que lleve puesto en [slots], en el lienzo de 100x100 del Tama y
 /// dentro de su transformacion, asi salta, se inclina y se aplasta con el. Con
@@ -378,13 +446,17 @@ bool hidesFeet(TamaLook look) => wornItems(look).any((i) => i.prize.slot == Priz
 void paintOutfit(Canvas canvas, TamaLook look, TamaBody body, Set<PrizeSlot> slots,
     {bool front = false}) {
   for (final item in wornItems(look)) {
-    if (!slots.contains(item.prize.slot)) continue;
+    if (!slots.contains(item.slot)) continue;
     final asset = front ? item.frontAsset : item.asset;
     if (asset == null) continue;
     final art = PrizeArt.instance.of(asset);
     if (art == null) continue;
+    final tint = prizeTint(item);
     for (final box in prizeBoxes(item, look, body)) {
       canvas.save();
+      if (tint != null) {
+        canvas.saveLayer(box.rect, Paint()..colorFilter = ColorFilter.mode(tint, BlendMode.modulate));
+      }
       canvas.translate(box.rect.left, box.rect.top);
       canvas.scale(box.rect.width / art.size.width, box.rect.height / art.size.height);
       if (box.flip) {
@@ -392,6 +464,7 @@ void paintOutfit(Canvas canvas, TamaLook look, TamaBody body, Set<PrizeSlot> slo
         canvas.scale(-1, 1);
       }
       canvas.drawPicture(art.picture);
+      if (tint != null) canvas.restore();
       canvas.restore();
     }
   }

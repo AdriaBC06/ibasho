@@ -493,7 +493,9 @@ class _OdoriChannelState extends ConsumerState<OdoriChannel> with OdoriTheme {
     return false;
   }
 
-  static const List<String> _singerOrder = ['teto', 'kiritan', 'zundamon', 'merrow', 'sinsy'];
+  static const List<String> _singerOrder = [
+    'teto', 'kiritan', 'zundamon', 'merrow', 'reina', 'sinsy', 'nakumo', 'runo', 'soma', //
+  ];
 
   /// Quien canta esta cancion: `null` es la instrumental, que va primero.
   List<String?> _singers(OdoriSong song) {
@@ -526,7 +528,7 @@ class _OdoriChannelState extends ConsumerState<OdoriChannel> with OdoriTheme {
     final version = _version;
     final p = _prefs;
     final info = _info[version.id];
-    final tamas = ref.watch(tamasProvider).tamas;
+    final tamas = ref.watch(tamasProvider).companions;
     final tama = _tama(tamas);
     final assisted = tama != null && p.assist;
     final data = _store!.data;

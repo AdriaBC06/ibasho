@@ -119,7 +119,7 @@ class _NihongoChannelState extends ConsumerState<NihongoChannel> {
   // --- Tama ------------------------------------------------------------------
 
   void _pickTama() {
-    final tamas = ref.read(tamasProvider).tamas;
+    final tamas = ref.read(tamasProvider).companions;
     if (tamas.isEmpty) {
       _tamaId = null;
       return;
@@ -129,7 +129,7 @@ class _NihongoChannelState extends ConsumerState<NihongoChannel> {
   }
 
   Tama? _currentTama() {
-    final tamas = ref.watch(tamasProvider).tamas;
+    final tamas = ref.watch(tamasProvider).companions;
     if (tamas.isEmpty) return null;
     if (_tamaId == null || !tamas.any((t) => t.id == _tamaId)) {
       _tamaId = tamas[_random.nextInt(tamas.length)].id;
@@ -412,6 +412,7 @@ class _NihongoChannelState extends ConsumerState<NihongoChannel> {
     // Sumi en el menu y en la tabla; Hanami durante la ronda y sus resultados.
     final playing = _phase == _Phase.quiz || _phase == _Phase.results;
     return GameMusic(
+      gameId: 'nihongo',
       track: playing ? MusicTrack.hanami : MusicTrack.sumi,
       child: ChannelScaffold(
         title: l.nihongoTitle,

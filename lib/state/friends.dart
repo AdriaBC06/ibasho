@@ -113,15 +113,23 @@ enum FriendFailure { yourListFull, theirListFull, rejected, network }
 /// las dos entradas de amistad, mueve los dos contadores y borra las
 /// solicitudes, y dejar de ser amigos lo deshace.
 class FriendsController extends StateNotifier<FriendsState> {
-  FriendsController({required IbashoBackend backend, required SessionController session})
-      : _backend = backend,
+  FriendsController({
+    required IbashoBackend backend,
+    required SessionController session,
+    Map<String, Object?> Function(String friend)? unshare,
+  })  : _backend = backend,
         _session = session,
+        _unshare = unshare,
         super(const FriendsState()) {
     if (_me.isNotEmpty && session.state.phase == SessionPhase.active) unawaited(_start());
   }
 
   final IbashoBackend _backend;
   final SessionController _session;
+
+  /// Lo que hay que deshacer en la misma escritura al dejar de ser amigos:
+  /// los Tamas que se cuidan a medias.
+  final Map<String, Object?> Function(String friend)? _unshare;
 
   StreamSubscription<DatabaseEvent>? _friendsWatch;
   StreamSubscription<DatabaseEvent>? _requestsWatch;
@@ -313,8 +321,8 @@ class FriendsController extends StateNotifier<FriendsState> {
     }
   }
 
-  /// Deja de ser amigo de `account`. Borra las dos entradas y baja los dos
-  /// contadores.
+  /// Deja de ser amigo de `account`. Borra las dos entradas, baja los dos
+  /// contadores y deja de cuidar a medias los Tamas compartidos.
   Future<FriendFailure?> unfriend(String account) async {
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
@@ -327,6 +335,7 @@ class FriendsController extends StateNotifier<FriendsState> {
           'users/$_me/friendLastChange': account,
           'users/$account/friendCount': counts[1] - 1,
           'users/$account/friendLastChange': _me,
+          ...?_unshare?.call(account),
         }, idToken: token);
         return null;
       } on IbashoException catch (e) {

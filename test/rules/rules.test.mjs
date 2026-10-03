@@ -1131,6 +1131,24 @@ test('la musica de perfil solo acepta canciones desbloqueadas', async () => {
   await assertFails(get(ref(db(OTHER), `${base}/profileTrack`)));
 });
 
+test('la musica de cada juego acepta pistas desbloqueadas y canciones de Tamakoro', async () => {
+  const member = db(MEMBER);
+  const base = `/users/${MEMBER}/music`;
+  await assertSucceeds(set(ref(member, `${base}/games/hebi`), 'noche'));
+  await assertFails(set(ref(member, `${base}/games/tsumiki`), 'feria'));
+  await assertSucceeds(set(ref(member, `${base}/unlocked/feria`), true));
+  await assertSucceeds(set(ref(member, `${base}/games/tsumiki`), 'feria'));
+  // Una cancion de Tamakoro, solo si existe.
+  await assertFails(set(ref(member, `${base}/games/hebi`), 'koro_3'));
+  await testEnv.withSecurityRulesDisabled((context) =>
+    context.database().ref(`/users/${MEMBER}/koro/songs/3`).set({ number: 1 }));
+  await assertSucceeds(set(ref(member, `${base}/games/hebi`), 'koro_3'));
+  // Forma del id del juego, de otro no se escribe, y se puede quitar.
+  await assertFails(set(ref(member, `${base}/games/Hebi!`), 'noche'));
+  await assertFails(set(ref(db(OTHER), `${base}/games/hebi`), 'noche'));
+  await assertSucceeds(set(ref(member, `${base}/games/hebi`), null));
+});
+
 test('la version minima la lee cualquiera y la escribe el admin', async () => {
   const admin = db(ADMIN);
   await assertSucceeds(set(ref(admin, '/system/update'), { minVersion: '0.4.0', url: 'https://ibasho.top' }));
@@ -1148,4 +1166,42 @@ test('la version minima la lee cualquiera y la escribe el admin', async () => {
   await assertFails(set(ref(admin, '/system/update'), { minVersion: '1.0.0', url: 'http://inseguro' }));
   await assertFails(set(ref(admin, '/system/update'), { minVersion: '1.0.0', aviso: 'x' }));
   await assertSucceeds(set(ref(admin, '/system/update'), null));
+});
+
+test('el parque de Tama Kōen lo leen los amigos y lo escribe su dueño, con tres huecos', async () => {
+  const member = db(MEMBER);
+  const other = db(OTHER);
+  const third = db(THIRD);
+  await assertSucceeds(sendRequest(other, OTHER, MEMBER));
+  await assertSucceeds(accept(member, MEMBER, OTHER));
+
+  const slot = (i) => `/users/${MEMBER}/koen/park/${i}`;
+  const card = (extra = {}) => ({
+    tamaId: '-Tama0000000000000001',
+    owner: MEMBER,
+    name: 'Mochi',
+    personality: 'playful',
+    voice: { pitch: 50, tempo: 40, timbre: 2 },
+    look: { body: 3, color: '#A0C4FF', acc: { a: 'cap_red' } },
+    at: now,
+    ...extra,
+  });
+
+  await assertSucceeds(set(ref(member, slot(0)), card()));
+  await assertSucceeds(set(ref(member, slot(2)), card()));
+  // Solo tres huecos, con su forma.
+  await assertFails(set(ref(member, slot(3)), card()));
+  await assertFails(set(ref(member, slot('a')), card()));
+  await assertFails(set(ref(member, slot(1)), card({ name: '' })));
+  await assertFails(set(ref(member, slot(1)), card({ personality: 'grumpy' })));
+  await assertFails(set(ref(member, slot(1)), card({ at: now + 3600000 })));
+  await assertFails(set(ref(member, slot(1)), card({ extra: true })));
+  await assertFails(set(ref(member, `/users/${MEMBER}/koen/otra`), true));
+
+  // Lo lee un amigo; quien no lo es, no. Nadie más lo escribe.
+  await assertSucceeds(get(ref(other, slot(0))));
+  await assertFails(get(ref(third, slot(0))));
+  await assertFails(set(ref(other, slot(1)), card({ owner: OTHER })));
+  // Su dueño lo vacía.
+  await assertSucceeds(set(ref(member, slot(0)), null));
 });

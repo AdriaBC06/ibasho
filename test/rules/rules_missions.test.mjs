@@ -163,3 +163,115 @@ test('la mision semanal de comprar no puede colarse como si fuera la de tirar', 
     }),
   );
 });
+
+// --- 0.9.0: misiones nuevas, recuentos y repetibles ---
+
+const withMissions = (missions, gachaken = 5) =>
+  seed({ users: { [ANA]: { tickets: { gachaken, kinken: 0 }, missions } } });
+
+const mark = (event, n, w = week) => ({
+  [`users/uid-ana/missions/signal/${event}`]: { at: serverTimestamp() },
+  [`users/uid-ana/missions/tally/${event}`]: { week: w, n, at: serverTimestamp() },
+});
+
+const repeat = (event, count, gachaken, w = week) => ({
+  'users/uid-ana/missions/claim': {
+    kind: 'repeat', event, week: w, amount: 1, ticketKind: 'gachaken', at: serverTimestamp(),
+  },
+  [`users/uid-ana/missions/repeat/${w}/${event}`]: count,
+  'users/uid-ana/tickets/gachaken': gachaken,
+});
+
+test('las señales nuevas se apuntan; una inventada no', async () => {
+  for (const event of ['pet', 'gift', 'koen', 'chat']) {
+    await assertSucceeds(
+      update(ref(db(ANA), '/'), { [`users/uid-ana/missions/signal/${event}`]: { at: serverTimestamp() } }),
+    );
+  }
+  await assertFails(
+    update(ref(db(ANA), '/'), { 'users/uid-ana/missions/signal/dance': { at: serverTimestamp() } }),
+  );
+});
+
+test('la mision diaria de acariciar se cobra como las demas', async () => {
+  await withMissions({ signal: { pet: { at: now } } });
+  await assertSucceeds(
+    update(ref(db(ANA), '/'), {
+      'users/uid-ana/missions/claim': {
+        kind: 'daily', event: 'pet', day, amount: 1, ticketKind: 'gachaken', at: serverTimestamp(),
+      },
+      [`users/uid-ana/missions/daily/${day}/pet`]: true,
+      'users/uid-ana/tickets/gachaken': 6,
+    }),
+  );
+});
+
+test('las semanales del parque y de los mensajes dan 2 gachaken, no mas', async () => {
+  for (const event of ['koen', 'chat']) {
+    await withMissions({ signal: { [event]: { at: now } } });
+    const claim = (gachaken, amount) => update(ref(db(ANA), '/'), {
+      'users/uid-ana/missions/claim': {
+        kind: 'weekly', event, week, amount, ticketKind: 'gachaken', at: serverTimestamp(),
+      },
+      [`users/uid-ana/missions/weekly/${week}/${event}`]: true,
+      'users/uid-ana/tickets/gachaken': gachaken,
+    });
+    await assertFails(claim(8, 3));
+    await assertSucceeds(claim(7, 2));
+  }
+});
+
+test('el recuento empieza en 1 y sube de uno en uno', async () => {
+  await assertFails(update(ref(db(ANA), '/'), mark('play', 2)));
+  await assertSucceeds(update(ref(db(ANA), '/'), mark('play', 1)));
+  await assertFails(update(ref(db(ANA), '/'), mark('play', 3)));
+  await assertSucceeds(update(ref(db(ANA), '/'), mark('play', 2)));
+});
+
+test('el recuento vuelve a 1 al cambiar de semana', async () => {
+  await withMissions({ tally: { play: { week: week - 1, n: 7, at: now - WEEK } } });
+  await assertFails(update(ref(db(ANA), '/'), mark('play', 8)));
+  await assertSucceeds(update(ref(db(ANA), '/'), mark('play', 1)));
+});
+
+test('el recuento no vale sin su señal ni para otra semana', async () => {
+  await assertFails(
+    update(ref(db(ANA), '/'), {
+      'users/uid-ana/missions/tally/play': { week, n: 1, at: serverTimestamp() },
+    }),
+  );
+  await assertFails(update(ref(db(ANA), '/'), mark('play', 1, week + 1)));
+});
+
+test('la repetible se cobra cada 5 partidas, hasta 3 veces', async () => {
+  await withMissions({ tally: { play: { week, n: 15, at: now } } });
+  await assertSucceeds(update(ref(db(ANA), '/'), repeat('play', 1, 6)));
+  await assertSucceeds(update(ref(db(ANA), '/'), repeat('play', 2, 7)));
+  await assertSucceeds(update(ref(db(ANA), '/'), repeat('play', 3, 8)));
+  await assertFails(update(ref(db(ANA), '/'), repeat('play', 4, 9)));
+});
+
+test('la repetible no se cobra antes de tiempo', async () => {
+  await withMissions({ tally: { play: { week, n: 9, at: now } }, repeat: { [week]: { play: 1 } } });
+  await assertFails(update(ref(db(ANA), '/'), repeat('play', 2, 6)));
+});
+
+test('acariciar tambien pide 5 por cobro', async () => {
+  await withMissions({ tally: { pet: { week, n: 4, at: now } } });
+  await assertFails(update(ref(db(ANA), '/'), repeat('pet', 1, 6)));
+  await withMissions({ tally: { pet: { week, n: 5, at: now } } });
+  await assertSucceeds(update(ref(db(ANA), '/'), repeat('pet', 1, 6)));
+});
+
+test('la repetible no se salta cobros, no da de mas ni usa el recuento viejo', async () => {
+  await withMissions({ tally: { play: { week, n: 15, at: now } } });
+  await assertFails(update(ref(db(ANA), '/'), repeat('play', 2, 6)));
+  await assertFails(update(ref(db(ANA), '/'), repeat('play', 1, 7)));
+  await withMissions({ tally: { play: { week: week - 1, n: 15, at: now - WEEK } } });
+  await assertFails(update(ref(db(ANA), '/'), repeat('play', 1, 6)));
+});
+
+test('solo hay repetibles de jugar, comer y acariciar', async () => {
+  await withMissions({ tally: { buy: { week, n: 15, at: now } } });
+  await assertFails(update(ref(db(ANA), '/'), repeat('buy', 1, 6)));
+});

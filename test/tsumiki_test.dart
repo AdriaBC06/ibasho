@@ -14,7 +14,7 @@ void fillRow(TsumikiGame g, int y, {int gap = -1}) {
 
 void main() {
   test('cada pieza tiene cuatro casillas en sus cuatro giros', () {
-    for (final p in TsumikiPiece.values) {
+    for (final p in TsumikiPiece.playable) {
       for (var r = 0; r < 4; r++) {
         expect(shapeOf(p, r).toSet().length, 4, reason: '$p $r');
       }

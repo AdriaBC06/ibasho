@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40">
+  <!-- Gafas de sol de corazon. Los ojos van en (35, 20) y (65, 20). -->
+  <defs>
+    <linearGradient id="lens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="{lens.light}" stop-opacity=".9"/>
+      <stop offset="1" stop-color="{lens.deep}" stop-opacity=".9"/>
+    </linearGradient>
+  </defs>
+  <!-- Patillas -->
+  <path d="M21 15 L3 12 M79 15 L97 12" stroke="{main.edge}" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M21 15 L3 12 M79 15 L97 12" stroke="{main}" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Corazones -->
+  <g stroke="{main.edge}" stroke-width="4.6" stroke-linejoin="round">
+    <path id="h" d="M35 33 C26 26 21 21 21 15 C21 10 25 7 29 7 C32 7 34 9 35 11 C36 9 38 7 41 7 C45 7 49 10 49 15 C49 21 44 26 35 33 Z" fill="url(#lens)"/>
+    <path d="M65 33 C56 26 51 21 51 15 C51 10 55 7 59 7 C62 7 64 9 65 11 C66 9 68 7 71 7 C75 7 79 10 79 15 C79 21 74 26 65 33 Z" fill="url(#lens)"/>
+  </g>
+  <g fill="none" stroke="{main}" stroke-width="2.4" stroke-linejoin="round">
+    <path d="M35 33 C26 26 21 21 21 15 C21 10 25 7 29 7 C32 7 34 9 35 11 C36 9 38 7 41 7 C45 7 49 10 49 15 C49 21 44 26 35 33 Z"/>
+    <path d="M65 33 C56 26 51 21 51 15 C51 10 55 7 59 7 C62 7 64 9 65 11 C66 9 68 7 71 7 C75 7 79 10 79 15 C79 21 74 26 65 33 Z"/>
+  </g>
+  <!-- Puente -->
+  <path d="M48 14 Q50 12 52 14" fill="none" stroke="{main.edge}" stroke-width="4" stroke-linecap="round"/>
+  <path d="M48 14 Q50 12 52 14" fill="none" stroke="{main}" stroke-width="2" stroke-linecap="round"/>
+  <!-- Reflejos -->
+  <path d="M26 13 Q28 10.5 31 10.5 M56 13 Q58 10.5 61 10.5" fill="none" stroke="#FFFFFF" stroke-opacity=".9" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M38 22 L40.5 20 M68 22 L70.5 20" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

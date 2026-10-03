@@ -107,8 +107,7 @@ class _LeaderboardsChannelState extends ConsumerState<LeaderboardsChannel> {
   LeaderboardGame _game = LeaderboardGame.minesweeperEasy;
   bool _weekly = false;
 
-  /// La tabla de siempre (solo en los juegos que la tienen): sin podio ni
-  /// premio, solo quién va primero.
+  /// La tabla de siempre: sin podio ni premio, solo quién va primero.
   bool _allTime = false;
   bool _loading = false;
 
@@ -545,7 +544,7 @@ class _StandingsPanel extends StatelessWidget {
                   children: [
                     Text(
                       allTime
-                          ? l.leaderboardsStandingsAllTime
+                          ? (game.allTimeAccumulates ? l.leaderboardsStandingsAllTime : l.leaderboardsStandingsBest)
                           : weekly
                               ? l.leaderboardsStandingsWeekly
                               : l.leaderboardsStandingsDaily,

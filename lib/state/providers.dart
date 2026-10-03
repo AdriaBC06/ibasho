@@ -9,6 +9,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../backend/gacha.dart' show TicketKind;
 import '../backend/ibasho_backend.dart';
+import '../backend/koen_bonds.dart' show KoenFriendLevel;
+import '../backend/koen_care.dart';
+import '../backend/koen_duo.dart';
+import '../backend/live_tree.dart' show applyDatabaseEvent;
+import '../backend/koen_rewards.dart' show koenGame;
 import '../backend/leaderboards.dart';
 import '../backend/rest_ibasho_backend.dart';
 import '../backend/shop.dart';
@@ -21,6 +26,7 @@ import 'admin.dart';
 import 'card.dart';
 import 'channel_order.dart';
 import 'coins.dart';
+import 'daily_gift.dart';
 import 'rewards.dart';
 import 'conversation.dart';
 import 'friends.dart';
@@ -28,6 +34,8 @@ import 'gacha.dart';
 import '../games/hatarakitama/hataraki_engine.dart' show HState;
 import 'hataraki.dart';
 import 'identity.dart';
+import 'koen.dart';
+import 'koen_duo.dart';
 import 'koro.dart';
 import 'leaderboards.dart';
 import 'login_bonus.dart';
@@ -274,6 +282,7 @@ final friendsProvider = StateNotifierProvider<FriendsController, FriendsState>((
   return FriendsController(
     backend: ref.watch(backendProvider),
     session: ref.watch(sessionProvider.notifier),
+    unshare: (friend) => ref.read(tamasProvider.notifier).unsharePaths(friend),
   );
 });
 
@@ -446,6 +455,19 @@ final loginBonusProvider = StateNotifierProvider<LoginBonusController, LoginBonu
   );
 });
 
+/// El regalo diario del Yatai: comida, un gachaken y un saquito de monedas.
+final dailyGiftProvider = StateNotifierProvider<DailyGiftController, DailyGiftState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return DailyGiftController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    coinsOf: () => ref.read(coinsProvider),
+    ticketsOf: (kind) => ref.read(gachaProvider).ticketsOf(kind),
+    pantryOf: (food) => ref.read(pantryProvider)[food] ?? 0,
+  );
+});
+
 /// Los juegos comprados, por id: la rejilla los ensena como regalo o canal
 /// segun su estado.
 final installedGamesProvider = Provider<Map<String, GameInstall>>(
@@ -492,6 +514,176 @@ final hatarakiProvider = StateNotifierProvider<HatarakiController, HatarakiState
     ),
   );
 });
+
+/// Tama Kōen: el parque propio y los de los amigos. Se lee al abrir el canal.
+final koenProvider = StateNotifierProvider<KoenController, KoenState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  return KoenController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    rewardsOf: () => ref.read(rewardsProvider),
+    claimCoins: (amount) => ref.read(rewardsProvider.notifier).claim(game: koenGame, amount: amount),
+    pantryOf: (food) => ref.read(pantryProvider)[food] ?? 0,
+    ticketsOf: (kind) => ref.read(gachaProvider).ticketsOf(kind),
+    isMine: (id) => ref.read(tamasProvider).find(id) != null,
+    pet: (id) => unawaited(ref.read(tamasProvider.notifier).pet(id)),
+    coinsOf: () => ref.read(coinsProvider),
+    owns: (key) => ref.read(gachaProvider).owns(key),
+    duoOf: (id) => koenDuoOfTama(ref.read(koenDuosProvider), id)?.mateOf(id),
+  );
+});
+
+/// El nivel de amistad del parque con cada amigo, para su insignia en la
+/// lista de amigos y en su perfil. Con el parque ya leído, el suyo; si no,
+/// una lectura puntual de `koen/friends`.
+final koenFriendLevelsProvider = FutureProvider<Map<String, KoenFriendLevel>>((ref) async {
+  final levels = ref.watch(koenProvider.select((k) => k.loaded && !k.demo ? k.levels : null));
+  if (levels != null) return levels;
+  final me = ref.watch(sessionProvider.select((s) => s.accountId));
+  if (me.isEmpty) return const <String, KoenFriendLevel>{};
+  try {
+    final raw = await ref
+        .read(backendProvider)
+        .read('/users/$me/koen/friends', idToken: await ref.read(sessionProvider.notifier).freshToken());
+    return KoenController.levelsFrom(raw);
+  } catch (_) {
+    return const <String, KoenFriendLevel>{};
+  }
+});
+
+/// Los puntos de amistad del parque con [friend], sumando los de los dos.
+/// Con el parque ya leído, los suyos; si no, dos lecturas puntuales.
+final koenFriendPointsProvider = FutureProvider.family<int, String>((ref, friend) async {
+  final park = ref.watch(koenProvider.select((k) => k.loaded && !k.demo ? k : null));
+  if (park != null) return (park.mates[friend]?.p ?? 0) + (park.theirs[friend] ?? 0);
+  final me = ref.watch(sessionProvider.select((s) => s.accountId));
+  if (me.isEmpty) return 0;
+  final backend = ref.read(backendProvider);
+  final token = await ref.read(sessionProvider.notifier).freshToken();
+  Future<int> half(String path) => backend
+      .read(path, idToken: token)
+      .then((v) => v is num ? v.toInt() : 0, onError: (Object _) => 0);
+  final both = await Future.wait([
+    half('/users/$me/koen/friends/$friend/p'),
+    half('/users/$friend/koen/friends/$me/p'),
+  ]);
+  return both[0] + both[1];
+});
+
+/// Las ofertas de cuidar a medias que han llegado al buzón
+/// (`koenInbox`). Salen de la conexión de la cuenta: no abren otra.
+final koenOffersProvider = StreamProvider<List<KoenOffer>>((ref) async* {
+  final me = ref.watch(sessionProvider.select((s) => s.accountId));
+  final active = ref.watch(sessionProvider.select((s) => s.phase == SessionPhase.active));
+  if (me.isEmpty || !active) {
+    yield const <KoenOffer>[];
+    return;
+  }
+  Object? tree;
+  await for (final event in ref
+      .read(backendProvider)
+      .watch('/users/$me/koenInbox', token: ref.read(sessionProvider.notifier).freshToken)) {
+    tree = applyDatabaseEvent(tree, event);
+    yield KoenOffer.listFrom(tree);
+  }
+});
+
+/// Las ofertas inventadas del parque de prueba («demo», solo en depuración).
+final koenDemoOffersProvider = StateProvider<List<KoenOffer>>((ref) => const <KoenOffer>[]);
+
+/// Las ofertas del buzón, más las de prueba.
+final koenAllOffersProvider = Provider<List<KoenOffer>>((ref) => [
+      ...ref.watch(koenDemoOffersProvider),
+      ...?ref.watch(koenOffersProvider).valueOrNull,
+    ]);
+
+/// Ofertas sin responder: la insignia del canal del parque.
+final pendingKoenOffersProvider = Provider<int>((ref) => ref.watch(koenAllOffersProvider).length);
+
+/// Al abrir, quita los cuidados a medias con quien ya no es amigo. Se mira
+/// desde la app.
+final koenCareTidyProvider = Provider<void>((ref) {
+  final ready = ref.watch(friendsProvider.select((f) => f.loaded)) && ref.watch(tamasProvider.select((t) => t.loaded));
+  if (!ready) return;
+  final friends = ref.watch(friendsProvider.select((f) => {for (final x in f.friends) x.accountId}.join(',')));
+  final shares = ref.watch(tamasProvider.select((t) => [
+        for (final x in t.tamas)
+          if (x.carer != null) '${x.id}:${x.carer}',
+        for (final x in t.cared) '${x.id}:${x.creator}',
+      ].join(',')));
+  if (shares.isEmpty) return;
+  unawaited(ref.read(tamasProvider.notifier).tidyShares(friends.split(',').toSet()));
+});
+
+/// Los dúos de la cuenta (lo que comparten se lee al abrir el parque y la
+/// casita).
+final koenDuosStateProvider = StateNotifierProvider<KoenDuosController, KoenDuosState>((ref) {
+  ref.watch(sessionProvider.select((s) => s.accountId));
+  return KoenDuosController(
+    backend: ref.watch(backendProvider),
+    session: ref.watch(sessionProvider.notifier),
+    coinsOf: () => ref.read(coinsProvider),
+    ticketsOf: (kind) => ref.read(gachaProvider).ticketsOf(kind),
+    owns: (key) => ref.read(gachaProvider).owns(key),
+  );
+});
+
+/// Los dúos: los amigos con los que se cuida a medias un Tama de cada uno,
+/// más el del parque de prueba.
+final koenDuosProvider = Provider<List<KoenDuo>>((ref) {
+  final me = ref.watch(sessionProvider.select((s) => s.accountId));
+  final tamas = ref.watch(tamasProvider);
+  final duos = ref.watch(koenDuosStateProvider);
+  final out = [
+    for (final MapEntry(key: friend, value: (mine, theirs)) in koenDuoTamas(me, tamas.tamas, tamas.cared).entries)
+      KoenDuo(me: me, friend: friend, mine: mine, theirs: theirs, data: duos.data[friend] ?? const KoenDuoData()),
+  ];
+  final demoMine = tamas.tamas.where((t) => t.id == duos.demoMine).firstOrNull;
+  final demoTheirs = [for (final t in tamas.cared) if (t.creator == duos.demoFriend) t];
+  if (demoMine != null && demoTheirs.isNotEmpty && !out.any((d) => d.friend == duos.demoFriend)) {
+    out.add(KoenDuo(
+      me: me,
+      friend: duos.demoFriend!,
+      mine: [demoMine],
+      theirs: demoTheirs,
+      data: duos.data[duos.demoFriend] ?? const KoenDuoData(),
+      demo: true,
+    ));
+  }
+  return out;
+});
+
+/// El dúo de [friend], si lo hay.
+final koenDuoWithProvider = Provider.family<KoenDuo?, String>(
+  (ref, friend) => ref.watch(koenDuosProvider).where((d) => d.friend == friend).firstOrNull,
+);
+
+/// El dúo en cuya casita está [tamaId], si lo hay.
+KoenDuo? koenDuoOfTama(List<KoenDuo> duos, String tamaId) =>
+    duos.where((d) => d.tamaIds.contains(tamaId)).firstOrNull;
+
+bool _demoCareClaimed = false;
+
+/// Cobra las monedas de cuidar a medias si [tama] es compartido y hoy ya ha
+/// comido y le han hecho un mimo. Una vez al día por cuenta. Devuelve lo
+/// cobrado.
+Future<int> claimKoenCare(WidgetRef ref, Tama tama) async {
+  if (!tama.shared) return 0;
+  // El del parque de prueba enseña el aviso una vez, sin cobrar nada.
+  if (tama.id.startsWith('-demo')) {
+    if (_demoCareClaimed || !koenCareDone(tama, RewardsState.today())) return 0;
+    _demoCareClaimed = true;
+    return koenCareCoins;
+  }
+  final rewards = ref.read(rewardsProvider);
+  if (!rewards.loaded || rewards.earnedToday(koenCareGame) > 0) return 0;
+  if (!koenCareDone(tama, RewardsState.today())) return 0;
+  final out = await ref
+      .read(rewardsProvider.notifier)
+      .claim(game: koenCareGame, amount: koenCareCoins, extra: {'tama': tama.id});
+  return out.status == RewardStatus.granted ? out.coins : 0;
+}
 
 /// El pueblo de Hatarakitama de otra cuenta (o de la propia), para
 /// visitarlo: una lectura puntual de `hataraki`, sin conexion en tiempo real.

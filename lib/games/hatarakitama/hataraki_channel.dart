@@ -24,7 +24,6 @@ import '../../ui/layout.dart';
 import '../../ui/screens/channel_route.dart';
 import '../../ui/social/social_widgets.dart' show CardTama;
 import '../../ui/tama/tama_painter.dart';
-import '../../ui/track_text.dart';
 import '../../ui/tama/tama_text.dart';
 import '../../ui/tama/tama_view.dart';
 import '../../ui/tama/tama_widgets.dart';
@@ -62,18 +61,14 @@ const List<MusicTrack> hatarakiTracks = [
   MusicTrack.yuyake,
 ];
 
-/// El canal con su música: las tres por turnos, o la que se haya elegido.
-class HatarakiScreen extends ConsumerWidget {
+/// El canal con su música: las tres por turnos, o la que se elija con el
+/// botón ♪ (desde la 0.9.0, el mismo selector que el resto de juegos).
+class HatarakiScreen extends StatelessWidget {
   const HatarakiScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final id = ref.watch(preferencesProvider.select((p) => p.hatarakiTrack));
-    final chosen = hatarakiTracks.where((t) => t.id == id).firstOrNull;
-    return chosen == null
-        ? GameMusic.cycle(cycle: hatarakiTracks, child: const HatarakiChannel())
-        : GameMusic(track: chosen, child: const HatarakiChannel());
-  }
+  Widget build(BuildContext context) =>
+      GameMusic.cycle(gameId: 'hataraki', cycle: hatarakiTracks, child: const HatarakiChannel());
 }
 
 // --- Textos -------------------------------------------------------------------
@@ -696,15 +691,6 @@ class _HatarakiChannelState extends ConsumerState<HatarakiChannel>
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconPill(
-            key: const ValueKey<String>('hataraki.music'),
-            glyph: Glyph.note,
-            semanticLabel: l.hatarakiMusic,
-            onPressed: () => unawaited(
-              showIbashoModal<void>(context, (_) => const _MusicDialog()),
-            ),
-          ),
-          const SizedBox(width: 8),
           IconPill(
             key: const ValueKey<String>('hataraki.help'),
             glyph: Glyph.info,
@@ -3509,59 +3495,6 @@ class _AwayDialog extends StatelessWidget {
       actions: [
         IbashoButton(
           key: const ValueKey<String>('hataraki.away.ok'),
-          label: l.hatarakiAwayOk,
-          tone: ButtonTone.accent,
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ],
-    );
-  }
-}
-
-/// Qué suena en el pueblo: las tres por turnos o una fija. Las que aún no
-/// han sonado nunca salen con candado (se descubren por turnos).
-class _MusicDialog extends ConsumerWidget {
-  const _MusicDialog();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = L.of(context)!;
-    final chosen = ref.watch(
-      preferencesProvider.select((p) => p.hatarakiTrack),
-    );
-    final library = ref.watch(musicLibraryProvider);
-    final prefs = ref.read(preferencesProvider.notifier);
-    Widget option(String id, String label, {bool locked = false}) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: IbashoButton(
-        key: ValueKey<String>('hataraki.music.${id.isEmpty ? 'cycle' : id}'),
-        label: locked ? l.hatarakiMusicLocked : label,
-        glyph: locked ? Glyph.lock : (chosen == id ? Glyph.check : Glyph.note),
-        tone: chosen == id ? ButtonTone.accent : ButtonTone.plain,
-        expand: true,
-        onPressed: locked
-            ? null
-            : () {
-                AudioService.instance.play(Sfx.tick);
-                unawaited(prefs.setHatarakiTrack(id));
-              },
-      ),
-    );
-    return IbashoDialog(
-      title: l.hatarakiMusic,
-      width: 400,
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          option('', l.hatarakiMusicCycle),
-          for (final t in hatarakiTracks)
-            option(t.id, describeTrack(l, t), locked: !library.isUnlocked(t)),
-        ],
-      ),
-      actions: [
-        IbashoButton(
-          key: const ValueKey<String>('hataraki.music.ok'),
           label: l.hatarakiAwayOk,
           tone: ButtonTone.accent,
           onPressed: () => Navigator.of(context).pop(),

@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 
 /// Largos de una entrada. Los mismos que comprueban las reglas.
 const int newsTitleMax = 60;
-const int newsBodyMax = 600;
+const int newsBodyMax = 2000;
 const int pollOptionMax = 40;
 
 /// Cuantas opciones puede tener una encuesta. Dos para poder preguntar si o

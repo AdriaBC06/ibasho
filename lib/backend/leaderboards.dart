@@ -66,8 +66,14 @@ enum LeaderboardGame {
         _ => lowerIsBetter ? 3600000 : 999999,
       };
 
-  /// Si además de día y semana tiene tabla de siempre (sin premio).
-  bool get hasAllTime => this == LeaderboardGame.hataraki;
+  /// Si además de día y semana tiene tabla de siempre (sin premio). Desde
+  /// la 0.9.0, todos: la mejor partida de cada cuenta (en Hatarakitama, los
+  /// mon ganados desde siempre).
+  bool get hasAllTime => true;
+
+  /// Si la tabla de siempre acumula (Hatarakitama) en vez de guardar la
+  /// mejor partida.
+  bool get allTimeAccumulates => this == LeaderboardGame.hataraki;
 
   static LeaderboardGame? byKey(String key) {
     for (final g in values) {

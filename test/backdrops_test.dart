@@ -10,8 +10,10 @@ import 'package:ibasho/backend/gacha.dart';
 import 'package:ibasho/l10n/gen/app_localizations.dart';
 
 void main() {
-  test('16 fondos, con el reparto de rareza de los premios', () {
-    expect(backdrops.length, 16);
+  test('16 fondos del gacha, con el reparto de rareza de los premios', () {
+    // Y uno más que da la amistad de Tama Kōen, fuera del gacha.
+    expect(backdrops.length, 17);
+    expect(backdrops.where((b) => b.koen).map((b) => b.key), ['bg_koen']);
     final byRarity = <Rarity, int>{
       for (final r in Rarity.values) r: backdropsOf(r).length,
     };

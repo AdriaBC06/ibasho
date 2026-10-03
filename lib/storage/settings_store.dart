@@ -31,6 +31,7 @@ class Preferences {
     this.koroOpened = false,
     this.odoriOpened = false,
     this.hatarakiOpened = false,
+    this.koenOpened = false,
     this.hatarakiHelpSeen = false,
     this.hatarakiTrack = '',
     this.ohiruneOpened = false,
@@ -102,6 +103,9 @@ class Preferences {
   /// El canal de Hatarakitama ya se ha desenvuelto.
   final bool hatarakiOpened;
 
+  /// Tama Kōen (0.9.0) llega envuelto hasta que se abre.
+  final bool koenOpened;
+
   /// La ayuda de Hatarakitama ya ha salido sola una vez.
   final bool hatarakiHelpSeen;
 
@@ -150,6 +154,7 @@ class Preferences {
     bool? koroOpened,
     bool? odoriOpened,
     bool? hatarakiOpened,
+    bool? koenOpened,
     bool? hatarakiHelpSeen,
     String? hatarakiTrack,
     bool? ohiruneOpened,
@@ -177,6 +182,7 @@ class Preferences {
     koroOpened: koroOpened ?? this.koroOpened,
     odoriOpened: odoriOpened ?? this.odoriOpened,
     hatarakiOpened: hatarakiOpened ?? this.hatarakiOpened,
+    koenOpened: koenOpened ?? this.koenOpened,
     hatarakiHelpSeen: hatarakiHelpSeen ?? this.hatarakiHelpSeen,
     hatarakiTrack: hatarakiTrack ?? this.hatarakiTrack,
     ohiruneOpened: ohiruneOpened ?? this.ohiruneOpened,
@@ -206,6 +212,7 @@ class Preferences {
     'koroOpened': koroOpened,
     'odoriOpened': odoriOpened,
     'hatarakiOpened': hatarakiOpened,
+    'koenOpened': koenOpened,
     'hatarakiHelpSeen': hatarakiHelpSeen,
     'hatarakiTrack': hatarakiTrack,
     'ohiruneOpened': ohiruneOpened,
@@ -239,6 +246,7 @@ class Preferences {
       koroOpened: (json['koroOpened'] as bool?) ?? false,
       odoriOpened: (json['odoriOpened'] as bool?) ?? false,
       hatarakiOpened: (json['hatarakiOpened'] as bool?) ?? false,
+      koenOpened: (json['koenOpened'] as bool?) ?? false,
       hatarakiHelpSeen: (json['hatarakiHelpSeen'] as bool?) ?? false,
       hatarakiTrack: (json['hatarakiTrack'] as String?) ?? '',
       ohiruneOpened: (json['ohiruneOpened'] as bool?) ?? false,

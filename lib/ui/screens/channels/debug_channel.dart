@@ -274,6 +274,7 @@ class _BonusSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context)!;
     final bonus = ref.watch(loginBonusProvider);
+    final gift = ref.watch(dailyGiftProvider);
     return SectionCard(
       title: l.debugBonus,
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 18),
@@ -309,6 +310,21 @@ class _BonusSection extends ConsumerWidget {
                 onPressed: bonus.claimedToday
                     ? () async {
                         final ok = await ref.read(loginBonusProvider.notifier).debugReset();
+                        if (!ok && context.mounted) {
+                          showIbashoToast(context, l.debugBonusResetFailed, isError: true);
+                        }
+                      }
+                    : null,
+              ),
+              IbashoButton(
+                key: const Key('debug.gift.reset'),
+                label: l.debugGiftReset,
+                glyph: Glyph.refresh,
+                tone: ButtonTone.quiet,
+                height: 40,
+                onPressed: gift.claimedToday
+                    ? () async {
+                        final ok = await ref.read(dailyGiftProvider.notifier).debugReset();
                         if (!ok && context.mounted) {
                           showIbashoToast(context, l.debugBonusResetFailed, isError: true);
                         }
@@ -559,7 +575,7 @@ class _HatarakiSection extends ConsumerWidget {
     final game = ref.watch(hatarakiProvider).game;
     final hataraki = ref.read(hatarakiProvider.notifier);
     final prefs = ref.read(preferencesProvider.notifier);
-    final track = ref.watch(preferencesProvider.select((p) => p.hatarakiTrack));
+    final track = ref.watch(musicLibraryProvider.select((m) => m.gameTracks['hataraki'])) ?? '';
     Widget button(String key, String label, Glyph glyph, VoidCallback? onPressed, {ButtonTone? tone}) =>
         IbashoButton(
           key: Key('debug.hataraki.$key'),
@@ -635,7 +651,10 @@ class _HatarakiSection extends ConsumerWidget {
                 () {
                   // Pasa por las opciones: por turnos, asa, mizuba, yuyake.
                   const ids = ['', 'asa', 'mizuba', 'yuyake'];
-                  unawaited(prefs.setHatarakiTrack(ids[(ids.indexOf(track) + 1) % ids.length]));
+                  final next = ids[(ids.indexOf(track) + 1) % ids.length];
+                  unawaited(ref
+                      .read(musicLibraryProvider.notifier)
+                      .selectGameTrack('hataraki', next.isEmpty ? null : next));
                 },
               ),
               button('reset', l.debugHatarakiReset, Glyph.trash, () async {

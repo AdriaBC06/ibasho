@@ -14,12 +14,20 @@ Las canciones se generan con `tool/gen_odori_music.py`, que se encarga de los in
 | `kiritan` | Tohoku Kiritan | NEUTRINO (CPU) | zunko.jp: no comercial sin pedir permiso, sin política, religión ni R-18 |
 | `zundamon` | Zundamon | NEUTRINO | Igual que `kiritan` |
 | `merrow` | Merrow | NEUTRINO | STUDIO NEUTRINO: uso comercial y no comercial, crédito opcional |
+| `reina` | Reina | NEUTRINO | Igual que `merrow` (0.9.0) |
+| `nakumo`, `runo`, `soma` | Nakumo, Runo, Soma (voces de chico) | NEUTRINO, una octava por debajo (`VOICE_OCTAVE`) | Igual que `merrow` (0.9.0) |
 
 - **Momone Momo:** pendiente. El usuario la descarga a mano desde bowlroll (https://bowlroll.net/file/38844, VCV 2011 «Soft»). Condiciones de uso: http://www36.atwiki.jp/momonemomo/pages/39.html. Irá en `~/.cache/ibasho-voices/`. El renderizador UTAU le vale con otra `UtauBank`.
 - **Ibasho no gana dinero**, y eso encaja con todas estas licencias. Si algún día lo hiciera, habría que quitar Teto, Kiritan y Zundamon o pedir permiso.
 - **NEUTRINO prohíbe usar su salida como entrada de conversión de voz.** Por eso a Kiritan, Zundamon y Merrow **no** se les aplica WORLD ni formantes. Solo se retoca su `.f0` y se vuelve a generar con `--skip-timing --skip-f0`, que es el flujo oficial. La EQ y la mezcla sí están permitidas.
 - **Teto puede figurar como cantante en el juego**, incluso con fan-art. Crédito de cortesía: «Kasane Teto © TWINDRILL».
 - **Las canciones con voz se licencian aparte del GPL-3.** Hay que anotarlo en `CREDITS.md` y en `lib/core/credits.dart`.
+
+## Qué va en la app (desde la 0.9.0)
+
+- **Solo van Teto y Zundamon** (más la instrumental y `yako_en_teto`). Las 18 mezclas por canción hacían pesar Odori 335 MB. El resto de voces se generaron y se guardan en `odori-reserva/` (en `.gitignore`, misma estructura que `assets/odori/`). Para volver a meter una, se copian su `.ogg` y su `.json` a `assets/odori/<id>/`: el catálogo saca las versiones de los archivos.
+- **Calidad:** `libvorbis -q:a 3` (~110 kbps). Con q6 cada versión pesaba el doble sin que se notara en el juego.
+- **Nivel de la voz:** `vocal_match` iguala la sonoridad media de la voz con la de la instrumental donde canta (`VOCAL_LEVEL_DB`, 0 dB). Antes se normalizaba por pico y Teto y Zundamon quedaban unos 3 dB por debajo de Merrow, casi tapadas.
 
 ## Preparar el entorno (no va en el repositorio)
 
@@ -40,7 +48,16 @@ Las canciones se generan con `tool/gen_odori_music.py`, que se encarga de los in
     - Kiritan: `ntrn_75df79627c12fefaefe3b7ff`
     - Zundamon: `ntrn_c5db86b7258171a4edd2721e`
 - **Descomprimir NEUTRINO:** después hay que hacer `chmod -R u+w` y `chmod +x bin/*`.
-- **La GPU no funciona:** el proveedor CUDA de onnxruntime pide `libcublasLt.so.12`, y en el sistema está la 13. Se usa la CPU, sin `-m`, y tarda unos 8 s por frase de 20 s.
+- **GPU (desde el 2026-10-02):** el proveedor CUDA de onnxruntime 1.19.2 que trae NEUTRINO está compilado contra CUDA 12 (`libcublasLt.so.12`, `libcudart.so.12`, `libcufft.so.11`, `libcurand.so.10`, cuDNN 9) y en el sistema está la 13, así que con `-m` aborta. Se arregla poniendo las de CUDA 12 aparte, sin tocar el sistema (unos 2,7 GB; ya están instaladas en `~/.cache/ibasho-voices/cuda12`):
+
+  ```
+  uv pip install --target ~/.cache/ibasho-voices/cuda12 \
+    --python-platform x86_64-manylinux_2_28 --python-version 3.12 \
+    nvidia-cublas-cu12 nvidia-cuda-runtime-cu12 "nvidia-cufft-cu12<11.3" \
+    nvidia-curand-cu12 "nvidia-cudnn-cu12>=9,<10"
+  ```
+
+  Después se lanza `bin/neutrino` con `-m` y con `cuda12/nvidia/{cublas,cudnn,curand,cuda_runtime,cufft}/lib` **antes** de `bin/` en `LD_LIBRARY_PATH` (`bin/` trae un cuDNN para CUDA 13). Medido en limpio con una RTX 4060 Ti 16 GB y la misma partitura de 115 s (Reina): **110 s por CPU y 48 s por GPU, 2,3 veces más rápido**, y además deja la CPU libre para WORLD y la mezcla. `_neutrino_run` (`tool/odori_voices.py`) lo hace solo si existe esa carpeta; sin ella, o con `ODORI_CPU=1`, va por CPU, sin `-m`, a unos 8 s por frase de 20 s.
 - **Python:** un venv con `numpy scipy pyworld pysinsy cython "setuptools<80"`.
 - **Ejecutar:** `venv/bin/python tool/gen_odori_music.py [id ...]`.
 

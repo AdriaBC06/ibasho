@@ -13,6 +13,7 @@ import '../../../backend/missions.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/login_bonus.dart' show bonusDay;
 import '../../../state/providers.dart';
+import '../../../state/missions.dart' show MissionsState;
 import '../../../theme/skin.dart';
 import '../../../theme/type.dart';
 import '../../layout.dart';
@@ -27,6 +28,16 @@ String _missionLabel(L l, MissionEvent event) => switch (event) {
       MissionEvent.play => l.missionPlay,
       MissionEvent.pull => l.missionPull,
       MissionEvent.buy => l.missionBuy,
+      MissionEvent.pet => l.missionPet,
+      MissionEvent.gift => l.missionGift,
+      MissionEvent.koen => l.missionKoen,
+      MissionEvent.chat => l.missionChat,
+    };
+
+String _repeatLabel(L l, RepeatMission mission) => switch (mission) {
+      RepeatMission.play => l.missionRepeatPlay(mission.step),
+      RepeatMission.feed => l.missionRepeatFeed(mission.step),
+      RepeatMission.pet => l.missionRepeatPet(mission.step),
     };
 
 Glyph _missionGlyph(MissionEvent event) => switch (event) {
@@ -34,6 +45,10 @@ Glyph _missionGlyph(MissionEvent event) => switch (event) {
       MissionEvent.play => Glyph.play,
       MissionEvent.pull => Glyph.gift,
       MissionEvent.buy => Glyph.yatai,
+      MissionEvent.pet => Glyph.heart,
+      MissionEvent.gift => Glyph.gift,
+      MissionEvent.koen => Glyph.park,
+      MissionEvent.chat => Glyph.chat,
     };
 
 /// Las misiones diarias y semanales de la cuenta. Una sola columna con dos
@@ -107,6 +122,13 @@ class MissionsChannel extends ConsumerWidget {
                   ),
                   SizedBox(height: layout.pick(10, 8)),
                 ],
+                SizedBox(height: layout.pick(22, 16)),
+                Text(l.missionsRepeatTitle, style: Ty.title),
+                SizedBox(height: layout.pick(14, 10)),
+                for (final mission in RepeatMission.values) ...[
+                  _repeatRow(context, ref, l, missions, mission, week),
+                  SizedBox(height: layout.pick(10, 8)),
+                ],
               ],
             ),
           ),
@@ -116,8 +138,38 @@ class MissionsChannel extends ConsumerWidget {
   }
 }
 
+/// Una repetible: el pie cuenta hacia el siguiente cobro; con las tres
+/// cobradas se queda como hecha hasta la semana que viene.
+Widget _repeatRow(BuildContext context, WidgetRef ref, L l, MissionsState missions, RepeatMission mission, int week) {
+  final claimed = missions.repeatsClaimed(mission, week);
+  final done = (missions.tally(mission.event, week) - claimed * mission.step).clamp(0, mission.step);
+  return _MissionRow(
+    key: ValueKey<String>('missions.repeat.${mission.name}'),
+    glyph: _missionGlyph(mission.event),
+    label: _repeatLabel(l, mission),
+    reward: l.missionsRepeatProgress(
+      l.missionsReward(repeatMissionReward, l.gachaTicketGachaken),
+      done,
+      mission.step,
+      claimed,
+      repeatMissionTimes,
+    ),
+    done: missions.canClaimRepeat(mission, week),
+    claimed: claimed >= repeatMissionTimes,
+    onClaim: () async {
+      final ok = await ref.read(missionsProvider.notifier).claimRepeat(mission, week);
+      if (ok) {
+        AudioService.instance.play(Sfx.chime);
+      } else if (context.mounted) {
+        AudioService.instance.play(Sfx.error);
+      }
+    },
+  );
+}
+
 class _MissionRow extends StatelessWidget {
   const _MissionRow({
+    super.key,
     required this.glyph,
     required this.label,
     required this.reward,

@@ -55,9 +55,11 @@ enum PrizeSlot {
 @immutable
 ///
 /// Si [shop], no sale en el gacha: se compra en el Yatai, como articulo
-/// `prize_<clave>` (`ShopItem.idForPrize`).
+/// `prize_<clave>` (`ShopItem.idForPrize`). Si [koen], tampoco: lo da la
+/// amistad entre Tamas de Tama Kōen.
 class Prize {
-  const Prize(this.id, this.rarity, this.slot, this.variants, {this.front = false, this.shop = false});
+  const Prize(this.id, this.rarity, this.slot, this.variants,
+      {this.front = false, this.shop = false, this.koen = false, this.variantSlots = const {}});
 
   final String id;
   final Rarity rarity;
@@ -65,6 +67,13 @@ class Prize {
   final List<String> variants;
   final bool front;
   final bool shop;
+  final bool koen;
+
+  /// Las variantes que van en otro sitio que [slot]: la mitad derecha del
+  /// hilo rojo se ata a su izquierda.
+  final Map<String, PrizeSlot> variantSlots;
+
+  PrizeSlot slotOf(String variant) => variantSlots[variant] ?? slot;
 
   GachaCategory get category => slot == PrizeSlot.head ? GachaCategory.hats : GachaCategory.accessories;
 
@@ -74,13 +83,23 @@ class Prize {
 /// Una variante concreta: lo que se gana, se guarda y se pone.
 @immutable
 class PrizeItem {
-  const PrizeItem(this.prize, this.variant);
+  const PrizeItem(this.prize, this.variant, {this.code});
 
   final Prize prize;
   final String variant;
 
-  String get key => '${prize.id}_$variant';
-  String get asset => 'assets/prizes/$key.svg';
+  /// El color de la pareja, en el accesorio de pareja de Tama Kōen
+  /// (`charm_pendant_l_3fa9c1`): seis cifras hexadecimales que van al final
+  /// de la clave. El dibujo es el mismo para todas y se tiñe al pintarlo.
+  final String? code;
+
+  String get key => code == null ? '${prize.id}_$variant' : '${prize.id}_${variant}_$code';
+
+  /// Donde va puesto.
+  PrizeSlot get slot => prize.slotOf(variant);
+
+  String get asset =>
+      code == null ? 'assets/prizes/$key.svg' : 'assets/koen/${prize.id}_$variant.svg';
 
   /// La parte de delante, si el premio va en dos partes.
   String? get frontAsset => prize.front ? 'assets/prizes/${key}_front.svg' : null;
@@ -161,7 +180,38 @@ const List<Prize> wearablePrizes = <Prize>[
   Prize('rgb_wings', Rarity.mu, PrizeSlot.back, ['rainbow']),
   // Del Yatai, no del gacha (0.8.0).
   Prize('poop', Rarity.n, PrizeSlot.ground, ['brown'], shop: true),
+  // Del Yatai, sección de accesorios (0.9.0).
+  Prize('bucket_hat', Rarity.n, PrizeSlot.head, ['khaki'], shop: true),
+  Prize('party_hat', Rarity.r, PrizeSlot.head, ['pink'], shop: true),
+  Prize('grad_cap', Rarity.r, PrizeSlot.head, ['black'], shop: true),
+  Prize('pirate_hat', Rarity.sr, PrizeSlot.head, ['black'], shop: true),
+  Prize('tiara', Rarity.ssr, PrizeSlot.head, ['silver'], shop: true),
+  Prize('suzu', Rarity.n, PrizeSlot.neck, ['red'], shop: true),
+  Prize('heart_shades', Rarity.r, PrizeSlot.eyes, ['pink'], shop: true),
+  Prize('teddy', Rarity.r, PrizeSlot.left, ['brown'], shop: true),
+  Prize('wagasa', Rarity.sr, PrizeSlot.right, ['red'], shop: true),
+  Prize('butterfly_wings', Rarity.ssr, PrizeSlot.back, ['blue'], shop: true),
+  // De Tama Kōen, no del gacha (0.9.0).
+  Prize('momiji', Rarity.sr, PrizeSlot.head, ['red'], koen: true),
 ];
+
+/// El accesorio de pareja de Tama Kōen (0.9.0): no sale en el gacha ni en
+/// el catálogo. Cada dúo tiene el suyo, con su color en la clave
+/// (`PrizeItem.code`), y cada Tama lleva una mitad (`l` o `r`).
+const List<Prize> koenCharmPrizes = <Prize>[
+  Prize('charm_pendant', Rarity.ssr, PrizeSlot.neck, ['l', 'r'], koen: true),
+  Prize('charm_twins', Rarity.ssr, PrizeSlot.head, ['l', 'r'], koen: true),
+  Prize('charm_thread', Rarity.ssr, PrizeSlot.right, ['l', 'r'], koen: true, variantSlots: {'r': PrizeSlot.left}),
+];
+
+final RegExp _charmKey = RegExp(r'^(charm_[a-z]+)_([lr])_([0-9a-f]{6})$');
+
+PrizeItem? _charmItem(String key) {
+  final m = _charmKey.firstMatch(key);
+  if (m == null) return null;
+  final prize = koenCharmPrizes.where((p) => p.id == m[1]).firstOrNull;
+  return prize == null ? null : PrizeItem(prize, m[2]!, code: m[3]);
+}
 
 /// Los que se compran en el Yatai, en el orden del catalogo.
 List<PrizeItem> get shopPrizeItems => [
@@ -176,7 +226,7 @@ final Map<String, PrizeItem> _byKey = <String, PrizeItem>{
 
 /// La variante con clave [key], o `null` si esta version de la app no la
 /// conoce (un premio nuevo puesto desde una version mas moderna).
-PrizeItem? prizeItem(String? key) => key == null ? null : _byKey[key];
+PrizeItem? prizeItem(String? key) => key == null ? null : _byKey[key] ?? _charmItem(key);
 
 /// Todas las variantes de una categoria, en el orden del catalogo.
 List<PrizeItem> prizeItems(GachaCategory category) => [
@@ -188,5 +238,5 @@ List<PrizeItem> prizeItems(GachaCategory category) => [
 /// catalogo. Las del Yatai no salen.
 List<PrizeItem> prizeItemsOf(GachaCategory category, Rarity rarity) => [
       for (final p in wearablePrizes)
-        if (!p.shop && p.category == category && p.rarity == rarity) ...p.items,
+        if (!p.shop && !p.koen && p.category == category && p.rarity == rarity) ...p.items,
     ];

@@ -19,8 +19,9 @@ const int maxPurchaseQty = 99;
 /// Tope de unidades por comida en la despensa. Las reglas exigen lo mismo.
 const int pantryMaxUnits = 9999;
 
-/// Las tres secciones del Yatai.
-enum ShopSection { games, tamas, gacha }
+/// Las secciones del Yatai. Lo que se pone un Tama tiene la suya desde la
+/// 0.9.0 (antes iba con la comida).
+enum ShopSection { games, tamas, accessories, gacha }
 
 /// Un articulo del catalogo. El catalogo entero es codigo, no datos de la
 /// base: solo el precio de cada uno vive en `/shop/prices/{id}`.
@@ -62,7 +63,7 @@ class ShopItem {
   /// cancion. Se guarda en `/users/{cuenta}/odori/songs/{cancion}`.
   final String? odoriSong;
 
-  /// Solo en lo que se pone un Tama (seccion de Tamas, 0.8.0): la clave del
+  /// Solo en lo que se pone un Tama (seccion de accesorios): la clave del
   /// premio (`poop_brown`). Se guarda en `/users/{cuenta}/prizes/{clave}`,
   /// como lo que da el gacha, y se compra una sola vez.
   final String? prize;
@@ -91,7 +92,7 @@ final List<ShopItem> shopCatalog = List<ShopItem>.unmodifiable(<ShopItem>[
   for (final food in TamaFood.values)
     ShopItem(id: ShopItem.idForFood(food), section: ShopSection.tamas, food: food),
   for (final item in shopPrizeItems)
-    ShopItem(id: ShopItem.idForPrize(item.key), section: ShopSection.tamas, prize: item.key),
+    ShopItem(id: ShopItem.idForPrize(item.key), section: ShopSection.accessories, prize: item.key),
   for (final kind in TicketKind.values)
     ShopItem(id: kind.itemId, section: ShopSection.gacha, ticket: kind),
   for (var tier = 1; tier <= 4; tier++)

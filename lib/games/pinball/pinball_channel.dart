@@ -260,7 +260,7 @@ class _PinballChannelState extends ConsumerState<PinballChannel>
   // --- Tama, bocadillo y carteles -------------------------------------------------
 
   void _pickTama() {
-    final tamas = ref.read(tamasProvider).tamas;
+    final tamas = ref.read(tamasProvider).companions;
     if (tamas.isEmpty) {
       _tamaId = null;
       return;
@@ -639,7 +639,7 @@ class _PinballChannelState extends ConsumerState<PinballChannel>
     final l = L.of(context)!;
     final layout = Layout.of(context);
     final tamasState = ref.watch(tamasProvider);
-    final tama = _currentTama(tamasState.tamas);
+    final tama = _currentTama(tamasState.companions);
     // Las bolas que quedaron sin guardar esperan a que se lea el gacha.
     ref.listen<bool>(gachaProvider.select((s) => s.loaded), (was, loaded) {
       if (loaded && was != true) unawaited(_sync());

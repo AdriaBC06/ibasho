@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 72">
+  <!-- Accesorio de pareja: el gorrito gemelo del Tama de la izquierda. La
+       punta y la borla se inclinan hacia la derecha, hacia el otro. El borde
+       apoya en y = 58, de x = 18 a 82. Gris, se tiñe al pintarlo. -->
+  <defs>
+    <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D4D4D4"/>
+    </linearGradient>
+  </defs>
+  <path d="M20 56 Q18 30 44 22 Q66 16 82 12 Q76 30 80 56 Z" fill="url(#cap)" stroke="#8C8C8C" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M30 40 Q34 30 44 26" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <rect x="16" y="52" width="68" height="12" rx="6" fill="#ECECEC" stroke="#8C8C8C" stroke-width="2.2"/>
+  <path d="M50 61.5 Q44 57.5 44.5 55 Q45.2 52.6 47.8 53.4 Q49.2 53.9 50 55.2 Q50.8 53.9 52.2 53.4 Q54.8 52.6 55.5 55 Q56 57.5 50 61.5 Z" fill="#BDBDBD" stroke="#8C8C8C" stroke-width="1.2" stroke-linejoin="round"/>
+  <circle cx="84" cy="11" r="8" fill="#F4F4F4" stroke="#8C8C8C" stroke-width="2.2"/>
+  <circle cx="81.5" cy="8.5" r="2.4" fill="#FFFFFF"/>
+</svg>

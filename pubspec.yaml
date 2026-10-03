@@ -1,7 +1,7 @@
 name: ibasho
 description: "Ibasho — 居場所, tu lugar. Un espacio de juegos multiplataforma."
 publish_to: 'none'
-version: 0.8.1+17
+version: 0.9.0+18
 
 environment:
   sdk: ^3.11.0
@@ -60,6 +60,8 @@ flutter:
     - assets/audio/sfx/
     - assets/fonts/LICENSES/
     - assets/prizes/
+    # Tama Kōen: el accesorio de pareja, en gris para teñirlo.
+    - assets/koen/
     # Odori: una carpeta por cancion (audio, partitura y letra).
     - assets/odori/hanabi/
     - assets/odori/ibasho/

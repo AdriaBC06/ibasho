@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 67">
+  <!-- Accesorio de pareja: la mitad izquierda del corazón partido, colgada
+       de un cordón. Va en gris y se tiñe con el color de la pareja al
+       pintarlo (BlendMode.modulate). El corte en zigzag mira al otro Tama. -->
+  <defs>
+    <linearGradient id="half" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D2D2D2"/>
+    </linearGradient>
+  </defs>
+  <path d="M6 4 Q40 34 74 4" fill="none" stroke="#A6A6A6" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="40" cy="19" r="2.6" fill="#E6E6E6" stroke="#8C8C8C" stroke-width="1.4"/>
+  <g transform="translate(40 19) scale(1.45) translate(-40 -19)">
+    <path d="M40 26 Q35 20 29 22 Q22 25 23.5 33 Q25.5 41 40 50 L37 45 L41 41 L37 37 L41 33 L37 29 Z"
+          fill="url(#half)" stroke="#8C8C8C" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M27.5 28 Q29 24.5 32.5 24.4" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -4,8 +4,30 @@
 
 import 'dart:math' as math;
 
-/// Las siete piezas.
-enum TsumikiPiece { i, o, t, s, z, j, l }
+/// Las siete piezas, y la casilla gris de las filas que manda el otro en el
+/// versus (esa nunca cae: solo sube desde abajo).
+enum TsumikiPiece {
+  i,
+  o,
+  t,
+  s,
+  z,
+  j,
+  l,
+  garbage;
+
+  /// Las que salen de la bolsa.
+  static const List<TsumikiPiece> playable = [i, o, t, s, z, j, l];
+
+  /// Una letra por casilla, para mandar el tablero por la red.
+  String get code => this == garbage ? 'g' : name;
+
+  static TsumikiPiece? fromCode(String c) => c == 'g'
+      ? garbage
+      : c == '.'
+          ? null
+          : TsumikiPiece.values.firstWhere((p) => p.name == c, orElse: () => garbage);
+}
 
 enum TsumikiStatus { ready, playing, paused, over }
 
@@ -20,6 +42,7 @@ class LockEvent {
     required this.backToBack,
     required this.levelUp,
     required this.gameOver,
+    this.garbageIn = 0,
   });
 
   /// Casillas (`y * ancho + x`) donde se ha quedado la pieza.
@@ -36,6 +59,9 @@ class LockEvent {
   final bool backToBack;
   final bool levelUp;
   final bool gameOver;
+
+  /// Filas grises que han subido al asentarse (versus).
+  final int garbageIn;
 }
 
 /// La pieza que cae.
@@ -132,6 +158,10 @@ class TsumikiGame {
   /// Lo que dura el destello de las filas antes de desaparecer.
   static const double clearDelay = .36;
 
+  /// Filas grises que suben como mucho de una vez; el resto espera a la
+  /// siguiente pieza.
+  static const int garbagePerLock = 8;
+
   final int startLevel;
   final math.Random _random;
   final List<TsumikiPiece> _bag = <TsumikiPiece>[];
@@ -159,14 +189,65 @@ class TsumikiGame {
   List<int> clearing = const <int>[];
   double _clearLeft = 0;
 
+  /// Versus: cuanto mas rapido cae (un sabotaje lo sube) y si la reserva
+  /// esta bloqueada.
+  double speedFactor = 1;
+  bool holdLocked = false;
+
+  /// Filas grises por subir, en tandas: cada una con su hueco.
+  final List<({int rows, int hole})> _garbage = [];
+
   int get level => startLevel + lines ~/ 10;
 
   /// Segundos por fila, la curva de siempre: 1 s en el nivel 1 y cada vez
   /// menos, hasta casi caer de golpe hacia el nivel 20.
   double get gravity {
     final l = math.min(level, 20) - 1;
-    return math.pow(.8 - l * .007, l).toDouble();
+    return math.pow(.8 - l * .007, l).toDouble() / speedFactor;
   }
+
+  /// Filas grises que esperan para subir.
+  int get pendingGarbage => _garbage.fold(0, (a, g) => a + g.rows);
+
+  /// Recibe [rows] filas grises con el hueco en la columna [hole]. Suben al
+  /// asentarse la siguiente pieza que no borre filas.
+  void queueGarbage(int rows, int hole) {
+    if (rows <= 0) return;
+    _garbage.add((rows: rows, hole: hole.clamp(0, width - 1)));
+  }
+
+  /// Borrar filas compensa las grises que esperan: devuelve lo que sobra
+  /// para mandarlo al otro.
+  int cancelGarbage(int rows) {
+    var left = rows;
+    while (left > 0 && _garbage.isNotEmpty) {
+      final g = _garbage.first;
+      if (g.rows <= left) {
+        left -= g.rows;
+        _garbage.removeAt(0);
+      } else {
+        _garbage[0] = (rows: g.rows - left, hole: g.hole);
+        left = 0;
+      }
+    }
+    return left;
+  }
+
+  /// El tablero visible, una letra por casilla y fila a fila desde arriba
+  /// ('.' vacia). Para pintar al otro en el versus.
+  String encodeBoard() {
+    final b = StringBuffer();
+    for (var i = hiddenRows * width; i < cells.length; i++) {
+      b.write(cells[i]?.code ?? '.');
+    }
+    return b.toString();
+  }
+
+  /// Lo contrario de [encodeBoard]; lo que no encaje se queda vacio.
+  static List<TsumikiPiece?> decodeBoard(String code) => [
+        for (var i = 0; i < width * visibleRows; i++)
+          i < code.length ? TsumikiPiece.fromCode(code[i]) : null,
+      ];
 
   /// Progreso del destello de las filas completas, de 0 a 1.
   double get clearProgress => clearing.isEmpty ? 0 : 1 - _clearLeft / clearDelay;
@@ -268,7 +349,7 @@ class TsumikiGame {
 
   /// Guarda la pieza (una vez por pieza) y saca la guardada o la siguiente.
   bool hold() {
-    if (!_live || !canHold) return false;
+    if (!_live || !canHold || holdLocked) return false;
     final type = current!.type;
     final out = held;
     held = type;
@@ -306,7 +387,7 @@ class TsumikiGame {
   // --- Por dentro ---------------------------------------------------------
 
   void _refill() {
-    final bag = List<TsumikiPiece>.of(TsumikiPiece.values)..shuffle(_random);
+    final bag = List<TsumikiPiece>.of(TsumikiPiece.playable)..shuffle(_random);
     _bag.addAll(bag);
   }
 
@@ -386,10 +467,12 @@ class TsumikiGame {
 
     // Se asienta entera por encima del tablero: fin.
     final over = full.isEmpty && hidden;
+    var garbageIn = 0;
     if (over) {
       status = TsumikiStatus.over;
     } else if (full.isEmpty) {
-      _spawn(_take());
+      garbageIn = _riseGarbage();
+      if (status != TsumikiStatus.over) _spawn(_take());
     }
     return LockEvent(
       cells: placed,
@@ -399,7 +482,34 @@ class TsumikiGame {
       backToBack: b2b,
       levelUp: level > levelBefore,
       gameOver: status == TsumikiStatus.over,
+      garbageIn: garbageIn,
     );
+  }
+
+  /// Sube las filas grises que esperan, hasta [garbagePerLock]. Si algo se
+  /// sale por arriba, se acaba.
+  int _riseGarbage() {
+    var n = 0;
+    while (_garbage.isNotEmpty && n < garbagePerLock) {
+      final g = _garbage.first;
+      final take = math.min(g.rows, garbagePerLock - n);
+      for (var k = 0; k < take; k++) {
+        for (var x = 0; x < width; x++) {
+          if (cells[x] != null) status = TsumikiStatus.over;
+        }
+        cells.setRange(0, cells.length - width, cells, width);
+        for (var x = 0; x < width; x++) {
+          cells[cells.length - width + x] = x == g.hole ? null : TsumikiPiece.garbage;
+        }
+      }
+      n += take;
+      if (take == g.rows) {
+        _garbage.removeAt(0);
+      } else {
+        _garbage[0] = (rows: g.rows - take, hole: g.hole);
+      }
+    }
+    return n;
   }
 
   void _finishClear() {

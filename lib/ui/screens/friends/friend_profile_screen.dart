@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../audio/audio_service.dart';
+import '../../../backend/koen_bonds.dart' show KoenFriendLevel;
 import '../../../backend/models.dart';
 import '../../../backend/social.dart';
 import '../../../backend/tama.dart';
@@ -17,10 +18,14 @@ import '../../../core/birthday.dart';
 import '../../../core/clock_format.dart';
 import '../../../core/timezones.dart';
 import '../../../games/hatarakitama/hataraki_channel.dart' show openHatarakiVisit;
+import '../../../games/koen/koen_friendship.dart';
+import '../../../games/koen/koen_social.dart';
+import '../../../games/tsumiki/tsumiki_menu.dart' show TsumikiScoreChip;
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/people.dart';
 import '../../../state/profile.dart';
 import '../../../state/providers.dart';
+import '../../../state/tsumiki_versus.dart' show tsumikiScoreProvider;
 import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
@@ -51,6 +56,16 @@ class FriendProfileScreen extends ConsumerStatefulWidget {
 
 class _FriendProfileScreenState extends ConsumerState<FriendProfileScreen> {
   MusicTrack? _playing;
+
+  @override
+  void initState() {
+    super.initState();
+    // La racha del dúo con este amigo, al día aunque no se haya abierto el
+    // parque.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(refreshKoenDuos(context, ref));
+    });
+  }
 
   @override
   void dispose() {
@@ -123,6 +138,7 @@ class _FriendProfileScreenState extends ConsumerState<FriendProfileScreen> {
     );
 
     final layout = Layout.of(context);
+    listenKoenDuos(context, ref);
 
     return ChannelScaffold(
       title: name,
@@ -133,6 +149,8 @@ class _FriendProfileScreenState extends ConsumerState<FriendProfileScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (friendship != null && !layout.tall) ...[
+            KoenFriendDuoButton(friend: account),
+            const SizedBox(width: 6),
             IbashoButton(
               key: const ValueKey<String>('friend.hataraki'),
               label: l.hatarakiVisit,
@@ -238,6 +256,8 @@ class _Body extends ConsumerWidget {
             ),
             if (onUnfriend != null) ...[
               const SizedBox(height: 14),
+              KoenFriendDuoButton(friend: accountId, expand: true, height: 48),
+              const SizedBox(height: 10),
               IbashoButton(
                 key: const ValueKey<String>('friend.hataraki'),
                 label: l.hatarakiVisit,
@@ -413,6 +433,13 @@ class _Identity extends ConsumerWidget {
                   runSpacing: 8,
                   // En vertical no hay sitio para tres filas de insignias.
                   children: [
+                    if (ref.watch(koenFriendLevelsProvider).valueOrNull?[accountId] case final koen?
+                        when koen != KoenFriendLevel.none)
+                      KoenFriendChipButton(friend: accountId, level: koen),
+                    if (ref.watch(koenDuoWithProvider(accountId)) case final duo?)
+                      SizedBox(height: 30, child: Center(widthFactor: 1, child: KoenStreakLine(duo: duo))),
+                    if (ref.watch(tsumikiScoreProvider(accountId)).valueOrNull case final score? when !score.isEmpty)
+                      TsumikiScoreChip(friend: accountId),
                     for (final badge in tall ? badges.take(3) : badges) BadgeChip(badge: badge),
                   ],
                 ),

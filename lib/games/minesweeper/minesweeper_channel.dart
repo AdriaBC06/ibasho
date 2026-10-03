@@ -195,7 +195,7 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
   // --- Tama y bocadillo -----------------------------------------------------
 
   void _pickTama() {
-    final tamas = ref.read(tamasProvider).tamas;
+    final tamas = ref.read(tamasProvider).companions;
     if (tamas.isEmpty) {
       _tamaId = null;
       return;
@@ -206,7 +206,7 @@ class _MinesweeperChannelState extends ConsumerState<MinesweeperChannel>
   }
 
   Tama? _currentTama() {
-    final tamas = ref.watch(tamasProvider).tamas;
+    final tamas = ref.watch(tamasProvider).companions;
     if (tamas.isEmpty) return null;
     if (_tamaId == null || !tamas.any((t) => t.id == _tamaId)) {
       _tamaId = tamas[_random.nextInt(tamas.length)].id;

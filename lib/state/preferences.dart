@@ -95,6 +95,11 @@ class PreferencesController extends StateNotifier<Preferences> {
       ? Future<void>.value()
       : _commit(state.copyWith(hatarakiOpened: true));
 
+  /// El canal de Tama Kōen ya se ha desenvuelto.
+  Future<void> openKoen() => state.koenOpened
+      ? Future<void>.value()
+      : _commit(state.copyWith(koenOpened: true));
+
   /// La ayuda de Hatarakitama ya ha salido sola.
   Future<void> seeHatarakiHelp() => state.hatarakiHelpSeen
       ? Future<void>.value()

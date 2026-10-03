@@ -20,6 +20,7 @@ class MusicLibraryState {
     this.unlocked = const <String>{},
     this.menuTrack,
     this.profileTrack,
+    this.gameTracks = const <String, String>{},
     this.loaded = false,
   });
 
@@ -33,6 +34,10 @@ class MusicLibraryState {
   /// Pista que suena cuando un amigo abre el perfil. `null`: ninguna, sigue
   /// la de ambiente de quien mira.
   final String? profileTrack;
+
+  /// Lo que suena en cada juego, por `gameId`: una pista o `koro_{hueco}`. Si
+  /// un juego no esta, suena la suya de serie.
+  final Map<String, String> gameTracks;
 
   final bool loaded;
 
@@ -51,12 +56,14 @@ class MusicLibraryState {
     String? menuTrack,
     String? profileTrack,
     bool clearProfileTrack = false,
+    Map<String, String>? gameTracks,
     bool? loaded,
   }) =>
       MusicLibraryState(
         unlocked: unlocked ?? this.unlocked,
         menuTrack: menuTrack ?? this.menuTrack,
         profileTrack: clearProfileTrack ? null : (profileTrack ?? this.profileTrack),
+        gameTracks: gameTracks ?? this.gameTracks,
         loaded: loaded ?? this.loaded,
       );
 }
@@ -98,6 +105,7 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
       final unlocked = <String>{};
       String? menuTrack;
       String? profileTrack;
+      final gameTracks = <String, String>{};
       if (raw is Map) {
         final stored = raw['unlocked'];
         if (stored is Map) {
@@ -107,14 +115,27 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
         }
         if (raw['menuTrack'] is String) menuTrack = raw['menuTrack'] as String;
         if (raw['profileTrack'] is String) profileTrack = raw['profileTrack'] as String;
+        final games = raw['games'];
+        if (games is Map) {
+          games.forEach((game, track) {
+            if (track is String) gameTracks['$game'] = track;
+          });
+        }
       }
       if (!mounted) return;
       state = MusicLibraryState(
         unlocked: unlocked,
         menuTrack: menuTrack,
         profileTrack: profileTrack,
+        gameTracks: gameTracks,
         loaded: true,
       );
+      // Hasta la 0.9.0 la musica de Hatarakitama se guardaba en el equipo.
+      final hataraki = _preferences.state.hatarakiTrack;
+      if (hataraki.isNotEmpty) {
+        if (!gameTracks.containsKey('hataraki')) unawaited(selectGameTrack('hataraki', hataraki));
+        unawaited(_preferences.setHatarakiTrack(''));
+      }
       // Las del gacha que aun no estaban: se apuntan ya (el estado cambia
       // antes de esperar a la red) para que la pista elegida no se pierda.
       unawaited(_adopt());
@@ -205,6 +226,32 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     }
   }
 
+  /// Elige lo que suena en el juego [gameId]: el id de una pista desbloqueada,
+  /// `koro_{hueco}` o `null` para volver a la de serie.
+  Future<void> selectGameTrack(String gameId, String? id) async {
+    if (id != null && koroSlotOfTrack(id) == null) {
+      final track = MusicTrack.values.where((t) => t.id == id).firstOrNull;
+      if (track == null || !state.isUnlocked(track)) return;
+    }
+    final games = {...state.gameTracks};
+    if (id == null) {
+      games.remove(gameId);
+    } else {
+      games[gameId] = id;
+    }
+    state = state.copyWith(gameTracks: games);
+    try {
+      final token = await _session.freshToken();
+      if (id == null) {
+        await _backend.remove('$_path/games/$gameId', idToken: token);
+      } else {
+        await _backend.write('$_path/games/$gameId', id, idToken: token);
+      }
+    } catch (e) {
+      debugPrint('Ibasho: no se ha podido guardar la musica de $gameId ($e)');
+    }
+  }
+
   /// Anade una cancion a la biblioteca la primera vez que se escucha.
   Future<void> markHeard(MusicTrack track) async {
     if (state.isUnlocked(track)) return;
@@ -240,6 +287,7 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
       loaded: true,
       menuTrack: state.menuTrack,
       profileTrack: state.profileTrack,
+      gameTracks: state.gameTracks,
     );
     try {
       await _backend.remove('$_path/unlocked', idToken: await _session.freshToken());

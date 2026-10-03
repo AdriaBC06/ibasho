@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80">
+  <!-- Tricornio pirata con calavera. Apoya en la cabeza en (16..84, 68). -->
+  <defs>
+    <linearGradient id="felt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#808792"/>
+      <stop offset=".6" stop-color="#3B4658"/>
+      <stop offset="1" stop-color="#324051"/>
+    </linearGradient>
+  </defs>
+  <!-- Copa, detras del ala -->
+  <path d="M26 56 C26 34 36 24 50 24 C64 24 74 34 74 56 Z" fill="#324051" stroke="#253646" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Ala levantada de delante, con las dos puntas -->
+  <path d="M4 50 C10 46 18 48 24 44 C34 36 42 34 50 34 C58 34 66 36 76 44 C82 48 90 46 96 50 C94 60 84 70 70 72 Q50 76 30 72 C16 70 6 60 4 50 Z"
+        fill="url(#felt)" stroke="#253646" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Ribete dorado -->
+  <path d="M7 51 C12 48 19 50 25 46 C35 38 42 37 50 37 C58 37 65 38 75 46 C81 50 88 48 93 51"
+        fill="none" stroke="#F5C542" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M7 51 C12 48 19 50 25 46 C35 38 42 37 50 37 C58 37 65 38 75 46 C81 50 88 48 93 51"
+        fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width=".9" stroke-linecap="round"/>
+  <!-- Calavera -->
+  <g transform="translate(50 54)">
+    <path d="M-7 4 L7 -4 M-7 -4 L7 4" stroke="#F4F7FA" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M-6 -3 C-6 -9 6 -9 6 -3 C6 0 4 1 4 3 L-4 3 C-4 1 -6 0 -6 -3 Z" fill="#F4F7FA" stroke="#C9D3DD" stroke-width=".8"/>
+    <circle cx="-2.3" cy="-3.2" r="1.5" fill="#253646"/>
+    <circle cx="2.3" cy="-3.2" r="1.5" fill="#253646"/>
+  </g>
+  <!-- Brillo -->
+  <path d="M20 54 Q26 50 32 46" fill="none" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

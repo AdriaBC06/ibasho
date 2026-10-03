@@ -439,6 +439,11 @@ class Song:
         out = drums * 1.0 + bassb * 0.95 + music * 0.8 + leadb * 0.85 + fx * 0.7
         voc = self.buses["vocal"]
         if np.any(voc):
+            # Cada voz sale de vocal_chain normalizada por pico, y las de
+            # cuerpo suave (Teto, Zundamon, Kiritan) quedaban 3 dB por debajo
+            # de otras. Se iguala la sonoridad media de la voz con la de la
+            # instrumental donde canta, a VOCAL_LEVEL_DB.
+            voc = voc * vocal_match(voc, out, VOCAL_LEVEL_DB)
             # La voz: eco a corchea con punto y sala algo mas larga que la
             # del lead. Sin copias cortas dobladas: hacen de flanger y le
             # cambian el timbre a la cantante.
@@ -471,7 +476,7 @@ class Song:
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", tmp,
              "-af", f"volume={gain:.2f}dB,alimiter=limit=0.95:level=false",
-             "-c:a", "libvorbis", "-q:a", "6", ogg],
+             "-c:a", "libvorbis", "-q:a", "3", ogg],
             check=True,
         )
         os.remove(tmp)
@@ -498,6 +503,23 @@ def third_above(pitch, scale=MAJOR, tonic=60):
     deg = min(range(7), key=lambda i: abs(scale[i] - rel))
     up = deg + 2
     return octave + scale[up % 7] + 12 * (up // 7)
+
+
+# Sonoridad de la voz seca respecto a la instrumental donde canta, en dB.
+VOCAL_LEVEL_DB = 0.0
+
+
+def vocal_match(voc, music, target_db):
+    """Ganancia para que la mediana del RMS de la voz (en tramos de 0,1 s
+    donde canta) quede a target_db de la de la musica en esos tramos."""
+    fr = SR // 10
+    n = min(len(voc), len(music)) // fr * fr
+    v = np.sqrt((voc[:n].mean(axis=1).reshape(-1, fr) ** 2).mean(axis=1))
+    m = np.sqrt((music[:n].mean(axis=1).reshape(-1, fr) ** 2).mean(axis=1))
+    act = v > v.max() * 0.1
+    if not np.any(act):
+        return 1.0
+    return 10 ** (target_db / 20) * np.median(m[act]) / np.median(v[act])
 
 
 def vocal_chain(y):
@@ -1112,8 +1134,8 @@ def song_yako(lang=None, voice=None):
 
 
 YAKO_KEY = {"teto": -5, "teto_en": -5}
-YAKO_VOICES = {"ja": ["sinsy", "teto", "kiritan", "zundamon", "merrow"],
-               "es": ["sinsy", "teto", "kiritan", "zundamon", "merrow"],
+YAKO_VOICES = {"ja": ["sinsy", "teto", "kiritan", "zundamon", "merrow", "reina", "nakumo", "runo", "soma"],
+               "es": ["sinsy", "teto", "kiritan", "zundamon", "merrow", "reina", "nakumo", "runo", "soma"],
                "en": ["teto_en"]}
 
 

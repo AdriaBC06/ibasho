@@ -303,16 +303,19 @@ class Readout extends StatelessWidget {
 /// [rewardCapFor] al dia, y esto es lo que lo deja a la vista en su menu.
 /// Lleno, lo dice y se queda en verde.
 class DailyCoinsMeter extends ConsumerWidget {
-  const DailyCoinsMeter({super.key, required this.game, this.height = 44});
+  const DailyCoinsMeter({super.key, required this.game, this.height = 44, this.earned});
 
   final String game;
   final double height;
+
+  /// Lo cobrado, si no es lo de `rewardsProvider` (el parque de prueba).
+  final int? earned;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context)!;
     final skin = IbashoSkin.of(context);
-    final earned = ref.watch(rewardsProvider.select((r) => r.earnedToday(game)));
+    final int earned = this.earned ?? ref.watch(rewardsProvider.select((r) => r.earnedToday(game)));
     final cap = rewardCapFor(game);
     final full = earned >= cap;
     final t = (earned / cap).clamp(0.0, 1.0);

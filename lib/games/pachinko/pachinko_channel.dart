@@ -477,7 +477,7 @@ class _PachinkoChannelState extends ConsumerState<PachinkoChannel>
   Widget build(BuildContext context) {
     final l = L.of(context)!;
     final layout = Layout.of(context);
-    final tama = _currentTama(ref.watch(tamasProvider).tamas);
+    final tama = _currentTama(ref.watch(tamasProvider).companions);
     if (_wantsTicks && !_ticker.isActive) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (mounted) _kick();

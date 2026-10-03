@@ -25,6 +25,7 @@ Color pieceColor(TsumikiPiece p) => switch (p) {
       TsumikiPiece.z => Art.blockZ,
       TsumikiPiece.j => Art.blockJ,
       TsumikiPiece.l => Art.blockL,
+      TsumikiPiece.garbage => Art.blockGarbage,
     };
 
 /// Tiempos de los efectos, en el reloj de efectos del canal.
