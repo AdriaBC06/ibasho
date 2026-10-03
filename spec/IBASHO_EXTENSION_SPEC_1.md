@@ -1,9 +1,9 @@
 # Ibasho Extension Specification 1.0 — Draft
 
-**Estado:** propuesta técnica externa, no oficial  
-**Versión del documento:** 1.0-draft.1  
-**Objetivo de compatibilidad inicial:** Ibasho 0.9.x+  
-**Autores de la propuesta:** proyecto Kōbō  
+**Estado:** propuesta técnica externa, no oficial
+**Versión del documento:** 1.0-draft.1
+**Objetivo de compatibilidad inicial:** Ibasho 0.9.x+
+**Autores de la propuesta:** proyecto Kōbō
 
 ## 1. Propósito
 

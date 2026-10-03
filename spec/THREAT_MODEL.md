@@ -1,7 +1,7 @@
 # Kōbō / Ibasho Extensions — Threat Model
 
-**Estado:** draft inicial  
-**Modelo:** STRIDE + abuso de producto  
+**Estado:** draft inicial
+**Modelo:** STRIDE + abuso de producto
 
 ## 1. Activos a proteger
 
