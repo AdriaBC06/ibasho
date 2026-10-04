@@ -44,11 +44,22 @@ void main() {
 
   final backend = RestIbashoBackend();
 
-  SessionController newSession() => SessionController(
-        backend: backend,
-        store: FakeSecureStore(),
-        preferences: PreferencesController(FakeSettingsStore(), const Preferences()),
-      );
+  // Cada sesion lleva su backend, como cada app: el websocket compartido se
+  // autentica con la cuenta que ha entrado.
+  final backends = Expando<RestIbashoBackend>();
+  RestIbashoBackend backendOf(SessionController session) => backends[session]!;
+
+  SessionController newSession() {
+    final own = RestIbashoBackend();
+    addTearDown(own.dispose);
+    final session = SessionController(
+      backend: own,
+      store: FakeSecureStore(),
+      preferences: PreferencesController(FakeSettingsStore(), const Preferences()),
+    );
+    backends[session] = own;
+    return session;
+  }
 
   /// Escribe saltandose las reglas, como hace `tool/bootstrap_admin.dart` con
   /// la CLI en produccion.
@@ -100,16 +111,16 @@ void main() {
           (e) => e.failure, 'failure', IbashoFailure.invalidCredentials)),
     );
 
-    // --- 2. Streaming SSE desde Dart puro -----------------------------------
+    // --- 2. Tiempo real por el websocket -----------------------------------
     final events = <DatabaseEvent>[];
-    final sub = backend
+    final sub = backendOf(adminSession)
         .watch('/allowlist', token: adminSession.freshToken)
         .listen(events.add);
     await _until(() => events.isNotEmpty, 'evento inicial del stream');
 
     // --- 3. El admin crea una cuenta sin perder su sesion -------------------
     final adminController =
-        AdminController(backend: backend, session: adminSession);
+        AdminController(backend: backendOf(adminSession), session: adminSession);
     addTearDown(adminController.dispose);
 
     final adminUidBefore = adminSession.state.uid;
@@ -138,7 +149,7 @@ void main() {
 
     // Su perfil se crea en la primera entrada y se puede editar.
     final profile = ProfileController(
-      backend: backend,
+      backend: backendOf(member),
       session: member,
       defaultLocale: 'es',
       cardOf: _plainCard,
@@ -229,7 +240,7 @@ void main() {
 
     // Nada se ha perdido: el perfil sigue ahi y se puede seguir editando.
     final kept = ProfileController(
-      backend: backend,
+      backend: backendOf(again),
       session: again,
       defaultLocale: 'es',
       cardOf: _plainCard,
@@ -312,9 +323,9 @@ void main() {
         UserCard(displayName: 'alba', tamaId: id);
     Future<bool> noFood(TamaFood food) async => true;
     final desk =
-        TamasController(backend: backend, session: alba, cardOf: tamaCard, consumeFood: noFood);
+        TamasController(backend: backendOf(alba), session: alba, cardOf: tamaCard, consumeFood: noFood);
     final laptop =
-        TamasController(backend: backend, session: alba, cardOf: tamaCard, consumeFood: noFood);
+        TamasController(backend: backendOf(alba), session: alba, cardOf: tamaCard, consumeFood: noFood);
     addTearDown(desk.dispose);
     addTearDown(laptop.dispose);
     await _until(() => desk.state.loaded && laptop.state.loaded, 'listas iniciales');
@@ -434,7 +445,7 @@ void main() {
       await session.signIn(username: name, password: 'amigo-$name-123');
       // La primera entrada crea el perfil y su ficha.
       final profile = ProfileController(
-        backend: backend,
+        backend: backendOf(session),
         session: session,
         defaultLocale: 'es',
         cardOf: _plainCard,
@@ -448,8 +459,8 @@ void main() {
     final dani = await account('dani$stamp');
     final eva = await account('eva$stamp');
 
-    final carlaFriends = FriendsController(backend: backend, session: carla);
-    final daniFriends = FriendsController(backend: backend, session: dani);
+    final carlaFriends = FriendsController(backend: backendOf(carla), session: carla);
+    final daniFriends = FriendsController(backend: backendOf(dani), session: dani);
     addTearDown(carlaFriends.dispose);
     addTearDown(daniFriends.dispose);
     await _until(() => carlaFriends.state.loaded && daniFriends.state.loaded, 'amigos');
@@ -495,7 +506,7 @@ void main() {
     expect(await carlaFriends.postOnWall(dani.state.accountId, year, 'otra vez'), isFalse);
 
     // Presencia con la conexion persistente de verdad.
-    final presence = PresenceController(backend: backend, session: dani, active: true);
+    final presence = PresenceController(backend: backendOf(dani), session: dani, active: true);
     Future<Map<Object?, Object?>?> seenByCarla() async =>
         await backend.read('/users/${dani.state.accountId}/presence',
             idToken: await carla.freshToken()) as Map<Object?, Object?>?;

@@ -231,7 +231,7 @@ class ProvisionedAccount {
   final String password;
 }
 
-/// Un evento de la base de datos llegado por `text/event-stream`.
+/// Un evento de la base de datos llegado en tiempo real.
 class DatabaseEvent {
   const DatabaseEvent({
     required this.path,

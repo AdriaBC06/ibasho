@@ -35,9 +35,8 @@ class ProfileState {
 
 /// El perfil del usuario que ha entrado.
 ///
-/// Se lee una vez por REST y luego se sigue en tiempo real por
-/// `text/event-stream`, que es como el checkpoint quiere que se lean los datos
-/// vivos desde Dart puro.
+/// Se lee una vez por REST y luego se sigue en tiempo real por el websocket
+/// de la app.
 class ProfileController extends StateNotifier<ProfileState> {
   ProfileController({
     required IbashoBackend backend,

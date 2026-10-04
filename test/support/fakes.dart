@@ -360,7 +360,7 @@ class FakeIbashoBackend implements IbashoBackend {
   void setBackground(bool background) => this.background = background;
 
   @override
-  void setOwnAccount(String? accountId) {}
+  void setOwnAccount(String? accountId, {Future<String> Function()? token}) {}
 
   @override
   void dispose() {

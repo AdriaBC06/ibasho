@@ -404,7 +404,7 @@ serie (`node --test --test-concurrency=1`): en paralelo se pisan.
 
 ```
 lib/
-  backend/     IbashoBackend (contrato) y RestIbashoBackend (REST + SSE contra Firebase)
+  backend/     IbashoBackend (contrato) y RestIbashoBackend (REST + websocket contra Firebase)
   crypto/      cifrado de punta a punta: claves, sobres, frase de respaldo y el isolate que lo abre
   state/       Riverpod: sesión, perfil, admin, Tamas, despensa, amigos, presencia, identidad, mensajes, noticias, sugerencias, monedas, tienda, preferencias, reloj y estado del sistema
   games/       los juegos que se activan en el Yatai (hoy, el buscaminas)
@@ -428,8 +428,10 @@ database.rules.json      reglas de seguridad
 Decisiones de fondo:
 
 - **Nada de FlutterFire.** No está soportado en Linux. Toda la comunicación es
-  REST en Dart puro con `http`; la lectura en tiempo real usa
-  `Accept: text/event-stream` con reconexión exponencial (tope 30 s).
+  REST en Dart puro con `http`; el tiempo real y la presencia van por **un solo
+  websocket** con el protocolo de la Realtime Database (`RtdbSocket`), con
+  reconexión exponencial (tope 30 s). El plan gratis solo admite 100
+  conexiones a la vez: cada app abierta cuenta una.
 - **La UI no sabe que hay REST.** Todo pasa por `IbashoBackend`, para poder
   cambiar a los SDK nativos en Android sin tocar nada más.
 - **Sin Material.** La raíz es `WidgetsApp`; todos los controles son propios.

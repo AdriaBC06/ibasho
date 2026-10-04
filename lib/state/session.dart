@@ -301,7 +301,7 @@ class SessionController extends StateNotifier<SessionState> {
     // A partir de aqui todos los nodos de la cuenta comparten una sola
     // conexion en tiempo real; hay que decirle al backend cual es la cuenta
     // antes de que ningun controlador se ponga a mirar.
-    _backend.setOwnAccount(entry.accountId);
+    _backend.setOwnAccount(entry.accountId, token: freshToken);
 
     if (entry.mustChangePassword) {
       state = SessionState(

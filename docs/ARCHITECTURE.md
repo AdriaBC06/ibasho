@@ -25,8 +25,8 @@ lib/
     ibasho_backend.dart  contrato IbashoBackend
     rest_ibasho_backend.dart  implementación REST
     identity_toolkit.dart    Identity Toolkit y Secure Token por REST
-    rtdb_client.dart         Realtime Database por REST y text/event-stream
-    rtdb_socket.dart         PresenceLink y RtdbSocket: websocket de la Realtime Database (onDisconnect)
+    rtdb_client.dart         Realtime Database por REST (lecturas y escrituras)
+    rtdb_socket.dart         RtdbSocket: el único websocket de la app (escuchas, presencia y onDisconnect)
     live_tree.dart           aplica eventos put/patch a una copia local de un nodo
     user_mux.dart            una sola conexión de `/users/{cuenta}` para todos sus nodos
     push_id.dart             ids cronológicos de 20 caracteres
@@ -208,7 +208,7 @@ abierto al pasar a bloqueado); si no, la pantalla de la fase de sesión.
 | `gachaProvider` | `StateNotifierProvider<GachaController, GachaState>` | tickets (`/users/$acc/tickets`) y el gacha (`/users/$acc/gacha`): tirar y pedir en el Catálogo |
 | `installedGamesProvider` | `Provider<Map<String, GameInstall>>` | juegos comprados, envueltos o abiertos: la rejilla los pinta tras el Yatai |
 | `debugProvider` | `StateNotifierProvider` | cámara lenta y gráfica de rendimiento (no se persiste) |
-| `updateRequirementProvider` | `StreamProvider<UpdateRequirement?>` | `/system/update` leído sin sesión y seguido por SSE; `null` sin red o sin nodo |
+| `updateRequirementProvider` | `StreamProvider<UpdateRequirement?>` | `/system/update` leído sin sesión y seguido por el websocket; `null` sin red o sin nodo |
 | `updateLockedProvider` | `Provider<bool>` | `appVersion` < `minVersion` |
 | `presenceProvider` | `StateNotifierProvider<PresenceController, PresenceStatus>` | estado elegido y conexión; se reconstruye al cambiar de cuenta o de fase |
 | `friendsProvider` | `StateNotifierProvider<FriendsController, FriendsState>` | código propio, amigos, solicitudes recibidas y mandadas |
@@ -216,7 +216,7 @@ abierto al pasar a bloqueado); si no, la pantalla de la fase de sesión.
 | `cardKeeperProvider` | `Provider<void>` | reescribe la ficha propia si no coincide con perfil, acento y Tama de perfil (con 1,5 s de respiro) |
 | `cardOfProvider(accountId)` | `StreamProvider.autoDispose.family` | `/users/$id/card` |
 | `publicTamaProvider((owner, tamaId))` | `StreamProvider.autoDispose.family` | `name`, `personality`, `voice` y `look` del Tama de perfil ajeno |
-| `friendProfileProvider(id)`, `presenceOfProvider(id)`, `musicOfProvider(id)`, `wallOfProvider(id)`, `friendCountOfProvider(id)` | `StreamProvider.autoDispose.family` | datos de un amigo (o propios): lectura REST y luego SSE; siguen vivos 2 min tras dejar de mirarse |
+| `friendProfileProvider(id)`, `presenceOfProvider(id)`, `musicOfProvider(id)`, `wallOfProvider(id)`, `friendCountOfProvider(id)` | `StreamProvider.autoDispose.family` | datos de un amigo (o propios): lectura REST y luego el websocket; siguen vivos 2 min tras dejar de mirarse |
 
 ---
 
@@ -521,7 +521,7 @@ que quepan sus dos botones).
 (`hidden`/`paused`):
 
 1. para el reloj y los sondeos de batería y conexión;
-2. avisa al backend (`setBackground(true)`), que cierra las suscripciones SSE y
+2. avisa al backend (`setBackground(true)`), que cierra el websocket (y con él todas las escuchas) y
    no reintenta nada hasta volver;
 3. `AudioService.suspend()`: pausa la música, apaga el motor de efectos
    (`SoLoud.deinit`) y suelta el foco de audio;
@@ -744,7 +744,7 @@ Firebase Realtime Database, accedida por REST desde Dart puro (`RtdbClient`).
 | Escribir | `write(path, value, idToken:)` | `PUT … print=silent` |
 | Fusionar / multi-ruta | `merge(path, map, idToken:)` | `PATCH … print=silent`; claves con `/` escriben varias rutas a la vez |
 | Borrar | `remove(path, idToken:)` | `DELETE` |
-| Tiempo real | `watch(path, token:, query:)` | `GET` con `Accept: text/event-stream`; eventos `put` y `patch`; `cancel` y `auth_revoked` cierran y reconectan con token nuevo; retroceso exponencial hasta 30 s |
+| Tiempo real | `watch(path, token:, query:)` | escucha `q` por el websocket compartido (consultas con etiqueta), traducida a eventos `put`/`patch`; si las reglas la rechazan o la revocan, reintento con retroceso hasta 30 s; al reconectar se reenvían todas |
 | Conexión persistente | `openPresenceLink(token:)` | websocket `wss://{host}/.ws?v=5&ns={ns}` (emulador: `ws://host:9000/.ws?v=5&ns={proyecto}-default-rtdb`) |
 | Salud | `probe()` | `GET /.info/serverTimeOffset?shallow=true`; `LinkQuality` por latencia (< 220 ms fuerte, < 700 ms media) |
 

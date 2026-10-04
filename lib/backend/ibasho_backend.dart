@@ -88,7 +88,9 @@ abstract interface class IbashoBackend {
   /// Con ella, la implementacion puede repartir **una sola** conexion en
   /// tiempo real entre todos los nodos de la cuenta en vez de abrir una por
   /// cada uno. Ver `UserNodeMux`.
-  void setOwnAccount(String? accountId);
+  ///
+  /// [token] da la credencial con la que se abre la conexion en tiempo real.
+  void setOwnAccount(String? accountId, {Future<String> Function()? token});
 
   // --- Salud -------------------------------------------------------------
 

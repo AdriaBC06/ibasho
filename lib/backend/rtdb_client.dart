@@ -6,51 +6,20 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/env.dart';
 import 'errors.dart';
 import 'models.dart';
 
-/// Realtime Database por REST, incluido el modo `text/event-stream`, que es lo
-/// unico que funciona desde Dart puro en Linux.
+/// Realtime Database por REST: lecturas y escrituras. Lo que va en tiempo
+/// real pasa por `RtdbSocket`.
 class RtdbClient {
   RtdbClient(this._client);
 
   final http.Client _client;
 
   static const Duration _timeout = Duration(seconds: 20);
-  static const Duration _maxBackoff = Duration(seconds: 30);
-
-  // --- Segundo plano -----------------------------------------------------
-
-  bool _background = false;
-  final List<Completer<void>> _waitingForeground = <Completer<void>>[];
-  final StreamController<bool> _backgroundChanges = StreamController<bool>.broadcast();
-
-  /// En segundo plano se cierran las suscripciones abiertas y ninguna vuelve
-  /// a intentarlo hasta que la app regresa. Android mata las conexiones en
-  /// reposo de todas formas; asi ademas no se despierta la radio para nada.
-  void setBackground(bool background) {
-    if (background == _background) return;
-    _background = background;
-    _backgroundChanges.add(background);
-    if (!background) {
-      final waiting = List.of(_waitingForeground);
-      _waitingForeground.clear();
-      for (final completer in waiting) {
-        completer.complete();
-      }
-    }
-  }
-
-  Future<void> _untilForeground() {
-    if (!_background) return Future<void>.value();
-    final completer = Completer<void>();
-    _waitingForeground.add(completer);
-    return completer.future;
-  }
 
   Uri _uri(String path, {String? idToken, Map<String, String> query = const {}}) {
     final normalized = path.startsWith('/') ? path : '/$path';
@@ -160,174 +129,6 @@ class RtdbClient {
       return LinkQuality.weak;
     } catch (_) {
       return LinkQuality.offline;
-    }
-  }
-
-  /// Suscripcion en tiempo real con reconexion de retroceso exponencial.
-  Stream<DatabaseEvent> watch(
-    String path, {
-    required Future<String> Function() token,
-    DatabaseQuery? query,
-  }) {
-    late StreamController<DatabaseEvent> controller;
-    var cancelled = false;
-    StreamSubscription<String>? sub;
-    // Cierra el intento en curso (si lo hay) al cancelar el último oyente.
-    void Function()? abort;
-    var backoff = const Duration(seconds: 1);
-
-    Future<void> connect() async {
-      while (!cancelled) {
-        if (_background) {
-          await _untilForeground();
-          backoff = const Duration(seconds: 1);
-          if (cancelled) return;
-        }
-        StreamSubscription<bool>? sleeper;
-        try {
-          final request = http.Request(
-              'GET', _uri(path, idToken: await token(), query: _queryParams(query)))
-            ..headers['Accept'] = 'text/event-stream'
-            ..followRedirects = true;
-          final response = await _client.send(request).timeout(_timeout);
-          if (cancelled) {
-            // Se canceló mientras se abría: sin esto la conexión quedaba
-            // abierta para siempre, porque nadie escuchaba su cuerpo.
-            unawaited(response.stream.listen((_) {}).cancel());
-            return;
-          }
-          if (response.statusCode != 200) {
-            throw IbashoException(
-              response.statusCode == 401 || response.statusCode == 403
-                  ? IbashoFailure.permissionDenied
-                  : IbashoFailure.unknown,
-              'HTTP ${response.statusCode}',
-            );
-          }
-          backoff = const Duration(seconds: 1);
-
-          final done = Completer<void>();
-          abort = () {
-            if (!done.isCompleted) done.complete();
-          };
-          void finish([Object? error]) {
-            if (done.isCompleted) return;
-            error == null ? done.complete() : done.completeError(error);
-          }
-
-          // `cancel` y `auth_revoked` llegan como datos, no como errores: el
-          // ensamblador los convierte en un cierre ordenado para que la
-          // reconexion pida un token nuevo. Lanzar dentro del callback de
-          // datos se escaparia como error asincrono sin capturar.
-          final assembler = _SseAssembler(
-            controller.add,
-            onClose: (reason) {
-              finish(IbashoException(IbashoFailure.tokenExpired, reason));
-              unawaited(sub?.cancel());
-            },
-          );
-          sub = response.stream
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .listen(
-            (line) {
-              try {
-                assembler.feed(line);
-              } catch (e) {
-                finish(e);
-                unawaited(sub?.cancel());
-              }
-            },
-            onDone: finish,
-            onError: (Object e) => finish(e),
-            cancelOnError: true,
-          );
-          sleeper = _backgroundChanges.stream.where((b) => b).listen((_) {
-            finish();
-            unawaited(sub?.cancel());
-          });
-          await done.future;
-        } catch (e) {
-          if (cancelled) return;
-          if (!_background) {
-            debugPrint('Ibasho: stream $path caido ($e), reintento en '
-                '${backoff.inSeconds} s');
-          }
-        } finally {
-          await sleeper?.cancel();
-        }
-        if (cancelled) return;
-        if (_background) continue;
-        await Future<void>.delayed(backoff);
-        final next = backoff * 2;
-        backoff = next > _maxBackoff ? _maxBackoff : next;
-      }
-    }
-
-    controller = StreamController<DatabaseEvent>(
-      onListen: () => unawaited(connect()),
-      onCancel: () async {
-        cancelled = true;
-        abort?.call();
-        await sub?.cancel();
-      },
-    );
-    return controller.stream;
-  }
-}
-
-/// Reensambla los eventos de `text/event-stream` linea a linea.
-///
-/// La Realtime Database emite `put`, `patch`, `keep-alive`, `cancel` y
-/// `auth_revoked`. Los dos ultimos cierran el flujo para que la capa de
-/// reconexion vuelva a pedir un token fresco.
-class _SseAssembler {
-  _SseAssembler(this.emit, {required this.onClose});
-
-  final void Function(DatabaseEvent) emit;
-
-  /// El servidor ha cerrado la suscripcion (`cancel`, `auth_revoked`).
-  final void Function(String reason) onClose;
-
-  String? _event;
-  final StringBuffer _data = StringBuffer();
-
-  void feed(String line) {
-    if (line.isEmpty) {
-      _flush();
-      return;
-    }
-    if (line.startsWith('event:')) {
-      _event = line.substring(6).trim();
-    } else if (line.startsWith('data:')) {
-      if (_data.isNotEmpty) _data.write('\n');
-      _data.write(line.substring(5).trim());
-    }
-  }
-
-  void _flush() {
-    final event = _event;
-    final payload = _data.toString();
-    _event = null;
-    _data.clear();
-    if (event == null || payload.isEmpty) return;
-
-    switch (event) {
-      case 'put':
-      case 'patch':
-        final decoded = jsonDecode(payload);
-        if (decoded is! Map) return;
-        emit(DatabaseEvent(
-          path: (decoded['path'] as String?) ?? '/',
-          data: decoded['data'],
-          isPatch: event == 'patch',
-        ));
-      case 'auth_revoked':
-      case 'cancel':
-        onClose(event);
-      default:
-        // keep-alive y cualquier cosa nueva: se ignoran a proposito.
-        break;
     }
   }
 }

@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adrià Bonnin Catalán
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
+
 import 'package:http/http.dart' as http;
 
 import '../core/env.dart';
@@ -21,12 +23,16 @@ class RestIbashoBackend implements IbashoBackend {
         _ownsClient = client == null {
     _auth = IdentityToolkit(_client);
     _db = RtdbClient(_client);
+    _socket = RtdbSocket();
   }
 
   final http.Client _client;
   final bool _ownsClient;
   late final IdentityToolkit _auth;
   late final RtdbClient _db;
+
+  /// La unica conexion en tiempo real de la app: escuchas y presencia.
+  late final RtdbSocket _socket;
 
   /// La cuenta propia y el reparto de su unica conexion. Ver `UserNodeMux`.
   String? _ownAccount;
@@ -131,43 +137,43 @@ class RestIbashoBackend implements IbashoBackend {
     required Future<String> Function() token,
     DatabaseQuery? query,
   }) {
-    // Todo lo que cuelga de la cuenta propia sale de una sola conexion; lo
-    // demas (y cualquier consulta) abre la suya.
+    // Todo va por el mismo websocket, que se autentica con la credencial de
+    // la cuenta (ver [setOwnAccount]); aqui solo se evita pedir dos veces lo
+    // mismo. Lo de la cuenta propia sale de una sola escucha de la cuenta
+    // entera; lo demas, de una por ruta y consulta.
     final mine = _ownAccount;
     if (query == null && mine != null && mine.isNotEmpty) {
       final prefix = '/users/$mine';
       if (path == prefix || path.startsWith('$prefix/')) {
-        final mux = _mux ??= UserNodeMux(
-          source: () => _db.watch(prefix, token: token),
-        );
+        final mux = _mux ??= UserNodeMux(source: () => _socket.watch(prefix));
         return mux.child(path.substring(prefix.length));
       }
     }
-    // Lo demás también comparte: una conexión por ruta y consulta.
     final key = query == null ? path : '$path?${query.orderByChild}=${query.equalTo}';
-    return _shared.watch(key, () => _db.watch(path, token: token, query: query));
+    return _shared.watch(key, () => _socket.watch(path, query: query));
   }
 
   @override
-  void setOwnAccount(String? accountId) {
+  void setOwnAccount(String? accountId, {Future<String> Function()? token}) {
     if (_ownAccount == accountId) return;
     _ownAccount = accountId;
     _mux?.reset();
     _mux = null;
+    _socket.useToken(accountId == null ? null : token);
   }
 
   @override
-  PresenceLink openPresenceLink({required Future<String> Function() token}) =>
-      RtdbSocket(token: token);
+  PresenceLink openPresenceLink({required Future<String> Function() token}) => _socket.presence();
 
   @override
   Future<LinkQuality> probe() => _db.probe();
 
   @override
-  void setBackground(bool background) => _db.setBackground(background);
+  void setBackground(bool background) => _socket.setBackground(background);
 
   @override
   void dispose() {
+    unawaited(_socket.close());
     if (_ownsClient) _client.close();
   }
 }
