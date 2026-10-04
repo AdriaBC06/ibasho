@@ -14,8 +14,9 @@ class RasterDimensions {
 RasterDimensions probeRasterDimensions(List<int> bytes, String path) {
   final lower = path.toLowerCase();
   if (lower.endsWith('.png')) return _png(bytes, path);
-  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg'))
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
     return _jpeg(bytes, path);
+  }
   if (lower.endsWith('.webp')) return _webp(bytes, path);
   throw ExtensionException(
     ExtensionErrorCode.invalidPackage,

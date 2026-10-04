@@ -2,9 +2,8 @@
 // Copyright (C) 2026 Julio Solano
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import '../../games/game_store.dart';
+import '../game_store.dart';
 import 'malla_ai.dart';
-import 'malla_online.dart';
 
 class MallaStats {
   MallaStats({
@@ -106,32 +105,28 @@ class MallaStats {
 
 class MallaSaveData {
   MallaSaveData({
-    this.marker = 'A',
-    this.color = '#397d79',
+    this.color = 0,
     this.onlineChain = false,
     this.cpuChain = false,
     this.cpuOpponents = 1,
     this.cpuSize = 3,
     this.cpuDifficulty = MallaDifficulty.normal,
     this.cpuStarter = 'random',
-    this.soundEnabled = true,
-    this.guardBest = 0,
     MallaStats? stats,
-    this.session,
+    this.roomCode,
   }) : stats = stats ?? MallaStats();
 
-  String marker;
-  String color;
+  /// El color propio: su sitio en `Art.mallaPlayers`.
+  int color;
   bool onlineChain;
   bool cpuChain;
   int cpuOpponents;
   int cpuSize;
   MallaDifficulty cpuDifficulty;
   String cpuStarter;
-  bool soundEnabled;
-  int guardBest;
   MallaStats stats;
-  MallaSession? session;
+  /// La sala online en la que se estaba, para volver a ella al reabrir.
+  String? roomCode;
 
   static MallaSaveData fromJson(Map<String, Object?> raw) {
     final difficulty = switch (raw['cpuDifficulty']?.toString()) {
@@ -144,40 +139,30 @@ class MallaSaveData {
       'cpu' => 'cpu',
       _ => 'random',
     };
-    final marker = raw['marker']?.toString().trim();
-    final color = raw['color']?.toString().toLowerCase();
     return MallaSaveData(
-      marker: marker == null || marker.isEmpty ? 'A' : marker,
-      color: color != null && RegExp(r'^#[0-9a-f]{6}$').hasMatch(color)
-          ? color
-          : '#397d79',
+      color: _clampInt(raw['colorIndex'], 0, 5, 0),
       onlineChain: raw['onlineChain'] == true,
       cpuChain: raw['cpuChain'] == true,
       cpuOpponents: _clampInt(raw['cpuOpponents'], 1, 5, 1),
       cpuSize: _clampInt(raw['cpuSize'], 3, 7, 3),
       cpuDifficulty: difficulty,
       cpuStarter: starter,
-      soundEnabled: raw['soundEnabled'] != false,
-      guardBest: _clampInt(raw['guardBest'], 0, 1 << 30, 0),
       stats: MallaStats.fromJson(raw['stats']),
-      session: MallaSession.fromJson(raw['session']),
+      roomCode: raw['room'] is String ? raw['room'] as String : null,
     );
   }
 
   Map<String, Object?> toJson() => <String, Object?>{
-    'format': 2,
-    'marker': marker,
-    'color': color,
+    'format': 3,
+    'colorIndex': color,
     'onlineChain': onlineChain,
     'cpuChain': cpuChain,
     'cpuOpponents': cpuOpponents,
     'cpuSize': cpuSize,
     'cpuDifficulty': cpuDifficulty.name,
     'cpuStarter': cpuStarter,
-    'soundEnabled': soundEnabled,
-    'guardBest': guardBest,
     'stats': stats.toJson(),
-    if (session != null) 'session': session!.toJson(),
+    if (roomCode != null) 'room': roomCode,
   };
 }
 

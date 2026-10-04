@@ -16,10 +16,12 @@ import '../../../games/odori/odori_channel.dart';
 import '../../../games/hatarakitama/hataraki_channel.dart';
 import '../../../games/ohirune/ohirune_channel.dart';
 import '../../../games/hebi/hebi_channel.dart';
+import '../../../games/malla/malla_channel.dart';
 import '../../../games/koen/koen_channel.dart';
 import '../../../games/tsumiki/tsumiki_menu.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/providers.dart';
+import '../../../state/malla.dart';
 import '../../../state/tsumiki_versus.dart';
 import '../../widgets/channel_art.dart';
 import '../../widgets/glyphs.dart';
@@ -125,6 +127,13 @@ final Map<String, GameChannelEntry> gameChannelRegistry = <String, GameChannelEn
     art: ArtIcon.hebi,
     label: (l) => l.channelHebi,
     builder: (_) => const GameMusic(gameId: 'hebi', track: MusicTrack.hebi, child: HebiChannel()),
+  ),
+  'malla': GameChannelEntry(
+    glyph: Glyph.hexagon,
+    art: ArtIcon.malla,
+    label: (l) => l.channelMalla,
+    builder: (_) => const GameMusic(gameId: 'malla', track: MusicTrack.malla, child: MallaChannel()),
+    badge: pendingMallaInvitesProvider,
   ),
   'nihongo': GameChannelEntry(
     glyph: Glyph.kana,

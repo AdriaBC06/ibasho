@@ -24,4 +24,5 @@ String describeTrack(L l, MusicTrack track) => switch (track) {
       MusicTrack.mizuba => l.trackMizuba,
       MusicTrack.yuyake => l.trackYuyake,
       MusicTrack.hebi => l.trackHebi,
+      MusicTrack.malla => l.trackMalla,
     };

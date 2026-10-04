@@ -924,6 +924,25 @@
             ".validate": false
           }
         },
+        // Malla (0.9.1): las invitaciones a una sala, una por amigo
+        // (`mallaInbox/{quien invita}`), con el código. Las deja un amigo y
+        // las borran él o el dueño del buzón. Caducan a los 10 minutos (lo
+        // mira la app: entrar con el código vale igual). Solo las lee el dueño.
+        "mallaInbox": {
+          "$from": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && ((root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && !newData.exists()) || (root.child('allowlist').child(auth.uid).child('accountId').val() === $from && $from !== $accountId && root.child('users').child($accountId).child('friends').child($from).exists()))",
+            ".validate": "newData.hasChildren(['at', 'code'])",
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "code": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-HJ-NP-Z2-9]{6}$/)"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
         // Tsumiki versus (0.9.0): las invitaciones a una partida, una por amigo
         // (`tsumikiInbox/{quien invita}`), con el id de la sala. Las deja un
         // amigo y las borran él (al cancelar) o el dueño del buzón (al
@@ -1848,6 +1867,206 @@
         },
         "$other": {
           ".validate": false
+        }
+      }
+    },
+    // Malla (0.9.1): una sala por código de 6 caracteres (docs/MALLA-0.9.1.md).
+    // Se lee un código concreto: cualquiera mientras espera, los de dentro
+    // siempre. Cada uno escribe su `members/{yo}` mientras espera; quien la
+    // crea la empieza (`order`, `start`, `turn`, `n`) y es quien puede
+    // borrarla acabada. Una jugada es `moves/{n}` + `n + 1` + `turn` en la
+    // misma escritura: una arista de quien tenía el turno o la salida de un
+    // asiento (el propio, o el de alguien con 20 s sin `ping`). La arista y
+    // el turno siguiente los comprueba cada cliente rejugando la partida.
+    // `mallaHistory/{cuenta}/{código}`: las partidas online de cada uno, que
+    // solo lee y escribe el dueño (fuera de `users` para no cargarlas con la
+    // cuenta).
+    "malla": {
+      "$code": {
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $code.matches(/^[A-HJ-NP-Z2-9]{6}$/) && (!data.exists() || data.child('state').val() === 'wait' || data.child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists())",
+        ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $code.matches(/^[A-HJ-NP-Z2-9]{6}$/) && ((newData.exists() && (!data.exists() || data.child('at').val() < now - 86400000) && newData.child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && newData.child('state').val() === 'wait' && newData.child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() && newData.child('count').val() === 1 && !newData.hasChild('order') && !newData.hasChild('moves') && !newData.hasChild('n') && !newData.hasChild('next')) || (!newData.exists() && data.exists() && ((data.child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && (data.child('state').val() === 'done' || data.child('state').val() === 'gone')) || data.child('at').val() < now - 86400000)))",
+        ".validate": "newData.hasChildren(['host', 'at', 'size', 'max', 'chain', 'state', 'count'])",
+        "host": {
+          ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,128}$/)"
+        },
+        "at": {
+          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+        },
+        "size": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 3 && newData.val() <= 7"
+        },
+        "max": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 2 && newData.val() <= 6"
+        },
+        "chain": {
+          ".validate": "newData.isBoolean()"
+        },
+        "count": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('state').val() === 'wait' && ((newData.val() === data.val() + 1 && newData.parent().child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() && !data.parent().child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()) || (newData.val() === data.val() - 1 && !newData.parent().child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() && data.parent().child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists()))",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= newData.parent().child('max').val()"
+        },
+        "state": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() && ((data.val() === 'wait' && newData.val() === 'play' && root.child('malla').child($code).child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && newData.parent().child('order').exists()) || (data.val() === 'wait' && newData.val() === 'gone' && root.child('malla').child($code).child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val()) || (data.val() === 'play' && newData.val() === 'done'))",
+          ".validate": "newData.isString() && newData.val().matches(/^(wait|play|done|gone)$/)"
+        },
+        "members": {
+          "$acc": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $acc === root.child('allowlist').child(auth.uid).child('accountId').val() && root.child('malla').child($code).child('state').val() === 'wait' && ((data.exists() && newData.exists()) || (!data.exists() && newData.exists() && newData.parent().parent().child('count').val() === root.child('malla').child($code).child('count').val() + 1) || (data.exists() && !newData.exists() && newData.parent().parent().child('count').val() === root.child('malla').child($code).child('count').val() - 1))",
+            ".validate": "newData.hasChildren(['name', 'marker', 'color', 'at']) && (data.exists() || $acc === root.child('allowlist').child(auth.uid).child('accountId').val())",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+            },
+            "marker": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+            },
+            "color": {
+              ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+            },
+            "tama": {
+              ".validate": "newData.hasChildren(['name', 'personality', 'look'])",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+              },
+              "personality": {
+                ".validate": "newData.isString() && newData.val().matches(/^(calm|playful|shy|cheeky|sleepy)$/)"
+              },
+              "look": {
+                "$part": {
+                  ".validate": "$part.matches(/^[a-zA-Z]{1,20}$/) && ((newData.isNumber() && newData.val() >= 0 && newData.val() <= 100) || (newData.isString() && newData.val().length <= 40) || ($part === 'acc' && newData.hasChildren()))"
+                }
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "at": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+            },
+            "ping": {
+              ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && $acc === root.child('allowlist').child(auth.uid).child('accountId').val() && data.parent().exists() && newData.exists()",
+              ".validate": "newData.isNumber() && newData.val() === now"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "order": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && root.child('malla').child($code).child('state').val() === 'wait' && !data.exists() && newData.parent().child('state').val() === 'play'",
+          ".validate": "newData.hasChildren(['0', '1'])",
+          "$seat": {
+            ".validate": "$seat.matches(/^[0-5]$/) && newData.isString() && newData.parent().parent().child('members').child(newData.val()).exists()"
+          }
+        },
+        "start": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && root.child('malla').child($code).child('state').val() === 'wait' && !data.exists() && newData.parent().child('state').val() === 'play'",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5 && newData.parent().child('order').child(newData.val() + '').exists()"
+        },
+        "startAt": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && root.child('malla').child($code).child('state').val() === 'wait' && !data.exists() && newData.parent().child('state').val() === 'play'",
+          ".validate": "newData.isNumber() && newData.val() === now"
+        },
+        "n": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() && ((!data.exists() && newData.val() === 0 && root.child('malla').child($code).child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && root.child('malla').child($code).child('state').val() === 'wait' && newData.parent().child('state').val() === 'play') || (root.child('malla').child($code).child('state').val() === 'play' && data.exists() && newData.val() === data.val() + 1 && newData.parent().child('moves').child(data.val() + '').exists() && !data.parent().child('moves').child(data.val() + '').exists()))",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 1000"
+        },
+        "turn": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() && ((!data.exists() && root.child('malla').child($code).child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && root.child('malla').child($code).child('state').val() === 'wait' && newData.parent().child('state').val() === 'play' && newData.val() === newData.parent().child('start').val()) || (root.child('malla').child($code).child('state').val() === 'play' && data.exists() && newData.parent().child('n').val() === data.parent().child('n').val() + 1))",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5 && newData.parent().child('order').child(newData.val() + '').exists()"
+        },
+        "moves": {
+          "$i": {
+            ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('members').child(root.child('allowlist').child(auth.uid).child('accountId').val()).exists() && root.child('malla').child($code).child('state').val() === 'play' && !data.exists() && $i === root.child('malla').child($code).child('n').val() + '' && newData.parent().parent().child('n').val() === root.child('malla').child($code).child('n').val() + 1 && ((newData.hasChildren(['k', 'p']) && root.child('malla').child($code).child('order').child(newData.child('p').val() + '').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && root.child('malla').child($code).child('turn').val() === newData.child('p').val()) || (newData.hasChild('o') && root.child('malla').child($code).child('order').child(newData.child('o').val() + '').exists() && (root.child('malla').child($code).child('order').child(newData.child('o').val() + '').val() === root.child('allowlist').child(auth.uid).child('accountId').val() || !(root.child('malla').child($code).child('members').child(root.child('malla').child($code).child('order').child(newData.child('o').val() + '').val()).child('ping').val() >= now - 20000))))",
+            ".validate": "(newData.hasChildren(['k', 'p']) && !newData.hasChild('o')) || (newData.hasChild('o') && !newData.hasChild('k') && !newData.hasChild('p'))",
+            "k": {
+              ".validate": "newData.isString() && newData.val().matches(/^[-0-9.,|]{5,80}$/)"
+            },
+            "p": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+            },
+            "o": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "next": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('malla').child($code).child('host').val() === root.child('allowlist').child(auth.uid).child('accountId').val() && root.child('malla').child($code).child('state').val() === 'done' && !data.exists()",
+          ".validate": "newData.isString() && newData.val().matches(/^[A-HJ-NP-Z2-9]{6}$/) && newData.val() !== $code"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "mallaHistory": {
+      "$accountId": {
+        ".read": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId",
+        "$code": {
+          ".write": "auth != null && root.child('allowlist').child(auth.uid).child('disabled').val() === false && root.child('allowlist').child(auth.uid).child('accountId').val() === $accountId && $code.matches(/^[A-HJ-NP-Z2-9]{6}$/)",
+          ".validate": "newData.hasChildren(['at', 'size', 'me', 'why', 'p'])",
+          "at": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now"
+          },
+          "size": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 3 && newData.val() <= 7"
+          },
+          "me": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 5 && newData.parent().child('p').child(newData.val() + '').exists()"
+          },
+          "why": {
+            ".validate": "newData.isString() && newData.val().matches(/^(board|last|left)$/)"
+          },
+          "p": {
+            "$seat": {
+              ".validate": "$seat.matches(/^[0-5]$/) && newData.hasChildren(['a', 'name', 's', 'color'])",
+              "a": {
+                ".validate": "newData.isString() && newData.val().matches(/^[-0-9A-Za-z_]{1,128}$/)"
+              },
+              "s": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 49"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+              },
+              "marker": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+              },
+              "color": {
+                ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+              },
+              "tama": {
+                ".validate": "newData.hasChildren(['name', 'personality', 'look'])",
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+                },
+                "personality": {
+                  ".validate": "newData.isString() && newData.val().matches(/^(calm|playful|shy|cheeky|sleepy)$/)"
+                },
+                "look": {
+                  "$part": {
+                    ".validate": "$part.matches(/^[a-zA-Z]{1,20}$/) && ((newData.isNumber() && newData.val() >= 0 && newData.val() <= 100) || (newData.isString() && newData.val().length <= 40) || ($part === 'acc' && newData.hasChildren()))"
+                  }
+                },
+                "$other": {
+                  ".validate": false
+                }
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "w": {
+            "$seat": {
+              ".validate": "$seat.matches(/^[0-5]$/) && newData.val() === true"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       }
     },

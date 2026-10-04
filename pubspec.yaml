@@ -1,7 +1,7 @@
 name: ibasho
 description: "Ibasho — 居場所, tu lugar. Un espacio de juegos multiplataforma."
 publish_to: 'none'
-version: 0.9.0+18
+version: 0.9.1+19
 
 environment:
   sdk: ^3.11.0
@@ -29,7 +29,7 @@ dependencies:
   crypto: ^3.0.7
 
   # Fechas y numeros localizados.
-  intl: 0.20.3
+  intl: 0.20.2
 
   # Musica y efectos.
   audioplayers: ^6.7.1

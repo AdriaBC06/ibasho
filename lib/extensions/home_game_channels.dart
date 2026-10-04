@@ -17,8 +17,8 @@ String koboHomeChannelId(ExtensionGame game) =>
 /// Convierte los juegos del registro central en canales de primer nivel.
 ///
 /// Solo aparecen juegos cuyo motor está compilado explícitamente en el host.
-/// Un paquete declarativo puede solicitar `malla`, pero no introducir código
-/// ejecutable ni registrar un motor nuevo.
+/// Un paquete declarativo puede pedir un motor, pero no introducir código
+/// ejecutable ni registrar uno nuevo.
 List<ChannelSpec> koboGameChannelSpecs({
   required ExtensionContentRegistry registry,
   required String localeCode,
@@ -29,7 +29,7 @@ List<ChannelSpec> koboGameChannelSpecs({
     channels.add(
       ChannelSpec(
         id: koboHomeChannelId(game),
-        glyph: game.engine == 'malla' ? Glyph.blocks : Glyph.play,
+        glyph: Glyph.play,
         label: (_) => game.label(localeCode),
         builder: (_) => KoboGameHostRegistry.build(
           game: game,

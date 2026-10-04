@@ -85,6 +85,13 @@ const List<CreditEntry> audioCredits = <CreditEntry>[
     note: _ownMusic,
   ),
   CreditEntry(
+    title: 'malla',
+    author: _me,
+    license: 'CC0 1.0',
+    url: 'tool/gen_malla_music.py',
+    note: _ownMusic,
+  ),
+  CreditEntry(
     title: 'tick · open · back · error · chime',
     author: _me,
     license: 'CC0 1.0',

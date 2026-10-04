@@ -66,8 +66,9 @@ List<ExtensionBackdrop> parseBackdropPackText(
     }
     final colors = Map<String, Object?>.from(colorsRaw);
     final dark = item['dark'];
-    if (dark != null && dark is! bool)
+    if (dark != null && dark is! bool) {
       throw FormatException('$id.dark debe ser booleano');
+    }
     final motif = switch (item['motif']) {
       'stars' => ExtensionBackdropMotif.stars,
       'haze' => ExtensionBackdropMotif.haze,
@@ -156,8 +157,9 @@ String _id(Object? raw, String subject) {
 }
 
 KoboLocalizedText _name(Object? raw, String subject) {
-  if (raw is! Map<dynamic, dynamic>)
+  if (raw is! Map<dynamic, dynamic>) {
     throw FormatException('$subject debe ser un objeto');
+  }
   final map = Map<String, Object?>.from(raw);
   String one(String key) {
     final value = map[key];

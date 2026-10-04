@@ -52,6 +52,7 @@ Nihongo, con `python3 tool/gen_nihongo_music.py`.
 | mizuba (Hatarakitama; dos kalimbas desfasadas y armónica de cristal, La, 66 bpm, bucle de 54,5 s) | `assets/audio/bgm/mizuba.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | yuyake (Hatarakitama; shamisen, coro granular y piano de juguete, Mi dórico, 88 bpm, bucle de 65,5 s) | `assets/audio/bgm/yuyake.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | hebi (Hebi; mokkin en proceso aditivo, koto y flauta de bambú, Re kumoi, 108 bpm, bucle de 53,3 s) | `assets/audio/bgm/hebi.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
+| malla (Malla; handpan y kalimba en celdas de 6 y 7 que se desfasan, koto, piano de juguete y coro granular, Fa lidio, 84 bpm, bucle de 60 s) | `assets/audio/bgm/malla.ogg` | Adrià Bonnin Catalán | CC0 1.0 |
 | tick · open · back · error · chime (efectos) | `assets/audio/sfx/*.wav` | Adrià Bonnin Catalán | CC0 1.0 |
 
 Cada pista está además en MP3 (`.mp3`, VBR calidad 2) al lado de su `.ogg`, con

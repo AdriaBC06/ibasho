@@ -118,8 +118,9 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
           });
         }
         if (raw['menuTrack'] is String) menuTrack = raw['menuTrack'] as String;
-        if (raw['profileTrack'] is String)
+        if (raw['profileTrack'] is String) {
           profileTrack = raw['profileTrack'] as String;
+        }
         final games = raw['games'];
         if (games is Map) {
           games.forEach((game, track) {
@@ -138,8 +139,9 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
       // Hasta la 0.9.0 la musica de Hatarakitama se guardaba en el equipo.
       final hataraki = _preferences.state.hatarakiTrack;
       if (hataraki.isNotEmpty) {
-        if (!gameTracks.containsKey('hataraki'))
+        if (!gameTracks.containsKey('hataraki')) {
           unawaited(selectGameTrack('hataraki', hataraki));
+        }
         unawaited(_preferences.setHatarakiTrack(''));
       }
       // Las del gacha que aun no estaban: se apuntan ya (el estado cambia

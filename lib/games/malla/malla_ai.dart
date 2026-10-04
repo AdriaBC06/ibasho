@@ -44,8 +44,9 @@ abstract final class MallaAi {
       final me = hex.sidesByPlayer[player];
       var opponentMax = 0;
       for (var i = 0; i < hex.sidesByPlayer.length; i++) {
-        if (i != player)
+        if (i != player) {
           opponentMax = math.max(opponentMax, hex.sidesByPlayer[i]);
+        }
       }
       final free = 6 - hex.drawnSides;
       value += (me - opponentMax) * 3.2;
@@ -74,8 +75,9 @@ abstract final class MallaAi {
       }
       var opponentMax = 0;
       for (var i = 0; i < hex.sidesByPlayer.length; i++) {
-        if (i != player)
+        if (i != player) {
           opponentMax = math.max(opponentMax, hex.sidesByPlayer[i]);
+        }
       }
       final captures =
           hex.sidesByPlayer[player] + 1 >= 4 || hex.drawnSides == 5;
@@ -158,8 +160,9 @@ abstract final class MallaAi {
           4 => 14,
           _ => 10,
         };
-        if (replies.length > replyLimit)
+        if (replies.length > replyLimit) {
           replies = replies.sublist(0, replyLimit);
+        }
 
         if (actor == player) {
           var follow = double.negativeInfinity;

@@ -5,12 +5,12 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ibasho/extensions/game_host_registry.dart';
-import 'package:ibasho/extensions/malla/malla_ai.dart';
-import 'package:ibasho/extensions/malla/malla_game.dart';
+import 'package:ibasho/games/malla/malla_ai.dart';
+import 'package:ibasho/games/malla/malla_game.dart';
 
 void main() {
-  test('Kōbō expone Malla pero no motores arbitrarios', () {
-    expect(KoboGameHostRegistry.supports('malla'), isTrue);
+  test('Kōbō ya no abre Malla ni motores arbitrarios', () {
+    expect(KoboGameHostRegistry.supports('malla'), isFalse);
     expect(KoboGameHostRegistry.supports('javascript'), isFalse);
     expect(KoboGameHostRegistry.supports('dart'), isFalse);
   });

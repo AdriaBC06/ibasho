@@ -26,6 +26,7 @@ enum ArtIcon {
   minesweeper,
   tsumiki,
   hebi,
+  malla,
   nihongo,
   tamakoro,
   odori,
@@ -82,6 +83,8 @@ class ArtPainter extends CustomPainter {
         paintTsumiki(canvas);
       case ArtIcon.hebi:
         paintHebi(canvas);
+      case ArtIcon.malla:
+        paintMalla(canvas);
       case ArtIcon.nihongo:
         paintNihongo(canvas);
       case ArtIcon.tamakoro:
@@ -194,6 +197,17 @@ abstract final class Art {
     Color(0xFFF47AA6),
     Color(0xFFB08BE0),
     Color(0xFFF79A68),
+  ];
+
+  /// Los colores de los jugadores de Malla, de caramelo como las piezas de
+  /// Tsumiki. El orden es el que se reparte a los rivales.
+  static const List<Color> mallaPlayers = <Color>[
+    Color(0xFF5BC8F5),
+    Color(0xFFF79A68),
+    Color(0xFF74DDA2),
+    Color(0xFFB08BE0),
+    Color(0xFFFFCF4A),
+    Color(0xFFF47AA6),
   ];
 
   /// Oscurece hacia el azul noche de la casa, nunca hacia el negro.
@@ -542,6 +556,58 @@ void paintHebi(Canvas canvas) {
   );
   paintTwinkle(canvas, const Offset(92, 48), 5, Art.spark);
   paintTwinkle(canvas, const Offset(14, 22), 4, Art.spark);
+}
+
+// --- Malla ----------------------------------------------------------------------
+
+/// Tres fichas hexagonales de plástico, como un trozo del tablero de Malla:
+/// dos ya conquistadas (verde azulado y teja, los dos primeros colores del
+/// juego) y la de arriba a medias, con sus aristas pintadas de colores y la
+/// que falta en punteado.
+void paintMalla(Canvas canvas) {
+  paintGroundShadow(canvas, const Offset(50, 90), 80);
+  const teal = Color(0xFF4FA39E);
+  const tile = Color(0xFFE08A6E);
+  const lilac = Color(0xFF9B88CC);
+  Path hex(Offset c, double r) {
+    final path = Path();
+    for (var k = 0; k < 6; k++) {
+      final a = math.pi / 180 * (30 + 60 * k);
+      final p = c + Offset(r * math.cos(a), r * math.sin(a));
+      k == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+    }
+    return path..close();
+  }
+
+  const r = 21.0;
+  final w = math.sqrt(3) * r;
+  final left = Offset(50 - w / 2, 66);
+  final right = Offset(50 + w / 2, 66);
+  final top = Offset(50, 66 - 1.5 * r);
+  // La de arriba, sin dueño: casi blanca, con tres aristas de colores.
+  paintPlastic(canvas, hex(top, r), const Color(0xFFF7F3EA), edge: 1.6, shine: .5);
+  final corners = <Offset>[
+    for (var k = 0; k < 6; k++)
+      top + Offset(r * math.cos(math.pi / 180 * (30 + 60 * k)), r * math.sin(math.pi / 180 * (30 + 60 * k))),
+  ];
+  for (final (k, color) in <(int, Color)>[(3, teal), (4, lilac), (5, tile)]) {
+    canvas.drawLine(corners[k], corners[(k + 1) % 6], _edge(color, 4.2));
+  }
+  // La arista que falta, punteada.
+  final from = corners[0];
+  final to = corners[1];
+  for (var t = 0.0; t < 1; t += .25) {
+    canvas.drawLine(Offset.lerp(from, to, t)!, Offset.lerp(from, to, t + .12)!, _edge(Art.brush.withValues(alpha: .45), 2.4));
+  }
+  paintPlastic(canvas, hex(left, r), teal, edge: 2, shine: .9);
+  paintPlastic(canvas, hex(right, r), tile, edge: 2, shine: .9);
+  // Las marcas de quien las ganó.
+  final ink = _edge(T.shellTop, 3.2);
+  canvas.drawCircle(left, 6.4, ink);
+  canvas.drawLine(right.translate(-5, -5), right.translate(5, 5), ink);
+  canvas.drawLine(right.translate(5, -5), right.translate(-5, 5), ink);
+  paintTwinkle(canvas, const Offset(84, 22), 5, Art.spark);
+  paintTwinkle(canvas, const Offset(16, 30), 3.6, Art.spark);
 }
 
 // --- Nihongo -------------------------------------------------------------------

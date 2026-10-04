@@ -630,8 +630,9 @@ final koenFriendPointsProvider = FutureProvider.family<int, String>((
   final park = ref.watch(
     koenProvider.select((k) => k.loaded && !k.demo ? k : null),
   );
-  if (park != null)
+  if (park != null) {
     return (park.mates[friend]?.p ?? 0) + (park.theirs[friend] ?? 0);
+  }
   final me = ref.watch(sessionProvider.select((s) => s.accountId));
   if (me.isEmpty) return 0;
   final backend = ref.read(backendProvider);

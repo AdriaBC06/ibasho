@@ -16,8 +16,14 @@ class MallaPoint {
 class MallaMove {
   const MallaMove(this.key, this.player);
 
+  /// El asiento [player] queda fuera de la partida (se ha ido o lleva 20 s
+  /// sin dar señal): sus aristas se quedan y deja de tener turno.
+  const MallaMove.out(this.player) : key = '';
+
   final String key;
   final int player;
+
+  bool get isOut => key.isEmpty;
 
   List<Object> toWire() => <Object>[key, player];
 }
@@ -99,12 +105,30 @@ class MallaGame {
   final bool chain;
   int currentPlayer;
   final List<int> scores;
+
+  /// Los asientos que han quedado fuera (online). Con uno solo dentro, la
+  /// partida se acaba y gana él.
+  final Set<int> out = <int>{};
   final List<MallaHex> hexes = <MallaHex>[];
   final Map<String, MallaEdge> edges = <String, MallaEdge>{};
   final List<MallaMove> moves = <MallaMove>[];
   String lastMoveKey = '';
 
-  bool get finished => scores.fold<int>(0, (a, b) => a + b) == hexes.length;
+  bool get finished => boardFull || lastStanding;
+
+  bool get boardFull => scores.fold<int>(0, (a, b) => a + b) == hexes.length;
+
+  /// Solo queda un jugador dentro: gana aunque falten aristas.
+  bool get lastStanding => playerCount - out.length <= 1;
+
+  /// El siguiente asiento con turno después de [seat].
+  int nextActive(int seat) {
+    for (var i = 1; i <= playerCount; i++) {
+      final next = (seat + i) % playerCount;
+      if (!out.contains(next)) return next;
+    }
+    return seat;
+  }
 
   List<MallaEdge> get legalEdges => <MallaEdge>[
     for (final edge in edges.values)
@@ -113,6 +137,12 @@ class MallaGame {
 
   List<int> get winners {
     if (!finished) return const <int>[];
+    if (lastStanding) {
+      return <int>[
+        for (var i = 0; i < playerCount; i++)
+          if (!out.contains(i)) i,
+      ];
+    }
     final best = scores.reduce(math.max);
     return <int>[
       for (var i = 0; i < scores.length; i++)
@@ -128,6 +158,7 @@ class MallaGame {
       chain: chain,
     );
     copy.currentPlayer = currentPlayer;
+    copy.out.addAll(out);
     copy.lastMoveKey = lastMoveKey;
     copy.moves.addAll(moves);
     for (var i = 0; i < scores.length; i++) {
@@ -162,6 +193,10 @@ class MallaGame {
       chain: chain,
     );
     for (final move in moves) {
+      if (move.isOut) {
+        game.applyOut(move.player);
+        continue;
+      }
       final result = game.applyMove(move.key, move.player);
       if (!result.accepted) {
         throw FormatException('Secuencia de Malla inválida en ${move.key}');
@@ -206,7 +241,7 @@ class MallaGame {
     }
 
     if (!finished && !(chain && captured.isNotEmpty)) {
-      currentPlayer = (currentPlayer + 1) % playerCount;
+      currentPlayer = nextActive(currentPlayer);
     }
 
     return MallaMoveResult(
@@ -216,6 +251,15 @@ class MallaGame {
       nextPlayer: currentPlayer,
       finished: finished,
     );
+  }
+
+  /// Deja fuera a [seat]: si le tocaba, pasa el turno al siguiente.
+  void applyOut(int seat) {
+    if (seat < 0 || seat >= playerCount || !out.add(seat)) return;
+    moves.add(MallaMove.out(seat));
+    if (currentPlayer == seat && !finished) {
+      currentPlayer = nextActive(seat);
+    }
   }
 
   /// Cuántos hexágonos conquistaría [player] con esta arista.

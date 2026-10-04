@@ -453,15 +453,17 @@ List<Object?> _list(Map<String, Object?> root, String key, {required int max}) {
 }
 
 Map<String, Object?> _map(Object? raw, String subject) {
-  if (raw is! Map<dynamic, dynamic>)
+  if (raw is! Map<dynamic, dynamic>) {
     throw FormatException('$subject debe ser un objeto');
+  }
   return Map<String, Object?>.from(raw);
 }
 
 String _id(Object? raw, String subject) {
   final value = _boundedText(raw, subject, max: 48);
-  if (!_contentId.hasMatch(value))
+  if (!_contentId.hasMatch(value)) {
     throw FormatException('$subject no es un id válido');
+  }
   return value;
 }
 

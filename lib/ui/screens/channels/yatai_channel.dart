@@ -50,6 +50,7 @@ enum _Tab { games, tamas, accessories, gacha, gift }
 ArtIcon _gameArt(String gameId) => switch (gameId) {
       'tsumiki' => ArtIcon.tsumiki,
       'hebi' => ArtIcon.hebi,
+      'malla' => ArtIcon.malla,
       'nihongo' => ArtIcon.nihongo,
       _ => ArtIcon.minesweeper,
     };
@@ -58,6 +59,7 @@ String _gameTitle(L l, String gameId) => switch (gameId) {
       'minesweeper' => l.minesweeperTitle,
       'tsumiki' => l.tsumikiTitle,
       'hebi' => l.hebiTitle,
+      'malla' => l.mallaTitle,
       'nihongo' => l.nihongoTitle,
       _ => gameId,
     };
@@ -98,6 +100,7 @@ ArtIcon itemArt(ShopItem it) => it.ticket != null
 String _gameDesc(L l, String gameId) => switch (gameId) {
       'tsumiki' => l.yataiDescTsumiki,
       'hebi' => l.yataiDescHebi,
+      'malla' => l.yataiDescMalla,
       'nihongo' => l.yataiDescNihongo,
       _ => l.yataiDescGame,
     };

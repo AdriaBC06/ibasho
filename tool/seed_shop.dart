@@ -27,11 +27,13 @@ import 'dart:io';
 /// Desde la 0.8.0, la caca para el Tama: 1 moneda.
 /// Desde la 0.9.0, Hebi: 10, como Tsumiki, y los diez accesorios del Yatai:
 /// 30, 50, 80 o 120 segun su rareza.
+/// Desde la 0.9.1, Malla: 10, como Tsumiki y Hebi.
 /// Ampliar el catalogo es anadir aqui su precio, nada mas.
 const Map<String, int> _prices = <String, int>{
   'game_minesweeper': 0,
   'game_tsumiki': 10,
   'game_hebi': 10,
+  'game_malla': 10,
   'game_nihongo': 50,
   'food_cookie': 3,
   'food_candy': 3,

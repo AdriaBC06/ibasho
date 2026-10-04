@@ -5,6 +5,38 @@ cada checkpoint sube la menor y los arreglos sobre él suben el parche. La
 versión que corre cada build está en `pubspec.yaml` y en `lib/core/version.dart`
 (lo comprueba `test/update_gate_test.dart`).
 
+## 0.9.1 — Malla
+
+### Añadido
+
+- **Malla**, un juego nuevo en el Yatai por 10 monedas, traído por Julio
+  Solano (Mr-E28j). Es un tablero de hexágonos: en cada turno marcas una
+  arista, y el hexágono es de quien llega a cuatro de sus seis lados (o de
+  quien dibuja la sexta si nadie llegó). Gana quien conquista más.
+  - **Contra tus Tamas**: de 1 a 5 rivales, que son Tamas de tu cuenta, en
+    fácil, normal o difícil y tableros de 3×3 a 7×7. Con «cadena», conquistar
+    te deja volver a jugar.
+  - **Online** de 2 a 6 jugadores: invita a tus amigos (les sale un aviso en
+    el canal) o pasa el código de sala de 6 letras a cualquier cuenta de
+    Ibasho. Cada uno juega con su Tama y su color. Si alguien pasa 20 s sin
+    señal, se le salta; si solo queda uno, gana. Al acabar, el anfitrión
+    puede pedir revancha.
+  - **Historial** de tus partidas online (las 30 últimas) y **16 logros**
+    con medalla de bronce, plata u oro.
+  - **Monedas**: contra tus Tamas, 3 al ganar (1 en fácil); online, 5 al
+    ganador y 1 a los demás. Hasta 20 al día.
+  - Canción nueva, «malla» (handpan y kalimba que se desfasan, en Fa lidio).
+- **Kōbō, extensiones** (Ajustes → Sistema → Extensiones): instala paquetes
+  `.ibasho` de contenido (fondos y textos), sin código ni permisos. Cada
+  paquete se valida al instalarlo y queda aislado del resto.
+
+### Cambiado
+
+- **Una sola conexión por app** para todo lo que llega al momento (mensajes,
+  presencia, salas, avisos). Antes cada cosa abría la suya y, con pocas
+  personas a la vez, se llegaba al tope del plan gratis de Firebase y dejaban
+  de llegar cosas.
+
 ## 0.9.0 — El parque
 
 ### Añadido

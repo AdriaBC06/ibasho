@@ -3,7 +3,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ibasho/extensions/content_models.dart';
 import 'package:ibasho/extensions/home_game_channels.dart';
-import 'package:ibasho/ui/widgets/glyphs.dart';
 
 void main() {
   ExtensionGame game({
@@ -27,7 +26,7 @@ void main() {
     );
   });
 
-  test('supported registry games become HOME channels', () {
+  test('Malla is built in now: a package cannot open it as a HOME channel', () {
     final malla = game(version: '2.0.1');
     final unknown = game(
       version: '1.0.0',
@@ -43,10 +42,6 @@ void main() {
       localeCode: 'es',
     );
 
-    expect(channels, hasLength(1));
-    expect(channels.single.id, 'kobo-game-com.justmre.malla-malla');
-    expect(channels.single.glyph, Glyph.blocks);
-    expect(channels.single.gift, isFalse);
-    expect(channels.single.gameId, isNull);
+    expect(channels, isEmpty);
   });
 }

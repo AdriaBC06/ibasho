@@ -72,6 +72,7 @@ enum Glyph {
   coin,
   mine,
   blocks,
+  hexagon,
   snake,
   kana,
   pause,
@@ -798,6 +799,18 @@ class _GlyphPainter extends CustomPainter {
             ..close(),
           stroke,
         );
+      case Glyph.hexagon:
+        // Malla: un hexágono de punta arriba y, dentro, la arista que se
+        // acaba de reclamar, más gruesa.
+        final hex = Path();
+        for (var k = 0; k < 6; k++) {
+          final a = math.pi / 180 * (30 + 60 * k);
+          final p = Offset(12 + 8.6 * math.cos(a), 12 + 8.6 * math.sin(a));
+          k == 0 ? hex.moveTo(p.dx, p.dy) : hex.lineTo(p.dx, p.dy);
+        }
+        canvas.drawPath(hex..close(), stroke);
+        canvas.drawLine(const Offset(12, 12), Offset(12 + 8.6 * math.cos(math.pi / 6), 12 + 8.6 * math.sin(math.pi / 6)), stroke);
+        canvas.drawCircle(const Offset(12, 12), 1.8, fill);
       case Glyph.snake:
         // Una serpiente en S, de la cola (abajo a la izquierda) a la cabeza
         // (arriba a la derecha), en un solo trazo, y el ojo aparte.
