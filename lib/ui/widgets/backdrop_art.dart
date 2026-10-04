@@ -13,10 +13,12 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../backend/backdrops.dart';
 import '../../backend/gacha.dart';
 import '../../backend/koen.dart';
+import '../../extensions/backdrop_pack.dart';
 import '../../games/koen/koen_art.dart';
 import '../../theme/skin.dart';
 import 'channel_art.dart' show paintTwinkle;
@@ -24,16 +26,16 @@ import 'channel_art.dart' show paintTwinkle;
 /// El fondo puesto por la cuenta, a pantalla completa. [id] es el de
 /// [Backdrop] (sin el prefijo `bg_`); vacio o desconocido no pinta nada y
 /// deja el aspecto de siempre.
-class BackdropView extends StatefulWidget {
+class BackdropView extends ConsumerStatefulWidget {
   const BackdropView({super.key, this.id});
 
   final String? id;
 
   @override
-  State<BackdropView> createState() => _BackdropViewState();
+  ConsumerState<BackdropView> createState() => _BackdropViewState();
 }
 
-class _BackdropViewState extends State<BackdropView>
+class _BackdropViewState extends ConsumerState<BackdropView>
     with SingleTickerProviderStateMixin {
   // Una vuelta lenta y larga: con 70 estrellas y fases repartidas no hace
   // falta que sea mas corta para que parpadeen todo el rato, y asi la deriva
@@ -59,7 +61,8 @@ class _BackdropViewState extends State<BackdropView>
     // De SR en adelante el fondo se mueve, muy despacio: el cristal, las
     // luces y los destellos. R y N se quedan quietos.
     final rarity = backdropById(widget.id)?.rarity;
-    final animate = rarity != null &&
+    final animate =
+        rarity != null &&
         rarity.index >= Rarity.sr.index &&
         !IbashoSkin.of(context).reducedMotion;
     if (animate) {
@@ -78,7 +81,25 @@ class _BackdropViewState extends State<BackdropView>
   @override
   Widget build(BuildContext context) {
     final id = widget.id;
-    if (id == null || backdropById(id) == null) return const SizedBox.shrink();
+    if (id == null) return const SizedBox.shrink();
+
+    // Native Ibasho backdrops must remain usable without Riverpod. This is
+    // important for existing widget/gallery tests and keeps Kobo optional.
+    // Only an extension id needs the extension registry/provider.
+    if (backdropById(id) == null) {
+      if (!id.startsWith('ext:')) return const SizedBox.shrink();
+      final extensionBackdrops =
+          ref.watch(extensionBackdropsProvider).asData?.value ??
+          const <ExtensionBackdrop>[];
+      final extension = extensionBackdropByPreferenceId(extensionBackdrops, id);
+      if (extension == null) return const SizedBox.shrink();
+      return IgnorePointer(
+        child: CustomPaint(
+          size: Size.infinite,
+          painter: _ExtensionBackdropPainter(extension),
+        ),
+      );
+    }
 
     if (id == 'starfield') {
       return IgnorePointer(
@@ -105,6 +126,131 @@ class _BackdropViewState extends State<BackdropView>
       ),
     );
   }
+}
+
+/// Pintor del primer punto de extensión de Kōbō. Todo lo que ejecuta está en
+/// Ibasho; el paquete solo aporta datos declarativos validados.
+class _ExtensionBackdropPainter extends CustomPainter {
+  const _ExtensionBackdropPainter(this.backdrop);
+
+  final ExtensionBackdrop backdrop;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[backdrop.top, backdrop.base, backdrop.deep],
+        ).createShader(rect),
+    );
+
+    switch (backdrop.motif) {
+      case ExtensionBackdropMotif.stars:
+        _stars(canvas, rect);
+        break;
+      case ExtensionBackdropMotif.haze:
+        _haze(canvas, rect);
+        break;
+      case ExtensionBackdropMotif.aurora:
+        _aurora(canvas, rect);
+        break;
+    }
+  }
+
+  void _stars(Canvas canvas, Rect rect) {
+    const points = <(double, double, double)>[
+      (.09, .16, .010),
+      (.18, .69, .006),
+      (.27, .31, .008),
+      (.39, .81, .011),
+      (.49, .18, .006),
+      (.58, .54, .009),
+      (.68, .27, .007),
+      (.77, .73, .010),
+      (.88, .39, .006),
+      (.94, .13, .008),
+    ];
+    for (var i = 0; i < points.length; i++) {
+      final point = points[i];
+      final center = Offset(rect.width * point.$1, rect.height * point.$2);
+      final radius = rect.shortestSide * point.$3;
+      if (i % 3 == 0) {
+        paintTwinkle(canvas, center, radius * 2.4, const Color(0xDDFFFFFF));
+      } else {
+        canvas.drawCircle(
+          center,
+          radius,
+          Paint()..color = const Color(0xCCFFFFFF),
+        );
+      }
+    }
+  }
+
+  void _haze(Canvas canvas, Rect rect) {
+    const spots = <(double, double, double)>[
+      (.18, .24, .34),
+      (.72, .30, .42),
+      (.48, .80, .38),
+    ];
+    for (var i = 0; i < spots.length; i++) {
+      final spot = spots[i];
+      final center = Offset(rect.width * spot.$1, rect.height * spot.$2);
+      final radius = rect.shortestSide * spot.$3;
+      final tint = i.isEven ? backdrop.accent : backdrop.top;
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..color = tint.withValues(alpha: .18)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 46),
+      );
+    }
+  }
+
+  void _aurora(Canvas canvas, Rect rect) {
+    for (var i = 0; i < 4; i++) {
+      final y = rect.height * (.18 + i * .16);
+      final path = Path()
+        ..moveTo(-rect.width * .08, y)
+        ..cubicTo(
+          rect.width * .22,
+          y - rect.height * .15,
+          rect.width * .48,
+          y + rect.height * .15,
+          rect.width * .70,
+          y - rect.height * .02,
+        )
+        ..cubicTo(
+          rect.width * .84,
+          y - rect.height * .12,
+          rect.width * 1.02,
+          y + rect.height * .08,
+          rect.width * 1.10,
+          y,
+        );
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = rect.shortestSide * (.055 + i * .008)
+          ..strokeCap = StrokeCap.round
+          ..color = Color.lerp(
+            backdrop.accent,
+            backdrop.top,
+            i / 5,
+          )!.withValues(alpha: .22)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ExtensionBackdropPainter old) => old.backdrop != backdrop;
 }
 
 /// El fondo de Tama Kōen: el propio parque, de día y con la estación de hoy
@@ -150,7 +296,9 @@ class _KoenBackdropState extends State<_KoenBackdrop> {
 
   @override
   Widget build(BuildContext context) {
-    final south = koenSouthern(View.of(context).platformDispatcher.locale.countryCode);
+    final south = koenSouthern(
+      View.of(context).platformDispatcher.locale.countryCode,
+    );
     final season = koenSeason(DateTime.now(), south: south);
     final reduced = IbashoSkin.of(context).reducedMotion;
     return LayoutBuilder(
@@ -397,7 +545,9 @@ class _BackdropPainter extends CustomPainter {
       final fx = shafts[i];
       // La luz entre las hojas va y viene.
       final paint = Paint()
-        ..color = light.withValues(alpha: light.a * (.75 + .35 * _wave(5 + i, i * 2.0)));
+        ..color = light.withValues(
+          alpha: light.a * (.75 + .35 * _wave(5 + i, i * 2.0)),
+        );
       final top = Offset(rect.width * fx, 0);
       final path = Path()
         ..moveTo(top.dx - rect.width * .04, top.dy)
@@ -419,7 +569,12 @@ class _BackdropPainter extends CustomPainter {
       final (fx, fy, fs) = spots[i];
       // Las caras del hielo cogen la luz por turnos.
       final paint = Paint()
-        ..color = Color.fromRGBO(255, 255, 255, .2 + .1 * _wave(6 + i, i * 2.1));
+        ..color = Color.fromRGBO(
+          255,
+          255,
+          255,
+          .2 + .1 * _wave(6 + i, i * 2.1),
+        );
       final c = Offset(rect.width * fx, rect.height * fy);
       final s = rect.shortestSide * fs;
       final path = Path()
@@ -486,7 +641,9 @@ class _BackdropPainter extends CustomPainter {
       final edge = <Offset>[];
       for (var s = 0; s <= steps; s++) {
         final fx = s / steps;
-        final sway = math.sin(fx * math.pi * (2 + i) + loop.value * math.pi * 2 * (2 + i) + i);
+        final sway = math.sin(
+          fx * math.pi * (2 + i) + loop.value * math.pi * 2 * (2 + i) + i,
+        );
         edge.add(Offset(rect.width * fx, top + sway * rect.height * .035));
       }
       path.moveTo(edge.first.dx, edge.first.dy);
@@ -497,7 +654,12 @@ class _BackdropPainter extends CustomPainter {
         path.lineTo(p.dx, p.dy + depth);
       }
       path.close();
-      final band = Rect.fromLTWH(0, top - rect.height * .04, rect.width, depth + rect.height * .08);
+      final band = Rect.fromLTWH(
+        0,
+        top - rect.height * .04,
+        rect.width,
+        depth + rect.height * .08,
+      );
       canvas.drawPath(
         path,
         Paint()
@@ -520,7 +682,8 @@ class _BackdropPainter extends CustomPainter {
     for (var i = 0; i < _emberSeeds.length; i++) {
       final (fx, phase, speed) = _emberSeeds[i];
       final p = (loop.value * speed + phase) % 1.0;
-      final x = rect.width * fx + math.sin(p * math.pi * 4 + i) * rect.width * .02;
+      final x =
+          rect.width * fx + math.sin(p * math.pi * 4 + i) * rect.width * .02;
       final y = rect.height * (1.02 - p * .7);
       final fade = math.sin(p * math.pi);
       final r = rect.shortestSide * (.006 + .004 * (i % 3));
@@ -528,12 +691,15 @@ class _BackdropPainter extends CustomPainter {
         Offset(x, y),
         r * 2.6,
         Paint()
-          ..shader = RadialGradient(
-            colors: <Color>[
-              Color.fromRGBO(255, 190, 90, .45 * fade),
-              const Color(0x00FFBE5A),
-            ],
-          ).createShader(Rect.fromCircle(center: Offset(x, y), radius: r * 2.6)),
+          ..shader =
+              RadialGradient(
+                colors: <Color>[
+                  Color.fromRGBO(255, 190, 90, .45 * fade),
+                  const Color(0x00FFBE5A),
+                ],
+              ).createShader(
+                Rect.fromCircle(center: Offset(x, y), radius: r * 2.6),
+              ),
       );
       canvas.drawCircle(
         Offset(x, y),
@@ -544,17 +710,16 @@ class _BackdropPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BackdropPainter old) =>
-      old.id != id || old.loop != loop;
+  bool shouldRepaint(_BackdropPainter old) => old.id != id || old.loop != loop;
 }
 
 /// Las brasas del fenix: posicion horizontal, fase y vueltas por bucle
 /// (entero, para que el bucle no salte).
 final List<(double, double, int)> _emberSeeds =
     List<(double, double, int)>.generate(16, (i) {
-  final random = math.Random(3000 + i);
-  return (random.nextDouble(), random.nextDouble(), 6 + random.nextInt(6));
-});
+      final random = math.Random(3000 + i);
+      return (random.nextDouble(), random.nextDouble(), 6 + random.nextInt(6));
+    });
 
 /// Una estrella de la unica ∞: posicion, tamano, fase, vueltas de parpadeo
 /// por bucle (entero, para que el bucle no salte) y capa de profundidad.
@@ -589,13 +754,16 @@ final List<_Star> _stars = List<_Star>.generate(120, (i) {
 /// El polvo de la via lactea: una banda diagonal de puntos muy finos.
 final List<(double, double, double)> _dust =
     List<(double, double, double)>.generate(220, (i) {
-  final random = math.Random(4000 + i);
-  // Gauss aproximado: la banda es densa en el centro y se deshilacha.
-  final across =
-      (random.nextDouble() + random.nextDouble() + random.nextDouble() - 1.5) *
+      final random = math.Random(4000 + i);
+      // Gauss aproximado: la banda es densa en el centro y se deshilacha.
+      final across =
+          (random.nextDouble() +
+              random.nextDouble() +
+              random.nextDouble() -
+              1.5) *
           .16;
-  return (random.nextDouble(), across, random.nextDouble());
-});
+      return (random.nextDouble(), across, random.nextDouble());
+    });
 
 /// Las estrellas grandes de la ∞, con halo, cruz y un color propio.
 const List<(double, double, Color)> _brightStars = <(double, double, Color)>[
@@ -613,12 +781,12 @@ const List<(double, double, Color)> _brightStars = <(double, double, Color)>[
 /// salen y hacia donde van (fracciones de la pantalla).
 const List<(double, double, Offset, Offset)> _shooting =
     <(double, double, Offset, Offset)>[
-  (.08, .035, Offset(.18, .08), Offset(.46, .34)),
-  (.31, .03, Offset(.78, .06), Offset(.52, .3)),
-  (.55, .04, Offset(.1, .3), Offset(.44, .58)),
-  (.74, .03, Offset(.66, .12), Offset(.94, .38)),
-  (.9, .035, Offset(.4, .04), Offset(.7, .26)),
-];
+      (.08, .035, Offset(.18, .08), Offset(.46, .34)),
+      (.31, .03, Offset(.78, .06), Offset(.52, .3)),
+      (.55, .04, Offset(.1, .3), Offset(.44, .58)),
+      (.74, .03, Offset(.66, .12), Offset(.94, .38)),
+      (.9, .035, Offset(.4, .04), Offset(.7, .26)),
+    ];
 
 /// El cielo de la ∞, el fondo mas vistoso: nebulosas que respiran y giran
 /// despacio, la via lactea en diagonal, estrellas en tres capas de
@@ -644,7 +812,11 @@ class _StarfieldPainter extends CustomPainter {
         ..shader = const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[Color(0xFF0B1533), Color(0xFF1C2C5C), Color(0xFF2E1F5E)],
+          colors: <Color>[
+            Color(0xFF0B1533),
+            Color(0xFF1C2C5C),
+            Color(0xFF2E1F5E),
+          ],
           stops: <double>[0, .6, 1],
         ).createShader(rect),
     );
@@ -664,8 +836,12 @@ class _StarfieldPainter extends CustomPainter {
         h * fy + math.sin(a) * h * .03,
       );
       final breath = .5 + .5 * _wave(3 + i, i * 1.3);
-      _cloud(canvas, c, size.longestSide * fr * (.92 + .08 * breath),
-          color.withValues(alpha: .2 + .12 * breath));
+      _cloud(
+        canvas,
+        c,
+        size.longestSide * fr * (.92 + .08 * breath),
+        color.withValues(alpha: .2 + .12 * breath),
+      );
     }
 
     // La via lactea: una banda de luz en diagonal y su polvo de estrellas.
@@ -709,7 +885,12 @@ class _StarfieldPainter extends CustomPainter {
       final c = Offset(dx * w, s.dy * h);
       canvas.drawCircle(c, s.size, star);
       if (s.layer == 2) {
-        _cloud(canvas, c, s.size * 5, Color.fromRGBO(190, 205, 255, .22 * twinkle));
+        _cloud(
+          canvas,
+          c,
+          s.size * 5,
+          Color.fromRGBO(190, 205, 255, .22 * twinkle),
+        );
       }
     }
 

@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
 import '../../backend/gacha_music.dart';
+import '../../extensions/content_models.dart';
+import '../../extensions/content_registry.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/koro.dart';
 import '../../state/providers.dart';
@@ -35,9 +37,17 @@ class MenuMusicPicker extends ConsumerWidget {
     final owner = profile == null
         ? ''
         : profile.displayName.isNotEmpty
-            ? profile.displayName
-            : profile.username;
-    final current = library.menuTrack ?? ref.watch(preferencesProvider.select((p) => p.musicTrack));
+        ? profile.displayName
+        : profile.username;
+    final localMusic = ref.watch(
+      preferencesProvider.select((p) => p.musicTrack),
+    );
+    final current = localMusic.startsWith('ext:')
+        ? localMusic
+        : (library.menuTrack ?? localMusic);
+    final extensionMusic =
+        ref.watch(extensionContentProvider).asData?.value.music ??
+        const <ExtensionMusicTrack>[];
     final koroSlot = koroSlotOfTrack(current);
 
     // Una pista tambien esta desbloqueada si es un premio del gacha ya ganado
@@ -54,7 +64,10 @@ class MenuMusicPicker extends ConsumerWidget {
       ..sort((a, b) => a.key.compareTo(b.key));
     final playing = Text(
       l.musicPlaying,
-      style: Ty.caption.copyWith(color: T.onAccent, fontWeight: FontWeight.w500),
+      style: Ty.caption.copyWith(
+        color: T.onAccent,
+        fontWeight: FontWeight.w500,
+      ),
     );
 
     return Column(
@@ -67,9 +80,14 @@ class MenuMusicPicker extends ConsumerWidget {
         for (final entry in songs)
           TrackTile(
             title: koroTitle(l, entry.value, owner),
-            subtitle: l.koroSongFacts(entry.value.tempo, koroScaleName(l, entry.value.scale)),
+            subtitle: l.koroSongFacts(
+              entry.value.tempo,
+              koroScaleName(l, entry.value.scale),
+            ),
             selected: koroSlot == entry.key,
-            onPressed: () => unawaited(ref.read(musicLibraryProvider.notifier).selectKoro(entry.key)),
+            onPressed: () => unawaited(
+              ref.read(musicLibraryProvider.notifier).selectKoro(entry.key),
+            ),
             trailing: koroSlot == entry.key ? playing : null,
           ),
         if (songs.isNotEmpty) const SizedBox(height: 12),
@@ -86,6 +104,17 @@ class MenuMusicPicker extends ConsumerWidget {
               await notifier.select(track);
             },
             trailing: koroSlot == null && track.id == current ? playing : null,
+          ),
+        if (extensionMusic.isNotEmpty) const SizedBox(height: 12),
+        for (final track in extensionMusic)
+          TrackTile(
+            title: track.label(Localizations.localeOf(context).languageCode),
+            subtitle: '${track.author} · ${track.license}',
+            selected: track.preferenceId == current,
+            onPressed: () => ref
+                .read(preferencesProvider.notifier)
+                .setExtensionMusicTrack(track.preferenceId, track.filePath),
+            trailing: track.preferenceId == current ? playing : null,
           ),
         Padding(
           padding: const EdgeInsets.only(left: 6, top: 10),

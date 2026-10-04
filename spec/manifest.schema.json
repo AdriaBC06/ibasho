@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.ibasho.local/extension/manifest.schema.json",
+  "title": "Ibasho Extension Manifest",
+  "description": "Draft schema for Ibasho Extension Specification 1.x packages.",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "name",
+    "version",
+    "publisher",
+    "type",
+    "compatibility",
+    "permissions",
+    "assets"
+  ],
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "publisher": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "type": {
+      "enum": [
+        "content-pack",
+        "external-app",
+        "integrated-app"
+      ]
+    },
+    "compatibility": {
+      "type": "object",
+      "required": [
+        "ibashoApi",
+        "minIbasho"
+      ],
+      "properties": {
+        "ibashoApi": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "minIbasho": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "maxIbasho": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "entry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "url"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "pattern": "^https://[^\\s]+$"
+            },
+            "allowedOrigins": {
+              "type": "array",
+              "maxItems": 8,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?$"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "content"
+          ],
+          "properties": {
+            "content": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "permissions": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 96,
+        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+        "not": {
+          "pattern": "^(auth|firebase|crypto|messages|gacha|admin)(\\.|$)|^friends\\.write$|^currency\\.write$|^inventory\\.write$"
+        }
+      }
+    },
+    "optionalPermissions": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 96,
+        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+        "not": {
+          "pattern": "^(auth|firebase|crypto|messages|gacha|admin)(\\.|$)|^friends\\.write$|^currency\\.write$|^inventory\\.write$"
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "required": [
+        "icon"
+      ],
+      "properties": {
+        "icon": {
+          "$ref": "#/$defs/safeRelativePath"
+        },
+        "preview": {
+          "$ref": "#/$defs/safeRelativePath"
+        }
+      },
+      "additionalProperties": false
+    },
+    "locales": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z]{2}(?:-[A-Z]{2})?$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/safeRelativePath"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "integer",
+          "boolean",
+          "null"
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "content-pack"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entry": {
+            "type": "object",
+            "required": [
+              "content"
+            ],
+            "properties": {
+              "content": {
+                "$ref": "#/$defs/safeRelativePath"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "entry"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "external-app",
+              "integrated-app"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entry": {
+            "type": "object",
+            "required": [
+              "url"
+            ],
+            "properties": {
+              "url": {
+                "type": "string",
+                "pattern": "^https://[^\\s]+$"
+              },
+              "allowedOrigins": {
+                "type": "array",
+                "maxItems": 8,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?$"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "entry"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "integrated-app"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entry": {
+            "required": [
+              "allowedOrigins"
+            ],
+            "properties": {
+              "allowedOrigins": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9._/-]+$"
+    }
+  },
+  "additionalProperties": true
+}

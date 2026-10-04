@@ -11,6 +11,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../audio/audio_service.dart';
+import '../../extensions/content_registry.dart';
+import '../../extensions/home_game_channels.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/card.dart';
 import '../../state/channel_order.dart';
@@ -179,6 +181,13 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     // vez lo conserva aunque se quede sin bolas.
     final pinball = gacha.pulledOnce || gacha.totalBalls > 0;
     final prefs = ref.watch(preferencesProvider);
+    final koboRegistry = ref.watch(extensionContentProvider).asData?.value;
+    final koboGames = koboRegistry == null
+        ? const <ChannelSpec>[]
+        : koboGameChannelSpecs(
+            registry: koboRegistry,
+            localeCode: prefs.localeCode,
+          );
     // El pachinko, tras la primera bola jugada en el pinball (o si ya se ha
     // jugado alguna tanda, desde otro dispositivo).
     final pachinko = prefs.pinballPlayed || gacha.pachinkoPlayed;
@@ -193,6 +202,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen>
     final channels = channelsFor(
       isAdmin: ref.read(sessionProvider).isAdmin,
       installedGames: ref.watch(installedGamesProvider),
+      extensionGameChannels: koboGames,
       gachaUnlocked: unlocked,
       gachaGift: unlocked && !prefs.gachaOpened,
       pinballUnlocked: pinball,

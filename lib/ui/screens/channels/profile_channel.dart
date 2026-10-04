@@ -9,11 +9,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../audio/audio_service.dart';
 import '../../../core/birthday.dart';
 import '../../../backend/models.dart';
+import '../../../extensions/backdrop_pack.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../../state/accent_sync.dart';
 import '../../../state/profile.dart';
 import '../../../state/providers.dart';
-import '../../../theme/menu_theme.dart';
 import '../../../theme/skin.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/type.dart';
@@ -70,8 +70,9 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
   void _seed(UserProfile profile) {
     _displayName.text = profile.displayName;
     _status.text = profile.statusMessage;
-    _timezone =
-        profile.timezone.isEmpty ? localTimezoneName() : profile.timezone;
+    _timezone = profile.timezone.isEmpty
+        ? localTimezoneName()
+        : profile.timezone;
     final parts = profile.birthdayParts;
     _day.text = parts == null ? '' : parts.$3.toString().padLeft(2, '0');
     _month.text = parts == null ? '' : parts.$2.toString().padLeft(2, '0');
@@ -118,7 +119,9 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
     if (saved) {
       // El idioma del perfil manda sobre el local en cuanto se guarda.
       await ref.read(preferencesProvider.notifier).setLocale(_locale);
-      await ref.read(preferencesProvider.notifier).setAccentFollowsTheme(_followsTheme);
+      await ref
+          .read(preferencesProvider.notifier)
+          .setAccentFollowsTheme(_followsTheme);
       if (!mounted) return;
       AudioService.instance.play(Sfx.open);
       showIbashoToast(context, l.profileSaved);
@@ -144,7 +147,13 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
     }
     if (!_seeded) _seed(profile);
     // Solo con un tema que tine el entorno hay acento del tema que seguir.
-    final theme = menuThemeFor(ref.watch(backdropIdProvider));
+    final extensionBackdrops =
+        ref.watch(extensionBackdropsProvider).asData?.value ??
+        const <ExtensionBackdrop>[];
+    final theme = resolvedMenuTheme(
+      ref.watch(backdropIdProvider),
+      extensionBackdrops,
+    );
     final followingTheme = _followsTheme && theme != null;
     final layout = Layout.of(context);
     final tall = layout.tall;
@@ -153,7 +162,12 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
       title: l.profileTitle,
       glyph: Glyph.person,
       child: IbashoScroll(
-        padding: EdgeInsets.fromLTRB(layout.gutter, layout.pick(28, 18), layout.gutter, 44),
+        padding: EdgeInsets.fromLTRB(
+          layout.gutter,
+          layout.pick(28, 18),
+          layout.gutter,
+          44,
+        ),
         child: Center(
           child: SizedBox(
             width: layout.pick(880, layout.column),
@@ -229,12 +243,15 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                         children: [
                           if (theme != null)
                             _FollowChip(
-                              key: const ValueKey<String>('profile.followTheme'),
+                              key: const ValueKey<String>(
+                                'profile.followTheme',
+                              ),
                               color: theme.accent,
                               glyph: Glyph.star,
                               selected: _followsTheme,
                               label: l.profileAccentFollowTheme,
-                              onPressed: () => setState(() => _followsTheme = true),
+                              onPressed: () =>
+                                  setState(() => _followsTheme = true),
                             ),
                           if (profileTama != null)
                             _FollowChip(
@@ -246,13 +263,16 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                               onPressed: () => setState(() {
                                 _followsTheme = false;
                                 _followsTama = true;
-                                _accent = _hex(accentForTama(profileTama.look.color));
+                                _accent = _hex(
+                                  accentForTama(profileTama.look.color),
+                                );
                               }),
                             ),
                           for (final color in T.accentPalette)
                             ColorChip(
                               color: color,
-                              selected: !_followsTama &&
+                              selected:
+                                  !_followsTama &&
                                   !followingTheme &&
                                   _hex(color) == _accent.toUpperCase(),
                               // Tocar un color a mano rompe la sincronizacion
@@ -268,12 +288,18 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                       if (followingTheme)
                         Padding(
                           padding: const EdgeInsets.only(top: 12, left: 4),
-                          child: Text(l.profileAccentThemeHint, style: Ty.caption),
+                          child: Text(
+                            l.profileAccentThemeHint,
+                            style: Ty.caption,
+                          ),
                         )
                       else if (_followsTama && profileTama != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 12, left: 4),
-                          child: Text(l.profileAccentFollowHint, style: Ty.caption),
+                          child: Text(
+                            l.profileAccentFollowHint,
+                            style: Ty.caption,
+                          ),
                         ),
                       const SizedBox(height: 22),
                       const Hairline(),
@@ -297,7 +323,10 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.only(left: 6, bottom: 6),
+                                padding: const EdgeInsets.only(
+                                  left: 6,
+                                  bottom: 6,
+                                ),
                                 child: Text(l.profileLocale, style: Ty.label),
                               ),
                               IbashoSegmented<String>(
@@ -321,42 +350,44 @@ class _ProfileChannelState extends ConsumerState<ProfileChannel> {
                 const SizedBox(height: 26),
                 // En vertical los dos botones se reparten la linea; en
                 // horizontal, cada uno ocupa lo suyo y se separan.
-                Builder(builder: (context) {
-                  final wall = IbashoButton(
-                    key: const ValueKey<String>('profile.wall'),
-                    label: l.profileWall,
-                    glyph: Glyph.cake,
-                    height: 52,
-                    cue: null,
-                    onPressed: () => pushChannelPage<void>(context, (_) => const OwnWallScreen()),
-                  );
-                  final save = IbashoButton(
-                    label: state.saving ? l.changePasswordWorking : l.actionSave,
-                    tone: ButtonTone.accent,
-                    glyph: Glyph.check,
-                    height: 52,
-                    minWidth: tall ? 0 : 200,
-                    cue: null,
-                    onPressed: state.saving ? null : () => _save(profile),
-                  );
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: tall
-                        ? [
-                            Flexible(child: wall),
-                            const SizedBox(width: 12),
-                            Flexible(child: save),
-                          ]
-                        : [wall, const Spacer(), save],
-                  );
-                }),
-                const SizedBox(height: 10),
-                Center(
-                  child: Text(
-                    _accentName(skin.accent),
-                    style: Ty.micro,
-                  ),
+                Builder(
+                  builder: (context) {
+                    final wall = IbashoButton(
+                      key: const ValueKey<String>('profile.wall'),
+                      label: l.profileWall,
+                      glyph: Glyph.cake,
+                      height: 52,
+                      cue: null,
+                      onPressed: () => pushChannelPage<void>(
+                        context,
+                        (_) => const OwnWallScreen(),
+                      ),
+                    );
+                    final save = IbashoButton(
+                      label: state.saving
+                          ? l.changePasswordWorking
+                          : l.actionSave,
+                      tone: ButtonTone.accent,
+                      glyph: Glyph.check,
+                      height: 52,
+                      minWidth: tall ? 0 : 200,
+                      cue: null,
+                      onPressed: state.saving ? null : () => _save(profile),
+                    );
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: tall
+                          ? [
+                              Flexible(child: wall),
+                              const SizedBox(width: 12),
+                              Flexible(child: save),
+                            ]
+                          : [wall, const Spacer(), save],
+                    );
+                  },
                 ),
+                const SizedBox(height: 10),
+                Center(child: Text(_accentName(skin.accent), style: Ty.micro)),
               ],
             ),
           ),
@@ -404,7 +435,9 @@ class _ProfileMusic extends ConsumerWidget {
                   selected: (library.profileTrack ?? '') == id,
                   onPressed: () => ref
                       .read(musicLibraryProvider.notifier)
-                      .selectProfileTrack(id.isEmpty ? null : MusicTrack.byId(id)),
+                      .selectProfileTrack(
+                        id.isEmpty ? null : MusicTrack.byId(id),
+                      ),
                 ),
             ],
           ),
@@ -510,7 +543,11 @@ class OwnWallScreen extends ConsumerWidget {
                     ),
                   Expanded(
                     child: ScreenPanel(
-                      child: WallPanel(accountId: account, profile: profile, own: true),
+                      child: WallPanel(
+                        accountId: account,
+                        profile: profile,
+                        own: true,
+                      ),
                     ),
                   ),
                 ],
@@ -537,12 +574,12 @@ class _NumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IbashoTextField(
-        controller: controller,
-        label: label,
-        width: width,
-        maxLength: max,
-        formatters: [FilteringTextInputFormatter.digitsOnly],
-      );
+    controller: controller,
+    label: label,
+    width: width,
+    maxLength: max,
+    formatters: [FilteringTextInputFormatter.digitsOnly],
+  );
 }
 
 /// El Tama de perfil, vivo, con su nombre. Tocarlo abre su habitacion; si aun
@@ -556,11 +593,11 @@ class _ProfileTama extends ConsumerWidget {
     final tama = ref.watch(tamasProvider.select((t) => t.profileTama));
 
     void open() => pushChannelPage<void>(
-          context,
-          (_) => tama == null
-              ? const TamaCreatorScreen()
-              : TamaRoomScreen(tamaId: tama.id),
-        );
+      context,
+      (_) => tama == null
+          ? const TamaCreatorScreen()
+          : TamaRoomScreen(tamaId: tama.id),
+    );
 
     final tall = Layout.of(context).tall;
     final window = TamaWindow(
@@ -647,46 +684,51 @@ class _FollowChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Pressable(
-        onPressed: onPressed,
-        semanticLabel: label,
-        builder: (context, state) => FocusRing(
-          visible: state.focus,
-          radius: 19,
-          child: Transform.translate(
-            offset: Offset(0, -2 * state.hover + 1.5 * state.press),
-            child: SizedBox(
-              height: 38,
-              child: GlossSurface(
-                radius: 19,
-                tint: color,
-                elevation: selected ? 1.6 : .8,
-                borderWidth: selected ? 2.5 : 1,
-                borderColor: selected ? Color.lerp(color, T.dusk, .45)! : IbashoSkin.of(context).hairline,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GlyphIcon(
-                      selected ? Glyph.check : glyph,
-                      size: 20,
-                      color: T.onAccent,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Ty.body.copyWith(color: T.onAccent, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
+    onPressed: onPressed,
+    semanticLabel: label,
+    builder: (context, state) => FocusRing(
+      visible: state.focus,
+      radius: 19,
+      child: Transform.translate(
+        offset: Offset(0, -2 * state.hover + 1.5 * state.press),
+        child: SizedBox(
+          height: 38,
+          child: GlossSurface(
+            radius: 19,
+            tint: color,
+            elevation: selected ? 1.6 : .8,
+            borderWidth: selected ? 2.5 : 1,
+            borderColor: selected
+                ? Color.lerp(color, T.dusk, .45)!
+                : IbashoSkin.of(context).hairline,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GlyphIcon(
+                  selected ? Glyph.check : glyph,
+                  size: 20,
+                  color: T.onAccent,
                 ),
-              ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Ty.body.copyWith(
+                      color: T.onAccent,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Dos bloques uno al lado del otro en horizontal y uno encima del otro en
@@ -713,7 +755,11 @@ class _Stack extends StatelessWidget {
       ],
     ];
     return tall
-        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: spaced)
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: spaced,
+          )
         : Row(crossAxisAlignment: crossAxisAlignment, children: spaced);
   }
 }
@@ -762,9 +808,19 @@ class _Birthday extends StatelessWidget {
           const SizedBox(width: 18),
           _NumberField(controller: day, label: l.profileDay, width: 96, max: 2),
           const SizedBox(width: 12),
-          _NumberField(controller: month, label: l.profileMonth, width: 96, max: 2),
+          _NumberField(
+            controller: month,
+            label: l.profileMonth,
+            width: 96,
+            max: 2,
+          ),
           const SizedBox(width: 12),
-          _NumberField(controller: year, label: l.profileYear, width: 124, max: 4),
+          _NumberField(
+            controller: year,
+            label: l.profileYear,
+            width: 124,
+            max: 4,
+          ),
           const SizedBox(width: 16),
           clear,
         ],
@@ -783,13 +839,25 @@ class _Birthday extends StatelessWidget {
               child: GlyphIcon(Glyph.cake, size: 24, color: T.warn),
             ),
             const SizedBox(width: 12),
-            Expanded(child: _NumberField(controller: day, label: l.profileDay, max: 2)),
+            Expanded(
+              child: _NumberField(controller: day, label: l.profileDay, max: 2),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: _NumberField(controller: month, label: l.profileMonth, max: 2)),
+            Expanded(
+              child: _NumberField(
+                controller: month,
+                label: l.profileMonth,
+                max: 2,
+              ),
+            ),
             const SizedBox(width: 10),
             Expanded(
               flex: 2,
-              child: _NumberField(controller: year, label: l.profileYear, max: 4),
+              child: _NumberField(
+                controller: year,
+                label: l.profileYear,
+                max: 4,
+              ),
             ),
           ],
         ),

@@ -106,10 +106,12 @@ class PreferencesController extends StateNotifier<Preferences> {
       : _commit(state.copyWith(hatarakiHelpSeen: true));
 
   /// Elige la canción de Hatarakitama ('' = todas por turnos).
-  Future<void> setHatarakiTrack(String id) => _commit(state.copyWith(hatarakiTrack: id));
+  Future<void> setHatarakiTrack(String id) =>
+      _commit(state.copyWith(hatarakiTrack: id));
 
   /// Vuelve a enseñar la ayuda de Hatarakitama (canal de depuración).
-  Future<void> forgetHatarakiHelp() => _commit(state.copyWith(hatarakiHelpSeen: false));
+  Future<void> forgetHatarakiHelp() =>
+      _commit(state.copyWith(hatarakiHelpSeen: false));
 
   /// El canal secreto de Ohirune ya se ha desenvuelto.
   Future<void> openOhirune() => state.ohiruneOpened
@@ -147,7 +149,27 @@ class PreferencesController extends StateNotifier<Preferences> {
   }
 
   Future<void> setMusicTrack(String id) async {
+    // Una pista nativa sustituye cualquier archivo local de Kōbō/Tamakoro.
+    await AudioService.instance.setMenuFile(null);
     await AudioService.instance.setTrack(id);
+    await _commit(state.copyWith(musicTrack: id));
+  }
+
+  /// Elige una pista declarada por una extensión activa.
+  ///
+  /// Es una preferencia exclusivamente local: no se escribe en la biblioteca
+  /// musical de Firebase ni concede desbloqueos oficiales.
+  Future<void> setExtensionMusicTrack(String id, String filePath) async {
+    if (!id.startsWith('ext:')) {
+      throw ArgumentError.value(
+        id,
+        'id',
+        'la música Kōbō debe usar namespace ext:',
+      );
+    }
+    await AudioService.instance.setMenuFile(null);
+    await AudioService.instance.setTrack(MusicTrack.fallback.id);
+    await AudioService.instance.setMenuFile(filePath);
     await _commit(state.copyWith(musicTrack: id));
   }
 

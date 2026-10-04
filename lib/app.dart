@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'audio/audio_service.dart';
 import 'backend/tama.dart';
 import 'core/device.dart';
+import 'extensions/backdrop_pack.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'state/debug.dart';
 import 'state/providers.dart';
@@ -75,33 +76,42 @@ class _IbashoAppState extends ConsumerState<IbashoApp> {
       localizationsDelegates: L.localizationsDelegates,
       supportedLocales: L.supportedLocales,
       debugShowCheckedModeBanner: false,
-      showPerformanceOverlay:
-          ref.watch(debugProvider.select((d) => d.performanceOverlay)),
+      showPerformanceOverlay: ref.watch(
+        debugProvider.select((d) => d.performanceOverlay),
+      ),
       pageRouteBuilder: <R>(RouteSettings settings, WidgetBuilder builder) =>
           PageRouteBuilder<R>(
-        settings: settings,
-        pageBuilder: (context, animation, secondary) => builder(context),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
+            settings: settings,
+            pageBuilder: (context, animation, secondary) => builder(context),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ),
       builder: (context, navigator) {
         // El tema del fondo puesto tine los materiales y, si se quiere,
         // da el acento.
-        final theme = menuThemeFor(ref.watch(backdropIdProvider));
-        final followsTheme =
-            ref.watch(preferencesProvider.select((p) => p.accentFollowsTheme));
-        final glassLevel =
-            ref.watch(preferencesProvider.select((p) => p.glassLevel));
-        final surfaces =
-            (theme?.surfaces ?? Surfaces.house).withGlassLevel(glassLevel);
+        final backdropId = ref.watch(backdropIdProvider);
+        final extensionBackdrops =
+            ref.watch(extensionBackdropsProvider).asData?.value ??
+            const <ExtensionBackdrop>[];
+        final theme = resolvedMenuTheme(backdropId, extensionBackdrops);
+        final followsTheme = ref.watch(
+          preferencesProvider.select((p) => p.accentFollowsTheme),
+        );
+        final glassLevel = ref.watch(
+          preferencesProvider.select((p) => p.glassLevel),
+        );
+        final surfaces = (theme?.surfaces ?? Surfaces.house).withGlassLevel(
+          glassLevel,
+        );
         _applyInk(surfaces);
         final chosen = followsTheme && theme != null
             ? theme.accent
             : ref.watch(accentProvider);
         // Sobre plastico negro un acento oscuro no se ve: se aclara.
         final accent = surfaces.dark ? brightAccent(chosen) : chosen;
-        final userPrefersReduced =
-            ref.watch(preferencesProvider.select((p) => p.reducedMotion));
+        final userPrefersReduced = ref.watch(
+          preferencesProvider.select((p) => p.reducedMotion),
+        );
         // La preferencia del sistema no se puede desactivar desde la app: se
         // suma a la del usuario.
         final reduced =
@@ -115,9 +125,7 @@ class _IbashoAppState extends ConsumerState<IbashoApp> {
             style: Ty.body,
             child: MobileLifecycle(
               child: TamaPointerTracker(
-                child: TouchAssist(
-                  child: VirtualCanvas(child: navigator!),
-                ),
+                child: TouchAssist(child: VirtualCanvas(child: navigator!)),
               ),
             ),
           ),
@@ -186,11 +194,18 @@ class _AppRootState extends ConsumerState<AppRoot> {
     // del perfil o del Tama.
     ref.listen(accentProvider, (before, after) {
       if (before == after || ref.read(profileProvider).profile == null) return;
-      unawaited(ref.read(preferencesProvider.notifier).rememberAccent(hexFromColor(after)));
+      unawaited(
+        ref
+            .read(preferencesProvider.notifier)
+            .rememberAccent(hexFromColor(after)),
+      );
     });
 
     // El idioma guardado en el perfil manda sobre el local en cuanto llega.
-    ref.listen(profileProvider.select((p) => p.profile?.locale), (before, after) {
+    ref.listen(profileProvider.select((p) => p.profile?.locale), (
+      before,
+      after,
+    ) {
       if (after == null || before == after) return;
       final preferences = ref.read(preferencesProvider);
       if (preferences.localeCode != after) {
@@ -215,11 +230,12 @@ class _AppRootState extends ConsumerState<AppRoot> {
       switchOutCurve: Curves.easeInCubic,
       // El layout por defecto centra con restricciones sueltas y encogeria las
       // pantallas; aqui cada una ocupa el lienzo entero.
-      layoutBuilder: (current, previous) => Stack(
-        fit: StackFit.expand,
-        children: [...previous, ?current],
+      layoutBuilder: (current, previous) =>
+          Stack(fit: StackFit.expand, children: [...previous, ?current]),
+      child: KeyedSubtree(
+        key: ValueKey<String>(screen.runtimeType.toString()),
+        child: screen,
       ),
-      child: KeyedSubtree(key: ValueKey<String>(screen.runtimeType.toString()), child: screen),
     );
 
     // En Android la raiz nunca se cierra sola: asi el sistema entrega siempre

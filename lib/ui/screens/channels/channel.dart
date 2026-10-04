@@ -141,6 +141,7 @@ int channelsPerPage({required bool tall}) => tall ? 9 : 8;
 List<ChannelSpec> channelsFor({
   required bool isAdmin,
   Map<String, GameInstall> installedGames = const <String, GameInstall>{},
+  List<ChannelSpec> extensionGameChannels = const <ChannelSpec>[],
   bool gachaUnlocked = false,
   bool gachaGift = false,
   bool pinballUnlocked = false,
@@ -295,6 +296,7 @@ List<ChannelSpec> channelsFor({
           gift: entry.value.isGift,
           gameId: entry.key,
         ),
+      ...extensionGameChannels,
       // Odori es gratis y llega a todos envuelto hasta que se abre. Suena su
       // propia musica en cada partida; en el selector sigue la del menu.
       ChannelSpec(

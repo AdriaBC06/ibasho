@@ -58,14 +58,15 @@ class MusicLibraryState {
     bool clearProfileTrack = false,
     Map<String, String>? gameTracks,
     bool? loaded,
-  }) =>
-      MusicLibraryState(
-        unlocked: unlocked ?? this.unlocked,
-        menuTrack: menuTrack ?? this.menuTrack,
-        profileTrack: clearProfileTrack ? null : (profileTrack ?? this.profileTrack),
-        gameTracks: gameTracks ?? this.gameTracks,
-        loaded: loaded ?? this.loaded,
-      );
+  }) => MusicLibraryState(
+    unlocked: unlocked ?? this.unlocked,
+    menuTrack: menuTrack ?? this.menuTrack,
+    profileTrack: clearProfileTrack
+        ? null
+        : (profileTrack ?? this.profileTrack),
+    gameTracks: gameTracks ?? this.gameTracks,
+    loaded: loaded ?? this.loaded,
+  );
 }
 
 /// La biblioteca de musica de una cuenta.
@@ -81,10 +82,10 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     required IbashoBackend backend,
     required SessionController session,
     required PreferencesController preferences,
-  })  : _backend = backend,
-        _session = session,
-        _preferences = preferences,
-        super(const MusicLibraryState()) {
+  }) : _backend = backend,
+       _session = session,
+       _preferences = preferences,
+       super(const MusicLibraryState()) {
     unawaited(_load());
   }
 
@@ -101,7 +102,10 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
   Future<void> _load() async {
     if (_session.state.accountId.isEmpty) return;
     try {
-      final raw = await _backend.read(_path, idToken: await _session.freshToken());
+      final raw = await _backend.read(
+        _path,
+        idToken: await _session.freshToken(),
+      );
       final unlocked = <String>{};
       String? menuTrack;
       String? profileTrack;
@@ -114,7 +118,8 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
           });
         }
         if (raw['menuTrack'] is String) menuTrack = raw['menuTrack'] as String;
-        if (raw['profileTrack'] is String) profileTrack = raw['profileTrack'] as String;
+        if (raw['profileTrack'] is String)
+          profileTrack = raw['profileTrack'] as String;
         final games = raw['games'];
         if (games is Map) {
           games.forEach((game, track) {
@@ -133,20 +138,28 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
       // Hasta la 0.9.0 la musica de Hatarakitama se guardaba en el equipo.
       final hataraki = _preferences.state.hatarakiTrack;
       if (hataraki.isNotEmpty) {
-        if (!gameTracks.containsKey('hataraki')) unawaited(selectGameTrack('hataraki', hataraki));
+        if (!gameTracks.containsKey('hataraki'))
+          unawaited(selectGameTrack('hataraki', hataraki));
         unawaited(_preferences.setHatarakiTrack(''));
       }
       // Las del gacha que aun no estaban: se apuntan ya (el estado cambia
       // antes de esperar a la red) para que la pista elegida no se pierda.
       unawaited(_adopt());
 
-      // La eleccion de la cuenta manda sobre la cache local, siempre que siga
-      // desbloqueada.
-      final chosen = menuTrack == null ? null : MusicTrack.byId(menuTrack);
-      if (chosen != null && chosen.id == menuTrack && state.isUnlocked(chosen)) {
-        await _preferences.setMusicTrack(chosen.id);
-      } else if (!state.isUnlocked(MusicTrack.byId(_preferences.state.musicTrack))) {
-        await _preferences.setMusicTrack(MusicTrack.fallback.id);
+      // Kōbō local: la selección ext: pertenece a este dispositivo y no
+      // debe ser pisada por el menuTrack remoto de la cuenta.
+      final localMenu = _preferences.state.musicTrack;
+      if (!localMenu.startsWith('ext:')) {
+        // La eleccion de la cuenta manda sobre la cache local, siempre que siga
+        // desbloqueada.
+        final chosen = menuTrack == null ? null : MusicTrack.byId(menuTrack);
+        if (chosen != null &&
+            chosen.id == menuTrack &&
+            state.isUnlocked(chosen)) {
+          await _preferences.setMusicTrack(chosen.id);
+        } else if (!state.isUnlocked(MusicTrack.byId(localMenu))) {
+          await _preferences.setMusicTrack(MusicTrack.fallback.id);
+        }
       }
     } catch (e) {
       debugPrint('Ibasho: no se ha podido leer la musica de la cuenta ($e)');
@@ -172,11 +185,9 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     if (missing.isEmpty) return;
     state = state.copyWith(unlocked: {...state.unlocked, ...missing});
     try {
-      await _backend.merge(
-        '$_path/unlocked',
-        {for (final id in missing) id: true},
-        idToken: await _session.freshToken(),
-      );
+      await _backend.merge('$_path/unlocked', {
+        for (final id in missing) id: true,
+      }, idToken: await _session.freshToken());
     } catch (e) {
       debugPrint('Ibasho: no se han podido guardar las musicas del gacha ($e)');
     }
@@ -188,8 +199,11 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     state = state.copyWith(menuTrack: track.id);
     await _preferences.setMusicTrack(track.id);
     try {
-      await _backend.write('$_path/menuTrack', track.id,
-          idToken: await _session.freshToken());
+      await _backend.write(
+        '$_path/menuTrack',
+        track.id,
+        idToken: await _session.freshToken(),
+      );
     } catch (e) {
       debugPrint('Ibasho: no se ha podido guardar la musica del menu ($e)');
     }
@@ -202,7 +216,11 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     state = state.copyWith(menuTrack: id);
     await _preferences.setMusicTrack(id);
     try {
-      await _backend.write('$_path/menuTrack', id, idToken: await _session.freshToken());
+      await _backend.write(
+        '$_path/menuTrack',
+        id,
+        idToken: await _session.freshToken(),
+      );
     } catch (e) {
       debugPrint('Ibasho: no se ha podido guardar la musica del menu ($e)');
     }
@@ -257,8 +275,11 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
     if (state.isUnlocked(track)) return;
     state = state.copyWith(unlocked: {...state.unlocked, track.id});
     try {
-      await _backend.write('$_path/unlocked/${track.id}', true,
-          idToken: await _session.freshToken());
+      await _backend.write(
+        '$_path/unlocked/${track.id}',
+        true,
+        idToken: await _session.freshToken(),
+      );
     } catch (e) {
       debugPrint('Ibasho: no se ha podido desbloquear ${track.id} ($e)');
     }
@@ -266,15 +287,16 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
 
   /// Solo para depuracion: desbloquea todas las canciones de golpe.
   Future<void> unlockAll() async {
-    final missing = [for (final t in MusicTrack.values) if (!state.isUnlocked(t)) t.id];
+    final missing = [
+      for (final t in MusicTrack.values)
+        if (!state.isUnlocked(t)) t.id,
+    ];
     if (missing.isEmpty) return;
     state = state.copyWith(unlocked: {...state.unlocked, ...missing});
     try {
-      await _backend.merge(
-        '$_path/unlocked',
-        {for (final id in missing) id: true},
-        idToken: await _session.freshToken(),
-      );
+      await _backend.merge('$_path/unlocked', {
+        for (final id in missing) id: true,
+      }, idToken: await _session.freshToken());
     } catch (e) {
       debugPrint('Ibasho: no se han podido desbloquear las canciones ($e)');
     }
@@ -290,7 +312,10 @@ class MusicLibraryController extends StateNotifier<MusicLibraryState> {
       gameTracks: state.gameTracks,
     );
     try {
-      await _backend.remove('$_path/unlocked', idToken: await _session.freshToken());
+      await _backend.remove(
+        '$_path/unlocked',
+        idToken: await _session.freshToken(),
+      );
     } catch (e) {
       debugPrint('Ibasho: no se han podido olvidar los desbloqueos ($e)');
     }
